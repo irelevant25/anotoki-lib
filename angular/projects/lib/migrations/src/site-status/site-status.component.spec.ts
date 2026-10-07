@@ -230,16 +230,23 @@ describe('<anotoki-site-status>: what people see while the site is not ready', (
       expect(site.reload).toHaveBeenCalledTimes(1);
     });
 
-    it("not on the ADMIN's page, nor on a site that was never set up", async () => {
+    it("on the ADMIN's page too: another administrator may apply the update meanwhile", async () => {
       setUp();
       site.admin.set(true);
       status.report('update_pending');
       await draw();
-      vi.advanceTimersByTime(120_000);
-      http.expectNone(STATUS_URL);
+      expect(title()).toBe('A database update is waiting');
 
-      status.report('not_set_up', false);
+      vi.advanceTimersByTime(30_000);
+      http.expectOne(STATUS_URL).flush({ state: 'ready', installed: true });
       await settle(fixture);
+      expect(site.reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('not on a site that was never set up', async () => {
+      setUp();
+      status.report('not_set_up', false);
+      await draw();
       vi.advanceTimersByTime(120_000);
       http.expectNone(STATUS_URL);
     });

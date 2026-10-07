@@ -9,7 +9,7 @@ version:
 | PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/` |
 | Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
 
-Version 0.1.0 holds one module: **migrations** - the engine that brings a
+Version 0.1.1 holds one module: **migrations** - the engine that brings a
 site's database up to date, and one behaviour for every site while an update
 waits.
 
@@ -65,7 +65,7 @@ with it.
 Angular - in `frontend/package.json`:
 
 ```json
-"@anotoki/lib": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.1.0/anotoki-lib-0.1.0.tgz"
+"@anotoki/lib": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.1.1/anotoki-lib-0.1.1.tgz"
 ```
 
 then `bun install` in `frontend/` (and `npm install` too where the site keeps a
@@ -97,9 +97,9 @@ $state = new SiteState(
 
 $app->add(new SiteGate($state, $app->getResponseFactory(), [
     '/api/auth/config',                     // exact paths...
-    '~^/api/translations/[a-z-]+$~',        // ...or a regular expression when it starts with '~'
+    '~^/api/translations/[a-z-]+$~D',       // ...or a regular expression when it starts with '~' (end it with D)
     '/api/health',
-    '~^/api/admin/migrations(/.*)?$~',
+    '~^/api/admin/migrations(/file|/apply)?$~D', // exactly the three routes - never a prefix
 ]));
 
 MigrationsRoutes::status($app, $state);                            // GET /api/site-status
@@ -165,8 +165,9 @@ provideAppInitializer(() => inject(SiteStatus).check()),   // early in the boot;
 ```
 
 ```html
-<!-- the app's template: the gate around the router outlet, and around nothing else -->
-<anotoki-site-gate><router-outlet /></anotoki-site-gate>
+<!-- the app's template: the gate around the router outlet, and around nothing else; the
+     template makes the pages only while the site is open (0.1.1) -->
+<anotoki-site-gate><ng-template><router-outlet /></ng-template></anotoki-site-gate>
 ```
 
 - `SiteStatus` - `state` (`'unknown' | 'ready' | 'update-pending' | 'not-set-up' |
@@ -176,7 +177,9 @@ provideAppInitializer(() => inject(SiteStatus).check()),   // early in the boot;
   `not_set_up` tells `SiteStatus` (the request still fails).
 - `<anotoki-site-gate>` - its content while the site is ready (or not asked
   yet), or for the ADMIN on the Migrations route while an update waits;
-  `<anotoki-site-status>` otherwise.
+  `<anotoki-site-status>` otherwise. Give it the pages as an `<ng-template>`:
+  then they are made only while they show (content given as it is is made
+  anyway, and a page behind the status page would run and send requests).
 - `<anotoki-site-status>` - the page of the section above.
 - `<anotoki-update-banner>` - the IAM's one line for its administrators.
 - `<anotoki-migrations-page>` - the admin page (English; for the site's ADMIN

@@ -5,6 +5,21 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.1.1 - 2026-10-07
+
+Angular only; the PHP half is unchanged (a site may keep `vendor/anotoki/lib` at 0.1.0).
+
+- `<anotoki-site-gate>` takes the pages as a template -
+  `<anotoki-site-gate><ng-template><router-outlet /></ng-template></anotoki-site-gate>` - and
+  makes them only while the site is open. Content given as it is (the 0.1.0 form, still
+  working) is made by Angular whether it shows or not, so a page behind the status page
+  ran and sent requests - whose failures a site may show as toasts. Sites should switch to
+  the template.
+- The ADMIN's "A database update is waiting" page asks again by itself, as the visitors'
+  pages do: another administrator may apply the update meanwhile.
+- README: the migrations routes are opened exactly (`~^/api/admin/migrations(/file|/apply)?$~D`,
+  never a prefix - a crafted path under it would pass the gate), and patterns end with `D`.
+
 ## 0.1.0 - 2026-10-07
 
 The first version: the migrations module, one behaviour for every site while its

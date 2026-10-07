@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, TemplateRef, computed, contentChild, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -12,10 +13,16 @@ import { SiteStatusComponent } from '../site-status/site-status.component';
  * ready - or not asked yet - and the status page otherwise. An ADMIN still
  * reaches the Migrations page while an update waits, and nothing else. It
  * asks the server once, when nothing has asked yet, and follows the router.
+ *
+ * Give it the pages as a template - `<anotoki-site-gate><ng-template><router-outlet /></ng-template></anotoki-site-gate>` -
+ * and they are made only while the site is open. Content given as it is, without
+ * the template, is made by Angular whether it shows or not, so a page behind
+ * the status page would still run and send its requests (and their failures)
+ * while nobody sees it.
  */
 @Component({
   selector: 'anotoki-site-gate',
-  imports: [SiteStatusComponent],
+  imports: [NgTemplateOutlet, SiteStatusComponent],
   templateUrl: './site-gate.component.html',
   styleUrl: './site-gate.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,6 +31,9 @@ export class SiteGateComponent {
   private readonly status = inject(SiteStatus);
   private readonly config = inject(ANOTOKI_MIGRATIONS_CONFIG);
   private readonly router = inject(Router);
+
+  /** The pages, when they come as a template: made only while the site is open. */
+  protected readonly pages = contentChild(TemplateRef);
 
   private readonly url = toSignal(
     this.router.events.pipe(

@@ -1,5 +1,9 @@
 @if (open()) {
-    <ng-content />
+    @if (pages(); as made) {
+        <ng-container [ngTemplateOutlet]="made" />
+    } @else {
+        <ng-content />
+    }
 } @else {
     <anotoki-site-status />
 }

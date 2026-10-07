@@ -1,6 +1,6 @@
 {
   "name": "@anotoki/lib",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "What the anotoki sites share, the Angular half: @anotoki/lib/migrations - the site's status, the gate in front of its pages, the update banner and the admin Migrations page. The PHP half is the Composer package anotoki/lib.",
   "license": "UNLICENSED",
   "repository": {

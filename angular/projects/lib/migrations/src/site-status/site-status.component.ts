@@ -21,8 +21,9 @@ let nextId = 0;
  * - Set up once but not answering, or unavailable: "not available right now" -
  *   never the setup page.
  *
- * The visitors' pages ask again every retrySeconds and reload once the site
- * is ready.
+ * The waiting pages - the visitors' and the ADMIN's (another administrator may
+ * apply the update meanwhile) - ask again every retrySeconds and reload once
+ * the site is ready.
  */
 @Component({
   selector: 'anotoki-site-status',
@@ -53,7 +54,7 @@ export class SiteStatusComponent {
   });
 
   /** The pages that wait for the site, asking again by themselves. */
-  protected readonly waiting = computed(() => this.view() === 'updating' || this.view() === 'unavailable');
+  protected readonly waiting = computed(() => this.view() === 'updating' || this.view() === 'unavailable' || this.view() === 'admin');
   protected readonly text = computed(() => siteStatusWords(this.config.language(), this.config.words));
   protected readonly signedIn = computed(() => this.config.isSignedIn());
   protected readonly checking = signal(false);

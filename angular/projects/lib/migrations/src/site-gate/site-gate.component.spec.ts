@@ -16,6 +16,23 @@ class TestSiteComponent {}
 @Component({ selector: 'anotoki-test-page', template: '' })
 class TestPageComponent {}
 
+/** Counts how often a page is made: a page behind the status page must not be. */
+let made = 0;
+
+@Component({ selector: 'anotoki-counted-page', template: '<p id="counted">Counted</p>' })
+class CountedPageComponent {
+  constructor() {
+    made += 1;
+  }
+}
+
+@Component({
+  selector: 'anotoki-test-templated-site',
+  imports: [SiteGateComponent, CountedPageComponent],
+  template: '<anotoki-site-gate><ng-template><anotoki-counted-page /></ng-template></anotoki-site-gate>',
+})
+class TemplatedSiteComponent {}
+
 describe('<anotoki-site-gate>: the site, or the status page', () => {
   let site: TestSite;
   let status: SiteStatus;
@@ -110,6 +127,28 @@ describe('<anotoki-site-gate>: the site, or the status page', () => {
     await settle(fixture);
     expect(page()).toBeNull();
     expect(words(statusPage())).toContain('The site is not available right now');
+  });
+
+  it('pages given as a template are made only while the site is open - never behind the status page', async () => {
+    made = 0;
+    status.report('update_pending');
+    const templated = TestBed.createComponent(TemplatedSiteComponent);
+    await settle(templated);
+    expect(made).toBe(0);
+    expect(templated.nativeElement.querySelector('#counted')).toBeNull();
+    expect(words(templated.nativeElement.querySelector('anotoki-site-status'))).toContain('The site is being updated');
+
+    status.markReady();
+    await settle(templated);
+    expect(made).toBe(1);
+    expect(templated.nativeElement.querySelector('#counted')).not.toBeNull();
+    expect(templated.nativeElement.querySelector('anotoki-site-status')).toBeNull();
+  });
+
+  it('pages given as they are (no template) still show as before', async () => {
+    status.markReady();
+    await draw();
+    expect(page()).not.toBeNull();
   });
 
   it('shows the site again the moment it is ready', async () => {

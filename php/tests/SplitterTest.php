@@ -37,9 +37,10 @@ final class SplitterTest extends TestCase
             SELECT 1 -- no line break after this; ever
             SQL;
 
+        // A heredoc's line breaks are the checkout's (CRLF on a Windows one); the statements keep a file's own.
         self::assertSame(
             ["CREATE TABLE a (\n    id int,\n    name text\n)", 'SELECT 1'],
-            Splitter::split($sql)
+            Splitter::split(str_replace("\r\n", "\n", $sql))
         );
     }
 

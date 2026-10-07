@@ -1,9 +1,16 @@
-# Composer installs a release from GitHub's archive of the tag, which leaves these out:
-# a site's vendor/anotoki/lib holds the PHP code and its README, nothing else.
-/angular export-ignore
+# Composer installs a release from GitHub's archive of the tag, and the archive holds only what this
+# allow-list keeps: the PHP half - its code (php/src), its migration files (php/migrations) and its
+# resources (php/resources) - with composer.json, README.md and CHANGELOG.md. Everything else stays out,
+# a folder added later too: the Angular workspace, the tests, the workflows. Every site's build uploads
+# vendor/ whole. CI builds the archive and checks the list (.github/scripts/check-archive.sh).
+/* export-ignore
+/php !export-ignore
 /php/tests export-ignore
-/.github export-ignore
-/phpunit.xml.dist export-ignore
-/CLAUDE.md export-ignore
-/.gitattributes export-ignore
-/.gitignore export-ignore
+/composer.json !export-ignore
+/README.md !export-ignore
+/CHANGELOG.md !export-ignore
+
+# What a release ships to be read byte for byte has LF line endings in every checkout and archive: a
+# migration's last line is read (Japanese Academy's draft rule), and a test holds the SQL to the words.
+/php/migrations/** text eol=lf
+/php/resources/** text eol=lf

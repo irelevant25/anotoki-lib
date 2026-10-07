@@ -62,6 +62,16 @@ abstract class DatabaseTestCase extends TestCase
         return new MigrationSet($name, $directory);
     }
 
+    /**
+     * A library's migration set (named anotoki_*) in its own folder, holding these files.
+     *
+     * @param array<string, string> $files name => SQL
+     */
+    protected function librarySet(string $name, array $files = []): MigrationSet
+    {
+        return MigrationSet::library($name, $this->set('library-' . $name, $files)->directory);
+    }
+
     /** A folder of this test's temporary root (for files that are no migration). */
     protected function path(string $relative): string
     {

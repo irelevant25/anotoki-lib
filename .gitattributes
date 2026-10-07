@@ -14,3 +14,6 @@
 # migration's last line is read (Japanese Academy's draft rule), and a test holds the SQL to the words.
 /php/migrations/** text eol=lf
 /php/resources/** text eol=lf
+
+# A shell script with CRLF line endings does not run.
+/.github/scripts/*.sh text eol=lf

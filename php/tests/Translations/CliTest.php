@@ -103,6 +103,18 @@ final class CliTest extends TestCase
         ], $scan['problems']);
     }
 
+    public function testTheDynamicKeysFilesTailsAreNoKeysOfTheirOwn(): void
+    {
+        // Piano Academy's case: a tail with dots of its own, which begins like a key of another namespace.
+        $this->write('core/i18n/dynamic-keys.ts', "export const DYNAMIC_KEYS = {\n  'path.step.': ['meet.title', 'end'],\n};\n");
+
+        $scan = (new KeyScanner($this->root, ['core/testing/**', 'pages/**'], 'core/i18n/dynamic-keys.ts'))->scan(['path.step.meet.title', 'path.step.end', 'meet.title']);
+
+        self::assertSame(['path.step.end', 'path.step.meet.title'], array_keys($scan['used']));
+        self::assertSame(['meet.title'], $scan['unused']);
+        self::assertSame([], $scan['problems']);
+    }
+
     public function testTheIamsScanItsPipeAndInnerHtmlAnywhere(): void
     {
         $this->write('pages/home/home.component.html', "<h1>{{ 'home.title' | t }}</h1>\n<p [innerHTML]=\"html\"></p>\n");

@@ -175,6 +175,12 @@ final class KeyScanner
         $asked = [];
         $problems = [];
         foreach ($this->sourceFiles() as $relative) {
+            // The file of run-time keys is read as what it is, above: its strings are prefixes and tails,
+            // not keys. A tail has dots of its own there ('meet.title' under 'path.step.'), and read as a
+            // literal it would be taken for a key of the namespace it happens to begin with.
+            if ($relative === $this->dynamicKeys) {
+                continue;
+            }
             $html = str_ends_with($relative, '.html');
             $text = self::sourceText((string) file_get_contents("{$this->root}/$relative"), $html);
 
@@ -202,12 +208,10 @@ final class KeyScanner
             }
             // A key put together here from a prefix nobody declared: its keys could
             // be missing from the database and nothing would say so.
-            if ($relative !== $this->dynamicKeys) {
-                foreach (self::built($text, $html) as $built) {
-                    if (isset($namespaces[self::namespaceOf($built['prefix'])]) && !isset($dynamic['prefixes'][$built['prefix']])) {
-                        $problems[] = "$relative:{$built['line']}: a key is put together from '{$built['prefix']}', which "
-                            . ($this->dynamicKeys ?? 'no file of dynamic keys') . ' does not declare';
-                    }
+            foreach (self::built($text, $html) as $built) {
+                if (isset($namespaces[self::namespaceOf($built['prefix'])]) && !isset($dynamic['prefixes'][$built['prefix']])) {
+                    $problems[] = "$relative:{$built['line']}: a key is put together from '{$built['prefix']}', which "
+                        . ($this->dynamicKeys ?? 'no file of dynamic keys') . ' does not declare';
                 }
             }
         }

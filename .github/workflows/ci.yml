@@ -1,0 +1,81 @@
+# Both halves' tests, on every push to main and every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest PHP the sites run, and a current one.
+        php: ['8.2', '8.4']
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: anotoki
+          POSTGRES_PASSWORD: anotoki
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anotoki"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Test
+        run: vendor/bin/phpunit
+        env:
+          ANOTOKI_LIB_TEST_PGHOST: 127.0.0.1
+          ANOTOKI_LIB_TEST_PGPORT: 5432
+          ANOTOKI_LIB_TEST_PGUSER: anotoki
+          ANOTOKI_LIB_TEST_PGPASSWORD: anotoki
+
+  angular:
+    name: Angular
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: angular
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      # The Angular CLI runs on Node (^20.19, ^22.12 or 24+).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Build the library
+        run: bun run build
+
+      - name: Test the library
+        run: bun run test

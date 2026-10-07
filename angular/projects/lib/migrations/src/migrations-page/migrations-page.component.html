@@ -1,0 +1,127 @@
+@if (!admin()) {
+    <p class="notice">Migrations are for administrators.</p>
+} @else {
+    <div class="page">
+        <header class="head">
+            <div class="heading">
+                <h1 class="title">Migrations</h1>
+                <p class="lead">The database schema is what these files build. Back the database up before applying anything.</p>
+            </div>
+            <button type="button" class="button primary" data-apply [disabled]="!canApply()" (click)="askToApply()">
+                {{ applying() ? "Applying..." : "Apply pending" }}
+            </button>
+        </header>
+
+        @if (outcome(); as result) {
+            <div class="result" data-result [attr.data-tone]="result.tone" [attr.role]="result.tone === 'danger' || result.tone === 'warning' ? 'alert' : 'status'">
+                @if (result.heading) {
+                    <h2 class="result-title">{{ result.heading }}</h2>
+                }
+                <p class="result-text">{{ result.text }}</p>
+                @if (result.error) {
+                    <pre class="error">{{ result.error }}</pre>
+                }
+                @if (result.note) {
+                    <p class="result-note">{{ result.note }}</p>
+                }
+            </div>
+        }
+
+        @if (loadError(); as message) {
+            <div class="result" data-load-error data-tone="danger" role="alert">
+                <h2 class="result-title">The migrations could not be read.</h2>
+                <p class="result-text">{{ message }}</p>
+                <div class="row">
+                    <button type="button" class="button" [disabled]="loading()" (click)="load()">Try again</button>
+                </div>
+            </div>
+        } @else if (data(); as status) {
+            <div class="cards">
+                <section class="card" data-pending [attr.aria-labelledby]="id + '-pending'">
+                    <h2 class="card-title" [id]="id + '-pending'">Pending</h2>
+                    @if (groups().length === 0) {
+                        <p class="card-text">Nothing pending - the database is up to date with the files.</p>
+                    } @else {
+                        @for (group of groups(); track group.set) {
+                            @if (manySets()) {
+                                <h3 class="set">migrations/{{ group.set }}/</h3>
+                            }
+                            <ol class="files">
+                                @for (file of group.files; track file.name) {
+                                    <li class="file">
+                                        <code class="name">{{ file.name }}</code>
+                                        <span class="badge" [attr.data-kind]="file.badge">{{ file.badge }}</span>
+                                        @if (file.badge === "draft") {
+                                            <span class="why">a draft - it does not run until it is finished</span>
+                                        }
+                                    </li>
+                                }
+                            </ol>
+                        }
+                    }
+                </section>
+
+                <section class="card" data-applied [attr.aria-labelledby]="id + '-applied'">
+                    <h2 class="card-title" [id]="id + '-applied'">Applied</h2>
+                    <p class="card-text">{{ status.applied.length === 1 ? "1 file" : status.applied.length + " files" }}</p>
+                    @if (status.applied.length) {
+                        <ol class="files">
+                            @for (file of status.applied; track file.set + "/" + file.name) {
+                                <li class="file">
+                                    <code class="name">{{ label(file) }}</code>
+                                    @if (file.applied_at) {
+                                        <time class="when" [attr.datetime]="file.applied_at">{{ formatDate(file.applied_at) }}</time>
+                                    }
+                                    <button type="button" class="button small" [attr.aria-label]="'View ' + label(file)" (click)="view(file)">View</button>
+                                </li>
+                            }
+                        </ol>
+                    }
+                </section>
+
+                @if (status.missing.length) {
+                    <section class="card" data-missing [attr.aria-labelledby]="id + '-missing'">
+                        <h2 class="card-title" [id]="id + '-missing'">Missing</h2>
+                        <p class="card-text">Recorded as applied, but the file is not here:</p>
+                        <ul class="files">
+                            @for (file of status.missing; track file.set + "/" + file.name) {
+                                <li class="file">
+                                    <code class="name">{{ label(file) }}</code>
+                                </li>
+                            }
+                        </ul>
+                    </section>
+                }
+            </div>
+        } @else {
+            <p class="loading" role="status">Reading the migrations...</p>
+        }
+    </div>
+
+    <dialog #confirmDialog class="dialog" data-confirm [attr.aria-labelledby]="id + '-confirm-title'" [attr.aria-describedby]="id + '-confirm-text'">
+        <h2 class="dialog-title" [id]="id + '-confirm-title'">{{ confirmTitle() }}</h2>
+        <p class="dialog-text" [id]="id + '-confirm-text'">They run now, against the live database, in order - stopping at the first one that fails. Make sure there is a fresh backup.</p>
+        <div class="dialog-actions">
+            <button type="button" class="button danger" data-confirm-apply (click)="applyConfirmed()">Apply</button>
+            <button type="button" class="button" #cancelButton data-confirm-cancel (click)="cancelApply()">Cancel</button>
+        </div>
+    </dialog>
+
+    <dialog #sqlDialog class="dialog wide" data-sql [attr.aria-labelledby]="id + '-sql-title'" (close)="sqlClosed()">
+        <h2 class="dialog-title" [id]="id + '-sql-title'">{{ viewing() ? label(viewing()!.file) : "" }}</h2>
+        @if (viewingSql() !== null) {
+            <pre class="sql" #sqlText tabindex="0" role="region" [attr.aria-label]="'The SQL of ' + label(viewing()!.file)">{{ viewingSql() }}</pre>
+        } @else if (viewing()?.error) {
+            <p class="dialog-text" role="alert">The file could not be read. {{ viewing()!.error }}</p>
+        } @else {
+            <p class="dialog-text" role="status">Reading the file...</p>
+        }
+        <div class="dialog-actions">
+            @if (copied(); as message) {
+                <p class="copied" role="status">{{ message }}</p>
+            }
+            <button type="button" class="button" data-copy [disabled]="viewingSql() === null" (click)="copy()">Copy</button>
+            <button type="button" class="button" #closeButton data-close (click)="closeSql()">Close</button>
+        </div>
+    </dialog>
+}

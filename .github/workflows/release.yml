@@ -1,0 +1,57 @@
+# A tag vX.Y.Z publishes a release: the Angular package's tarball, attached to a GitHub Release of
+# that tag, which every site's frontend/package.json points at. (Composer reads the same tag from git.)
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      # The Angular CLI runs on Node; npm packs the tarball.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The tag must be the library's version
+        id: version
+        run: |
+          version="$(node -p "require('./angular/projects/lib/package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME is not v$version, the version in angular/projects/lib/package.json. Bump it there (and in CHANGELOG.md), or tag v$version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        working-directory: angular
+        run: bun install --frozen-lockfile
+
+      - name: Build the library
+        working-directory: angular
+        run: bun run build
+
+      - name: Test the library
+        working-directory: angular
+        run: bun run test
+
+      - name: Pack
+        working-directory: angular/dist/lib
+        run: npm pack
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: angular/dist/lib/anotoki-lib-${{ steps.version.outputs.version }}.tgz
+          fail_on_unmatched_files: true

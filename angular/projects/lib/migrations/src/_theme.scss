@@ -1,0 +1,81 @@
+// The module's look, shared by its components. A site maps its own tokens onto the
+// --anotoki-* properties (for light and dark); unmapped, each falls back to a colour
+// built on light-dark(), which follows the color-scheme the page sets (light without one).
+
+@mixin tokens {
+  --_bg: var(--anotoki-bg, light-dark(#ffffff, #15171c));
+  --_surface: var(--anotoki-surface, light-dark(#f5f6f8, #1e2128));
+  --_text: var(--anotoki-text, light-dark(#1c2028, #e8eaef));
+  --_muted: var(--anotoki-muted, light-dark(#596170, #a4abb8));
+  --_border: var(--anotoki-border, light-dark(#d6dae2, #363b46));
+  --_primary: var(--anotoki-primary, light-dark(#2c56c9, #92b2ff));
+  --_primary-contrast: var(--anotoki-primary-contrast, light-dark(#ffffff, #0b1736));
+  --_danger: var(--anotoki-danger, light-dark(#b42318, #ff8f85));
+  --_danger-contrast: var(--anotoki-danger-contrast, light-dark(#ffffff, #3a0904));
+  --_success: var(--anotoki-success, light-dark(#17734a, #73d6a5));
+  --_warning: var(--anotoki-warning, light-dark(#9a5700, #f2b45a));
+  --_radius: var(--anotoki-radius, 8px);
+  --_font-mono: var(--anotoki-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+}
+
+@mixin buttons {
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--_border);
+    border-radius: var(--_radius);
+    background: var(--_surface);
+    color: var(--_text);
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      border-color: var(--_text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--_primary);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    &.primary {
+      border-color: var(--_primary);
+      background: var(--_primary);
+      color: var(--_primary-contrast);
+    }
+
+    &.danger {
+      border-color: var(--_danger);
+      background: var(--_danger);
+      color: var(--_danger-contrast);
+    }
+
+    // A link's weight: there, but not asking for attention.
+    &.quiet {
+      min-height: 2rem;
+      padding: 0.25rem 0.5rem;
+      border-color: transparent;
+      background: transparent;
+      color: var(--_primary);
+      font-weight: 500;
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+
+      &:hover:not(:disabled) {
+        border-color: transparent;
+      }
+    }
+  }
+}

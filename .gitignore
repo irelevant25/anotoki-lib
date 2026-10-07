@@ -1,0 +1,20 @@
+# PHP: a library commits no lock file; each site's own composer.lock pins the version it uses.
+/vendor/
+/composer.lock
+/.phpunit.cache/
+/.phpunit.result.cache
+
+# Angular
+/angular/node_modules/
+/angular/dist/
+/angular/.angular/
+/angular/out-tsc/
+/angular/coverage/
+*.tgz
+
+# Editors and systems
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

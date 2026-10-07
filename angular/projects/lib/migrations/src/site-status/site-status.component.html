@@ -1,0 +1,41 @@
+@switch (view()) {
+    @case ("admin") {
+        <section class="status" lang="en" [attr.aria-labelledby]="id + '-title'">
+            <h1 class="title" [id]="id + '-title'">A database update is waiting</h1>
+            <p class="text">This site is closed to everybody else until the update is applied. Back the database up first.</p>
+            <div class="actions">
+                <a class="button primary" [routerLink]="config.migrationsRoute">Open Migrations</a>
+            </div>
+        </section>
+    }
+    @case ("updating") {
+        <section class="status" role="status" [attr.lang]="text().lang" [attr.aria-labelledby]="id + '-title'">
+            <h1 class="title" [id]="id + '-title'">{{ text().words.updatingTitle }}</h1>
+            <p class="text">{{ text().words.updatingText }}</p>
+            @if (!signedIn()) {
+                <div class="actions">
+                    <button type="button" class="button quiet" (click)="signIn()">{{ text().words.signIn }}</button>
+                </div>
+            }
+        </section>
+    }
+    @case ("not-set-up") {
+        <section class="status" [attr.lang]="text().lang" [attr.aria-labelledby]="id + '-title'">
+            <h1 class="title" [id]="id + '-title'">{{ text().words.notSetUpTitle }}</h1>
+            <p class="text">{{ text().words.notSetUpText }}</p>
+            <div class="actions">
+                <a class="button primary" [href]="setupUrl">{{ text().words.openSetup }}</a>
+                <button type="button" class="button" [disabled]="checking()" (click)="recheck()">{{ text().words.tryAgain }}</button>
+            </div>
+        </section>
+    }
+    @case ("unavailable") {
+        <section class="status" role="status" [attr.lang]="text().lang" [attr.aria-labelledby]="id + '-title'">
+            <h1 class="title" [id]="id + '-title'">{{ text().words.unavailableTitle }}</h1>
+            <p class="text">{{ text().words.unavailableText }}</p>
+            <div class="actions">
+                <button type="button" class="button" [disabled]="checking()" (click)="recheck()">{{ text().words.tryAgain }}</button>
+            </div>
+        </section>
+    }
+}

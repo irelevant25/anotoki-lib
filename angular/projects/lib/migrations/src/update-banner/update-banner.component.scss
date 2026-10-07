@@ -1,0 +1,32 @@
+@use "../theme";
+
+:host {
+  @include theme.tokens;
+  display: block;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--_warning) 45%, transparent);
+  border-radius: var(--_radius);
+  background: color-mix(in srgb, var(--_warning) 12%, var(--_bg));
+  color: var(--_text);
+  line-height: 1.4;
+}
+
+.link {
+  color: var(--_primary);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+
+  &:focus-visible {
+    outline: 2px solid var(--_primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

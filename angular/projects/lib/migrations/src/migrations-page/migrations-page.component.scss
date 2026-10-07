@@ -1,0 +1,273 @@
+@use "../theme";
+
+:host {
+  @include theme.tokens;
+  display: block;
+  color: var(--_text);
+}
+
+@include theme.buttons;
+
+.button.small {
+  min-height: 2rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.notice,
+.loading {
+  margin: 0;
+  color: var(--_muted);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heading {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.lead {
+  max-width: 46rem;
+  margin: 0.35rem 0 0;
+  color: var(--_muted);
+  line-height: 1.5;
+}
+
+// The last Apply's answer, and a list that could not be read.
+.result {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--_border);
+  border-left-width: 4px;
+  border-radius: var(--_radius);
+  background: var(--_surface);
+
+  &[data-tone="success"] {
+    border-left-color: var(--_success);
+  }
+
+  &[data-tone="warning"] {
+    border-left-color: var(--_warning);
+  }
+
+  &[data-tone="danger"] {
+    border-left-color: var(--_danger);
+  }
+}
+
+.result-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.result-text,
+.result-note {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.result-note {
+  margin-top: 0.5rem;
+  color: var(--_muted);
+}
+
+.row {
+  margin-top: 0.75rem;
+}
+
+.error,
+.sql {
+  box-sizing: border-box;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem;
+  overflow: auto;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--_bg);
+  color: var(--_text);
+  font-family: var(--_font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+// What the database said: its own lines, wrapped to the box.
+.error {
+  max-height: 18rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// A file as it is written: long lines scroll.
+.sql {
+  max-height: min(60vh, 34rem);
+  white-space: pre;
+  tab-size: 4;
+
+  &:focus-visible {
+    outline: 2px solid var(--_primary);
+    outline-offset: 2px;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.card {
+  min-width: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--_surface);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.card-text {
+  margin: 0.35rem 0 0;
+  color: var(--_muted);
+}
+
+.set {
+  margin: 1rem 0 0;
+  color: var(--_muted);
+  font-family: var(--_font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--_bg);
+}
+
+.name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-family: var(--_font-mono);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.when {
+  color: var(--_muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.badge {
+  padding: 0.05rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+
+  &[data-kind="pending"] {
+    background: color-mix(in srgb, var(--_warning) 12%, transparent);
+    color: var(--_warning);
+  }
+
+  &[data-kind="draft"] {
+    color: var(--_muted);
+  }
+
+  &[data-kind="waits"] {
+    border-style: dashed;
+    color: var(--_muted);
+  }
+}
+
+.why {
+  flex-basis: 100%;
+  color: var(--_muted);
+  font-size: 0.85rem;
+}
+
+.dialog {
+  box-sizing: border-box;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1.25rem;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--_bg);
+  color: var(--_text);
+
+  &.wide {
+    width: min(56rem, calc(100vw - 2rem));
+  }
+
+  &::backdrop {
+    background: rgb(0 0 0 / 0.5);
+  }
+}
+
+.dialog-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.dialog-text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.copied {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--_muted);
+  font-size: 0.875rem;
+}

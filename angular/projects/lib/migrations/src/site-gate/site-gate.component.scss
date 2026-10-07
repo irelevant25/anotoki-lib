@@ -1,0 +1,4 @@
+// The gate adds no box of its own: the site's layout lays out what it holds.
+:host {
+  display: contents;
+}

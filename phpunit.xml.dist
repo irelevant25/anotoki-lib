@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The PHP half's tests. They need a PostgreSQL server (each test case makes a database
+    anotoki_lib_test_<random> and drops it): ANOTOKI_LIB_TEST_DB_CONFIG, or ANOTOKI_LIB_TEST_PG* (README.md).
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="php/tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+         colors="true"
+         executionOrder="default"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+    <testsuites>
+        <testsuite name="anotoki-lib">
+            <directory>php/tests</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>php/src</directory>
+        </include>
+    </source>
+</phpunit>

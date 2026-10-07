@@ -1,0 +1,9 @@
+# Composer installs a release from GitHub's archive of the tag, which leaves these out:
+# a site's vendor/anotoki/lib holds the PHP code and its README, nothing else.
+/angular export-ignore
+/php/tests export-ignore
+/.github export-ignore
+/phpunit.xml.dist export-ignore
+/CLAUDE.md export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore

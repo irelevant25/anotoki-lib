@@ -10,6 +10,7 @@ use Anotoki\Lib\Translations\LibraryWords;
 use Anotoki\Lib\Translations\Rules\LibraryKeyRules;
 use Anotoki\Lib\Translations\Rules\RequiredPlaceholders;
 use Anotoki\Lib\Translations\StringCheck;
+use Anotoki\Lib\Translations\Text;
 use Anotoki\Lib\Translations\TranslationsConfig;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
@@ -113,7 +114,7 @@ final class StringCheckTest extends TestCase
 
     public function testTooLongIsRefusedAndAMillionSpacesInsideAreTooLongNotEmpty(): void
     {
-        self::assertSame(2000, mb_strlen($this->checked(['common.save' => ['sk' => str_repeat('ž', 2000)]])[0]['value']));
+        self::assertSame(2000, Text::length($this->checked(['common.save' => ['sk' => str_repeat('ž', 2000)]])[0]['value']));
         self::assertSame(['invalid_value', ['key' => 'common.save', 'language' => 'sk']], $this->refused(['common.save' => ['sk' => str_repeat('ž', 2001)]]));
 
         // A body of 1 MiB has room for it: taken for an empty one it would be "saved", and the string gone.
@@ -228,9 +229,9 @@ final class StringCheckTest extends TestCase
         foreach (["Reset\r\nBcc: x@evil.test", "Reset\nBcc: x", "Reset\tnow", "Reset\u{2028}now", "Reset\u{0085}now"] as $subject) {
             self::assertSame('invalid_value', $this->mail(['mail.reset.subject' => ['sk' => $subject]])[0], json_encode($subject));
         }
-        self::assertSame(150, mb_strlen($this->mailChecked(['mail.reset.subject' => ['sk' => str_repeat('ž', 150)]])[0]['value']));
+        self::assertSame(150, Text::length($this->mailChecked(['mail.reset.subject' => ['sk' => str_repeat('ž', 150)]])[0]['value']));
         self::assertSame('invalid_value', $this->mail(['mail.reset.subject' => ['sk' => str_repeat('ž', 151)]])[0]);
-        self::assertSame(400, mb_strlen($this->mailChecked(['mail.reset.intro' => ['sk' => str_repeat('ž', 400)]])[0]['value']));
+        self::assertSame(400, Text::length($this->mailChecked(['mail.reset.intro' => ['sk' => str_repeat('ž', 400)]])[0]['value']));
         self::assertSame('invalid_value', $this->mail(['mail.reset.intro' => ['sk' => str_repeat('ž', 401)]])[0]);
 
         // The bytes: 900, less 400 for every {username}, less 10 for every {date}.

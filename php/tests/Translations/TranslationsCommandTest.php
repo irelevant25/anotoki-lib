@@ -103,6 +103,23 @@ final class TranslationsCommandTest extends DatabaseTestCase
         self::assertCount(1, $this->audited, 'nothing changed the second time: nothing audited');
     }
 
+    public function testASitesOwnKindOfFileThroughItsReader(): void
+    {
+        // Japanese Academy's whole-site backup: {translations: {languages, values: {code: {key: text}}}}.
+        $backup = $this->path('backup.json');
+        file_put_contents($backup, json_encode(['tables' => [], 'translations' => ['values' => ['sk' => ['home.title' => 'Domov!'], 'en' => ['home.title' => 'Home!']]]]));
+        $read = static function (string $path, string $code): array {
+            $document = json_decode((string) file_get_contents($path), true);
+
+            return is_array($document['translations'] ?? null) ? ($document['translations']['values'][$code] ?? []) : \Anotoki\Lib\Translations\TranslationFile::read($path);
+        };
+        $command = new TranslationsCommand(fn (): Translations => new Translations($this->pdo), new KeyScanner($this->path('app')), out: $this->out, err: $this->err, read: $read);
+
+        self::assertSame(0, $command->run(['translations.php', '--import', 'sk', $backup]), $this->errors());
+        self::assertSame('Domov!', $this->value("SELECT value FROM translations WHERE key_name = 'home.title' AND language_code = 'sk'"));
+        self::assertSame('Home', $this->value("SELECT value FROM translations WHERE key_name = 'home.title' AND language_code = 'en'"), 'only the language asked for');
+    }
+
     public function testARefusedImportSaysWhatTheAdminPagesWouldAndWritesNothing(): void
     {
         $file = $this->path('bad.json');

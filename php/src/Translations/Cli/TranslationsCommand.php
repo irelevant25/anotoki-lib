@@ -49,6 +49,9 @@ final class TranslationsCommand
      * @param string   $title    the heading of --status: "survey: the site's own strings"
      * @param resource|null $out where it writes (STDOUT)
      * @param resource|null $err where it says why not (STDERR)
+     * @param ?Closure $read     fn(string $path, string $code): array - the strings an import takes from a file, for
+     *                           a site that also imports its own kind of file (Japanese Academy's whole-site backup);
+     *                           TranslationFile::read() by default
      */
     public function __construct(
         private readonly Translations|Closure $translations,
@@ -59,6 +62,7 @@ final class TranslationsCommand
         $out = null,
         $err = null,
         ?bool $colours = null,
+        private readonly ?Closure $read = null,
     ) {
         $this->out = $out ?? STDOUT;
         $this->err = $err ?? STDERR;
@@ -213,7 +217,7 @@ final class TranslationsCommand
     /** A file of strings into a language: checked like a save in the admin pages, written by nobody. */
     private function import(Translations $translations, string $code, string $file): int
     {
-        $values = TranslationFile::read($file);
+        $values = $this->read !== null ? ($this->read)($file, $code) : TranslationFile::read($file);
         $result = $translations->import($code, $values, null);
         if ($result instanceof Refusal) {
             return $this->refused($result);

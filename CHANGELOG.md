@@ -5,6 +5,53 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.3.0 - unreleased
+
+The PHP half of these: the engine's library sets, the translations module, the helpers the modules
+share, and a Composer archive that ships the library's migration files and words. (The Angular half of
+translations comes later.)
+
+PHP, the engine (`Anotoki\Lib\Migrations`):
+- **Library sets.** `MigrationSet::library($name, $dir)` is a set the library ships; the names that
+  begin with `anotoki_` are theirs alone, and a site's set named so is refused (no site's is). A library
+  set's files are recorded as `<set>/<file>` in a bookkeeping table without `folder`, wherever the set
+  stands in the list, and as `folder = <set>` in one with it (genshin). The site's own sets are recorded
+  as before; a new table takes the shape the site's own sets need (`folder` only for more than one of
+  them); a record of a set that is not configured is listed as missing under its set's name; the hooks
+  see the library's files with their set (`$set->library`). Nothing in a site's table changes, and a
+  build without the library's set still reads every record of the site's own.
+- What a site must do: nothing for the engine itself. To take the translations module, append
+  `Translations\Schema::migrationSet()` to its sets - after its own - in every place that builds its
+  Migrator (the site, its installer, its command line); check that its hooks let the library's files
+  through (`ready`: they end with `-- end of NNN`; genshin's order guard: a third folder). The upload
+  then waits for Apply, as any migration does.
+
+PHP, translations (`Anotoki\Lib\Translations`):
+- The library's migration set `anotoki_translations` (`php/migrations/translations`): `001` makes the
+  three tables only where they are missing and refuses, naming every difference, a shape the library
+  cannot work with - on the five aligned sites it makes nothing; genshin moves its tables first. `002`
+  adds the library's own keys under `anotoki.` (the language switcher's and the status page's words, en
+  and sk), writing strings only for a key that has none.
+- `Translations`, `TranslationsConfig`, `StringCheck`, `Text`, `Placeholders`, `LanguageCode`, `ETag`,
+  `KeyRules` (with `Rules\RequiredPlaceholders`, `Rules\LibraryKeyRules`), `LanguageUsage`,
+  `LibraryWords` (from `php/resources/library-words.json`, the one source of the library's words),
+  `Schema`, `TranslationFile`.
+- `Http\TranslationsRoutes::bundle|strings|languages|openPath` - the IAM's wire format (snake_case;
+  the bundle byte for byte), bodies read by the library (415, 413, 422 `empty_body`, 400
+  `invalid_json`), the site's `$error`, `$actor`, `$audit`, and its own checks on each route group.
+  Compared with the IAM's routes: `strings` on every language, `{strings, …the site's fields}` from a
+  delete (the IAM's `accounts` among them), `Retry-After: 60` on a 503, `charset=utf-8` and `no-store`
+  on the JSON answers, and an empty body is 422 `empty_body`.
+- `Cli\KeyScanner`, `Cli\EnglishDictionary`, `Cli\TranslationsCommand` - a site's `translations.php`
+  in a few lines; the scan gives each aligned site's own result on its frontend.
+
+PHP, shared (`Anotoki\Lib\Support`): `JsonResponse` (the no-store JSON answer the migrations routes and
+the site gate now share), `JsonBody` (a request's JSON body, read from the stream), `Refusal`.
+
+Package: `.gitattributes` is an allow-list - GitHub's archive of a tag, which Composer installs, holds
+`php/src`, `php/migrations`, `php/resources`, `composer.json`, README.md and CHANGELOG.md, and nothing
+else - with LF line endings pinned for the SQL and the JSON; CI builds the archive and checks it.
+
 ## 0.1.1 - 2026-10-07
 
 Angular only; the PHP half is unchanged (a site may keep `vendor/anotoki/lib` at 0.1.0).

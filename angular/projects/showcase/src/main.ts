@@ -4,16 +4,17 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { provideAnotokiMigrations, siteStatusInterceptor } from '@anotoki/lib/migrations';
 import { AnotokiThemeMode, ThemeService, provideAnotokiShell } from '@anotoki/lib/shell';
+import { TranslationService, anotokiUnsavedChangesGuard, provideAnotokiTranslations, siteStatusWords } from '@anotoki/lib/translations';
 import { provideAnotokiUi } from '@anotoki/lib/ui';
 import { iconLanguages, iconTrash, iconUsers } from '@anotoki/lib/ui/icons';
 import { delay, of } from 'rxjs';
 import { AppComponent } from './app/app.component';
+import { SHOWCASE_GROUPS, wordsServer } from './app/words-server';
 
-/** The page's language: ?lang=sk, or English. */
+/** The query, read before the translations take ?lang=sk out of the address (it holds for the tab then). */
 const params = new URLSearchParams(location.search);
-const language = signal(params.get('lang') === 'sk' ? 'sk' : 'en');
 
-/** ?visitor=1: nobody signed in, not the site's ADMIN (the status page's visitor view, with Sign in). */
+/** ?visitor=1: nobody signed in, not the site's ADMIN (the status page's visitor view, with Sign in; the admin pages say whose they are). */
 const admin = signal(!params.get('visitor'));
 
 /** The account's theme: ?account=1 makes somebody signed in whose account refuses a choice (the refusal note). */
@@ -51,43 +52,57 @@ const fixtures: HttpInterceptorFn = (request, next) => {
   }
 };
 
+/** The showcase's admin pages: English, whatever the page is read in. */
+const ENGLISH_AREAS = /^\/(migrations|translations|languages)(\/|\?|#|$)/;
+
 bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
-    provideHttpClient(withInterceptors([fixtures, siteStatusInterceptor])),
+    // The translations' routes (words-server.ts) answer from memory, before the rest of the imagined server.
+    provideHttpClient(withInterceptors([wordsServer, fixtures, siteStatusInterceptor])),
     provideRouter([
       { path: '', loadComponent: () => import('./app/gallery/gallery.component').then((m) => m.GalleryComponent) },
       { path: 'migrations', loadComponent: () => import('./app/migrations-demo/migrations-demo.component').then((m) => m.MigrationsDemoComponent) },
+      { path: 'translations', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.TranslationsPageComponent) },
+      { path: 'languages', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.LanguagesPageComponent) },
       { path: '**', redirectTo: '' },
     ]),
-    provideAnotokiUi(() => ({ language, icons: { trash: iconTrash, users: iconUsers, languages: iconLanguages } })),
+    // The words: the bundle's language (?lang=sk, a choice in the bar), the database's strings over the library's.
+    provideAnotokiTranslations(() => ({
+      storagePrefix: 'anotoki-showcase',
+      englishOnly: (url) => ENGLISH_AREAS.test(url),
+      admin: {
+        allows: { strings: () => admin(), languages: () => admin() },
+        routes: { translations: '/translations', languages: '/languages', migrations: '/migrations' },
+        siteName: 'the showcase',
+        groups: SHOWCASE_GROUPS,
+      },
+    })),
+    provideAnotokiUi(() => ({ ...inject(TranslationService).forKit(), icons: { trash: iconTrash, users: iconUsers, languages: iconLanguages } })),
     provideAnotokiShell(() => ({
       theme: {
         storageKey: 'anotoki-showcase:theme',
         account,
         save: () => new Promise((_, refuse) => setTimeout(() => refuse(new Error('refused')), 300)),
       },
-      languages: {
-        current: language,
-        offered: () => [
-          { code: 'en', name: 'English' },
-          { code: 'sk', name: 'Slovenčina' },
-        ],
-        choose: async (code) => {
-          language.set(code);
-          return true;
+      languages: inject(TranslationService).forShell(),
+    })),
+    provideAnotokiMigrations(() => {
+      const i18n = inject(TranslationService);
+      return {
+        statusUrl: '/api/site-status',
+        apiBase: '/api/admin/migrations',
+        migrationsRoute: '/migrations',
+        isAdmin: admin,
+        isSignedIn: () => false,
+        signIn: () => undefined,
+        language: () => i18n.effectiveLanguage(),
+        get words() {
+          return siteStatusWords(i18n);
         },
-      },
-    })),
-    provideAnotokiMigrations(() => ({
-      statusUrl: '/api/site-status',
-      apiBase: '/api/admin/migrations',
-      migrationsRoute: '/migrations',
-      isAdmin: admin,
-      isSignedIn: () => false,
-      signIn: () => undefined,
-      language,
-    })),
+      };
+    }),
+    provideAppInitializer(() => inject(TranslationService).init()),
     provideAppInitializer(() => {
       const theme = inject(ThemeService);
       const wanted = params.get('theme');

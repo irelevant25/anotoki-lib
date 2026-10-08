@@ -9,15 +9,17 @@ use RuntimeException;
 
 /**
  * The library's own words: the keys under `anotoki.` that its modules show on
- * every site (the language switcher, the status page), each with its
- * description and its English and Slovak (informal, "ty").
+ * every site (the UI kit - its top bar, language and theme switches, dialogs,
+ * fields - and the status page), each with its description and its English
+ * and Slovak (informal, "ty").
  *
  * One file holds them, php/resources/library-words.json -
  * {"keys": {name: {description, en, sk}}} - and everything else follows it:
  * this class (the placeholders LibraryKeyRules holds the keys to), the SQL of
  * the library's migrations (a test applies them to a new database and holds
- * the result to the file), and the Angular half's built-in words, which a
- * script there generates from the same file. A new library string is an entry
+ * the result to the file), and the Angular half's built-in words
+ * (angular/projects/lib/ui/src/library-words.ts), which a script there
+ * generates from the same file (`bun run words`). A new library string is an entry
  * here plus a new library migration; a rewording of a released one is a
  * migration that changes it only where it still has the earlier words.
  *

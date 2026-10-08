@@ -7,6 +7,7 @@ namespace Anotoki\Lib\Tests\Translations;
 use Anotoki\Lib\Support\Refusal;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
 use Anotoki\Lib\Translations\LanguageUsage;
+use Anotoki\Lib\Translations\LibraryWords;
 use Anotoki\Lib\Translations\Schema;
 use Anotoki\Lib\Translations\Translations;
 use Anotoki\Lib\Translations\TranslationsConfig;
@@ -136,8 +137,8 @@ final class TranslationsTest extends DatabaseTestCase
         $this->pdo->exec("INSERT INTO people (id, language) VALUES (1, 'sk'), (2, 'sk'), (3, 'en')");
 
         self::assertSame([
-            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'enabled' => true, 'sort_order' => 1, 'seeded' => true, 'strings' => 17, 'accounts' => 1],
-            ['code' => 'sk', 'name' => 'Slovak', 'native_name' => 'Slovenčina', 'enabled' => true, 'sort_order' => 2, 'seeded' => true, 'strings' => 16, 'accounts' => 2],
+            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'enabled' => true, 'sort_order' => 1, 'seeded' => true, 'strings' => 4 + count(LibraryWords::keys()), 'accounts' => 1],
+            ['code' => 'sk', 'name' => 'Slovak', 'native_name' => 'Slovenčina', 'enabled' => true, 'sort_order' => 2, 'seeded' => true, 'strings' => 3 + count(LibraryWords::keys()), 'accounts' => 2],
         ], $this->words($this->accounts())->languages());
         self::assertSame(['en', 'sk'], $this->words()->offeredCodes());
     }
@@ -424,7 +425,7 @@ final class TranslationsTest extends DatabaseTestCase
         self::assertSame(['name', 'description', 'values'], array_keys($save));
         self::assertSame(['common.save', 'A button.', ['en' => 'Save', 'sk' => 'Uložiť']], [$save['name'], $save['description'], (array) $save['values']]);
         self::assertArrayHasKey('mail.reset.subject', $keys, 'the server\'s keys too');
-        self::assertSame(17, count($grid['keys']));
+        self::assertSame(4 + count(LibraryWords::keys()), count($grid['keys']), 'the site\'s four keys and the library\'s');
         $this->pdo->exec("INSERT INTO translation_keys (name) VALUES ('new.key')");
         $new = array_column($this->words()->grid()['keys'], null, 'name')['new.key'];
         self::assertSame('', $new['description']);

@@ -1,0 +1,133 @@
+/*
+ * The anotoki library's own words: every `anotoki.*` key, in English and in Slovak (informal, "ty").
+ *
+ * GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs - never edited by
+ * hand: a change is made in the JSON (with the library migration that writes it to the sites'
+ * databases), then `bun run words`. A spec holds this file to the JSON (library-words.spec.ts), and the
+ * PHP half's LibraryWordsTest does too.
+ *
+ * The same keys are in every site's database (anotoki_translations/002), where an owner may reword them;
+ * these are what a page reads while it has no string from there. The kit reads its own words from here
+ * (words.ts: ui.*, topbar.*, language.*, theme.*), the migrations module its status page's
+ * (siteStatus.*), and the translations module every one of them.
+ */
+
+const EN = {
+  'anotoki.language.label': 'Language',
+  'anotoki.language.button': 'Language: {name} ({code})',
+  'anotoki.language.notLoaded': 'The language could not be loaded. Try again.',
+  'anotoki.language.notSaved': 'The language could not be saved to your anotoki account - it holds for this visit only.',
+  'anotoki.siteStatus.updatingTitle': 'The site is being updated',
+  'anotoki.siteStatus.updatingText': 'It will be back in a few minutes. This page reloads by itself.',
+  'anotoki.siteStatus.unavailableTitle': 'The site is not available right now',
+  'anotoki.siteStatus.unavailableText': 'Please try again in a few minutes. This page reloads by itself.',
+  'anotoki.siteStatus.notSetUpTitle': 'This site is not set up yet',
+  'anotoki.siteStatus.notSetUpText': 'Its setup page connects it to its database and to the anotoki sign-in.',
+  'anotoki.siteStatus.openSetup': 'Open the setup page',
+  'anotoki.siteStatus.tryAgain': 'Try again',
+  'anotoki.siteStatus.signIn': 'Sign in',
+  'anotoki.ui.close': 'Close',
+  'anotoki.ui.dismiss': 'Dismiss',
+  'anotoki.ui.notifications': 'Notifications',
+  'anotoki.ui.cancel': 'Cancel',
+  'anotoki.ui.confirm': 'Confirm',
+  'anotoki.ui.retry': 'Try again',
+  'anotoki.ui.optional': 'optional',
+  'anotoki.ui.loading': 'Loading…',
+  'anotoki.ui.showPassword': 'Show password',
+  'anotoki.ui.hidePassword': 'Hide password',
+  'anotoki.ui.copy': 'Copy',
+  'anotoki.ui.copied': 'Copied',
+  'anotoki.ui.copyToClipboard': 'Copy to clipboard',
+  'anotoki.ui.copiedToClipboard': 'Copied to clipboard.',
+  'anotoki.ui.copyFailed': 'Copying did not work. Select the text and copy it yourself.',
+  'anotoki.ui.qrCode': 'QR code',
+  'anotoki.ui.or': 'or',
+  'anotoki.ui.pages': 'Pages',
+  'anotoki.ui.previous': 'Previous',
+  'anotoki.ui.next': 'Next',
+  'anotoki.ui.range': '{first}-{last} of {total}',
+  'anotoki.ui.pageOf': 'Page {page} of {pages}',
+  'anotoki.ui.nothingToShow': 'Nothing to show',
+  'anotoki.topbar.skipToContent': 'Skip to content',
+  'anotoki.topbar.sections': 'Main navigation',
+  'anotoki.topbar.phoneMenu': 'Menu',
+  'anotoki.topbar.menuButton': 'Your menu: {name}',
+  'anotoki.topbar.menu': 'Your menu',
+  'anotoki.topbar.roleAdmin': 'Administrator',
+  'anotoki.topbar.roleEditor': 'Editor',
+  'anotoki.topbar.account': 'Your anotoki account',
+  'anotoki.topbar.admin': 'Admin panel',
+  'anotoki.topbar.signIn': 'Sign in',
+  'anotoki.topbar.signOut': 'Sign out',
+  'anotoki.topbar.saving': 'Saving…',
+  'anotoki.theme.label': 'Theme',
+  'anotoki.theme.light': 'Light',
+  'anotoki.theme.dark': 'Dark',
+  'anotoki.theme.auto': 'Automatic',
+  'anotoki.theme.autoHint': 'As your device is set',
+  'anotoki.theme.notSaved': 'The theme could not be saved to your anotoki account.',
+} as const;
+
+/** A key of the library's own words: `anotoki.<module>.<word>`. */
+export type LibraryKey = keyof typeof EN;
+
+const SK: Readonly<Record<LibraryKey, string>> = {
+  'anotoki.language.label': 'Jazyk',
+  'anotoki.language.button': 'Jazyk: {name} ({code})',
+  'anotoki.language.notLoaded': 'Jazyk sa nepodarilo načítať. Skús to znova.',
+  'anotoki.language.notSaved': 'Jazyk sa nepodarilo uložiť do tvojho anotoki účtu - platí len počas tejto návštevy.',
+  'anotoki.siteStatus.updatingTitle': 'Stránku práve aktualizujeme',
+  'anotoki.siteStatus.updatingText': 'O pár minút bude späť. Táto stránka sa obnoví sama.',
+  'anotoki.siteStatus.unavailableTitle': 'Stránka teraz nie je dostupná',
+  'anotoki.siteStatus.unavailableText': 'Skús to znova o pár minút. Táto stránka sa obnoví sama.',
+  'anotoki.siteStatus.notSetUpTitle': 'Táto stránka ešte nie je nastavená',
+  'anotoki.siteStatus.notSetUpText': 'Stránka nastavenia ju prepojí s databázou a s prihlasovaním anotoki.',
+  'anotoki.siteStatus.openSetup': 'Otvoriť stránku nastavenia',
+  'anotoki.siteStatus.tryAgain': 'Skúsiť znova',
+  'anotoki.siteStatus.signIn': 'Prihlásiť sa',
+  'anotoki.ui.close': 'Zavrieť',
+  'anotoki.ui.dismiss': 'Zavrieť',
+  'anotoki.ui.notifications': 'Oznámenia',
+  'anotoki.ui.cancel': 'Zrušiť',
+  'anotoki.ui.confirm': 'Potvrdiť',
+  'anotoki.ui.retry': 'Skúsiť znova',
+  'anotoki.ui.optional': 'nepovinné',
+  'anotoki.ui.loading': 'Načítava sa…',
+  'anotoki.ui.showPassword': 'Zobraziť heslo',
+  'anotoki.ui.hidePassword': 'Skryť heslo',
+  'anotoki.ui.copy': 'Kopírovať',
+  'anotoki.ui.copied': 'Skopírované',
+  'anotoki.ui.copyToClipboard': 'Kopírovať do schránky',
+  'anotoki.ui.copiedToClipboard': 'Skopírované do schránky.',
+  'anotoki.ui.copyFailed': 'Kopírovanie nefungovalo. Označ text a skopíruj ho ručne.',
+  'anotoki.ui.qrCode': 'QR kód',
+  'anotoki.ui.or': 'alebo',
+  'anotoki.ui.pages': 'Strany',
+  'anotoki.ui.previous': 'Predchádzajúca',
+  'anotoki.ui.next': 'Ďalšia',
+  'anotoki.ui.range': '{first}-{last} z {total}',
+  'anotoki.ui.pageOf': 'Strana {page} z {pages}',
+  'anotoki.ui.nothingToShow': 'Nie je čo zobraziť',
+  'anotoki.topbar.skipToContent': 'Preskočiť na obsah',
+  'anotoki.topbar.sections': 'Hlavná navigácia',
+  'anotoki.topbar.phoneMenu': 'Ponuka',
+  'anotoki.topbar.menuButton': 'Tvoja ponuka: {name}',
+  'anotoki.topbar.menu': 'Tvoja ponuka',
+  'anotoki.topbar.roleAdmin': 'Administrátor',
+  'anotoki.topbar.roleEditor': 'Editor',
+  'anotoki.topbar.account': 'Tvoj anotoki účet',
+  'anotoki.topbar.admin': 'Administrátorský panel',
+  'anotoki.topbar.signIn': 'Prihlásiť sa',
+  'anotoki.topbar.signOut': 'Odhlásiť sa',
+  'anotoki.topbar.saving': 'Ukladá sa…',
+  'anotoki.theme.label': 'Vzhľad',
+  'anotoki.theme.light': 'Svetlý',
+  'anotoki.theme.dark': 'Tmavý',
+  'anotoki.theme.auto': 'Automaticky',
+  'anotoki.theme.autoHint': 'Podľa nastavenia zariadenia',
+  'anotoki.theme.notSaved': 'Vzhľad sa nepodarilo uložiť do tvojho anotoki účtu.',
+};
+
+/** The library's words, per language: English and Slovak, each with every key. */
+export const LIBRARY_WORDS: Readonly<Record<'en' | 'sk', Readonly<Record<LibraryKey, string>>>> = { en: EN, sk: SK };

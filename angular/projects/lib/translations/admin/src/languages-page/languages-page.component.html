@@ -1,0 +1,173 @@
+@if (!allowed()) {
+    <p class="notice">The languages are for the people {{ siteName }} lets change them.</p>
+} @else {
+    <div class="page">
+        <anotoki-page-header heading="Languages" [lead]="lead" [headingId]="id + '-title'">
+            @if (loaded()) {
+                <p pageMeta class="counts">
+                    <span>
+                        <strong>{{ languages().length }}</strong>
+                        {{ languages().length === 1 ? "language" : "languages" }}
+                    </span>
+                    <span>
+                        <strong>{{ offered() }}</strong>
+                        offered
+                    </span>
+                </p>
+            }
+            @if (translationsRoute(); as route) {
+                <a anotokiButton data-translations-link [routerLink]="route">
+                    <anotoki-icon name="languages" [size]="16" />
+                    Translations
+                </a>
+            }
+        </anotoki-page-header>
+
+        @if (unavailable()) {
+            <anotoki-alert data-unavailable tone="warning" heading="Apply the pending database update first">
+                <p class="alert-text">The languages move into the database with an update that is uploaded and not applied yet. Until it is, there is nothing here to change.</p>
+                <div alertActions>
+                    @if (migrationsRoute) {
+                        <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="migrationsRoute">
+                            <anotoki-icon name="database" [size]="15" />
+                            Open Migrations
+                        </a>
+                    }
+                    <button anotokiButton size="sm" (click)="load()">
+                        <anotoki-icon name="refresh" [size]="15" />
+                        Look again
+                    </button>
+                </div>
+            </anotoki-alert>
+        } @else if (loadError(); as message) {
+            <anotoki-error-state heading="The languages could not be loaded" retryLabel="Try again" [message]="message" (retry)="load()" />
+        } @else if (!loaded()) {
+            <div class="loading"><anotoki-spinner size="lg" label="Loading the languages" [showLabel]="true" /></div>
+        } @else {
+            <p class="happened" data-happened role="status">{{ happened() }}</p>
+
+            <ul class="list">
+                @for (language of languages(); track language.code) {
+                    <li class="language" [class.is-hidden]="!language.enabled" [attr.data-language]="language.code">
+                        <div class="head">
+                            <anotoki-badge [mono]="true">{{ language.code }}</anotoki-badge>
+                            <strong class="name">{{ language.name }}</strong>
+                            <span class="native" [attr.lang]="language.code">{{ language.native_name }}</span>
+                            @if (language.code === fallback) {
+                                <anotoki-badge tone="primary">Fallback</anotoki-badge>
+                            } @else if (language.seeded) {
+                                <anotoki-badge>Released with {{ siteName }}</anotoki-badge>
+                            }
+                            <span class="note">
+                                {{ language.strings === 1 ? "1 string" : language.strings + " strings" }}
+                                @if (noteOf(language); as note) {
+                                    · {{ note }}
+                                }
+                            </span>
+                        </div>
+
+                        <div class="fields">
+                            <anotoki-text-field label="Name in English" autocomplete="off" [maxlength]="50" [value]="draft(language).name" (valueChange)="edit(language, { name: $event })" />
+                            <anotoki-text-field
+                                label="Name as its speakers write it"
+                                autocomplete="off"
+                                hint="What the switcher shows"
+                                [maxlength]="50"
+                                [value]="draft(language).native_name"
+                                (valueChange)="edit(language, { native_name: $event })" />
+                            <anotoki-text-field
+                                class="order"
+                                label="Order"
+                                type="number"
+                                inputmode="numeric"
+                                hint="The lowest comes first"
+                                [min]="0"
+                                [max]="1000"
+                                [value]="draft(language).sort_order"
+                                (valueChange)="edit(language, { sort_order: $event })" />
+                        </div>
+
+                        <div class="foot">
+                            <anotoki-switch
+                                data-offered
+                                [checked]="language.enabled"
+                                [disabled]="language.code === fallback || (switching() !== null && switching() !== language.code)"
+                                [busy]="switching() === language.code"
+                                [hint]="offeredHint(language)"
+                                (checkedChange)="setOffered(language, $event)">
+                                {{ language.enabled ? "Offered" : "Hidden" }}
+                            </anotoki-switch>
+
+                            <div class="actions">
+                                @if (isChanged(language)) {
+                                    <button anotokiButton size="sm" variant="ghost" data-undo [disabled]="saving() === language.code" (click)="undo(language)">
+                                        <anotoki-icon name="undo" [size]="15" />
+                                        Undo
+                                    </button>
+                                }
+                                <button
+                                    anotokiButton
+                                    size="sm"
+                                    variant="primary"
+                                    data-save
+                                    [disabled]="!isChanged(language) || (saving() !== null && saving() !== language.code)"
+                                    [loading]="saving() === language.code"
+                                    (click)="save(language)">
+                                    <anotoki-icon name="check" [size]="15" />
+                                    Save
+                                </button>
+                                @if (!language.seeded && language.code !== fallback) {
+                                    <button anotokiButton size="sm" variant="ghost" data-delete [loading]="deleting() === language.code" (click)="remove(language)">
+                                        <anotoki-icon name="trash" [size]="15" />
+                                        Delete
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        @if (errorOf(language); as message) {
+                            <p class="field-error" role="alert">
+                                <anotoki-icon name="alert" [size]="15" />
+                                <span>{{ message }}</span>
+                            </p>
+                        }
+                    </li>
+                }
+            </ul>
+
+            <anotoki-card heading="Add a language" subheading="It goes after the ones there are, and reads in English until its strings are written on the Translations page.">
+                <form class="add" (submit)="$event.preventDefault(); add()">
+                    <anotoki-text-field
+                        class="code"
+                        label="Code"
+                        autocomplete="off"
+                        autocapitalize="none"
+                        placeholder="cs"
+                        hint="Two small letters: cs, de, pt-br"
+                        [maxlength]="5"
+                        [error]="newCodeError()"
+                        [(value)]="newCode" />
+                    <anotoki-text-field label="Name in English" autocomplete="off" placeholder="Czech" [maxlength]="50" [(value)]="newName" />
+                    <anotoki-text-field label="Name as its speakers write it" autocomplete="off" placeholder="Čeština" [maxlength]="50" [(value)]="newNativeName" />
+                    <anotoki-switch class="add-offered" hint="A new language starts hidden - write its strings, then offer it." [disabled]="adding()" [(checked)]="newOffered">
+                        Offer it to readers right away
+                    </anotoki-switch>
+                    <div class="add-actions">
+                        <button anotokiButton variant="primary" type="submit" data-add [loading]="adding()" [disabled]="!canAdd() || newCodeError() !== null">
+                            <anotoki-icon name="plus" [size]="17" />
+                            Add the language
+                        </button>
+                    </div>
+                </form>
+                @if (addError(); as message) {
+                    <p class="field-error add-error" role="alert">
+                        <anotoki-icon name="alert" [size]="15" />
+                        <span>{{ message }}</span>
+                    </p>
+                }
+            </anotoki-card>
+        }
+    </div>
+
+    <anotoki-translations-question [questions]="questions" />
+}

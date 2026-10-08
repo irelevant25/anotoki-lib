@@ -7,6 +7,7 @@ namespace Anotoki\Lib\Tests\Translations;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
 use Anotoki\Lib\Translations\Cli\KeyScanner;
 use Anotoki\Lib\Translations\Cli\TranslationsCommand;
+use Anotoki\Lib\Translations\LibraryWords;
 use Anotoki\Lib\Translations\Schema;
 use Anotoki\Lib\Translations\Translations;
 use Anotoki\Lib\Translations\TranslationsConfig;
@@ -47,15 +48,17 @@ final class TranslationsCommandTest extends DatabaseTestCase
         self::assertSame(0, $this->command()->run(['translations.php']), $this->errors());
 
         $out = $this->written();
+        // The site's three keys and the library's.
+        $keys = 3 + count(LibraryWords::keys());
         self::assertStringContainsString("== survey: the site's own strings", $out);
-        self::assertStringContainsString('the database has     16 keys', $out);
+        self::assertStringContainsString("the database has     $keys keys", $out);
         self::assertStringContainsString('the frontend uses    1 of them', $out);
         self::assertStringContainsString("In the database, used nowhere - a migration deletes a key the code has stopped using:\n    home.unused\n", $out);
         self::assertStringNotContainsString('mail.reset.subject', $out, 'the server\'s keys are not the frontend\'s');
         self::assertStringNotContainsString('anotoki.language', $out, 'nor the library\'s');
-        self::assertStringContainsString('  en     English                16 / 16', $out);
-        self::assertStringContainsString('  sk     Slovak                 14 / 16', $out);
-        self::assertStringContainsString('  de     German                  0 / 16   (not offered)', $out);
+        self::assertStringContainsString(sprintf('  en     English                %d / %d', $keys, $keys), $out);
+        self::assertStringContainsString(sprintf('  sk     Slovak                 %d / %d', $keys - 2, $keys), $out);
+        self::assertStringContainsString(sprintf('  de     German                  0 / %d   (not offered)', $keys), $out);
         self::assertStringEndsWith("  Clean.\n", $out);
         self::assertStringNotContainsString("\033[", $out, 'no colours on what is not a terminal');
     }
@@ -84,7 +87,7 @@ final class TranslationsCommandTest extends DatabaseTestCase
 
         $file = $this->path('sk.json');
         self::assertSame(0, $this->command()->run(['translations.php', '--export=sk', $file]));
-        self::assertStringContainsString("14 strings of \"sk\" written to $file", $this->written());
+        self::assertStringContainsString((1 + count(LibraryWords::keys())) . " strings of \"sk\" written to $file", $this->written());
         self::assertSame('Domov', json_decode((string) file_get_contents($file), true)['home.title']);
 
         file_put_contents($file, "\u{FEFF}" . json_encode(['home.title' => 'Domovská stránka', 'home.unused' => '', 'mail.reset.subject' => 'Obnov heslo'], JSON_UNESCAPED_UNICODE));

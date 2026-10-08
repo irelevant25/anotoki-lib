@@ -22,6 +22,8 @@
     "shell/**/*.spec.ts",
     "shell/**/testing.ts",
     "migrations/**/*.spec.ts",
-    "migrations/**/testing.ts"
+    "migrations/**/testing.ts",
+    "translations/**/*.spec.ts",
+    "translations/**/testing.ts"
   ]
 }

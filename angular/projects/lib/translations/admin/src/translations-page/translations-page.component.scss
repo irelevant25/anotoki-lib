@@ -1,0 +1,435 @@
+@use "../../../../sass/kit";
+@use "../page";
+
+@include page.styles;
+
+// What sticks under the site's bar starts here.
+$topbar: kit.token(topbar-height);
+
+.visually-hidden,
+.file {
+  @include kit.visually-hidden;
+}
+
+// ── The languages: how much of each is written, and the way out and in ───────
+
+.languages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.language {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  box-shadow: kit.token(shadow-sm);
+}
+
+.language-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+
+  strong {
+    font-weight: 750;
+    overflow-wrap: anywhere;
+  }
+}
+
+.coverage {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.bar {
+  flex: 1;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: kit.token(surface-3);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: kit.token(primary);
+}
+
+.coverage-count {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.language-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+// ── Search and filter ────────────────────────────────────────────────────────
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.75rem;
+}
+
+.search {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+}
+
+.search-icon {
+  margin-left: 0.7rem;
+  color: kit.token(muted);
+}
+
+.missing {
+  flex: 0 1 15rem;
+  min-width: 11rem;
+}
+
+.shown {
+  margin: 0 0 0 auto;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+// What becomes of what is typed and not saved: one line, close under the tools.
+.kept {
+  max-width: 52rem;
+  margin: -0.75rem 0 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+// ── The grid: a key a row, a language a column ───────────────────────────────
+
+.grid {
+  --_translations-columns: minmax(13rem, 0.85fr) repeat(var(--_translations-languages, 2), minmax(0, 1fr));
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.grid-head,
+.row {
+  display: grid;
+  grid-template-columns: var(--_translations-columns);
+  gap: 0.6rem 1rem;
+}
+
+// Under the site's bar while the keys scroll: which column is which language.
+.grid-head {
+  position: sticky;
+  top: $topbar;
+  z-index: 2;
+  padding: 0.55rem 1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-2);
+  color: kit.token(muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+// The grid's parts - each group the server alone reads (the mails), then the pages' keys - under their
+// names and the line that says what their strings may hold.
+.part {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+
+  & + & {
+    margin-top: 0.9rem;
+  }
+}
+
+.part-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.35rem 0.15rem 0;
+}
+
+.part-title {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.part-lead {
+  max-width: 60rem;
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  box-shadow: kit.token(shadow-sm);
+}
+
+// A mail, or a plural family: its rows held together, a line between them.
+.block.is-group,
+.block.is-plural {
+  .row + .row {
+    padding-top: 0.85rem;
+    border-top: 1px solid kit.token(border);
+  }
+}
+
+.block.is-group {
+  border-color: kit.token(info-border);
+}
+
+.block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+}
+
+.block-icon {
+  color: kit.token(info);
+}
+
+.block-title {
+  font-weight: 750;
+}
+
+.block-text {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+.row {
+  align-items: start;
+  // Brought into view by a refusal: clear of the bar and the column names.
+  scroll-margin-top: calc(#{$topbar} + 3.5rem);
+}
+
+.key {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.key-name {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+// The column's name stands over the column; a box needs its own only when the languages are under one
+// another. A plural's numbers are always there.
+.cell-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+  margin: 0;
+  color: kit.token(text);
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.4;
+
+  &:not(:has(.numbers)) {
+    display: none;
+  }
+}
+
+.cell-language {
+  display: none;
+}
+
+.numbers {
+  color: kit.token(muted);
+  font-weight: 600;
+}
+
+.samples-lead {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+.sample {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: kit.token(radius);
+  background: kit.token(surface-2);
+  color: kit.token(text);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  padding: 1rem;
+  border: 1px dashed kit.token(border-strong);
+  border-radius: kit.token(radius-lg);
+}
+
+// The languages under one another: in a narrow page, and whenever there are more of them than fit side by side.
+@mixin stacked {
+  .grid-head {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cell-head,
+  .cell-head:not(:has(.numbers)) {
+    display: flex;
+  }
+
+  .cell-language {
+    display: inline;
+  }
+
+  .block .row + .row {
+    padding-top: 0.85rem;
+    border-top: 1px solid kit.token(border);
+  }
+}
+
+.grid.is-stacked {
+  @include stacked;
+}
+
+@container (max-width: 760px) {
+  .grid {
+    @include stacked;
+  }
+}
+
+// ── Save: one button for every changed box, in reach wherever the page is ────
+
+.save-bar {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border: 1px solid kit.token(border-strong);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface-raised);
+  box-shadow: kit.token(shadow-lg);
+
+  &.is-changed {
+    border-color: kit.token(warning-border);
+  }
+
+  // The strip between the bar and the window's edge: the page's colour, so no line of a row shows under it.
+  &::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    right: -1px;
+    left: -1px;
+    height: 0.8rem;
+    margin-top: 1px;
+    background: kit.token(bg);
+  }
+}
+
+.save-state {
+  min-width: 0;
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.is-changed .save-state {
+  color: kit.token(text);
+}
+
+// What became of the last save, when it saved nothing: a whole sentence, wrapping beside its icon.
+.save-refused {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  color: kit.token(danger);
+
+  anotoki-icon {
+    flex: none;
+    margin-top: 0.15rem;
+  }
+}
+
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}

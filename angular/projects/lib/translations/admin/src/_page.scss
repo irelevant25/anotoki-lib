@@ -1,0 +1,89 @@
+////
+/// What the Translations and Languages pages share: the page's frame, its
+/// counts, its notices. Each page's own stylesheet includes it.
+////
+
+@use "../../../sass/kit";
+
+@mixin styles {
+  // The page answers to the width it is given, not the window's: a site's frame may have a side navigation.
+  :host {
+    display: block;
+    container-type: inline-size;
+    color: kit.token(text);
+  }
+
+  .page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .notice {
+    margin: 0;
+    color: kit.token(muted);
+    line-height: 1.5;
+  }
+
+  .counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin: 0;
+    color: kit.token(muted);
+    font-size: 0.875rem;
+
+    strong {
+      color: kit.token(text);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .loading {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 0;
+  }
+
+  // What became of an action that is not about one row: one line, read out as it changes.
+  .happened {
+    margin: 0;
+    color: kit.token(success-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.45;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  .alert-text {
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  // A refusal, beside what it is about.
+  .field-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0;
+    color: kit.token(danger);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+
+    anotoki-icon {
+      flex: none;
+      margin-top: 0.1rem;
+    }
+  }
+
+  code {
+    font-family: kit.token(font-mono);
+    font-size: 0.875em;
+  }
+}

@@ -11,6 +11,7 @@ use Anotoki\Lib\Support\Refusal;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
 use Anotoki\Lib\Translations\Http\TranslationsRoutes;
 use Anotoki\Lib\Translations\LanguageUsage;
+use Anotoki\Lib\Translations\LibraryWords;
 use Anotoki\Lib\Translations\Schema;
 use Anotoki\Lib\Translations\Translations;
 use Anotoki\Lib\Translations\TranslationsConfig;
@@ -143,7 +144,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         $languages = $this->request($app, 'GET', '/api/admin/languages');
         self::assertSame('no-store', $languages->getHeaderLine('Cache-Control'));
         self::assertSame(
-            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'enabled' => true, 'sort_order' => 1, 'seeded' => true, 'strings' => 15, 'accounts' => 4],
+            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'enabled' => true, 'sort_order' => 1, 'seeded' => true, 'strings' => 2 + count(LibraryWords::keys()), 'accounts' => 4],
             $this->json($languages)['languages'][0]
         );
         $grid = $this->json($this->request($app, 'GET', '/api/admin/translations'));

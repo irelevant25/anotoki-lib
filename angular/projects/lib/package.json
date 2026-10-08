@@ -1,7 +1,7 @@
 {
   "name": "@anotoki/lib",
-  "version": "0.2.0",
-  "description": "What the anotoki sites share, the Angular half: the family's styles (@anotoki/lib/styles), UI kit (@anotoki/lib/ui and its entry points), top bar and frame (@anotoki/lib/shell), and the migrations module (@anotoki/lib/migrations, @anotoki/lib/migrations/page). The PHP half is the Composer package anotoki/lib.",
+  "version": "0.3.0",
+  "description": "What the anotoki sites share, the Angular half: the family's styles (@anotoki/lib/styles), UI kit (@anotoki/lib/ui and its entry points), top bar and frame (@anotoki/lib/shell), the migrations module (@anotoki/lib/migrations, @anotoki/lib/migrations/page) and the translations module (@anotoki/lib/translations, @anotoki/lib/translations/admin, @anotoki/lib/translations/testing). The PHP half is the Composer package anotoki/lib.",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",

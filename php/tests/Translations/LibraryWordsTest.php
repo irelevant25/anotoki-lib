@@ -41,6 +41,19 @@ final class LibraryWordsTest extends TestCase
             'anotoki.siteStatus.updatingTitle', 'anotoki.siteStatus.updatingText', 'anotoki.siteStatus.unavailableTitle',
             'anotoki.siteStatus.unavailableText', 'anotoki.siteStatus.notSetUpTitle', 'anotoki.siteStatus.notSetUpText',
             'anotoki.siteStatus.openSetup', 'anotoki.siteStatus.tryAgain', 'anotoki.siteStatus.signIn',
+            // The kit's own (angular/projects/lib/ui): its dialogs, notifications, fields, page numbers, ...
+            'anotoki.ui.close', 'anotoki.ui.dismiss', 'anotoki.ui.notifications', 'anotoki.ui.cancel', 'anotoki.ui.confirm',
+            'anotoki.ui.retry', 'anotoki.ui.optional', 'anotoki.ui.loading', 'anotoki.ui.showPassword', 'anotoki.ui.hidePassword',
+            'anotoki.ui.copy', 'anotoki.ui.copied', 'anotoki.ui.copyToClipboard', 'anotoki.ui.copiedToClipboard',
+            'anotoki.ui.copyFailed', 'anotoki.ui.qrCode', 'anotoki.ui.or', 'anotoki.ui.pages', 'anotoki.ui.previous',
+            'anotoki.ui.next', 'anotoki.ui.range', 'anotoki.ui.pageOf', 'anotoki.ui.nothingToShow',
+            // ... its top bar ...
+            'anotoki.topbar.skipToContent', 'anotoki.topbar.sections', 'anotoki.topbar.phoneMenu', 'anotoki.topbar.menuButton',
+            'anotoki.topbar.menu', 'anotoki.topbar.roleAdmin', 'anotoki.topbar.roleEditor', 'anotoki.topbar.account',
+            'anotoki.topbar.admin', 'anotoki.topbar.signIn', 'anotoki.topbar.signOut', 'anotoki.topbar.saving',
+            // ... and its theme switch.
+            'anotoki.theme.label', 'anotoki.theme.light', 'anotoki.theme.dark', 'anotoki.theme.auto', 'anotoki.theme.autoHint',
+            'anotoki.theme.notSaved',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -56,17 +69,19 @@ final class LibraryWordsTest extends TestCase
         self::assertFalse(LibraryWords::isLibraryKey('anotokix.y'));
     }
 
-    public function testTheSiteStatusWordsAreTheMigrationsModulesBuiltInWordsWordForWord(): void
+    public function testTheAngularHalfsBuiltInWordsAreTheseWordForWord(): void
     {
-        // angular/projects/lib/migrations/src/words.ts: BUILT_IN_WORDS, read as text.
-        $source = (string) file_get_contents(dirname(__DIR__, 3) . '/angular/projects/lib/migrations/src/words.ts');
-        foreach (['en', 'sk'] as $language) {
-            self::assertSame(1, preg_match('/^  ' . $language . ': \{\n(.*?)\n  \},/ms', str_replace("\r\n", "\n", $source), $block), $language);
-            preg_match_all("/^    (\\w+): '((?:[^'\\\\]|\\\\.)*)',$/m", $block[1], $entries, PREG_SET_ORDER);
-            self::assertCount(9, $entries, $language);
-            foreach ($entries as [, $name, $text]) {
-                self::assertSame(stripslashes($text), LibraryWords::all()["anotoki.siteStatus.$name"][$language] ?? null, "$language $name");
+        // angular/projects/lib/ui/src/library-words.ts, generated from the JSON by angular/scripts/library-words.mjs
+        // (`bun run words`) and read here as text: the kit, the status page and the translations module read it.
+        $source = str_replace("\r\n", "\n", (string) file_get_contents(dirname(__DIR__, 3) . '/angular/projects/lib/ui/src/library-words.ts'));
+        foreach (['en' => 'EN', 'sk' => 'SK'] as $language => $constant) {
+            self::assertSame(1, preg_match('/^const ' . $constant . '\b[^=]*= \{\n(.*?)\n\}/ms', $source, $block), $language);
+            preg_match_all("/^  '([^']+)': '((?:[^'\\\\]|\\\\.)*)',$/m", $block[1], $entries, PREG_SET_ORDER);
+            $generated = [];
+            foreach ($entries as [, $key, $text]) {
+                $generated[$key] = stripslashes($text);
             }
+            self::assertSame(array_map(static fn (array $entry): string => $entry[$language], LibraryWords::all()), $generated, "$language: run `bun run words` in angular/");
         }
     }
 

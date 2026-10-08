@@ -1,9 +1,11 @@
 // Checks the built package (dist/lib) after `ng build lib`, and prints what each entry point weighs.
 //
 // - Sizes: every entry point's FESM, raw and gzipped. An entry point lands whole in the chunk of whatever imports it,
-//   so the eager ones (ui, ui/menu, shell, migrations: every page of a site) have limits; the rest are printed.
+//   so the eager ones (ui, ui/menu, shell, migrations, translations: every page of a site) have limits; the rest are
+//   printed.
 // - Boundaries: what each entry point may import. The shell imports only ui and ui/menu; nothing imports the shell;
-//   ui imports no other entry point of the kit; the Migrations page is never pulled back into the gate's entry point.
+//   ui imports no other entry point of the kit; the Migrations page is never pulled back into the gate's entry point,
+//   nor the admin Translations and Languages pages into the translations module's.
 //
 // Run by `bun run build` (and so by CI and the release); exits 1 when a limit or a boundary is broken.
 
@@ -21,7 +23,7 @@ const manifest = JSON.parse(readFileSync(join(dist, "package.json"), "utf8"));
  * and the shell with the core together (the spec's "about 25 kB"; 26.3 at 0.2.0). Room to grow a little; a limit
  * crossed is a reason to move something into an entry point of its own, not to raise the limit.
  */
-const LIMITS = { "@anotoki/lib/ui": 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7 };
+const LIMITS = { "@anotoki/lib/ui": 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8 };
 const UI_AND_SHELL = 28;
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
@@ -42,6 +44,9 @@ const MAY_IMPORT = {
     "@anotoki/lib/shell": ["@anotoki/lib/ui", "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": ["@anotoki/lib/ui"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", "@anotoki/lib/ui", "@anotoki/lib/ui/dialog"],
+    "@anotoki/lib/translations": ["@anotoki/lib/ui"],
+    "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", "@anotoki/lib/ui", "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
+    "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
 
@@ -86,6 +91,11 @@ for (const file of files) {
 // The Migrations page stays out of the gate's entry point: it is in every site's first load.
 if (readFileSync(join(fesm, "anotoki-lib-migrations.mjs"), "utf8").includes("anotoki-migrations-page")) {
     problems.push("@anotoki/lib/migrations holds the Migrations page again: it belongs to @anotoki/lib/migrations/page alone.");
+}
+
+// The same for the translations: the service and the pipes are in every site's first load, the admin pages never.
+if (/anotoki-(translations|languages)-page/.test(readFileSync(join(fesm, "anotoki-lib-translations.mjs"), "utf8"))) {
+    problems.push("@anotoki/lib/translations holds an admin page: they belong to @anotoki/lib/translations/admin alone.");
 }
 
 const together = (weights["@anotoki/lib/ui"] ?? 0) + (weights["@anotoki/lib/shell"] ?? 0);

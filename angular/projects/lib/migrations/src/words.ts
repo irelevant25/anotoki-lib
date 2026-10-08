@@ -1,30 +1,30 @@
+import { LIBRARY_WORDS } from '@anotoki/lib/ui';
 import { SiteStatusWords } from './config';
 
-/** The visitors' words, built in. The administrators' words are English only, in the templates. */
-export const BUILT_IN_WORDS: Readonly<Record<'en' | 'sk', SiteStatusWords>> = {
-  en: {
-    updatingTitle: 'The site is being updated',
-    updatingText: 'It will be back in a few minutes. This page reloads by itself.',
-    unavailableTitle: 'The site is not available right now',
-    unavailableText: 'Please try again in a few minutes. This page reloads by itself.',
-    notSetUpTitle: 'This site is not set up yet',
-    notSetUpText: 'Its setup page connects it to its database and to the anotoki sign-in.',
-    openSetup: 'Open the setup page',
-    tryAgain: 'Try again',
-    signIn: 'Sign in',
-  },
-  sk: {
-    updatingTitle: 'Stránku práve aktualizujeme',
-    updatingText: 'O pár minút bude späť. Táto stránka sa obnoví sama.',
-    unavailableTitle: 'Stránka teraz nie je dostupná',
-    unavailableText: 'Skús to znova o pár minút. Táto stránka sa obnoví sama.',
-    notSetUpTitle: 'Táto stránka ešte nie je nastavená',
-    notSetUpText: 'Stránka nastavenia ju prepojí s databázou a s prihlasovaním anotoki.',
-    openSetup: 'Otvoriť stránku nastavenia',
-    tryAgain: 'Skúsiť znova',
-    signIn: 'Prihlásiť sa',
-  },
-};
+/** The status page's words, each the library's word `anotoki.siteStatus.<name>`. */
+const NAMES = [
+  'updatingTitle',
+  'updatingText',
+  'unavailableTitle',
+  'unavailableText',
+  'notSetUpTitle',
+  'notSetUpText',
+  'openSetup',
+  'tryAgain',
+  'signIn',
+] as const satisfies readonly (keyof SiteStatusWords)[];
+
+function builtIn(language: 'en' | 'sk'): SiteStatusWords {
+  return Object.fromEntries(NAMES.map((name) => [name, LIBRARY_WORDS[language][`anotoki.siteStatus.${name}`]])) as unknown as SiteStatusWords;
+}
+
+/**
+ * The visitors' words, built in: the library's words `anotoki.siteStatus.*`
+ * (generated from php/resources/library-words.json - every site's database
+ * holds them too, where its owner may reword them). The administrators' words
+ * are English only, in the templates.
+ */
+export const BUILT_IN_WORDS: Readonly<Record<'en' | 'sk', SiteStatusWords>> = { en: builtIn('en'), sk: builtIn('sk') };
 
 /**
  * The words for a language - English, under the built-in words of that

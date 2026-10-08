@@ -4,6 +4,8 @@
   "compilerOptions": {
     "outDir": "../../out-tsc/showcase",
     "types": [],
+    // The library's words with their descriptions (php/resources/library-words.json), for the imagined server.
+    "resolveJsonModule": true,
     // The library from its source: the showcase shows the working tree, with no build of the library first.
     "paths": {
       "@anotoki/lib": ["../lib/src/public-api.ts"],

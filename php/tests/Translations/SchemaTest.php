@@ -272,7 +272,7 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertNull($result['error']);
         self::assertCount(2, $result['applied']);
-        self::assertSame(13, (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
+        self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
     // ─── The aligned sites ──────────────────────────────────────────────────
@@ -297,8 +297,8 @@ final class SchemaTest extends DatabaseTestCase
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertSame(13, (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
-        self::assertSame(26, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND updated_by IS NULL"));
+        self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
+        self::assertSame(2 * count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND updated_by IS NULL"));
         self::assertSame(['Save', 'Uložiť'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'common.save' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
     }
 

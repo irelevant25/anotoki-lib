@@ -7,9 +7,9 @@ said here, with what a site must do.
 
 ## 0.3.0 - unreleased
 
-The PHP half of these: the engine's library sets, the translations module, the helpers the modules
-share, and a Composer archive that ships the library's migration files and words. (The Angular half of
-translations comes later.)
+The engine's library sets, the translations module - both halves -, the helpers the modules share, and
+a Composer archive that ships the library's migration files and words. Nothing a site already uses
+breaks; the little that changes in what 0.2.0 had is said under "Angular, the kit's words".
 
 PHP, the engine (`Anotoki\Lib\Migrations`):
 - **Library sets.** `MigrationSet::library($name, $dir)` is a set the library ships; the names that
@@ -30,8 +30,9 @@ PHP, translations (`Anotoki\Lib\Translations`):
 - The library's migration set `anotoki_translations` (`php/migrations/translations`): `001` makes the
   three tables only where they are missing and refuses, naming every difference, a shape the library
   cannot work with - on the five aligned sites it makes nothing; genshin moves its tables first. `002`
-  adds the library's own keys under `anotoki.` (the language switcher's and the status page's words, en
-  and sk), writing strings only for a key that has none.
+  adds the library's own keys under `anotoki.` - the kit's words (`anotoki.ui|topbar|language|theme.*`)
+  and the status page's (`anotoki.siteStatus.*`), 54 keys, en and sk - writing strings only for a key
+  that has none.
 - `Translations`, `TranslationsConfig`, `StringCheck`, `Text`, `Placeholders`, `LanguageCode`, `ETag`,
   `KeyRules` (with `Rules\RequiredPlaceholders`, `Rules\LibraryKeyRules`), `LanguageUsage`,
   `LibraryWords` (from `php/resources/library-words.json`, the one source of the library's words),
@@ -47,6 +48,42 @@ PHP, translations (`Anotoki\Lib\Translations`):
 
 PHP, shared (`Anotoki\Lib\Support`): `JsonResponse` (the no-store JSON answer the migrations routes and
 the site gate now share), `JsonBody` (a request's JSON body, read from the stream), `Refusal`.
+
+Angular, translations (`@anotoki/lib/translations`, new):
+- `provideAnotokiTranslations()` and `TranslationService` - the language the pages are read in and its
+  strings, from the site's bundle route with English under them: the family's ranking (this tab's
+  `?lang=`, a choice made on the page, the account's language - before this device's while the account
+  decides -, the browser's, English), a choice saved to the account one save at a time and the latest
+  last (`languageNotSaved` when it is refused, a quiet refusal kept the site's own for the visit; the
+  account page's `revertible` choice goes back), the way back from memory, the cache and the start's
+  waits, `canAsk`, a site's own `fetchBundle` and `onBundleRefused`, English areas, `preferred()`,
+  `settled()`, `reload()`, `noteAddress()`; plurals, `around()`, numbers; the storage keys a site already
+  has (`storagePrefix`, `storageKeys`). A key without a string: the site's compiled English while no
+  bundle is in memory, else the key; a library key never - the database's string, the site's
+  `libraryWords`, the library's built-in words of the language, their English.
+- The `translate` and `translatePlural` pipes; `forKit()` (the kit's `lookup` reads the database, so an
+  owner's rewording reaches the kit), `forShell()` (the shell's language switcher), `siteStatusWords()`
+  (the status page in the database's words), `anotokiUnsavedChangesGuard`.
+- `@anotoki/lib/translations/admin` (lazy): `<anotoki-translations-page>` and `<anotoki-languages-page>`,
+  drawn with the kit - the five sites' pages in one: coverage, tags, search, "Missing in", plural
+  families, the server-only groups (the IAM's mails), export and import, drafts kept in the tab
+  (`LocalizationDrafts`), refusals beside their key, the Languages page's rows, switch, export-then-delete
+  and the site's own fields (`admin.languageNotes`); who may use them is the site's (`admin.allows`).
+- `@anotoki/lib/translations/testing`: `provideTestTranslations()`, `TEST_LANGUAGES`.
+- What a site must do: README, "Translations" - "A site moves in", per site.
+
+Angular, the kit's words:
+- The library's words are generated from `php/resources/library-words.json` (`bun run words`) into
+  `ui/src/library-words.ts`, exported as `LIBRARY_WORDS` (and `LibraryKey`); the kit's `BUILT_IN_WORDS`
+  and the status page's built-in words are read from it - no copy by hand. A spec, and the PHP half's
+  `LibraryWordsTest`, fail when the file is stale.
+- The library's Slovak `anotoki.language.notSaved` is the kit's released wording ("… do tvojho anotoki
+  účtu - platí len …"), where the unreleased 002 had Piano Academy's ("… účtu anotoki – …"); the kit's
+  words themselves are as 0.2.0 had them. `ANOTOKI_WORD_KEYS` now lists them in the JSON's order
+  (`language.*` first).
+
+Package: `@anotoki/lib` 0.3.0; `scripts/check-package.mjs` knows the three entry points (translations is
+eager: 8 kB at most; its admin pages never in it).
 
 Package: `.gitattributes` is an allow-list - GitHub's archive of a tag, which Composer installs, holds
 `php/src`, `php/migrations`, `php/resources`, `composer.json`, README.md and CHANGELOG.md, and nothing

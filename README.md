@@ -19,7 +19,8 @@ Version 0.2.0 holds:
 
 The PHP half is unchanged since 0.1.0. Unreleased (0.3.0, CHANGELOG.md): the
 engine's **library sets** - the library's own migration files beside a site's -
-and the PHP half of **translations** (the section "Translations" below).
+and **translations**, both halves: a site's words, its languages and their admin
+pages, one implementation for every site (the section "Translations" below).
 
 ## The behaviour
 
@@ -191,6 +192,9 @@ its own and stays out of a site's first load.
 | `@anotoki/lib/shell` | theme service and switch, language switcher, brand, top bar, frame, `latestChoiceSaver`; `assets/theme-boot.js` | yes (every page) |
 | `@anotoki/lib/migrations` | site status, interceptor, gate, status page, update banner | yes (the gate) |
 | `@anotoki/lib/migrations/page` | the admin Migrations page | a lazy admin route |
+| `@anotoki/lib/translations` | the translation service, the `translate` and `translatePlural` pipes, the kit's and the shell's wiring, the status page's words, the admin pages' guard | yes (every page) |
+| `@anotoki/lib/translations/admin` | the admin Translations and Languages pages, their drafts | lazy admin routes |
+| `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
 `--anotoki-*` custom properties, each read with the family's own value as its
@@ -226,22 +230,18 @@ never kit words - the site passes them worded.
 ```
 
 ```ts
-// app.config.ts
-provideAnotokiUi(() => {
-  const i18n = inject(TranslationService);
-  return {
-    language: () => i18n.effectiveLanguage(),   // 'en' in an admin panel
-    words: { sk: { 'topbar.account': 'Váš anotoki účet' } },   // optional: the site's own words, per language
-    lookup: (key) => (i18n.has('anotoki.' + key) ? i18n.t('anotoki.' + key) : null),   // optional: a translations module
-    icons: { trash: iconTrash, users: iconUsers },   // the icons the site's own templates name
-  };
-}),
+// app.config.ts - with the library's translations module (`TranslationService` from @anotoki/lib/translations;
+// "Translations" below): the kit's language and its words from the site's database, the switcher's languages
+provideAnotokiUi(() => ({
+  ...inject(TranslationService).forKit(),        // language: 'en' in an admin panel; lookup: the database's anotoki.<key>
+  words: { sk: { 'topbar.account': 'Váš anotoki účet' } },   // optional: the site's own words, per language
+  icons: { trash: iconTrash, users: iconUsers },  // the icons the site's own templates name
+})),
 provideAnotokiShell(() => {
   const auth = inject(AuthService);
-  const i18n = inject(TranslationService);
   return {
     theme: { storageKey: 'anotoki-survey:theme', account: () => auth.preferences()?.theme ?? null, save: (theme) => auth.savePreferences({ theme }) },
-    languages: { current: () => i18n.language(), offered: () => i18n.languages(), choose: (code) => i18n.setLanguage(code) },
+    languages: inject(TranslationService).forShell(),   // or a site's own: { current, offered, choose, notSaved, clearNotSaved }
   };
 }),
 provideAppInitializer(() => inject(ThemeService)),   // the account's theme from the first frame
@@ -315,8 +315,9 @@ A site may also define its old names as aliases while its own components move
 `provideAnotokiUi(factory)` (optional; the factory runs in an injection
 context): `language` (the page's, a signal is followed; default `'en'`),
 `words` (per language, the site's words over the built-in ones), `lookup` (a
-site's string for a kit word, or null / `''` for the kit's - checked first; the
-keys are the ones a translations module will seed as `anotoki.<key>`), `icons`.
+site's string for a kit word, or null / `''` for the kit's - checked first:
+every site's database holds the kit's words as `anotoki.<key>`, and the
+translations module's `forKit()` reads them there), `icons`.
 
 **Words** - `AnotokiWords.t(key, params?)`, reactive. Resolution per key:
 `lookup(key)`, then `words[language]` (or its primary subtag: `sk-SK` -> `sk`),
@@ -324,7 +325,8 @@ then the built-in words of the language, then the built-in English - never a
 key. `lang` is the language the words are in (`'en'` on a page nobody wrote
 words for) and `foreignLang` is set where that is not the page's: the kit puts
 it in a `lang` attribute. The built-in Slovak is informal ("ty"); a formal site
-overrides it (the survey: `words: { sk: { 'topbar.menuButton': 'Vaša ponuka: {name}', ... } }`).
+overrides it (the survey: `words: { sk: { 'topbar.menuButton': 'Vaša ponuka: {name}', ... } }` -
+with the translations module, in its database: "A site moves in" below).
 The keys: `ui.close`, `ui.dismiss`, `ui.notifications`, `ui.cancel`,
 `ui.confirm`, `ui.retry`, `ui.optional`, `ui.loading`, `ui.showPassword`,
 `ui.hidePassword`, `ui.copy`, `ui.copied`, `ui.copyToClipboard`,
@@ -335,9 +337,11 @@ The keys: `ui.close`, `ui.dismiss`, `ui.notifications`, `ui.cancel`,
 `topbar.account`, `topbar.admin`, `topbar.signIn`, `topbar.signOut`,
 `topbar.saving`, `language.label`, `language.button`, `language.notLoaded`,
 `language.notSaved`, `theme.label`, `theme.light`, `theme.dark`, `theme.auto`,
-`theme.autoHint`, `theme.notSaved` (English and Slovak in
-`angular/projects/lib/ui/src/words.ts`). A site words its own menu items with
-them too: `words.t('topbar.account')` is "Tvoj anotoki účet" in Slovak.
+`theme.autoHint`, `theme.notSaved` - the library's words under the namespaces
+`anotoki.ui|topbar|language|theme.*`, English and Slovak generated from
+`php/resources/library-words.json` ("The library's own words" below;
+`LIBRARY_WORDS` has every one). A site words its own menu items with them too:
+`words.t('topbar.account')` is "Tvoj anotoki účet" in Slovak.
 
 **Icons** - `<anotoki-icon name="..." [size] [strokeWidth] [filled] [label]>`,
 decorative unless labelled. The kit's own: `sun`, `moon`, `monitor`, `user`,
@@ -588,7 +592,7 @@ of the Migrations page; everything else is new.
    `is-link`, no more `.button.quiet`). Its words and behaviour are the same,
    except that it reloads without first marking the site ready.
 
-## Translations (unreleased, 0.3.0: the PHP half)
+## Translations (unreleased, 0.3.0)
 
 Every site keeps its words in three tables - `languages`, `translation_keys`,
 `translations` - which the IAM wrote first and the survey, Piano Academy,
@@ -597,8 +601,10 @@ one implementation of them for every site: the schema, the bundle the pages
 read, the admin pages' API, the checks of a string, the command line. One wire
 format, the IAM's (snake_case; anotoki-iam's `docs/api.md` is the contract, and
 the bundle is the IAM's byte for byte). The library decides nobody's
-permissions: each route group takes the site's own checks. The Angular half
-(`@anotoki/lib/translations`) comes later.
+permissions: each route group takes the site's own checks. The Angular half,
+`@anotoki/lib/translations`, is the pages' side of it: the language and the
+strings, the pipes, the kit's words and the switcher from the site's database,
+and the admin Translations and Languages pages ("The Angular half" below).
 
 ### The schema: the library's set `anotoki_translations`
 
@@ -622,11 +628,13 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   it to the site's people, other tables referring to `languages (code)`,
   constraint names, columns of its own with a default. On the five aligned
   sites it makes nothing.
-- `002_library_words.sql` adds the library's keys, under `anotoki.` (the
-  language switcher's and the status page's words). Their descriptions are the
-  library's; their strings are written only for a library key that has none, so
-  a site that took a key over - its own words, a language left blank on purpose -
-  keeps them, and so does an owner's rewording.
+- `002_library_words.sql` adds the library's keys, under `anotoki.`: the kit's
+  words (`anotoki.ui|topbar|language|theme.*` - its dialogs, notifications,
+  fields, page numbers, the top bar, the language and theme switches) and the
+  status page's (`anotoki.siteStatus.*`), 54 keys in English and Slovak. Their
+  descriptions are the library's; their strings are written only for a library
+  key that has none, so a site that took a key over - its own words, a language
+  left blank on purpose - keeps them, and so does an owner's rewording.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -732,11 +740,199 @@ is the one source of the `anotoki.*` keys: `LibraryWords` reads it (and
 library's migrations write on a new database to it. A new library string is an
 entry there and a new library migration; a rewording of a released one is a
 migration that changes it only where it still has the earlier words. The
-Angular half is to read the same file and never keep a copy by hand: a script
-(`angular/scripts/library-words.mjs`) generates its built-in words
-(`translations/src/library-words.ts`, committed), and a spec fails when that file
-is stale - so a page has the library's words while the database cannot be
-reached, and never shows a library key as a key.
+Angular half reads the same file and keeps no copy by hand: `bun run words`
+(`angular/scripts/library-words.mjs`) generates its built-in words,
+`angular/projects/lib/ui/src/library-words.ts` (committed; `LIBRARY_WORDS` of
+`@anotoki/lib/ui`) - the kit reads its own from there, the status page its
+`siteStatus.*`, the translations module every one - and a spec
+(`library-words.spec.ts`) and the PHP half's `LibraryWordsTest` fail when that
+file is stale. So a page has the library's words while the database cannot be
+reached, and never shows a library key as a key. They are in a site's first
+load once, in the kit's core.
+
+### The Angular half: `@anotoki/lib/translations`
+
+```ts
+// app.config.ts
+provideHttpClient(withInterceptors([siteStatusInterceptor, authInterceptor])),   // the bundle and the admin routes go through it
+provideAnotokiTranslations(() => {
+  const auth = inject(AuthService);                     // the factory runs in an injection context, the first time the module needs it
+  return {
+    storagePrefix: 'anotoki-survey',                    // -> 'anotoki-survey:language', ':language-cache', ':localization-drafts'
+    // storageKeys: { language: 'academy-language', cache: 'academy-language-cache', drafts: 'academy-admin-drafts' },
+    fallbackEnglish: en,                                // optional: the site's compiled English, read while no bundle is in memory
+    account: {
+      language: () => auth.user()?.locale ?? null,      // the account's language (a signal is followed)
+      decides: () => auth.preferences() !== null,       // signed in with an IAM that keeps the person's choices
+      save: (code) => auth.savePreferences({ language: code }),   // a choice made on the page, to the account
+      // quiet: (error) => ...,                         // a refusal said nothing about (default: code invalid_request)
+      userKey: () => auth.userKey(),                    // whose drafts the admin pages keep; null: nobody signed in
+    },
+    canAsk: () => auth.status() === 'ready',            // optional: nothing is asked while the site cannot run
+    admin: {
+      allows: { strings: () => auth.isStaff(), languages: () => auth.isAdmin() },
+      routes: { translations: '/admin/translations', languages: '/admin/languages', migrations: '/admin/migrations' },
+    },
+    // bundleUrl '/api/translations', fetchBundle(code), onBundleRefused(refusal), englishOnly(url) (default /admin and under it),
+    // locales { en: 'en-GB', sk: 'sk-SK' }, browserAliases { cs: 'sk' }, waits { cache: 1000, first: 3000, retry: 500, settle: 2000 },
+    // libraryWords { sk: { 'anotoki.siteStatus.unavailableText': '...' } }, admin { apiBase, siteName, leads, groups, pagesLead,
+    // languageNotes { row, beforeDelete, afterDelete }, failureText, importMaxBytes }
+  };
+}),
+provideAnotokiUi(() => ({ ...inject(TranslationService).forKit(), icons: { ... } })),
+provideAnotokiShell(() => ({ theme: { ... }, languages: inject(TranslationService).forShell() })),
+provideAnotokiMigrations(() => {
+  const i18n = inject(TranslationService);
+  return { ..., language: () => i18n.effectiveLanguage(), get words() { return siteStatusWords(i18n); } };
+}),
+provideAppInitializer(() => inject(TranslationService).init()),   // after the sign-in has put the address back
+```
+
+```ts
+// the site's title strategy, after every navigation (the service never injects the Router: NG0200)
+this.i18n.noteAddress(url);
+// the admin routes: the pages' own entry point, never in the first load; the guard is the eager one's
+{ path: 'translations', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.TranslationsPageComponent) },
+{ path: 'languages', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.LanguagesPageComponent) },
+```
+
+- `TranslationService` (root) - `language`, `languages`, `ready`, `englishOnly`,
+  `effectiveLanguage` (English in the English areas), `locale`, `languageNotSaved`,
+  `storedEnglishLang`, `signInLanguage`; `t(key, params)`, `plural(key, count, params)`
+  (`Intl.PluralRules`, a form the family lacks reads `.other`, `{count}` written
+  as the language writes numbers), `around()` and `aroundPlural()` (a sentence cut
+  at a placeholder for markup: `[before, after, found]`), `has()`, `number()`,
+  `libraryWord()`; `setLanguage(code, { remember?, save?, revertible? })` (the last
+  choice wins; the words are fetched before the page switches; the language the
+  last choice took off the page is kept in memory - the way back needs no
+  request), `clearLanguageNotSaved()`, `preferred(offered)` (a new account's
+  language), `reload()` (after an admin change or an Apply), `noteAddress(url)`,
+  `init()`, `settled()` (a guard waits at most 2 s for the language just wanted).
+- Which language, strongest first (the family's ranking): this tab's `?lang=`
+  (taken out of the address, kept in sessionStorage), a choice made on the page,
+  the account's language, the browser's languages (`cs` reads `sk` while no Czech
+  is offered), English. While the account decides, it comes before this
+  device's remembered choice - only the tab's `?lang=` and a choice of this visit
+  come first; a change of it is followed when it comes; a choice is saved to it,
+  one save at a time and the latest last; a quiet refusal (the IAM does not
+  offer the language) keeps it the site's own for the visit, any other sets
+  `languageNotSaved` (the switcher's note). Otherwise this device's choice comes
+  first and the account's is adopted only while nothing is stored. A choice made
+  before signing in holds for the visit.
+- Words, for each key: the bundle's string; while no bundle is in memory, the
+  site's compiled English (`fallbackEnglish`), then the key (warned once). With a
+  bundle, a key it lacks is shown as the key, warned once: the owner wants to see
+  it. A library key (`anotoki.*`) is never a key: the database's string (an
+  owner's rewording), then the site's `libraryWords`, then the library's
+  built-in words of the language, then their English. `<html lang>` follows
+  `effectiveLanguage`.
+- The start: the cache (`<prefix>:language-cache`, in force only until the
+  server answers) - a second's wait with one, three without and one more try
+  after half a second; two requests at most otherwise (the first wish, then what
+  the list that came settles on). Nothing is asked while `canAsk()` is false (the
+  cache is taken in whatever language it is in), and a page that is behind asks
+  again once per navigation. The bundle goes through the site's HttpClient,
+  marked `ANOTOKI_TRANSLATION_BUNDLE` (a site's interceptor leaves its failure
+  alone), or the site's own `fetchBundle`; a refusal with an answer is the
+  site's to read (`onBundleRefused`: a 503 `not_set_up`, `update_pending`).
+- Pipes `translate` and `translatePlural` (impure; `string` keys). A site with
+  typed keys declares its own two-line pipes over the service with its key type
+  (the IAM's `t`) and imports those.
+- `forKit()` - the kit's `language` (the page's) and `lookup` (the database's
+  `anotoki.<key>`, then `libraryWords`), so an owner's rewording on the
+  Translations page reaches the kit; `forShell()` - the shell's switcher's
+  languages under their own names, the choice through `setLanguage()`, the note.
+  `siteStatusWords(i18n, overrides?)` - the status page's words from the
+  database (`overrides` win: a site's own page around the library's).
+- `<anotoki-translations-page>` (English; for `admin.allows.strings`) - each
+  language's coverage (only the plural forms its numbers take count), tags,
+  export (the server's file and name) and import (at most 1 MiB, a byte-order
+  mark taken off, a flat map, a question with the count of the strings in it);
+  a search over keys, descriptions and text (stored and typed; diacritics and
+  case aside; rows decided as the search changes, never while typing);
+  "Missing in X"; plural families as one block with the numbers each form is
+  for and samples for 1, 3 and 12; the keys only the server reads in blocks of
+  their own (`admin.groups`: the IAM's mails, their titles and parts' order);
+  columns stacked above three languages or in a narrow page; Save sends only
+  the changed boxes and keeps what is typed while it is out; a refusal beside
+  its key (brought into view, its box focused); a key or a language gone
+  meanwhile re-reads the grid; Discard behind a question; before the tables
+  exist, a link to `admin.routes.migrations`.
+- `<anotoki-languages-page>` (English; for `admin.allows.languages`) - each row's
+  names and place with its own Save and Undo; the offered switch saving at once
+  (back when refused; English's off); "Fallback" and "Released with the site"
+  tags; the site's own fields in words (`admin.languageNotes.row`: the IAM's
+  accounts); delete only for a language not released - offering an export of
+  its strings first, then a question naming them (and `beforeDelete`'s words),
+  then what went (`afterDelete`: Japanese Academy's copy); a new language hidden
+  unless asked otherwise. Both pages read again after every change
+  (`reload()`), ask their questions in their own dialog (nothing in the site's
+  root), say what happened in the page, and work at 390 px.
+- `LocalizationDrafts` - what is typed and not saved, in sessionStorage
+  (`<prefix>:localization-drafts`) with whose it is: kept through a reload and a
+  sign-out, dropped when somebody else signs in; one `beforeunload` question.
+  `anotokiUnsavedChangesGuard` asks the page (`HoldsUnsavedChanges.canLeave()`),
+  never once nobody is signed in.
+- `@anotoki/lib/translations/testing` - `provideTestTranslations(values, { language, languages, english })`
+  and `TEST_LANGUAGES`: the real service with that bundle in memory, no HTTP.
+
+### A site moves in
+
+What every site does (with the PHP half's "What a site must do" in CHANGELOG.md):
+the library's set appended to its Migrator; one site migration in the site's own
+style, released with the code, that moves the site's own copies of the
+library's words under the library's keys with every language, writer and date
+(`language.button` -> `anotoki.language.button`, ...: their rows copied into a
+temporary table, inserted under the library's key `ON CONFLICT DO NOTHING`,
+the old keys deleted, and a gate that proves every value moved) - so `002`
+leaves them as they were, a language left blank included; the site's
+translations code replaced by `Translations` + `TranslationsRoutes` and
+`provideAnotokiTranslations()`; its switcher, admin pages, drafts and guard by
+the library's; `noteAddress()` from its title strategy; its catalogue test
+leaving `anotoki.` out. Export every language from the admin panel before the
+upload. Per site:
+
+- **The IAM** - `storageKeys: { language: 'anotoki-iam:lang', cache: 'anotoki-iam:lang-cache', drafts: 'anotoki-iam:localization-drafts' }`,
+  `fallbackEnglish: en` (en.ts stays: the key list and the last resort), its typed
+  `t` pipe over the library's service (`TranslationKey | LibraryKey`);
+  `account.language` the session user's language, `decides` signed in, `save` its
+  `PUT /api/account/profile` (the account page's select:
+  `setLanguage(code, { revertible: true })`), `userKey` the user's id;
+  `fetchBundle` through its `PublicApi` (or its interceptor reads
+  `ANOTOKI_TRANSLATION_BUNDLE`); `preferred()` for registration, `settled()` in
+  its account and admin guards; `admin.allows` ADMIN for both, `siteName: 'the IAM'`,
+  `groups` its mails (`MAILS` titles, `MAIL_PARTS` order, the rules lead),
+  `languageNotes` its `accounts`, `failureText` its `adminErrorText`; the
+  switcher `<anotoki-language-switcher appearance="auto">` on the sign-in pages
+  and the bar's. 017 moves `lang.label`/`lang.button` and renames
+  `sessions.method.other`/`sessions.ended.other` (`.unknown`).
+- **build-analyzer** - `storageKeys` its `build-analyzer-language`,
+  `-language-cache`, `build-analyzer-localization-drafts`; `fallbackEnglish: en`
+  (the four JSON parts) and its typed `translate`/`translatePlural`; `canAsk`
+  `MetaStore.loaded()`; `failureText` its owner errors; 006 moves `language.button`,
+  `language.notLoaded`.
+- **The survey** - `storagePrefix: 'anotoki-survey'` (its keys already);
+  `canAsk` `auth.status() === 'ready'`; formal Slovak ("Vy"): its 010 writes
+  before the library's set, in formal Slovak, every library key whose Slovak
+  speaks to the reader - `anotoki.ui.copyFailed`, `anotoki.topbar.menuButton`,
+  `anotoki.topbar.menu`, `anotoki.topbar.account`, `anotoki.language.notLoaded`,
+  `anotoki.language.notSaved`, `anotoki.theme.notSaved`,
+  `anotoki.siteStatus.unavailableText` (an `INSERT … ON CONFLICT DO NOTHING`,
+  then `UPDATE … WHERE value = '<the library's words>'`) - and keeps the same
+  words as `libraryWords: { sk: { ... } }` for the time without a database;
+  `allows.languages` ADMIN only.
+- **Piano Academy** - `storagePrefix: 'piano-academy'`; `kept-english.ts` as
+  `fallbackEnglish` (less the three `language.*`); 008.
+- **Japanese Academy** - `storageKeys` `academy-language`, `academy-language-cache`,
+  `academy-admin-drafts`; `fetchBundle` its plain `fetch()` with `X-Time-Zone`,
+  its `refused()` as `onBundleRefused`, `canAsk` false while `SiteStatus`
+  blocks; `languageNotes.afterDelete` names its copy (`answer.copy`); 009, after
+  its draft 008 is finished.
+- **genshin** - after its tables move into the one shape (its 049):
+  `storageKeys` `anotoki-genshin-impact-language`, `-language-cache`;
+  `account.save` its `AccountPreferences.save('language', code)`; its `translate`
+  pipe name stays (the library's pipe has it); the library's pages replace
+  `sites/admin/localization`.
 
 ## Working on the library
 
@@ -753,8 +949,10 @@ bun run build           # ng build lib -> angular/dist/lib, then scripts/check-p
                         # size (gzipped code; limits for the eager ones) and import boundaries
 bun run test            # ng test lib --watch=false (Vitest, jsdom)
 bun run showcase        # projects/showcase on http://localhost:4320: every piece and the bar, from the source
-                        # (?theme=dark, ?lang=sk, ?account=1 for a refused theme; /migrations; never published)
+                        # (?theme=dark, ?lang=sk, ?account=1 for a refused theme; /migrations, /translations,
+                        # /languages against an imagined server; never published)
 bun run build:showcase  # the same, built into angular/dist/showcase
+bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)
 ```
 
 CI (`.github/workflows/ci.yml`) runs the PHP tests on 8.2 and 8.4 against

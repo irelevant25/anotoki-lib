@@ -5,7 +5,8 @@ Academy, the build analyzer), in two halves with one version: the Composer
 package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 `@anotoki/lib` (`angular/projects/lib/`, one secondary entry point per family of
 pieces: `ui`, `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
-`migrations/page`; the Sass module `styles/`). `README.md` says how a site
+`migrations/page`, `translations`, `translations/admin`, `translations/testing`;
+the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
 
@@ -24,6 +25,7 @@ bun install             # bun.lock is committed
 bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs (sizes, boundaries)
 bun run test            # ng test lib --watch=false (Vitest + jsdom)
 bun run showcase        # projects/showcase on :4320 - every piece, from the source; never published
+bun run words           # ui/src/library-words.ts from php/resources/library-words.json (a spec fails when stale)
 ```
 
 ## Conventions
@@ -37,8 +39,12 @@ bun run showcase        # projects/showcase on :4320 - every piece, from the sou
   with or without `id`). A site adopts an older shape itself, in `prepare`.
 - **Words**: the administrators' words are English; the visitors' words are built
   in for `en` and `sk` (Slovak informal, "ty") and overridable per language. The
-  kit's words are one table (`ui/src/words.ts`), read through `AnotokiWords`;
-  names (a site's sections, brand area) are never kit words.
+  library's words (`anotoki.*`) have one source, `php/resources/library-words.json`:
+  the SQL of `anotoki_translations` is held to it by a test, and the Angular half's
+  `ui/src/library-words.ts` is generated from it (`bun run words`) - the kit's
+  words (`ui/src/words.ts`, read through `AnotokiWords`) and the status page's
+  come from there; a new one is a JSON entry and a new library migration. Names
+  (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says

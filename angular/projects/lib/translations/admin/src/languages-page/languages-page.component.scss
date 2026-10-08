@@ -1,0 +1,124 @@
+@use "../../../../sass/kit";
+@use "../page";
+
+@include page.styles;
+
+.page {
+  max-width: 60rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.language {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  box-shadow: kit.token(shadow-sm);
+
+  // A hidden language stays whole and readable; its edge says it is off the switcher.
+  &.is-hidden {
+    border-style: dashed;
+    border-color: kit.token(border-strong);
+    box-shadow: none;
+  }
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+}
+
+.name {
+  font-size: 1.05rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.native {
+  color: kit.token(muted);
+  overflow-wrap: anywhere;
+}
+
+// How many strings it has, and the site's own fields: at the row's far end, under the names in a narrow page.
+.note {
+  margin-left: auto;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 9rem;
+  gap: 0.85rem 1rem;
+  align-items: start;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.add {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.85rem 1rem;
+  align-items: start;
+}
+
+// Whether readers are offered the new language at once: under the three fields, across the form.
+.add-offered {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.add-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.add-error {
+  margin-top: 0.75rem;
+}
+
+@container (max-width: 640px) {
+  .fields,
+  .add {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .note {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .add-actions {
+    justify-content: flex-start;
+  }
+}

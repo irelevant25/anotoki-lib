@@ -1,7 +1,9 @@
 /*
  * @anotoki/lib/ui - the core of the anotoki family's UI kit: configuration and
  * words, icons, buttons, spinner, badge, alert, card, empty and error states,
- * page header, avatar, segmented choice, autofocus, and the DOM helpers.
+ * page header, avatar, segmented choice, autofocus, and the DOM helpers - and
+ * the library's own words (every `anotoki.*` key, English and Slovak), which
+ * the kit, the migrations module and the translations module read.
  *
  * Small and eager (the shell uses it); the rest of the kit is in entry points
  * of its own - @anotoki/lib/ui/menu, /dialog, /toast, /forms, /tabs,
@@ -11,6 +13,8 @@
 
 export type { AnotokiUiConfig, IconPaths, IconSet } from './src/config';
 export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, provideAnotokiUi } from './src/config';
+export type { LibraryKey } from './src/library-words';
+export { LIBRARY_WORDS } from './src/library-words';
 export type { AnotokiWordKey, AnotokiWordTable } from './src/words';
 export { ANOTOKI_WORD_KEYS, BUILT_IN_WORDS } from './src/words';
 export type { WordParams } from './src/anotoki-words.service';

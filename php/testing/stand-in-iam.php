@@ -183,13 +183,14 @@ function stand_in_bearer_sub(): ?string
     return is_array($claims) && is_string($claims['sub'] ?? null) ? $claims['sub'] : null;
 }
 
+/** $user with the saved $changes: the language its locale, the rest its preferences (a session from before them has none yet). */
 function stand_in_with_preferences(array $user, array $changes): array
 {
     if (array_key_exists('language', $changes)) {
         $user['locale'] = $changes['language'];
     }
     unset($changes['language']);
-    $user['preferences'] = $changes + $user['preferences'];
+    $user['preferences'] = $changes + (is_array($user['preferences'] ?? null) ? $user['preferences'] : ['theme' => 'auto', 'date_format' => null, 'time_format' => null]);
 
     return $user;
 }
@@ -478,8 +479,10 @@ switch ($path) {
         if ((string) $state['user']['id'] === $sub) {
             $state['user'] = $account;
         }
+        // Every session of the account carries the account's choices from its next refresh.
         foreach (array_keys($holders) as $token) {
-            $state['refresh'][$token]['user'] = stand_in_with_preferences($state['refresh'][$token]['user'], $changes);
+            $state['refresh'][$token]['user']['preferences'] = $account['preferences'];
+            $state['refresh'][$token]['user']['locale'] = $account['locale'] ?? 'en';
         }
         stand_in_save($dir, $state);
 

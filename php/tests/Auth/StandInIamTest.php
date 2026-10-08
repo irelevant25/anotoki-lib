@@ -66,6 +66,26 @@ final class StandInIamTest extends TestCase
         self::assertSame(401, $secret['status'], 'public clients only');
     }
 
+    public function testTheAccountsPreferencesAreSavedForEverySessionOfIt(): void
+    {
+        $verifier = Base64Url::encode(random_bytes(32));
+        $before = $this->signIn($verifier, $verifier);
+        $bearer = static fn (string $token): array => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'];
+
+        self::assertSame(503, $this->http('POST', '/api/oidc/preferences', '{"theme":"dark"}', [], $bearer($before['access_token']))['status'], 'an IAM before its migration 015');
+
+        $this->standIn->state(['user' => ['id' => 1, 'username' => 'owner', 'roles' => ['MEMBER'], 'preferences' => ['theme' => 'auto', 'date_format' => null, 'time_format' => null]]]);
+        $saved = $this->http('POST', '/api/oidc/preferences', '{"theme":"dark","language":"sk"}', [], $bearer($before['access_token']));
+        self::assertSame(200, $saved['status']);
+        self::assertSame(['locale' => 'sk', 'preferences' => ['theme' => 'dark', 'date_format' => null, 'time_format' => null]], $saved['json']);
+        self::assertSame(400, $this->http('POST', '/api/oidc/preferences', '{"theme":"sepia"}', [], $bearer($before['access_token']))['status']);
+
+        // The session made before the account had preferences carries them from its next refresh.
+        $refreshed = $this->post('/api/oidc/token', ['grant_type' => 'refresh_token', 'client_id' => 'build-analyzer', 'refresh_token' => $before['refresh_token']]);
+        $claims = json_decode(Base64Url::decode(explode('.', $refreshed['json']['access_token'])[1]), true);
+        self::assertSame([['theme' => 'dark', 'date_format' => null, 'time_format' => null], 'sk'], [$claims['preferences'], $claims['locale']]);
+    }
+
     public function testTheHintIsSetAndClearedAsTheIamDoes(): void
     {
         // Nobody signed in at the IAM: prompt=none answers login_required, and a hint sent is cleared.
@@ -241,9 +261,10 @@ final class StandInIamTest extends TestCase
 
     /**
      * @param array<string, string> $cookies
+     * @param ?list<string> $requestHeaders  instead of a form's
      * @return array{status: int, headers: array<string, list<string>>, json: mixed}
      */
-    private function http(string $method, string $path, ?string $form, array $cookies = []): array
+    private function http(string $method, string $path, ?string $form, array $cookies = [], ?array $requestHeaders = null): array
     {
         $headers = [];
         $handle = curl_init($this->standIn->url($path));
@@ -252,7 +273,7 @@ final class StandInIamTest extends TestCase
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_TIMEOUT => 5,
-            CURLOPT_HTTPHEADER => $form !== null ? ['Content-Type: application/x-www-form-urlencoded'] : [],
+            CURLOPT_HTTPHEADER => $requestHeaders ?? ($form !== null ? ['Content-Type: application/x-www-form-urlencoded'] : []),
             CURLOPT_HEADERFUNCTION => static function ($handle, string $line) use (&$headers): int {
                 $parts = explode(':', $line, 2);
                 if (count($parts) === 2) {

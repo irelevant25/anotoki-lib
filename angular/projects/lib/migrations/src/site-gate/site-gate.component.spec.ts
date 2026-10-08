@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { SiteStatus } from '../site-status.service';
 import { STATUS_URL, TestSite, provideTestSite, settle, testSite, words } from '../testing';
 import { SiteGateComponent } from './site-gate.component';
+import { SitePagesDirective } from './site-pages.directive';
 
 @Component({
   selector: 'anotoki-test-site',
@@ -28,10 +29,80 @@ class CountedPageComponent {
 
 @Component({
   selector: 'anotoki-test-templated-site',
+  imports: [SiteGateComponent, SitePagesDirective, CountedPageComponent],
+  template: '<anotoki-site-gate><ng-template anotokiSitePages><anotoki-counted-page /></ng-template></anotoki-site-gate>',
+})
+class TemplatedSiteComponent {}
+
+/** The 0.1.0 form with a leading @if: its block is content, never "the pages" drawn for everybody. */
+@Component({
+  selector: 'anotoki-test-if-site',
+  imports: [SiteGateComponent],
+  template: `
+    <anotoki-site-gate>
+      @if (booted()) {
+        <p id="booted">The app</p>
+      } @else {
+        <p id="booting">Loading</p>
+      }
+    </anotoki-site-gate>
+  `,
+})
+class IfSiteComponent {
+  readonly booted = signal(false);
+}
+
+/** The same with @switch. */
+@Component({
+  selector: 'anotoki-test-switch-site',
+  imports: [SiteGateComponent],
+  template: `
+    <anotoki-site-gate>
+      @switch (state()) {
+        @case ('ready') {
+          <p id="app">The app</p>
+        }
+        @case ('signed-out') {
+          <p id="sign-in">Sign in</p>
+        }
+      }
+    </anotoki-site-gate>
+  `,
+})
+class SwitchSiteComponent {
+  readonly state = signal<'ready' | 'signed-out'>('signed-out');
+}
+
+/** A marked template holding control flow of its own (Japanese Academy's form): made only while open, and its blocks follow their own conditions. */
+@Component({
+  selector: 'anotoki-test-marked-switch-site',
+  imports: [SiteGateComponent, SitePagesDirective, CountedPageComponent],
+  template: `
+    <anotoki-site-gate>
+      <ng-template anotokiSitePages>
+        @switch (state()) {
+          @case ('ready') {
+            <anotoki-counted-page />
+          }
+          @case ('signed-out') {
+            <p id="sign-in">Sign in</p>
+          }
+        }
+      </ng-template>
+    </anotoki-site-gate>
+  `,
+})
+class MarkedSwitchSiteComponent {
+  readonly state = signal<'ready' | 'signed-out'>('signed-out');
+}
+
+/** The 0.1.1 form: an unmarked template. Since 0.2.0 it is not the pages - nothing is drawn, and development says why. */
+@Component({
+  selector: 'anotoki-test-unmarked-site',
   imports: [SiteGateComponent, CountedPageComponent],
   template: '<anotoki-site-gate><ng-template><anotoki-counted-page /></ng-template></anotoki-site-gate>',
 })
-class TemplatedSiteComponent {}
+class UnmarkedSiteComponent {}
 
 describe('<anotoki-site-gate>: the site, or the status page', () => {
   let site: TestSite;
@@ -149,6 +220,74 @@ describe('<anotoki-site-gate>: the site, or the status page', () => {
     status.markReady();
     await draw();
     expect(page()).not.toBeNull();
+  });
+
+  describe('the content is control flow (a site still on the 0.1.0 form): its blocks follow their own conditions', () => {
+    it('@if: only the branch its condition picks - never its first block drawn for everybody', async () => {
+      status.markReady();
+      const site = TestBed.createComponent(IfSiteComponent);
+      await settle(site);
+      const at = (selector: string) => site.nativeElement.querySelector(selector);
+      expect(at('#booting')).not.toBeNull();
+      expect(at('#booted')).toBeNull();
+
+      site.componentInstance.booted.set(true);
+      await settle(site);
+      expect(at('#booted')).not.toBeNull();
+      expect(at('#booting')).toBeNull();
+
+      status.report('update_pending');
+      await settle(site);
+      expect(at('#booted')).toBeNull();
+      expect(at('anotoki-site-status')).not.toBeNull();
+    });
+
+    it('@switch: only the case its value picks', async () => {
+      status.markReady();
+      const site = TestBed.createComponent(SwitchSiteComponent);
+      await settle(site);
+      const at = (selector: string) => site.nativeElement.querySelector(selector);
+      expect(at('#sign-in')).not.toBeNull();
+      expect(at('#app')).toBeNull();
+
+      site.componentInstance.state.set('ready');
+      await settle(site);
+      expect(at('#app')).not.toBeNull();
+      expect(at('#sign-in')).toBeNull();
+    });
+
+    it('a marked template with control flow inside: made only while open, its blocks following their conditions', async () => {
+      made = 0;
+      status.report('update_pending');
+      const site = TestBed.createComponent(MarkedSwitchSiteComponent);
+      await settle(site);
+      const at = (selector: string) => site.nativeElement.querySelector(selector);
+      expect(at('#sign-in')).toBeNull();
+      expect(at('anotoki-site-status')).not.toBeNull();
+
+      status.markReady();
+      await settle(site);
+      expect(at('#sign-in')).not.toBeNull();
+      expect(made).toBe(0);
+
+      site.componentInstance.state.set('ready');
+      await settle(site);
+      expect(made).toBe(1);
+      expect(at('#counted')).not.toBeNull();
+    });
+  });
+
+  it('an unmarked <ng-template> (the 0.1.1 form) is not the pages: nothing is drawn, and development says how to mark it', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    made = 0;
+    status.markReady();
+    const site = TestBed.createComponent(UnmarkedSiteComponent);
+    await settle(site);
+    expect(made).toBe(0);
+    expect(site.nativeElement.querySelector('#counted')).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('anotokiSitePages');
+    warn.mockRestore();
   });
 
   it('shows the site again the moment it is ready', async () => {

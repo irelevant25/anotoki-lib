@@ -1,0 +1,88 @@
+@use "../../../sass/kit";
+
+:host {
+  display: inline-flex;
+  flex: none;
+  min-width: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+a.brand {
+  @include kit.focus-ring(3px);
+
+  &:hover {
+    color: kit.token(text);
+    text-decoration: none;
+  }
+}
+
+.logo {
+  display: block;
+  flex: none;
+  max-width: none;
+  height: auto;
+  // The family's shadow in light; a light halo in dark, or the navy mark sinks into the bar.
+  filter: kit.token(mark-shadow);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  line-height: 1;
+}
+
+.name {
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.area {
+  color: kit.token(brand-area);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+// "· admin panel": the part of the site, quieter than its name.
+.dot,
+.panel {
+  color: kit.token(muted);
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+// The area alone beside the mark: it is the name there, so it reads as one.
+.is-short .area {
+  font-size: 1.075rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+// Short, with the part of the site (a phone): the part small under the area -
+// on one line "survey · admin panel" does not fit a 360 px bar.
+.is-short.has-panel {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+
+  .dot {
+    display: none;
+  }
+
+  .panel {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+}

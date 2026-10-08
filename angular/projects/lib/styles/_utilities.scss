@@ -1,0 +1,190 @@
+////
+/// The family's layout and text helpers, as classes. A site whose own classes
+/// would collide (.page, .lead, .muted ...) passes a prefix - `anotoki-` gives
+/// .anotoki-stack, .anotoki-page - or leaves them out.
+////
+
+@use "tokens";
+
+/// @param {String} $prefix - put before every class name ("" or "anotoki-")
+@mixin utilities($prefix: "") {
+  .#{$prefix}stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--anotoki-stack-gap, 1rem);
+  }
+
+  .#{$prefix}stack-sm {
+    --anotoki-stack-gap: 0.5rem;
+  }
+
+  .#{$prefix}stack-lg {
+    --anotoki-stack-gap: 1.5rem;
+  }
+
+  .#{$prefix}cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--anotoki-cluster-gap, 0.625rem);
+  }
+
+  .#{$prefix}cluster-end {
+    justify-content: flex-end;
+  }
+
+  .#{$prefix}cluster-between {
+    justify-content: space-between;
+  }
+
+  .#{$prefix}form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 1rem 1.25rem;
+  }
+
+  .#{$prefix}form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.625rem;
+    padding-top: 0.25rem;
+  }
+
+  .#{$prefix}muted {
+    color: tokens.token(muted);
+  }
+
+  .#{$prefix}small {
+    font-size: 0.8125rem;
+  }
+
+  .#{$prefix}mono {
+    font-family: tokens.token(font-mono);
+    font-size: 0.875em;
+  }
+
+  .#{$prefix}nowrap {
+    white-space: nowrap;
+  }
+
+  .#{$prefix}break {
+    overflow-wrap: anywhere;
+  }
+
+  .#{$prefix}lead {
+    color: tokens.token(muted);
+    font-size: 1rem;
+  }
+
+  // "or" between two ways of doing a thing, with a rule either side.
+  .#{$prefix}divider-text {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: tokens.token(muted);
+    font-size: 0.8125rem;
+    text-transform: lowercase;
+
+    &::before,
+    &::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: tokens.token(border);
+    }
+  }
+
+  // <dl class="facts"> for "label - value" pairs on a detail page; one column on a phone.
+  .#{$prefix}facts {
+    display: grid;
+    grid-template-columns: minmax(9rem, max-content) 1fr;
+    gap: 0.55rem 1.25rem;
+    margin: 0;
+
+    dt {
+      color: tokens.token(muted);
+      font-size: 0.875rem;
+    }
+
+    dd {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 520px) {
+      grid-template-columns: 1fr;
+      gap: 0.15rem;
+
+      dd {
+        margin-bottom: 0.6rem;
+      }
+    }
+  }
+
+  .#{$prefix}page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+  }
+
+  .#{$prefix}section-title {
+    color: tokens.token(muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  // A state as a dot - beside its word, never instead of it.
+  .#{$prefix}status-dot {
+    display: inline-block;
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: tokens.token(muted);
+
+    &.is-on {
+      background: tokens.token(success);
+      box-shadow: 0 0 0 3px tokens.token(success-soft);
+    }
+
+    &.is-off {
+      background: tokens.token(border-strong);
+    }
+
+    &.is-warn {
+      background: tokens.token(warning);
+      box-shadow: 0 0 0 3px tokens.token(warning-soft);
+    }
+  }
+
+  // The moment between "asked" and "answered".
+  .#{$prefix}skeleton {
+    display: block;
+    height: 0.9rem;
+    border-radius: tokens.token(radius-sm);
+    background: linear-gradient(90deg, #{tokens.token(skeleton)} 0%, #{tokens.token(skeleton-shine)} 50%, #{tokens.token(skeleton)} 100%);
+    background-size: 200% 100%;
+    animation: anotoki-skeleton-shine 1.4s ease-in-out infinite;
+  }
+
+  .#{$prefix}skeleton-block {
+    height: 4.5rem;
+    border-radius: tokens.token(radius);
+  }
+
+  @keyframes anotoki-skeleton-shine {
+    from {
+      background-position: 100% 0;
+    }
+
+    to {
+      background-position: -100% 0;
+    }
+  }
+}

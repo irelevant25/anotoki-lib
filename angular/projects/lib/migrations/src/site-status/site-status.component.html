@@ -4,7 +4,7 @@
             <h1 class="title" [id]="id + '-title'">A database update is waiting</h1>
             <p class="text">This site is closed to everybody else until the update is applied. Back the database up first.</p>
             <div class="actions">
-                <a class="button primary" [routerLink]="config.migrationsRoute">Open Migrations</a>
+                <a anotokiButton variant="primary" [routerLink]="config.migrationsRoute">Open Migrations</a>
             </div>
         </section>
     }
@@ -14,7 +14,7 @@
             <p class="text">{{ text().words.updatingText }}</p>
             @if (!signedIn()) {
                 <div class="actions">
-                    <button type="button" class="button quiet" (click)="signIn()">{{ text().words.signIn }}</button>
+                    <button anotokiButton variant="link" data-sign-in (click)="signIn()">{{ text().words.signIn }}</button>
                 </div>
             }
         </section>
@@ -24,8 +24,8 @@
             <h1 class="title" [id]="id + '-title'">{{ text().words.notSetUpTitle }}</h1>
             <p class="text">{{ text().words.notSetUpText }}</p>
             <div class="actions">
-                <a class="button primary" [href]="setupUrl">{{ text().words.openSetup }}</a>
-                <button type="button" class="button" [disabled]="checking()" (click)="recheck()">{{ text().words.tryAgain }}</button>
+                <a anotokiButton variant="primary" [href]="setupUrl">{{ text().words.openSetup }}</a>
+                <button anotokiButton variant="secondary" [loading]="checking()" (click)="recheck()">{{ text().words.tryAgain }}</button>
             </div>
         </section>
     }
@@ -34,7 +34,7 @@
             <h1 class="title" [id]="id + '-title'">{{ text().words.unavailableTitle }}</h1>
             <p class="text">{{ text().words.unavailableText }}</p>
             <div class="actions">
-                <button type="button" class="button" [disabled]="checking()" (click)="recheck()">{{ text().words.tryAgain }}</button>
+                <button anotokiButton variant="secondary" [loading]="checking()" (click)="recheck()">{{ text().words.tryAgain }}</button>
             </div>
         </section>
     }

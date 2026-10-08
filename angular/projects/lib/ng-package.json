@@ -3,5 +3,10 @@
   "dest": "../../dist/lib",
   "lib": {
     "entryFile": "src/public-api.ts"
-  }
+  },
+  "allowedNonPeerDependencies": ["@fontsource-variable/manrope"],
+  "assets": [
+    { "input": "styles", "glob": "**/*.scss", "output": "styles" },
+    { "input": "assets", "glob": "theme-boot.js", "output": "assets" }
+  ]
 }

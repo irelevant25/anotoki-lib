@@ -1,0 +1,39 @@
+<div class="field">
+    <label class="label" [for]="inputId" [class.visually-hidden]="hideLabel()">{{ label() }}</label>
+    <div class="code" [class.is-focused]="focused()" [class.is-invalid]="!!error()" [class.is-disabled]="disabled()">
+        <div class="cells" aria-hidden="true">
+            @for (cell of cells(); track $index) {
+                <span class="cell" [class.is-active]="focused() && $index === activeIndex()" [class.is-filled]="cell !== ''">{{ cell }}</span>
+            }
+        </div>
+        <input
+            #control
+            class="code-input"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            pattern="[0-9]*"
+            spellcheck="false"
+            autocapitalize="off"
+            [attr.maxlength]="length()"
+            [value]="value()"
+            [required]="required()"
+            [disabled]="disabled()"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            (input)="onInput($event)"
+            (focus)="onFocus()"
+            (blur)="focused.set(false)" />
+    </div>
+    @if (hint() && !error()) {
+        <p class="hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

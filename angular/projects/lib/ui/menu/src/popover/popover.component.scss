@@ -1,0 +1,34 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: contents;
+}
+
+@include kit.pop-in-keyframes;
+
+.panel {
+  position: fixed;
+  inset: auto;
+  z-index: 40;
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow: auto;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-lg);
+  font: inherit;
+  text-align: left;
+  animation: pop-in 140ms kit.token(ease);
+
+  &:focus {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

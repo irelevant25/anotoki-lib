@@ -1,0 +1,20 @@
+@if (confirm.pending(); as question) {
+    <anotoki-dialog size="sm" [heading]="question.title" (dismiss)="confirm.settle(false)">
+        @if (question.message) {
+            <p class="message">{{ question.message }}</p>
+        }
+        <div dialogFooter>
+            <button anotokiButton variant="secondary" autofocus data-answer="no" [attr.lang]="question.cancelLabel ? null : words.foreignLang()" (click)="confirm.settle(false)">
+                {{ question.cancelLabel || words.t("ui.cancel") }}
+            </button>
+            <button
+                anotokiButton
+                data-answer="yes"
+                [variant]="question.tone === 'danger' ? 'danger' : 'primary'"
+                [attr.lang]="question.confirmLabel ? null : words.foreignLang()"
+                (click)="confirm.settle(true)">
+                {{ question.confirmLabel || words.t("ui.confirm") }}
+            </button>
+        </div>
+    </anotoki-dialog>
+}

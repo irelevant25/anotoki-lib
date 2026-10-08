@@ -1,0 +1,15 @@
+<button
+    anotokiButton
+    [variant]="variant()"
+    [size]="size()"
+    [iconOnly]="iconOnly()"
+    [attr.aria-label]="iconOnly() ? name() : null"
+    [attr.title]="iconOnly() ? name() : null"
+    [attr.lang]="label() ? null : words.foreignLang()"
+    (click)="copy()">
+    <anotoki-icon [name]="copied() ? 'check' : 'copy'" [size]="16" />
+    @if (!iconOnly()) {
+        <span>{{ shown() }}</span>
+    }
+</button>
+<span class="visually-hidden" aria-live="polite" [attr.lang]="words.foreignLang()">{{ copied() ? words.t("ui.copiedToClipboard") : "" }}</span>

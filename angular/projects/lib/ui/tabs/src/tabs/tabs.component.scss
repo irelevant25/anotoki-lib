@@ -1,0 +1,57 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: block;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid kit.token(border);
+  scrollbar-width: none;
+}
+
+.tab {
+  @include kit.button-reset;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: kit.token(radius-sm) kit.token(radius-sm) 0 0;
+  color: kit.token(muted);
+  font-weight: 650;
+  white-space: nowrap;
+
+  &:hover {
+    color: kit.token(text);
+  }
+
+  &[aria-selected="true"] {
+    color: kit.token(text);
+  }
+
+  &[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    right: 0.6rem;
+    bottom: -1px;
+    left: 0.6rem;
+    height: 2px;
+    border-radius: 2px;
+    background: kit.token(primary);
+  }
+
+  @include kit.focus-ring(-2px);
+}
+
+.count {
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: kit.token(surface-3);
+  color: kit.token(muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}

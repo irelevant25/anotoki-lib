@@ -1,0 +1,148 @@
+////
+/// What every field of the kit shares: the label, the control's border and
+/// ring, the input, the hint and the error. Each field's own stylesheet
+/// includes it, so a field depends on no global class.
+////
+
+@use "../../../sass/kit";
+
+@mixin styles {
+  :host {
+    display: block;
+    min-width: 0;
+    color: kit.token(text);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: kit.token(text);
+    font-size: 0.875rem;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+
+  .optional {
+    color: kit.token(muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .control {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: kit.token(control-height);
+    border: 1px solid kit.token(border-strong);
+    border-radius: kit.token(radius);
+    background: kit.token(surface);
+    transition:
+      border-color kit.token(duration) kit.token(ease),
+      box-shadow kit.token(duration) kit.token(ease);
+
+    &:hover {
+      border-color: color-mix(in srgb, #{kit.token(border-strong)} 60%, #{kit.token(text)} 40%);
+    }
+
+    // The ring is on the border, not around the input: the field's focus style.
+    &:focus-within {
+      border-color: kit.token(primary);
+      box-shadow: 0 0 0 3px kit.token(ring);
+    }
+
+    &.is-invalid {
+      border-color: kit.token(danger);
+
+      &:focus-within {
+        box-shadow: 0 0 0 3px color-mix(in srgb, #{kit.token(danger)} 28%, transparent);
+      }
+    }
+
+    &.is-disabled {
+      background: kit.token(surface-2);
+      opacity: 0.7;
+    }
+  }
+
+  .input {
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: calc(#{kit.token(control-height)} - 2px);
+    margin: 0;
+    padding: 0 0.8rem;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: kit.token(text);
+    font: inherit;
+    // 16 px, not 15: iOS zooms the page into any field smaller than that.
+    font-size: 1rem;
+    line-height: 1.4;
+    outline: none;
+    box-shadow: none;
+    appearance: none;
+
+    &::placeholder {
+      color: kit.token(subtle);
+      opacity: 1;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+
+    &[type="date"] {
+      min-width: 9rem;
+    }
+  }
+
+  .affix {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    color: kit.token(muted);
+
+    &:first-child {
+      padding-left: 0.75rem;
+    }
+
+    &:last-child {
+      padding-right: 0.25rem;
+    }
+  }
+
+  .hint {
+    margin: 0;
+    color: kit.token(muted);
+    font-size: 0.8125rem;
+  }
+
+  .error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0;
+    color: kit.token(danger);
+    font-size: 0.8125rem;
+    font-weight: 600;
+
+    anotoki-icon {
+      margin-top: 0.1rem;
+    }
+  }
+
+  .visually-hidden {
+    @include kit.visually-hidden;
+  }
+}

@@ -1,0 +1,14 @@
+/* The showcase: a development page with every piece of the kit; never published. */
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../out-tsc/showcase",
+    "types": [],
+    // The library from its source: the showcase shows the working tree, with no build of the library first.
+    "paths": {
+      "@anotoki/lib": ["../lib/src/public-api.ts"],
+      "@anotoki/lib/*": ["../lib/*/public-api.ts"]
+    }
+  },
+  "files": ["src/main.ts"]
+}

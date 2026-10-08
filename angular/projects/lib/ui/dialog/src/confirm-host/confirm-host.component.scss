@@ -1,0 +1,11 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: contents;
+}
+
+.message {
+  margin: 0;
+  color: kit.token(muted);
+  overflow-wrap: anywhere;
+}

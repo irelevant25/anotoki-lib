@@ -1,0 +1,8 @@
+// The showcase's global styles: what a site's styles.scss holds, from the library's source.
+@use "../../lib/styles" as anotoki;
+
+@include anotoki.root;
+@include anotoki.fonts;
+@include anotoki.base;
+@include anotoki.utilities;
+@include anotoki.tables;

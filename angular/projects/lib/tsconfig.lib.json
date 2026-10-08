@@ -8,6 +8,6 @@
     "declarationMap": true,
     "types": []
   },
-  "include": ["src/**/*.ts", "migrations/**/*.ts"],
+  "include": ["src/**/*.ts", "ui/**/*.ts", "shell/**/*.ts", "migrations/**/*.ts"],
   "exclude": ["**/*.spec.ts", "**/testing.ts"]
 }

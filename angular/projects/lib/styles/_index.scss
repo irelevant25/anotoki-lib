@@ -1,0 +1,20 @@
+////
+/// @anotoki/lib/styles - the family's tokens, font, base, utilities and tables.
+///
+/// @example scss - a site's styles.scss
+///   @use "@anotoki/lib/styles" as anotoki;
+///
+///   @include anotoki.root((light: (primary: #1f6fd1), dark: (primary: #5aa9ff)));
+///   @include anotoki.fonts;
+///   @include anotoki.base;
+///   @include anotoki.utilities;   // or ("anotoki-") where the class names would collide
+///   @include anotoki.tables;
+///
+///   .my-thing { color: anotoki.token(muted); }
+////
+
+@forward "tokens" show token, root, palette, shared, $light, $dark, $shared;
+@forward "fonts";
+@forward "base";
+@forward "utilities";
+@forward "tables";

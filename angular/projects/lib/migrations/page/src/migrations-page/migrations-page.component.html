@@ -1,0 +1,122 @@
+@if (!admin()) {
+    <p class="notice">Migrations are for administrators.</p>
+} @else {
+    <div class="page">
+        <anotoki-page-header heading="Migrations" lead="The database schema is what these files build. Back the database up before applying anything." [headingId]="id + '-title'">
+            <button anotokiButton variant="primary" data-apply [disabled]="!canApply()" [loading]="applying()" (click)="askToApply()">
+                {{ applying() ? "Applying..." : "Apply pending" }}
+            </button>
+        </anotoki-page-header>
+
+        @if (outcome(); as result) {
+            <anotoki-alert data-result [tone]="result.tone" [heading]="result.heading" [announce]="result.tone === 'danger' || result.tone === 'warning' ? true : 'polite'">
+                <p class="result-text">{{ result.text }}</p>
+                @if (result.error) {
+                    <pre class="error">{{ result.error }}</pre>
+                }
+                @if (result.note) {
+                    <p class="result-note">{{ result.note }}</p>
+                }
+            </anotoki-alert>
+        }
+
+        @if (loadError(); as message) {
+            <anotoki-alert data-load-error tone="danger" heading="The migrations could not be read." [announce]="true">
+                <p class="result-text">{{ message }}</p>
+                <div alertActions>
+                    <button anotokiButton size="sm" [loading]="loading()" (click)="load()">Try again</button>
+                </div>
+            </anotoki-alert>
+        } @else if (data(); as status) {
+            <div class="cards">
+                <anotoki-card data-pending heading="Pending" [headingId]="id + '-pending'">
+                    @if (groups().length === 0) {
+                        <p class="card-text">Nothing pending - the database is up to date with the files.</p>
+                    } @else {
+                        @for (group of groups(); track group.set) {
+                            @if (manySets()) {
+                                <h3 class="set">migrations/{{ group.set }}/</h3>
+                            }
+                            <ol class="files">
+                                @for (file of group.files; track file.name) {
+                                    <li class="file">
+                                        <code class="name">{{ file.name }}</code>
+                                        <anotoki-badge [tone]="badgeTones[file.badge]" [attr.data-kind]="file.badge">{{ file.badge }}</anotoki-badge>
+                                        @if (file.badge === "draft") {
+                                            <span class="why">a draft - it does not run until it is finished</span>
+                                        }
+                                    </li>
+                                }
+                            </ol>
+                        }
+                    }
+                </anotoki-card>
+
+                <anotoki-card data-applied heading="Applied" [headingId]="id + '-applied'">
+                    <p class="card-text">{{ status.applied.length === 1 ? "1 file" : status.applied.length + " files" }}</p>
+                    @if (status.applied.length) {
+                        <ol class="files">
+                            @for (file of status.applied; track file.set + "/" + file.name) {
+                                <li class="file">
+                                    <code class="name">{{ label(file) }}</code>
+                                    @if (file.applied_at) {
+                                        <time class="when" [attr.datetime]="file.applied_at">{{ formatDate(file.applied_at) }}</time>
+                                    }
+                                    <button anotokiButton size="sm" [attr.aria-label]="'View ' + label(file)" (click)="view(file)">View</button>
+                                </li>
+                            }
+                        </ol>
+                    }
+                </anotoki-card>
+
+                @if (status.missing.length) {
+                    <anotoki-card data-missing heading="Missing" [headingId]="id + '-missing'">
+                        <p class="card-text">Recorded as applied, but the file is not here:</p>
+                        <ul class="files">
+                            @for (file of status.missing; track file.set + "/" + file.name) {
+                                <li class="file">
+                                    <code class="name">{{ label(file) }}</code>
+                                </li>
+                            }
+                        </ul>
+                    </anotoki-card>
+                }
+            </div>
+        } @else {
+            <anotoki-spinner class="loading" label="Reading the migrations..." [showLabel]="true" />
+        }
+    </div>
+
+    @if (confirming()) {
+        <anotoki-dialog
+            data-confirm
+            size="sm"
+            [heading]="confirmTitle()"
+            description="They run now, against the live database, in order - stopping at the first one that fails. Make sure there is a fresh backup."
+            (dismiss)="cancelApply()">
+            <div dialogFooter>
+                <button anotokiButton autofocus data-confirm-cancel (click)="cancelApply()">Cancel</button>
+                <button anotokiButton variant="danger" data-confirm-apply (click)="applyConfirmed()">Apply</button>
+            </div>
+        </anotoki-dialog>
+    }
+
+    @if (viewing(); as shown) {
+        <anotoki-dialog data-sql size="lg" [heading]="label(shown.file)" (dismiss)="closeSql()">
+            @if (viewingSql() !== null) {
+                <pre class="sql" #sqlText tabindex="0" role="region" [attr.aria-label]="'The SQL of ' + label(shown.file)">{{ viewingSql() }}</pre>
+            } @else if (shown.error) {
+                <p class="dialog-text" role="alert">The file could not be read. {{ shown.error }}</p>
+            } @else {
+                <anotoki-spinner label="Reading the file..." [showLabel]="true" />
+            }
+            <div dialogFooter>
+                @if (copied(); as message) {
+                    <p class="copied" role="status">{{ message }}</p>
+                }
+                <button anotokiButton data-copy [disabled]="viewingSql() === null" (click)="copy()">Copy</button>
+                <button anotokiButton autofocus data-close (click)="closeSql()">Close</button>
+            </div>
+        </anotoki-dialog>
+    }
+}

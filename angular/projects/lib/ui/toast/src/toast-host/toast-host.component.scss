@@ -1,0 +1,95 @@
+@use "../../../../sass/kit";
+
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast {
+  --_accent: #{kit.token(info)};
+
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.6rem 0.75rem 0.9rem;
+  border: 1px solid kit.token(border);
+  border-left: 3px solid var(--_accent);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-lg);
+  pointer-events: auto;
+  animation: toast-in 200ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.toast[data-tone="success"] {
+  --_accent: #{kit.token(success)};
+}
+
+.toast[data-tone="warning"] {
+  --_accent: #{kit.token(warning)};
+}
+
+.toast[data-tone="danger"] {
+  --_accent: #{kit.token(danger)};
+}
+
+.icon {
+  margin-top: 0.1rem;
+  color: var(--_accent);
+}
+
+.message {
+  flex: 1;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 550;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.dismiss {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.3rem 0 0;
+  border-radius: 50%;
+  color: kit.token(muted);
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+
+  @include kit.focus-ring;
+}
+
+@media (max-width: 520px) {
+  .toasts {
+    right: 50%;
+    bottom: 0.75rem;
+    transform: translateX(50%);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

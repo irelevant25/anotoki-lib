@@ -1,0 +1,24 @@
+<div class="segmented" role="radiogroup" [attr.aria-label]="label()" [attr.aria-busy]="busy() ? 'true' : null" (keydown)="onKeydown($event)">
+    @for (option of options(); track option.value) {
+        <button
+            #segment
+            type="button"
+            role="radio"
+            class="segment"
+            [class.is-icon]="iconsOnly() && !!option.icon"
+            [attr.aria-checked]="option.value === value()"
+            [attr.aria-label]="option.name || (iconsOnly() && option.icon ? option.label : null)"
+            [attr.title]="option.hint || (iconsOnly() && option.icon ? option.label : null)"
+            [attr.lang]="option.lang || null"
+            [attr.data-value]="option.value"
+            [tabIndex]="option.value === focusable() ? 0 : -1"
+            (click)="choose(option.value)">
+            @if (option.icon) {
+                <anotoki-icon [name]="option.icon" [size]="16" />
+            }
+            @if (!iconsOnly() || !option.icon) {
+                <span class="label">{{ option.label }}</span>
+            }
+        </button>
+    }
+</div>

@@ -1,0 +1,64 @@
+@use "../../../../sass/kit";
+
+:host {
+  @include kit.button-reset;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: kit.token(radius);
+  background: transparent;
+  color: kit.token(text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+:host(:hover),
+:host(:focus-visible) {
+  background: kit.token(surface-3);
+  color: kit.token(text);
+  text-decoration: none;
+}
+
+:host(:focus-visible) {
+  outline: 2px solid kit.token(focus);
+  outline-offset: -2px;
+}
+
+:host(:focus:not(:focus-visible)) {
+  outline: none;
+}
+
+:host([disabled]),
+:host([aria-disabled="true"]) {
+  cursor: default;
+  opacity: 0.7;
+}
+
+// The page the item leads to is the one shown (a section in a phone's menu).
+:host([aria-current="page"]),
+:host(.is-active) {
+  background: kit.token(primary-soft);
+  color: kit.token(primary-soft-text);
+}
+
+:host([aria-checked="true"]) {
+  color: kit.token(primary-soft-text);
+}
+
+// Icons the page puts in an item are quieter than its words.
+:host ::ng-deep anotoki-icon {
+  color: kit.token(muted);
+}
+
+.check {
+  margin-left: auto;
+  color: kit.token(primary);
+}

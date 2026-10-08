@@ -1,0 +1,21 @@
+@use "../../../../sass/kit";
+@use "../field";
+
+@include field.styles;
+
+// What the page puts inside the border, before or after the text.
+:host ::ng-deep [fieldPrefix],
+:host ::ng-deep [fieldSuffix] {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: kit.token(muted);
+}
+
+:host ::ng-deep [fieldPrefix] {
+  padding-left: 0.75rem;
+}
+
+:host ::ng-deep [fieldSuffix] {
+  padding-right: 0.25rem;
+}

@@ -1,0 +1,33 @@
+@use "../../../sass/kit";
+
+:host {
+  display: inline-flex;
+  flex: none;
+}
+
+.avatar {
+  box-sizing: border-box;
+  width: var(--_avatar-size);
+  height: var(--_avatar-size);
+  border: 1px solid kit.token(border);
+  border-radius: 28%;
+  background: kit.token(surface);
+  object-fit: cover;
+}
+
+:host([data-shape="circle"]) .avatar {
+  border-radius: 50%;
+}
+
+.initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: linear-gradient(145deg, #{kit.token(primary)}, #{kit.token(accent)});
+  color: kit.token(primary-contrast);
+  font-size: calc(var(--_avatar-size) * 0.42);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}

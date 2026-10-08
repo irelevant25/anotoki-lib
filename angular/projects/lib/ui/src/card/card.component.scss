@@ -1,0 +1,78 @@
+@use "../../../sass/kit";
+
+:host {
+  display: block;
+  min-width: 0;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-sm);
+}
+
+:host([data-tone="danger"]) {
+  border-color: kit.token(danger-border);
+}
+
+@include kit.slot-wrappers(cardActions);
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1.1rem 1.25rem 0;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  overflow-wrap: anywhere;
+}
+
+.subtitle {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actions:empty {
+  display: none;
+}
+
+.body {
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+:host(.is-flush) .body {
+  padding: 0.75rem 0 0.25rem;
+}
+
+@media (max-width: 520px) {
+  .header {
+    padding: 1rem 1rem 0;
+  }
+
+  .body {
+    padding: 1rem;
+  }
+}

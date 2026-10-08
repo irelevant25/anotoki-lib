@@ -1,0 +1,31 @@
+@use "../../../../sass/kit";
+@use "../field";
+
+@include field.styles;
+
+.picker {
+  padding-right: 2.25rem;
+  background-image: linear-gradient(45deg, transparent 50%, #{kit.token(muted)} 50%), linear-gradient(135deg, #{kit.token(muted)} 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.05rem) 52%,
+    calc(100% - 0.75rem) 52%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+  cursor: pointer;
+
+  option {
+    background: kit.token(surface);
+    color: kit.token(text);
+  }
+}
+
+:host(.is-inline) {
+  .control {
+    min-height: kit.token(control-height-sm);
+  }
+
+  .input {
+    height: calc(#{kit.token(control-height-sm)} - 2px);
+    font-size: 0.875rem;
+  }
+}

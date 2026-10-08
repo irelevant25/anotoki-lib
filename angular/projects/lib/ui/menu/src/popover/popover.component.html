@@ -1,0 +1,15 @@
+@if (isOpen()) {
+    <div
+        #panel
+        class="panel"
+        role="group"
+        popover="manual"
+        tabindex="-1"
+        [id]="panelId"
+        [attr.aria-label]="label()"
+        [style.min-width.rem]="minWidth()"
+        (keydown)="onKeydown($event)"
+        (focusout)="onFocusOut($event)">
+        <ng-content />
+    </div>
+}

@@ -5,7 +5,23 @@
   "compilerOptions": {
     "outDir": "../../out-tsc/spec",
     "types": ["vitest/globals"],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    // The specs import each entry point from its source, not from dist/: one copy of every class and token, and no
+    // build needed before a test run (the library build maps the same names onto its own output).
+    "paths": {
+      "@anotoki/lib": ["./src/public-api.ts"],
+      "@anotoki/lib/*": ["./*/public-api.ts"]
+    }
   },
-  "include": ["test-setup.ts", "src/**/*.d.ts", "src/**/*.spec.ts", "migrations/**/*.spec.ts", "migrations/**/testing.ts"]
+  "include": [
+    "test-setup.ts",
+    "src/**/*.d.ts",
+    "src/**/*.spec.ts",
+    "ui/**/*.spec.ts",
+    "ui/**/testing.ts",
+    "shell/**/*.spec.ts",
+    "shell/**/testing.ts",
+    "migrations/**/*.spec.ts",
+    "migrations/**/testing.ts"
+  ]
 }

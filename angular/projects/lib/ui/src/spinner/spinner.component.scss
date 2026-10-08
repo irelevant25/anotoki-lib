@@ -1,0 +1,55 @@
+@use "../../../sass/kit";
+
+:host {
+  display: inline-flex;
+  flex: none;
+}
+
+:host(.is-inline) {
+  vertical-align: middle;
+}
+
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: kit.token(muted);
+}
+
+svg {
+  display: block;
+  animation: anotoki-spin 0.9s linear infinite;
+}
+
+.track {
+  stroke: currentColor;
+  opacity: 0.2;
+}
+
+// A third of the ring (the circle's length is 2 x pi x 9.5 = 59.7): a whole one would turn unseen.
+.arc {
+  stroke: var(--anotoki-spinner-color, #{kit.token(primary)});
+  stroke-dasharray: 20 40;
+  stroke-dashoffset: 0;
+}
+
+.label {
+  font-size: 0.9375rem;
+}
+
+.visually-hidden {
+  @include kit.visually-hidden;
+}
+
+@keyframes anotoki-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  svg {
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

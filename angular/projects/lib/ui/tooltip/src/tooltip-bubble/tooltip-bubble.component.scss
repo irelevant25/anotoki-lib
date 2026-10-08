@@ -1,0 +1,36 @@
+@use "../../../../sass/kit";
+
+// Placed by the directive (position: fixed, in the top layer); the popover's own
+// defaults (centred, a border, Canvas colours) are set aside here.
+:host {
+  position: fixed;
+  inset: auto;
+  z-index: 1100;
+  box-sizing: border-box;
+  max-width: min(18rem, calc(100vw - 16px));
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  overflow: visible;
+  border: 0;
+  border-radius: kit.token(radius-sm);
+  background: kit.token(text);
+  color: kit.token(bg);
+  box-shadow: kit.token(shadow);
+  font-family: kit.token(font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+  animation: tooltip-in 120ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+}

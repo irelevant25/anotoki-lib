@@ -1,0 +1,170 @@
+////
+/// The family's element styles: the page's font, colours and type, links,
+/// code, the one focus ring, and motion off for those who ask. The kit's
+/// components do not need them (each sets everything it relies on); a site's
+/// own pages do.
+////
+
+@use "tokens";
+
+/// Hides an element from the eye and keeps it for a screen reader.
+@mixin visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@mixin base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: tokens.token(font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    // An anchor scrolled to stops below the sticky top bar, not under it.
+    scroll-padding-top: calc(#{tokens.token(topbar-height)} + 1.25rem);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: tokens.token(bg);
+    color: tokens.token(text);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    line-height: 1.25;
+    letter-spacing: -0.012em;
+    font-weight: 700;
+    color: tokens.token(text);
+  }
+
+  h1 {
+    font-size: 1.625rem;
+  }
+
+  h2 {
+    font-size: 1.0625rem;
+  }
+
+  h3 {
+    font-size: 0.9375rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: tokens.token(link);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+    text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+
+    &:hover {
+      text-decoration-color: currentColor;
+    }
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: tokens.token(font-mono);
+    font-size: 0.875em;
+  }
+
+  code {
+    padding: 0.1em 0.35em;
+    border-radius: tokens.token(radius-sm);
+    background: tokens.token(surface-3);
+    overflow-wrap: anywhere;
+  }
+
+  pre {
+    margin: 0;
+    padding: 0.875rem 1rem;
+    border: 1px solid tokens.token(border);
+    border-radius: tokens.token(radius);
+    background: tokens.token(surface-3);
+    overflow-x: auto;
+    line-height: 1.5;
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  hr {
+    margin: 1.25rem 0;
+    border: 0;
+    border-top: 1px solid tokens.token(border);
+  }
+
+  ::selection {
+    background: color-mix(in srgb, #{tokens.token(primary)} 30%, transparent);
+  }
+
+  // One focus style everywhere a keyboard can land. The kit's fields draw
+  // their own ring on the border instead.
+  :focus-visible {
+    outline: 2px solid tokens.token(focus);
+    outline-offset: 2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .visually-hidden {
+    @include visually-hidden;
+  }
+
+  // Motion is decoration here, never information: with reduced motion asked
+  // for, it goes. The kit's spinners keep turning, slowly, on their own terms.
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

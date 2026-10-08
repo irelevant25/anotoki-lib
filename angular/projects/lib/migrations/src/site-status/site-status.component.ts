@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ButtonComponent } from '@anotoki/lib/ui';
 import { ANOTOKI_MIGRATIONS_CONFIG, DEFAULT_RETRY_SECONDS, DEFAULT_SETUP_URL } from '../config';
 import { RELOAD_PAGE } from '../reload';
 import { SiteStatus } from '../site-status.service';
@@ -23,11 +24,13 @@ let nextId = 0;
  *
  * The waiting pages - the visitors' and the ADMIN's (another administrator may
  * apply the update meanwhile) - ask again every retrySeconds and reload once
- * the site is ready.
+ * the site is ready: without telling SiteStatus first (checkForReload), or
+ * the gate would make the site's pages in this page for the moment before
+ * it goes.
  */
 @Component({
   selector: 'anotoki-site-status',
-  imports: [RouterLink],
+  imports: [ButtonComponent, RouterLink],
   templateUrl: './site-status.component.html',
   styleUrl: './site-status.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -77,7 +80,7 @@ export class SiteStatusComponent {
     }
     this.checking.set(true);
     try {
-      if ((await this.status.check()) === 'ready') {
+      if ((await this.status.checkForReload()) === 'ready') {
         this.reload();
       }
     } finally {

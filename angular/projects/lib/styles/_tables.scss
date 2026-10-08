@@ -1,0 +1,123 @@
+////
+/// Tables: `.table` for dense lists. Inside `.table-scroll` a wide table
+/// scrolls on its own instead of widening the page. `.table-stack` turns each
+/// row into a small card up to 720 px, labelled from each cell's data-label -
+/// for the lists people read on their phones.
+////
+
+@use "tokens";
+
+/// @param {String} $prefix - put before every class name ("" or "anotoki-")
+@mixin tables($prefix: "") {
+  .#{$prefix}table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .#{$prefix}table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+
+    th,
+    td {
+      padding: 0.65rem 0.8rem;
+      border-bottom: 1px solid tokens.token(border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: tokens.token(surface-2);
+      color: tokens.token(muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      transition: background-color tokens.token(duration) tokens.token(ease);
+    }
+
+    tbody tr:hover {
+      background: tokens.token(surface-2);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .row-muted td {
+      color: tokens.token(muted);
+    }
+
+    .cell-actions {
+      width: 1%;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .cell-num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr.row-link {
+      cursor: pointer;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .#{$prefix}table-stack {
+      thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+
+      tr {
+        display: block;
+        padding: 0.75rem 0.25rem;
+        border-bottom: 1px solid tokens.token(border);
+      }
+
+      tbody tr:last-child {
+        border-bottom: 0;
+      }
+
+      td {
+        display: grid;
+        grid-template-columns: 8.5rem 1fr;
+        gap: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        border: 0;
+
+        &::before {
+          content: attr(data-label);
+          color: tokens.token(muted);
+          font-size: 0.8125rem;
+        }
+
+        &.cell-actions {
+          display: flex;
+          justify-content: flex-start;
+          width: auto;
+          padding-top: 0.5rem;
+
+          &::before {
+            content: none;
+          }
+        }
+      }
+    }
+  }
+}

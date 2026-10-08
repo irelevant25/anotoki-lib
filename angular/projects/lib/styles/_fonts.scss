@@ -1,0 +1,18 @@
+////
+/// Manrope, the family's font (font-sans names it first).
+///
+/// Its files come with this package: @fontsource-variable/manrope is one of
+/// its dependencies, so installing @anotoki/lib installs them, and the site's
+/// Angular build copies the files it needs next to its stylesheet. One
+/// variable font in six subsets (latin, latin-ext for Slovak, cyrillic,
+/// greek, vietnamese), each with its unicode-range: a browser downloads only
+/// the subsets a page uses.
+////
+
+@use "sass:meta";
+
+/// Manrope's @font-face rules. Include once, in the site's global stylesheet;
+/// a site that keeps its own font leaves it out (and names its font in root()).
+@mixin fonts {
+  @include meta.load-css("@fontsource-variable/manrope");
+}

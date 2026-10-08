@@ -1,0 +1,11 @@
+@if (shown()) {
+    <span class="spinner" [attr.role]="said() ? 'status' : null" [attr.lang]="lang()">
+        <svg [attr.width]="px()" [attr.height]="px()" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle class="track" cx="12" cy="12" r="9.5" fill="none" stroke-width="2.5" />
+            <circle class="arc" cx="12" cy="12" r="9.5" fill="none" stroke-width="2.5" stroke-linecap="round" />
+        </svg>
+        @if (said(); as words) {
+            <span class="label" [class.visually-hidden]="!showLabel()">{{ words }}</span>
+        }
+    </span>
+}

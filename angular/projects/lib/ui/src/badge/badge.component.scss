@@ -1,0 +1,61 @@
+@use "../../../sass/kit";
+
+:host {
+  --_bg: #{kit.token(surface-3)};
+  --_fg: #{kit.token(muted)};
+  --_border: #{kit.token(border)};
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--_border);
+  border-radius: 999px;
+  background: var(--_bg);
+  color: var(--_fg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+:host(.is-mono) {
+  font-family: kit.token(font-mono);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+:host([data-tone="primary"]),
+:host([data-tone="info"]) {
+  --_bg: #{kit.token(primary-soft)};
+  --_fg: #{kit.token(primary-soft-text)};
+  --_border: #{kit.token(info-border)};
+}
+
+:host([data-tone="success"]) {
+  --_bg: #{kit.token(success-soft)};
+  --_fg: #{kit.token(success-text)};
+  --_border: #{kit.token(success-border)};
+}
+
+:host([data-tone="warning"]) {
+  --_bg: #{kit.token(warning-soft)};
+  --_fg: #{kit.token(warning-text)};
+  --_border: #{kit.token(warning-border)};
+}
+
+:host([data-tone="danger"]) {
+  --_bg: #{kit.token(danger-soft)};
+  --_fg: #{kit.token(danger)};
+  --_border: #{kit.token(danger-border)};
+}
+
+.dot {
+  flex: none;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+}

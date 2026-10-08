@@ -1,0 +1,35 @@
+<div class="field">
+    <label class="label" [for]="inputId" [class.visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <span class="optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </label>
+    <div class="control" [class.is-invalid]="!!error()" [class.is-disabled]="disabled()">
+        <textarea
+            #control
+            class="input multiline"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            [value]="value()"
+            [attr.rows]="rows()"
+            [attr.maxlength]="maxlength()"
+            [attr.placeholder]="placeholder() || null"
+            [attr.spellcheck]="spellcheck()"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            [required]="required()"
+            [readOnly]="readonly()"
+            [disabled]="disabled()"
+            (input)="onInput($event)"></textarea>
+    </div>
+    @if (hint() && !error()) {
+        <p class="hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

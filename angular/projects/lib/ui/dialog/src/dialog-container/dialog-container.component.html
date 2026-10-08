@@ -1,0 +1,8 @@
+<anotoki-dialog [heading]="ref.heading()" [description]="description()" [size]="size()" [dismissible]="dismissible()" [busy]="ref.busy()" (dismiss)="ref.close()">
+    <ng-container [ngComponentOutlet]="component()" />
+    <ng-container ngProjectAs="[dialogFooter]">
+        @if (ref.footer(); as footer) {
+            <ng-container [ngTemplateOutlet]="footer" />
+        }
+    </ng-container>
+</anotoki-dialog>

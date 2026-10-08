@@ -1,0 +1,15 @@
+@if (isOpen()) {
+    <div
+        #panel
+        class="panel"
+        role="menu"
+        popover="manual"
+        [id]="panelId"
+        [attr.aria-label]="label() || null"
+        [attr.aria-labelledby]="label() ? null : triggerId()"
+        [style.min-width.rem]="minWidth()"
+        (keydown)="onKeydown($event)"
+        (click)="onClick($event)">
+        <ng-content />
+    </div>
+}

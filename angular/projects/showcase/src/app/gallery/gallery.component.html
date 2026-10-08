@@ -1,0 +1,253 @@
+<div class="page">
+    <anotoki-page-header heading="The anotoki kit" lead="Every piece of @anotoki/lib 0.2.0, in the family's palette - switch the theme and the language in the bar.">
+        <span pageEyebrow class="eyebrow">Showcase</span>
+        <anotoki-badge pageMeta tone="primary" mono>v0.2.0</anotoki-badge>
+        <button anotokiButton variant="secondary" (click)="ask()">Ask a question</button>
+        <button anotokiButton variant="primary" [loading]="loading()" (click)="save()">Save</button>
+    </anotoki-page-header>
+
+    <section class="section" id="buttons" aria-labelledby="buttons-title">
+        <h2 class="section-title" id="buttons-title">Buttons</h2>
+        <div class="cluster">
+            <button anotokiButton variant="primary">Primary</button>
+            <button anotokiButton>Secondary</button>
+            <button anotokiButton variant="ghost">Ghost</button>
+            <button anotokiButton variant="danger">Danger</button>
+            <button anotokiButton variant="link">Forgot your password?</button>
+            <button anotokiButton variant="primary" [loading]="true">Saving</button>
+            <button anotokiButton disabled>Disabled</button>
+            <a anotokiButton href="/migrations" variant="secondary">A link</a>
+        </div>
+        <div class="cluster">
+            <button anotokiButton size="sm" variant="primary">Small</button>
+            <button anotokiButton size="sm">Small</button>
+            <button anotokiButton size="sm" variant="link">Small link</button>
+            <button anotokiButton size="lg" variant="primary">Large</button>
+            <button anotokiButton iconOnly aria-label="Delete" anotokiTooltip="Delete"><anotoki-icon name="trash" /></button>
+            <button anotokiButton iconOnly size="sm" aria-label="Search" anotokiTooltip="Search"><anotoki-icon name="search" [size]="16" /></button>
+        </div>
+    </section>
+
+    <section class="section" aria-labelledby="badges-title">
+        <h2 class="section-title" id="badges-title">Badges, spinners, avatars</h2>
+        <div class="cluster">
+            <anotoki-badge>Draft</anotoki-badge>
+            <anotoki-badge tone="primary">Editor</anotoki-badge>
+            <anotoki-badge tone="info" dot>Signed in</anotoki-badge>
+            <anotoki-badge tone="success" dot>Confirmed</anotoki-badge>
+            <anotoki-badge tone="warning">Pending</anotoki-badge>
+            <anotoki-badge tone="danger">Blocked</anotoki-badge>
+            <anotoki-badge mono>2FA</anotoki-badge>
+        </div>
+        <div class="cluster">
+            <anotoki-spinner size="sm" />
+            <anotoki-spinner />
+            <anotoki-spinner size="lg" />
+            <anotoki-spinner label [showLabel]="true" />
+            <anotoki-avatar name="Japanese Academy" />
+            <anotoki-avatar name="Mira Nováková" shape="circle" [size]="32" />
+            <anotoki-avatar name="Piano Academy" imageUrl="/no-such-logo.png" [size]="48" />
+        </div>
+    </section>
+
+    <section class="section" aria-labelledby="alerts-title">
+        <h2 class="section-title" id="alerts-title">Alerts, empty and error states</h2>
+        <div class="stack">
+            <anotoki-alert heading="Your address is not confirmed yet">We sent a link to mira&#64;example.test.</anotoki-alert>
+            <anotoki-alert tone="success" heading="Saved">Everybody sees the new name now.</anotoki-alert>
+            <anotoki-alert tone="warning" heading="A database update is waiting">
+                Back the database up first.
+                <div alertActions>
+                    <button anotokiButton size="sm">Open Migrations</button>
+                </div>
+            </anotoki-alert>
+            <anotoki-alert tone="danger" heading="Signing in did not work">The password does not match this address.</anotoki-alert>
+            <div class="grid-2">
+                <anotoki-card>
+                    <anotoki-empty-state icon="users" heading="Nobody here yet" text="People appear as they answer.">
+                        <button anotokiButton size="sm" variant="primary">Invite people</button>
+                    </anotoki-empty-state>
+                </anotoki-card>
+                <anotoki-error-state heading="The list could not be read" message="The server did not answer." />
+            </div>
+        </div>
+    </section>
+
+    <section class="section" aria-labelledby="cards-title">
+        <h2 class="section-title" id="cards-title">Cards, tabs, pagination, tables</h2>
+        <anotoki-card heading="Members" subheading="Who may sign in to this site" [flush]="true">
+            <div cardActions>
+                <anotoki-copy-button text="https://survey.example.test/invite/42" label="Copy the invitation" />
+                <button anotokiButton size="sm" variant="primary">Add</button>
+            </div>
+            <div class="padded">
+                <anotoki-tabs #members="anotokiTabs" label="Members" [tabs]="tabs" [(active)]="tab" />
+            </div>
+            <div role="tabpanel" [id]="members.panelId(tab())" [attr.aria-labelledby]="members.tabId(tab())" class="table-scroll">
+                <table class="table table-stack">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Address</th>
+                            <th scope="col">Role</th>
+                            <th scope="col" class="cell-actions"><span class="visually-hidden">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td data-label="Name">Mira Nováková</td>
+                            <td data-label="Address">mira&#64;example.test</td>
+                            <td data-label="Role"><anotoki-badge tone="primary">Administrator</anotoki-badge></td>
+                            <td class="cell-actions"><button anotokiButton size="sm" variant="ghost">Edit</button></td>
+                        </tr>
+                        <tr>
+                            <td data-label="Name">Jo Kováč</td>
+                            <td data-label="Address">jo&#64;example.test</td>
+                            <td data-label="Role"><anotoki-badge>Member</anotoki-badge></td>
+                            <td class="cell-actions"><button anotokiButton size="sm" variant="ghost">Edit</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <anotoki-pagination [page]="page()" [pageSize]="2" [total]="12" (pageChange)="page.set($event)" />
+        </anotoki-card>
+        <dl class="facts">
+            <dt>Account</dt>
+            <dd>
+                mira&#64;example.test
+                <span class="status-dot is-on"></span>
+            </dd>
+            <dt>Two-factor</dt>
+            <dd>On, since 6 Oct 2026</dd>
+        </dl>
+        <p class="divider-text">or</p>
+        <div class="stack-sm stack">
+            <span class="skeleton"></span>
+            <span class="skeleton skeleton-block"></span>
+        </div>
+    </section>
+
+    <section class="section" aria-labelledby="forms-title">
+        <h2 class="section-title" id="forms-title">Fields</h2>
+        <div class="form-grid">
+            <anotoki-text-field label="Name" [(value)]="name" hint="As people see it" autocomplete="name" />
+            <anotoki-text-field label="Address" [(value)]="email" type="email" error="This is not an address yet." />
+            <anotoki-password-field label="Password" autocomplete="current-password" [(value)]="password">
+                <a labelAside href="/forgot" class="aside">Forgot your password?</a>
+            </anotoki-password-field>
+            <anotoki-select label="Language" [options]="options" [(value)]="language" />
+            <anotoki-textarea label="About you" [(value)]="bio" [optional]="true" placeholder="A line or two" />
+            <anotoki-text-field label="Price" value="12" type="number" [disabled]="true">
+                <span fieldSuffix class="unit">EUR</span>
+            </anotoki-text-field>
+        </div>
+        <div class="cluster wide">
+            <anotoki-checkbox [(checked)]="keep" hint="On this browser only">Keep me signed in</anotoki-checkbox>
+            <anotoki-switch [(checked)]="news" hint="A mail when there is something new">News by mail</anotoki-switch>
+            <anotoki-switch [checked]="true" [busy]="true">Saving the switch</anotoki-switch>
+        </div>
+        <anotoki-radio-group label="Plan" [options]="plans" [(value)]="plan" />
+        <anotoki-code-input label="The code from your app" [(value)]="code" hint="Six digits" />
+    </section>
+
+    <section class="section" aria-labelledby="choices-title">
+        <h2 class="section-title" id="choices-title">Choices, menus, popovers</h2>
+        <div class="cluster">
+            <anotoki-segmented label="View" [options]="views" [(value)]="view" />
+            <anotoki-theme-toggle [iconsOnly]="false" />
+            <anotoki-language-switcher appearance="segmented" />
+            <anotoki-language-switcher appearance="select" />
+        </div>
+        <div class="cluster">
+            <button anotokiButton [anotokiMenuTrigger]="more">
+                More
+                <anotoki-icon name="chevronDown" [size]="16" />
+            </button>
+            <anotoki-menu #more label="More">
+                <button anotokiMenuItem (click)="toasts.info('Duplicated.')">
+                    <anotoki-icon name="copy" [size]="17" />
+                    Duplicate
+                </button>
+                <a anotokiMenuItem href="https://example.test/help" target="_blank" rel="noopener">
+                    <anotoki-icon name="externalLink" [size]="17" />
+                    Help
+                </a>
+                <button anotokiMenuItem disabled>
+                    <anotoki-icon name="refresh" [size]="17" />
+                    Publish again
+                </button>
+                <anotoki-menu-separator />
+                <button anotokiMenuItem (click)="ask()">
+                    <anotoki-icon name="trash" [size]="17" />
+                    Delete
+                </button>
+            </anotoki-menu>
+            <button anotokiButton [anotokiPopoverTrigger]="piano">The piano</button>
+            <anotoki-popover #piano label="The piano">
+                <div class="stack-sm stack">
+                    <anotoki-select
+                        label="Device"
+                        [options]="[
+                            { value: 'none', label: 'No piano' },
+                            { value: 'mio', label: 'mio USB-MIDI' },
+                        ]"
+                        value="mio" />
+                    <button anotokiButton size="sm" variant="primary">Connect</button>
+                </div>
+            </anotoki-popover>
+        </div>
+    </section>
+
+    <section class="section" aria-labelledby="overlays-title">
+        <h2 class="section-title" id="overlays-title">Dialogs, drawers, toasts, copy, QR</h2>
+        <div class="cluster">
+            <button anotokiButton (click)="dialog.set(true)">Open a dialog</button>
+            <button anotokiButton (click)="drawer.set(true)">Open a drawer</button>
+            <button anotokiButton (click)="ask()">Confirm</button>
+            <button anotokiButton (click)="toasts.success('Password changed.')">Toast</button>
+            <button anotokiButton (click)="toasts.error('The server does not answer. Try again in a minute.')">Error toast</button>
+            <anotoki-copy-button text="ABCD-1234-EFGH" />
+            <anotoki-copy-button text="ABCD-1234-EFGH" [iconOnly]="true" />
+        </div>
+        <div class="qr">
+            <anotoki-qr-code value="otpauth://totp/anotoki:mira%40example.test?secret=JBSWY3DPEHPK3PXP&issuer=anotoki" />
+        </div>
+    </section>
+
+    <section class="section admin-bar" aria-labelledby="admin-title">
+        <h2 class="section-title" id="admin-title">The admin panel's bar</h2>
+        <anotoki-top-bar
+            [brand]="{ area: 'survey', panel: 'admin panel', link: '/', label: 'anotoki survey · admin panel - home' }"
+            [links]="adminLinks"
+            navLabel="Admin panel"
+            [person]="{ name: 'Mira Nováková', email: 'mira@example.test', role: 'Administrator' }"
+            [phoneMax]="760"
+            [shortBrandMax]="960" />
+    </section>
+</div>
+
+@if (dialog()) {
+    <anotoki-dialog heading="Edit the name" description="Everybody who sees the survey sees it." (dismiss)="dialog.set(false)">
+        <anotoki-text-field label="Name" [(value)]="name" [autofocus]="true" />
+        <div dialogFooter>
+            <button anotokiButton (click)="dialog.set(false)">Cancel</button>
+            <button anotokiButton variant="primary" (click)="dialog.set(false)">Save</button>
+        </div>
+    </anotoki-dialog>
+}
+
+@if (drawer()) {
+    <anotoki-drawer heading="12 people" subheading="Who answered the question" (dismiss)="drawer.set(false)">
+        <div drawerActions>
+            <button anotokiButton size="sm">Export</button>
+        </div>
+        <ul class="people">
+            <li>Mira Nováková</li>
+            <li>Jo Kováč</li>
+        </ul>
+        <div drawerFooter>
+            <span class="muted small">2 of 12</span>
+            <button anotokiButton size="sm" variant="primary" (click)="drawer.set(false)">Done</button>
+        </div>
+    </anotoki-drawer>
+}

@@ -1,0 +1,18 @@
+@if (heading()) {
+    <header class="header">
+        <div class="titles">
+            @if (headingLevel() === 3) {
+                <h3 class="title" [id]="headingId() || null">{{ heading() }}</h3>
+            } @else {
+                <h2 class="title" [id]="headingId() || null">{{ heading() }}</h2>
+            }
+            @if (subheading()) {
+                <p class="subtitle">{{ subheading() }}</p>
+            }
+        </div>
+        <div class="actions"><ng-content select="[cardActions]" /></div>
+    </header>
+}
+<div class="body">
+    <ng-content />
+</div>

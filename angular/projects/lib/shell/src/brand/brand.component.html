@@ -1,0 +1,29 @@
+@if (link(); as home) {
+    <a class="brand" [routerLink]="home" [attr.aria-label]="label() || null" [attr.aria-current]="current() ? 'page' : null">
+        <ng-container [ngTemplateOutlet]="mark" />
+    </a>
+} @else {
+    <span class="brand">
+        <ng-container [ngTemplateOutlet]="mark" />
+    </span>
+}
+
+<!-- The spaces (&ngsp;) between the words are for screen readers and copied text: the flex layout draws none. -->
+<ng-template #mark>
+    <img class="logo" [src]="logo()" alt="" [attr.width]="size()" [attr.height]="size() * 0.835" />
+    <span class="wordmark" [class.is-short]="!showName()" [class.has-panel]="!!panel()" [attr.lang]="lang()">
+        @if (showName()) {
+            <span class="name">anotoki</span>
+            &ngsp;
+        }
+        @if (area()) {
+            <span class="area">{{ area() }}</span>
+        }
+        @if (panel()) {
+            &ngsp;
+            <span class="dot" aria-hidden="true">·</span>
+            &ngsp;
+            <span class="panel">{{ panel() }}</span>
+        }
+    </span>
+</ng-template>

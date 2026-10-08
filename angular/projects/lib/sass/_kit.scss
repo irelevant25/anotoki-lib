@@ -1,0 +1,63 @@
+////
+/// What the kit's own component styles share. Internal: compiled into the
+/// components when the library is built, never published.
+////
+
+@forward "../styles/tokens" show token;
+@forward "../styles/base" show visually-hidden;
+
+@use "../styles/tokens";
+
+/// The one focus ring, on the element itself.
+@mixin focus-ring($offset: 2px) {
+  &:focus-visible {
+    outline: 2px solid tokens.token(focus);
+    outline-offset: $offset;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/// A wrapper the page projects into a slot (`<div cardActions>`) takes no box
+/// of its own, so its buttons become items of the slot's own row - on any page,
+/// with or without the family's base styles.
+@mixin slot-wrappers($names...) {
+  @each $name in $names {
+    :host ::ng-deep [#{$name}] {
+      display: contents;
+    }
+  }
+}
+
+/// Where a button of the kit starts from, whatever a site's own element rules
+/// say about buttons (padding, background, border, radius, colour).
+@mixin button-reset {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: none;
+  letter-spacing: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+
+/// The motion of a menu, a note or a tooltip appearing: a component that
+/// includes it at the root of its stylesheet then uses `animation: pop-in ...`.
+/// It moves `transform`, and leaves `translate` to keepOnScreen().
+@mixin pop-in-keyframes {
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}

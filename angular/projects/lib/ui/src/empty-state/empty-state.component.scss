@@ -1,0 +1,51 @@
+@use "../../../sass/kit";
+
+:host {
+  display: block;
+  color: kit.token(text);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.35rem;
+  border-radius: 50%;
+  background: kit.token(primary-soft);
+  color: kit.token(primary-soft-text);
+}
+
+.heading {
+  margin: 0;
+  font-weight: 700;
+}
+
+.text {
+  max-width: 28rem;
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.actions:empty {
+  display: none;
+}

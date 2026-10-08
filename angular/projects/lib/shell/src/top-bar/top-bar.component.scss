@@ -1,0 +1,280 @@
+@use "../../../sass/kit";
+
+:host {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: block;
+}
+
+.topbar {
+  border-bottom: 1px solid kit.token(border);
+  background: color-mix(in srgb, #{kit.token(surface)} 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  color: kit.token(text);
+}
+
+// One row: the brand, the links, then the controls pushed to the right.
+.row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-sizing: border-box;
+  height: kit.token(topbar-height);
+  max-width: var(--anotoki-topbar-max-width, 84rem);
+  margin: 0 auto;
+  padding: 0 1.25rem;
+
+  &.is-narrow {
+    max-width: var(--anotoki-topbar-max-width, 49rem);
+  }
+}
+
+// What gives way on a bar with no room to spare is the person's name (an
+// ellipsis, then the initial alone) - never the brand, the links, the language or the theme.
+anotoki-brand,
+anotoki-theme-toggle,
+anotoki-language-switcher {
+  flex: none;
+}
+
+.nav {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 36px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  color: kit.token(muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+    text-decoration: none;
+  }
+
+  &.is-active {
+    background: kit.token(primary-soft);
+    color: kit.token(primary-soft-text);
+  }
+
+  @include kit.focus-ring;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: kit.token(primary);
+  color: kit.token(primary-contrast);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35rem;
+  font-variant-numeric: tabular-nums;
+
+  &.in-menu {
+    margin-left: auto;
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.round,
+.person-button {
+  @include kit.button-reset;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 1px solid kit.token(border-strong);
+  border-radius: 999px;
+  background: kit.token(surface);
+  color: kit.token(text);
+
+  &:hover {
+    background: kit.token(surface-3);
+  }
+
+  &[aria-expanded="true"] {
+    border-color: kit.token(primary);
+  }
+
+  @include kit.focus-ring;
+}
+
+.round {
+  width: 40px;
+}
+
+.person-button {
+  flex: 0 1 auto;
+  gap: 0.55rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 0.6rem 0 0.3rem;
+  font-weight: 650;
+
+  anotoki-icon {
+    flex: none;
+  }
+}
+
+.initial {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #{kit.token(primary)}, #{kit.token(accent)});
+  color: kit.token(primary-contrast);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.person-name {
+  min-width: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Too narrow for the name as well as the links: the round button alone.
+.is-nameless {
+  .person-name {
+    display: none;
+  }
+
+  .person-button {
+    padding: 0 0.4rem 0 0.3rem;
+  }
+}
+
+// The phone's bar: the brand, the widgets, the language, the theme, the menu button.
+.is-phone {
+  .row {
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+  }
+
+  .actions {
+    gap: 0.4rem;
+  }
+}
+
+// The marks on the phone's menu button: a count, or a dot.
+.mark-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 1.15rem;
+  padding: 0 0.3rem;
+  border: 2px solid kit.token(surface);
+  border-radius: 999px;
+  background: kit.token(primary);
+  color: kit.token(primary-contrast);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.mark-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 2px solid kit.token(surface);
+  border-radius: 50%;
+  background: kit.token(warning);
+}
+
+.visually-hidden {
+  @include kit.visually-hidden;
+}
+
+// The menus' own parts (their boxes and items are the kit's menu).
+.menu-head,
+.menu-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.3rem;
+  padding: 0.55rem 0.7rem 0.65rem;
+  border-bottom: 1px solid kit.token(border);
+}
+
+.menu-note {
+  gap: 0.2rem;
+  border-radius: kit.token(radius);
+  border-bottom: 0;
+  background: kit.token(warning-soft);
+
+  strong {
+    color: kit.token(warning-text);
+    font-size: 0.875rem;
+  }
+
+  span {
+    color: kit.token(text);
+    font-size: 0.8125rem;
+  }
+}
+
+.menu-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.menu-email {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.menu-role {
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: kit.token(primary-soft);
+  color: kit.token(primary-soft-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.external {
+  margin-left: auto;
+}
+
+@media print {
+  :host {
+    display: none;
+  }
+}

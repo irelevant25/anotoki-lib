@@ -1,0 +1,69 @@
+@use "../../../sass/kit";
+
+:host {
+  --_bg: #{kit.token(info-soft)};
+  --_border: #{kit.token(info-border)};
+  --_accent: #{kit.token(info)};
+
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--_border);
+  border-radius: kit.token(radius);
+  background: var(--_bg);
+  color: kit.token(text);
+}
+
+:host([data-tone="success"]) {
+  --_bg: #{kit.token(success-soft)};
+  --_border: #{kit.token(success-border)};
+  --_accent: #{kit.token(success)};
+}
+
+:host([data-tone="warning"]) {
+  --_bg: #{kit.token(warning-soft)};
+  --_border: #{kit.token(warning-border)};
+  --_accent: #{kit.token(warning)};
+}
+
+:host([data-tone="danger"]) {
+  --_bg: #{kit.token(danger-soft)};
+  --_border: #{kit.token(danger-border)};
+  --_accent: #{kit.token(danger)};
+}
+
+@include kit.slot-wrappers(alertActions);
+
+.icon {
+  margin-top: 0.05rem;
+  color: var(--_accent);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.heading {
+  margin: 0;
+  font-weight: 700;
+}
+
+.text {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.actions:empty {
+  display: none;
+}

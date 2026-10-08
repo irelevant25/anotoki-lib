@@ -1,0 +1,9 @@
+<anotoki-alert tone="danger" [heading]="heading()" [announce]="true">
+    {{ message() }}
+    <div alertActions>
+        <button anotokiButton size="sm" variant="secondary" [attr.lang]="lang()" (click)="retry.emit()">
+            <anotoki-icon name="refresh" [size]="15" />
+            {{ label() }}
+        </button>
+    </div>
+</anotoki-alert>

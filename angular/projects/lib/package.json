@@ -1,7 +1,7 @@
 {
   "name": "@anotoki/lib",
-  "version": "0.1.1",
-  "description": "What the anotoki sites share, the Angular half: @anotoki/lib/migrations - the site's status, the gate in front of its pages, the update banner and the admin Migrations page. The PHP half is the Composer package anotoki/lib.",
+  "version": "0.2.0",
+  "description": "What the anotoki sites share, the Angular half: the family's styles (@anotoki/lib/styles), UI kit (@anotoki/lib/ui and its entry points), top bar and frame (@anotoki/lib/shell), and the migrations module (@anotoki/lib/migrations, @anotoki/lib/migrations/page). The PHP half is the Composer package anotoki/lib.",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
@@ -15,7 +15,16 @@
     "rxjs": "^7.8.0"
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
     "tslib": "^2.3.0"
+  },
+  "exports": {
+    "./styles": {
+      "sass": "./styles/_index.scss"
+    },
+    "./assets/*": {
+      "default": "./assets/*"
+    }
   },
   "sideEffects": false
 }

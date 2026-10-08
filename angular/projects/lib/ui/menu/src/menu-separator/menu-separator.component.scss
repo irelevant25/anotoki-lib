@@ -1,0 +1,9 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: block;
+  flex: none;
+  height: 1px;
+  margin: 0.3rem 0;
+  background: kit.token(border);
+}

@@ -1,0 +1,105 @@
+@use "../../../sass/kit";
+
+:host {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+@include kit.pop-in-keyframes;
+
+// The top bar's form: forty wide and no wider - beside it, on a 360 px phone,
+// the brand, the theme and the menu button still have to fit.
+.switcher {
+  @include kit.button-reset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid kit.token(border-strong);
+  border-radius: 999px;
+  background: kit.token(surface);
+  color: kit.token(text);
+  font-size: 0.8125rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+
+  &:hover {
+    background: kit.token(surface-3);
+  }
+
+  &[aria-expanded="true"] {
+    border-color: kit.token(primary);
+  }
+
+  &[aria-busy="true"] {
+    color: kit.token(muted);
+  }
+
+  @include kit.focus-ring;
+}
+
+// More languages than segments fit: a select of their names, no wider than it needs to be.
+.select {
+  box-sizing: border-box;
+  width: 11rem;
+  max-width: 50vw;
+  height: kit.token(control-height-sm);
+  margin: 0;
+  padding: 0 2.1rem 0 0.75rem;
+  border: 1px solid kit.token(border-strong);
+  border-radius: kit.token(radius);
+  background-color: kit.token(surface);
+  background-image: linear-gradient(45deg, transparent 50%, #{kit.token(muted)} 50%), linear-gradient(135deg, #{kit.token(muted)} 50%, transparent 50%);
+  background-position:
+    calc(100% - 1rem) 52%,
+    calc(100% - 0.7rem) 52%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+  color: kit.token(text);
+  font: inherit;
+  font-size: 0.875rem;
+  appearance: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    border-color: kit.token(primary);
+    outline: none;
+    box-shadow: 0 0 0 3px kit.token(ring);
+  }
+}
+
+.visually-hidden {
+  @include kit.visually-hidden;
+}
+
+// Under the control: a language that could not be had, or that the account would not take.
+.note {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 40;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(17rem, calc(100vw - 1.5rem));
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  animation: pop-in 140ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

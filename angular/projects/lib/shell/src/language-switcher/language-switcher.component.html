@@ -1,0 +1,35 @@
+@if (offered()) {
+    @switch (form()) {
+        @case ("menu") {
+            <button
+                type="button"
+                class="switcher"
+                [anotokiMenuTrigger]="menu"
+                [attr.aria-label]="buttonName()"
+                [attr.title]="buttonName()"
+                [attr.aria-busy]="switching() ? 'true' : null"
+                [attr.lang]="words.foreignLang()">
+                {{ code() }}
+            </button>
+            <anotoki-menu #menu [label]="words.t('language.label')" [minWidth]="10">
+                @for (language of languages(); track language.code) {
+                    <button anotokiMenuItem [radio]="language.code === current()" [attr.lang]="language.code" (click)="choose(language.code)">{{ language.name }}</button>
+                }
+            </anotoki-menu>
+        }
+        @case ("segmented") {
+            <anotoki-segmented size="sm" [label]="words.t('language.label')" [options]="segments()" [value]="current()" [busy]="switching()" (valueChange)="choose($event)" />
+        }
+        @default {
+            <label class="visually-hidden" [for]="selectId" [attr.lang]="words.foreignLang()">{{ words.t("language.label") }}</label>
+            <select #select class="select" [id]="selectId" [attr.aria-busy]="switching() ? 'true' : null" (change)="onSelect($event)">
+                @for (language of languages(); track language.code) {
+                    <option [value]="language.code" [selected]="language.code === current()" [attr.lang]="language.code">{{ language.name }}</option>
+                }
+            </select>
+        }
+    }
+    @if (note(); as said) {
+        <p #note class="note" role="alert" [attr.lang]="words.foreignLang()">{{ said }}</p>
+    }
+}

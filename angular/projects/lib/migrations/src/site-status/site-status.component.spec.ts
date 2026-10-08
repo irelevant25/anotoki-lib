@@ -1,6 +1,9 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { AnotokiMigrationsConfig } from '../config';
+import { SiteGateComponent } from '../site-gate/site-gate.component';
+import { SitePagesDirective } from '../site-gate/site-pages.directive';
 import { SiteStatus } from '../site-status.service';
 import { STATUS_URL, TestSite, provideTestSite, settle, testSite, words } from '../testing';
 import { SiteStatusComponent } from './site-status.component';
@@ -46,7 +49,10 @@ describe('<anotoki-site-status>: what people see while the site is not ready', (
       expect(title()).toBe('The site is being updated');
       expect(text()).toBe('It will be back in a few minutes. This page reloads by itself.');
       expect(actions()).toEqual(['Sign in']);
-      expect(host.querySelector('button')?.classList).toContain('quiet');
+      // Quiet - it reads as a link - with a button's 44 px target all the same (the kit's link button).
+      expect(host.querySelector('button')?.classList).toContain('anotoki-button');
+      expect(host.querySelector('button')?.classList).toContain('is-link');
+      expect(host.querySelector('button')?.classList).not.toContain('is-sm');
       expect(host.textContent).not.toMatch(/update_pending|503|setup|migration|database|error/i);
       expect(section()?.getAttribute('role')).toBe('status');
 
@@ -260,20 +266,82 @@ describe('<anotoki-site-status>: what people see while the site is not ready', (
       http.expectNone(STATUS_URL);
     });
 
-    it('Try again asks now, and the page reloads once the site is back', async () => {
+    it('Try again asks now - and cannot be pressed again meanwhile - and the page reloads once the site is back', async () => {
       setUp();
       status.report('unavailable');
       await draw();
 
       button('Try again').click();
+      await settle(fixture);
+      expect(button('Try again').disabled).toBe(true);
+      expect(button('Try again').getAttribute('aria-busy')).toBe('true');
       http.expectOne(STATUS_URL).flush({ state: 'unavailable', installed: true });
       await settle(fixture);
       expect(site.reload).not.toHaveBeenCalled();
+      expect(button('Try again').disabled).toBe(false);
 
       button('Try again').click();
       http.expectOne(STATUS_URL).flush({ state: 'ready', installed: true });
       await settle(fixture);
       expect(site.reload).toHaveBeenCalledTimes(1);
     });
+
+    it('reloads without telling SiteStatus the site is ready first: the gate stays shut until the page goes', async () => {
+      setUp();
+      status.report('update_pending');
+      await draw();
+
+      vi.advanceTimersByTime(30_000);
+      http.expectOne(STATUS_URL).flush({ state: 'ready', installed: true });
+      await settle(fixture);
+      expect(site.reload).toHaveBeenCalledTimes(1);
+      expect(status.state()).toBe('update-pending');
+      expect(title()).toBe('The site is being updated');
+    });
+
+    it('around a gate: the pages are never made in the page that is about to reload', async () => {
+      setUp();
+      made = 0;
+      status.report('update_pending');
+      const gated = TestBed.createComponent(GatedPagesComponent);
+      await settle(gated);
+      expect(made).toBe(0);
+
+      vi.advanceTimersByTime(30_000);
+      http.expectOne(STATUS_URL).flush({ state: 'ready', installed: true });
+      await settle(gated);
+      expect(site.reload).toHaveBeenCalledTimes(1);
+      expect(made).toBe(0);
+      expect(gated.nativeElement.querySelector('anotoki-site-status')).not.toBeNull();
+    });
+
+    it('any other answer is told: a site that went from updating to unavailable says so', async () => {
+      setUp();
+      status.report('update_pending');
+      await draw();
+      vi.advanceTimersByTime(30_000);
+      http.expectOne(STATUS_URL).flush({ state: 'unavailable', installed: true });
+      await settle(fixture);
+      expect(status.state()).toBe('unavailable');
+      expect(title()).toBe('The site is not available right now');
+      expect(site.reload).not.toHaveBeenCalled();
+    });
   });
 });
+
+/** Counts how often the gated page is made. */
+let made = 0;
+
+@Component({ selector: 'anotoki-test-counted', template: '<p>Counted</p>' })
+class CountedComponent {
+  constructor() {
+    made += 1;
+  }
+}
+
+@Component({
+  selector: 'anotoki-test-gated',
+  imports: [SiteGateComponent, SitePagesDirective, CountedComponent],
+  template: '<anotoki-site-gate><ng-template anotokiSitePages><anotoki-test-counted /></ng-template></anotoki-site-gate>',
+})
+class GatedPagesComponent {}

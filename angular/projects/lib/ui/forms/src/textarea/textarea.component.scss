@@ -1,0 +1,11 @@
+@use "../field";
+
+@include field.styles;
+
+.multiline {
+  height: auto;
+  min-height: 5.5rem;
+  padding: 0.6rem 0.8rem;
+  line-height: 1.5;
+  resize: vertical;
+}

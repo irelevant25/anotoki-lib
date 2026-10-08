@@ -1,0 +1,137 @@
+@use "../../../sass/kit";
+
+:host {
+  --_shell-width: 84rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+// With a side navigation the frame is wider - and the family's bar in it lines up.
+:host(.has-nav) {
+  --_shell-width: 88rem;
+  --anotoki-topbar-max-width: 88rem;
+}
+
+.skip-link {
+  position: absolute;
+  top: -4rem;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow);
+  font-weight: 650;
+  text-decoration: none;
+
+  &:focus {
+    top: 0.75rem;
+  }
+
+  @include kit.focus-ring;
+}
+
+.frame {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--_shell-width);
+  margin: 0 auto;
+}
+
+:host(.has-nav) .frame {
+  grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.sidenav {
+  position: sticky;
+  top: kit.token(topbar-height);
+  align-self: start;
+  padding: 1.5rem 0.75rem;
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: kit.token(radius);
+  color: kit.token(muted);
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+    text-decoration: none;
+  }
+
+  &.is-active {
+    background: kit.token(primary-soft);
+    color: kit.token(primary-soft-text);
+
+    anotoki-icon {
+      color: kit.token(primary);
+    }
+  }
+
+  @include kit.focus-ring;
+}
+
+.content {
+  min-width: 0;
+  padding: 2rem 1.75rem 4rem;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+@media (max-width: 860px) {
+  :host(.has-nav) .frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  // The side navigation becomes a strip of links under the bar.
+  .sidenav {
+    z-index: 10;
+    padding: 0.5rem 0.75rem;
+    overflow-x: auto;
+    border-bottom: 1px solid kit.token(border);
+    background: color-mix(in srgb, #{kit.token(bg)} 92%, transparent);
+    backdrop-filter: blur(8px);
+    scrollbar-width: none;
+
+    ul {
+      flex-direction: row;
+      gap: 0.25rem;
+    }
+  }
+
+  .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .content {
+    padding: 1.25rem 1rem 3rem;
+  }
+}

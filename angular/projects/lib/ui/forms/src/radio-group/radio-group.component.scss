@@ -1,0 +1,89 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: block;
+  color: kit.token(text);
+}
+
+.group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: 0.45rem;
+  padding: 0;
+  color: kit.token(text);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.6rem;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid kit.token(border-strong);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+  cursor: pointer;
+  transition:
+    border-color kit.token(duration) kit.token(ease),
+    background-color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    border-color: color-mix(in srgb, #{kit.token(primary)} 40%, #{kit.token(border-strong)});
+  }
+
+  &.is-checked {
+    border-color: kit.token(primary);
+    background: kit.token(primary-soft);
+  }
+
+  // The ring around the whole card: the radio inside is too small to carry it.
+  &:has(input:focus-visible) {
+    box-shadow: 0 0 0 3px kit.token(ring);
+    outline: 2px solid kit.token(focus);
+    outline-offset: 2px;
+  }
+}
+
+.group:disabled .option {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.15rem 0 0;
+  accent-color: kit.token(primary);
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.option-label {
+  font-weight: 650;
+}
+
+.option-hint {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}

@@ -1,0 +1,8 @@
+<div class="empty">
+    <span class="icon"><anotoki-icon [name]="icon()" [size]="22" /></span>
+    <p class="heading">{{ heading() }}</p>
+    @if (text()) {
+        <p class="text">{{ text() }}</p>
+    }
+    <div class="actions"><ng-content /></div>
+</div>

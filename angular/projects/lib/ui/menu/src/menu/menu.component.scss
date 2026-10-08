@@ -1,0 +1,39 @@
+@use "../../../../sass/kit";
+
+// The menu takes no room where it is written: its box is drawn over the page.
+:host {
+  display: contents;
+}
+
+@include kit.pop-in-keyframes;
+
+// In the top layer (popover="manual"), placed by the component under its
+// button; the popover's own defaults (centred, a border, Canvas colours) are
+// set aside here.
+.panel {
+  position: fixed;
+  inset: auto;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 0.4rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-lg);
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  text-align: left;
+  animation: pop-in 140ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

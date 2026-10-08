@@ -1,0 +1,158 @@
+@use "../../../src/theme";
+
+:host {
+  @include theme.tokens;
+  display: block;
+  color: var(--_text);
+}
+
+.notice {
+  margin: 0;
+  color: var(--_muted);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.result-text,
+.result-note {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.result-note {
+  margin-top: 0.5rem;
+  color: var(--_muted);
+}
+
+.error,
+.sql {
+  box-sizing: border-box;
+  padding: 0.75rem;
+  overflow: auto;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--_bg);
+  color: var(--_text);
+  font-family: var(--_font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+// What the database said: its own lines, wrapped to the box.
+.error {
+  max-height: 18rem;
+  margin: 0.75rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+// A file as it is written: long lines scroll.
+.sql {
+  max-height: min(60vh, 34rem);
+  margin: 0;
+  white-space: pre;
+  tab-size: 4;
+
+  &:focus-visible {
+    outline: 2px solid var(--anotoki-focus, var(--_primary));
+    outline-offset: 2px;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.card-text {
+  margin: 0;
+  color: var(--_muted);
+}
+
+.set {
+  margin: 1rem 0 0;
+  color: var(--_muted);
+  font-family: var(--_font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.set + .files {
+  margin-top: 0.5rem;
+}
+
+.file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius);
+  background: var(--_bg);
+}
+
+.name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  font-family: var(--_font-mono);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.when {
+  color: var(--_muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+// View stays at the row's end, also on the line it wraps to in a narrow card.
+.file > button {
+  margin-left: auto;
+}
+
+.why {
+  flex-basis: 100%;
+  color: var(--_muted);
+  font-size: 0.85rem;
+}
+
+.dialog-text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.copied {
+  flex: 1 1 auto;
+  align-self: center;
+  margin: 0;
+  color: var(--_muted);
+  font-size: 0.875rem;
+}

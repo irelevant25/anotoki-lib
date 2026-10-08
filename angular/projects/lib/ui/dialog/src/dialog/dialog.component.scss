@@ -1,0 +1,165 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: contents;
+}
+
+@include kit.slot-wrappers(dialogFooter);
+
+// Its own name, always set here: a custom property inherits, and an ancestor's --_width (the frame's) must not size the dialog.
+.dialog {
+  --_dialog-width: 34rem;
+
+  box-sizing: border-box;
+  width: min(100% - 2rem, var(--_dialog-width));
+  max-width: none;
+  max-height: min(100dvh - 2rem, 52rem);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-xl);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-lg);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.dialog[data-size="sm"] {
+  --_dialog-width: 27rem;
+}
+
+.dialog[data-size="lg"] {
+  --_dialog-width: 46rem;
+}
+
+.dialog[open] {
+  animation: dialog-in 180ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.dialog::backdrop {
+  background: kit.token(backdrop);
+  backdrop-filter: blur(2px);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 1.35rem 0.4rem;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.9rem;
+}
+
+.close {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: -0.45rem -0.6rem 0 0;
+  border-radius: 50%;
+  color: kit.token(muted);
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @include kit.focus-ring;
+}
+
+.body {
+  padding: 0.6rem 1.35rem 1.1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// A question said by its heading and description alone has no body.
+.body:empty {
+  display: none;
+}
+
+.header:has(+ .body:empty) {
+  padding-bottom: 1.1rem;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.9rem 1.35rem 1.2rem;
+  border-top: 1px solid kit.token(border);
+  background: kit.token(surface-2);
+}
+
+.footer:empty {
+  display: none;
+}
+
+@media (max-width: 520px) {
+  .dialog {
+    width: calc(100% - 1rem);
+    max-height: calc(100dvh - 1rem);
+    border-radius: kit.token(radius-lg);
+  }
+
+  .header {
+    padding: 1rem 1rem 0.35rem;
+  }
+
+  .body {
+    padding: 0.5rem 1rem 1rem;
+  }
+
+  .footer {
+    padding: 0.8rem 1rem 1rem;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}

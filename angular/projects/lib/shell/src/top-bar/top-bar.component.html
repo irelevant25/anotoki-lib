@@ -1,0 +1,163 @@
+<header class="topbar" [class.is-phone]="phone()" [class.is-nameless]="nameless()" (keydown)="onKeydown($event)">
+    <div #row class="row" [class.is-narrow]="width() === 'narrow'">
+        <anotoki-brand
+            [size]="32"
+            [showName]="!shortBrand()"
+            [area]="brandArea()"
+            [panel]="brand().panel ?? null"
+            [link]="brand().link"
+            [label]="brand().label"
+            [current]="brand().current ?? false"
+            [lang]="brand().lang ?? null" />
+
+        @if (!phone() && links().length) {
+            <nav class="nav" [attr.aria-label]="navLabel() || words.t('topbar.sections')">
+                @for (link of links(); track link.id) {
+                    <a class="link" [routerLink]="link.path" [class.is-active]="inSection(link)" [attr.aria-current]="isPage(link) ? 'page' : null" [attr.lang]="link.lang ?? null">
+                        {{ link.label }}
+                        @if (hasBadge(link)) {
+                            <span class="badge">{{ link.badge }}</span>
+                        }
+                    </a>
+                }
+            </nav>
+        }
+
+        <div class="actions">
+            <ng-content select="[topBarWidgets]" />
+            @if (languages()) {
+                <anotoki-language-switcher appearance="menu" (changed)="languageChanged.emit($event)" />
+            }
+            <anotoki-theme-toggle [iconsOnly]="true" />
+
+            @if (phone()) {
+                @if (phoneMenuHolds()) {
+                    <button
+                        type="button"
+                        class="round menu-button"
+                        [anotokiMenuTrigger]="phoneMenu"
+                        [attr.aria-label]="phoneMenuName()"
+                        [attr.aria-describedby]="phoneMark()?.description ? markId : null">
+                        <anotoki-icon [name]="phoneMenu.isOpen() ? 'x' : 'menu'" [size]="20" />
+                        @if (phoneMark(); as mark) {
+                            @if (mark.badge !== undefined && mark.badge !== null && mark.badge !== "" && mark.badge !== 0) {
+                                <span class="mark-badge" aria-hidden="true">{{ mark.badge }}</span>
+                            } @else if (mark.dot) {
+                                <span class="mark-dot" aria-hidden="true"></span>
+                            }
+                            @if (mark.description) {
+                                <span class="visually-hidden" [id]="markId">{{ mark.description }}</span>
+                            }
+                        }
+                    </button>
+                    <anotoki-menu #phoneMenu [label]="phoneMenuName()" align="end" [minWidth]="15">
+                        <ng-container [ngTemplateOutlet]="note" />
+                        @for (link of links(); track link.id) {
+                            <a anotokiMenuItem [routerLink]="link.path" [class.is-active]="inSection(link)" [attr.aria-current]="isPage(link) ? 'page' : null" [attr.lang]="link.lang ?? null">
+                                {{ link.label }}
+                                @if (hasBadge(link)) {
+                                    <span class="badge in-menu">{{ link.badge }}</span>
+                                }
+                            </a>
+                        }
+                        @if (links().length && (person() || signIn())) {
+                            <anotoki-menu-separator />
+                        }
+                        @if (person()) {
+                            <ng-container [ngTemplateOutlet]="personItems" />
+                        } @else if (signIn()) {
+                            <button anotokiMenuItem stay class="sign-in-item" [disabled]="waiting() === 'signIn'" [attr.aria-busy]="waiting() === 'signIn' ? 'true' : null" (click)="run('signIn')">
+                                @if (waiting() === "signIn") {
+                                    <anotoki-spinner size="sm" />
+                                    {{ words.t("topbar.saving") }}
+                                } @else {
+                                    <anotoki-icon name="logIn" [size]="17" />
+                                    {{ words.t("topbar.signIn") }}
+                                }
+                            </button>
+                        }
+                    </anotoki-menu>
+                }
+            } @else if (person(); as me) {
+                <button type="button" class="person-button" [anotokiMenuTrigger]="personMenu" [attr.aria-label]="words.t('topbar.menuButton', { name: me.name })">
+                    <span class="initial" aria-hidden="true">{{ initial() }}</span>
+                    <span class="person-name">{{ me.name }}</span>
+                    <anotoki-icon name="chevronDown" [size]="16" />
+                </button>
+                <anotoki-menu #personMenu [label]="words.t('topbar.menu')" align="end" [minWidth]="15">
+                    <ng-container [ngTemplateOutlet]="note" />
+                    <ng-container [ngTemplateOutlet]="personItems" />
+                </anotoki-menu>
+            } @else if (signIn()) {
+                <button anotokiButton size="sm" variant="primary" class="sign-in" [disabled]="waiting() === 'signIn'" [attr.aria-busy]="waiting() === 'signIn' ? 'true' : null" (click)="run('signIn')">
+                    @if (waiting() === "signIn") {
+                        <anotoki-spinner size="sm" />
+                        {{ words.t("topbar.saving") }}
+                    } @else {
+                        <anotoki-icon name="logIn" [size]="16" />
+                        {{ words.t("topbar.signIn") }}
+                    }
+                </button>
+            }
+        </div>
+    </div>
+</header>
+
+<!-- What heads both menus: a note from the site ("Not saved yet"). -->
+<ng-template #note>
+    @if (menuNote(); as said) {
+        <div class="menu-note" role="none">
+            <strong>{{ said.title }}</strong>
+            @if (said.text) {
+                <span>{{ said.text }}</span>
+            }
+        </div>
+    }
+</ng-template>
+
+<!-- The person's menu: on its own button on a desktop, after the links in the phone's menu. -->
+<ng-template #personItems>
+    @if (person(); as me) {
+        <div class="menu-head" role="none">
+            <span class="menu-name">{{ me.name }}</span>
+            @if (me.email && me.email !== me.name) {
+                <span class="menu-email">{{ me.email }}</span>
+            }
+            @if (me.role) {
+                <span class="menu-role">{{ me.role }}</span>
+            }
+        </div>
+        @for (item of menuItems(); track item.id) {
+            @if (item.href) {
+                <a anotokiMenuItem [href]="item.href" [attr.target]="item.newTab ? '_blank' : null" [attr.rel]="item.newTab ? 'noopener' : null" [attr.lang]="item.lang ?? null">
+                    @if (item.icon) {
+                        <anotoki-icon [name]="item.icon" [size]="17" />
+                    }
+                    {{ item.label }}
+                    @if (item.newTab) {
+                        <anotoki-icon class="external" name="externalLink" [size]="14" />
+                    }
+                </a>
+            } @else {
+                <a anotokiMenuItem [routerLink]="item.path ?? '/'" [attr.lang]="item.lang ?? null">
+                    @if (item.icon) {
+                        <anotoki-icon [name]="item.icon" [size]="17" />
+                    }
+                    {{ item.label }}
+                </a>
+            }
+        }
+        @if (signOut()) {
+            <anotoki-menu-separator />
+            <button anotokiMenuItem stay class="sign-out-item" [disabled]="waiting() === 'signOut'" [attr.aria-busy]="waiting() === 'signOut' ? 'true' : null" (click)="run('signOut')">
+                @if (waiting() === "signOut") {
+                    <anotoki-spinner size="sm" />
+                    {{ words.t("topbar.saving") }}
+                } @else {
+                    <anotoki-icon name="logOut" [size]="17" />
+                    {{ words.t("topbar.signOut") }}
+                }
+            </button>
+        }
+    }
+</ng-template>

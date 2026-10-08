@@ -1,0 +1,4 @@
+<anotoki-segmented [label]="words.t('theme.label')" [options]="options()" [value]="theme.mode()" [iconsOnly]="iconsOnly()" [attr.lang]="words.foreignLang()" (valueChange)="choose($event)" />
+@if (theme.refused()) {
+    <p #note class="note" role="alert" [attr.lang]="words.foreignLang()">{{ words.t("theme.notSaved") }}</p>
+}

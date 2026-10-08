@@ -35,7 +35,7 @@ export class SiteStatus {
   private readonly _state = signal<SiteState>('unknown');
   /** Never offer the setup page unless the server said the site was never installed. */
   private readonly _installed = signal(true);
-  private asking: Promise<SiteState> | null = null;
+  private asking: Promise<Answer> | null = null;
 
   readonly state = this._state.asReadonly();
   readonly installed = this._installed.asReadonly();
@@ -50,8 +50,26 @@ export class SiteStatus {
    * body, counts as 'unavailable'. Calls made while one is under way share it.
    */
   check(): Promise<SiteState> {
-    this.asking ??= this.ask().finally(() => (this.asking = null));
-    return this.asking;
+    return this.answer().then(({ state, installed }) => {
+      this.report(state, installed);
+      return state;
+    });
+  }
+
+  /**
+   * Asks the status path for a page that reloads once the site is ready (the
+   * status page): a 'ready' answer is returned and not reported. Reported, it
+   * would reopen the gate, and the site's pages would be made - and send their
+   * requests - in a page that is about to go. Any other answer is reported, as
+   * check() does.
+   */
+  checkForReload(): Promise<SiteState> {
+    return this.answer().then(({ state, installed }) => {
+      if (state !== 'ready') {
+        this.report(state, installed);
+      }
+      return state;
+    });
   }
 
   /** What an API answer said: the server's code ('update_pending', 'not_set_up', ...), and whether the site was installed. */
@@ -71,7 +89,13 @@ export class SiteStatus {
     this._state.set('ready');
   }
 
-  private async ask(): Promise<SiteState> {
+  /** The server's answer; calls made while one is under way share it. */
+  private answer(): Promise<Answer> {
+    this.asking ??= this.ask().finally(() => (this.asking = null));
+    return this.asking;
+  }
+
+  private async ask(): Promise<Answer> {
     let body: Record<string, unknown> | null;
     try {
       body = jsonObject(await firstValueFrom(this.http.get<unknown>(this.config.statusUrl)));
@@ -81,7 +105,12 @@ export class SiteStatus {
 
     const state = stateNamed(body?.['state']) ?? stateNamed(body?.['code']) ?? 'unavailable';
     const installed = body?.['installed'];
-    this.report(state, typeof installed === 'boolean' ? installed : undefined);
-    return state;
+    return { state, installed: typeof installed === 'boolean' ? installed : undefined };
   }
+}
+
+/** What the status path said. */
+interface Answer {
+  state: Exclude<SiteState, 'unknown'>;
+  installed?: boolean;
 }

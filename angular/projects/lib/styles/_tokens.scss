@@ -1,0 +1,285 @@
+////
+/// The anotoki family's tokens: one palette, light and dark, written as
+/// --anotoki-* custom properties.
+///
+/// The palette is the IAM's (the owner's preferred look), with what was under
+/// WCAG AA made to reach it: the inks on soft grounds, success-text and
+/// warning-text (5.1:1 and 5.3:1 on success-soft / warning-soft), and
+/// border-strong, the edge of every control, at 3:1 on every ground in both
+/// themes (WCAG 1.4.11; the decorative `border` of cards and separators stays
+/// light). A site changes any colour, light and dark, and its font through
+/// root()'s options; everything it leaves alone keeps the family's value.
+///
+/// The kit's components read every token through token(), whose fallback is
+/// the family's own value on light-dark(): a page that writes no tokens at all
+/// still gets the family look, following its color-scheme.
+////
+
+@use "sass:list";
+@use "sass:map";
+@use "sass:meta";
+@use "sass:string";
+
+/// The light palette.
+$light: (
+  bg: #f3f6fb,
+  surface: #ffffff,
+  surface-2: #f7f9fc,
+  surface-3: #eef2f8,
+  surface-raised: #ffffff,
+  border: #dde4ef,
+  // The edges of fields, selects, code boxes, radio cards and segmented controls: 3:1 on every ground (WCAG 1.4.11).
+  border-strong: #7a8ca5,
+  text: #0f1b33,
+  muted: #5b6880,
+  subtle: #6b778d,
+  primary: #1f5fbf,
+  primary-hover: #194f9f,
+  primary-contrast: #ffffff,
+  primary-soft: #e7effb,
+  primary-soft-text: #1a4f9e,
+  accent: #3b8ee8,
+  link: #1f5fbf,
+  danger: #c62f3b,
+  danger-hover: #a8242f,
+  danger-contrast: #ffffff,
+  danger-soft: #fbeaec,
+  danger-border: #f1c3c8,
+  success: #177f4d,
+  success-text: #147446,
+  success-soft: #e6f4ec,
+  success-border: #bfe3cf,
+  warning: #9a6512,
+  warning-text: #8c5a0e,
+  warning-soft: #fbf2e1,
+  warning-border: #eed6a8,
+  info: #1f5fbf,
+  info-soft: #e7effb,
+  info-border: #c5d7f3,
+  ring: rgb(31 95 191 / 32%),
+  focus: #1f5fbf,
+  backdrop: rgb(15 27 51 / 45%),
+  skeleton: #e6ebf3,
+  skeleton-shine: #f3f6fb,
+  shadow-sm: (
+    0 1px 2px rgb(15 27 51 / 6%),
+  ),
+  shadow: (
+    0 1px 2px rgb(15 27 51 / 5%),
+    0 8px 24px rgb(15 27 51 / 6%),
+  ),
+  shadow-lg: (
+    0 4px 12px rgb(15 27 51 / 8%),
+    0 24px 56px rgb(15 27 51 / 14%),
+  ),
+  // The anotoki mark (a navy picture): the family's soft shadow in light, a light halo in dark or it sinks into the bar.
+  mark-shadow: drop-shadow(0 2px 6px rgb(0 0 0 / 18%)),
+);
+
+/// The dark palette: the same names.
+$dark: (
+  bg: #070d1c,
+  surface: #0e1830,
+  surface-2: #132044,
+  surface-3: #18284f,
+  surface-raised: #122042,
+  border: #22325a,
+  border-strong: #5e72a3,
+  text: #e8eefb,
+  muted: #9aa8c4,
+  subtle: #8b99b6,
+  primary: #4d8ff0,
+  primary-hover: #6aa2f4,
+  primary-contrast: #06101f,
+  primary-soft: rgb(77 143 240 / 16%),
+  primary-soft-text: #a9c8f8,
+  accent: #8fc2ff,
+  link: #8fc2ff,
+  danger: #ff6b75,
+  danger-hover: #ff8a92,
+  danger-contrast: #1f0609,
+  danger-soft: rgb(255 107 117 / 12%),
+  danger-border: rgb(255 107 117 / 35%),
+  success: #4cc38a,
+  success-text: #4cc38a,
+  success-soft: rgb(76 195 138 / 12%),
+  success-border: rgb(76 195 138 / 35%),
+  warning: #e5b454,
+  warning-text: #e5b454,
+  warning-soft: rgb(229 180 84 / 12%),
+  warning-border: rgb(229 180 84 / 35%),
+  info: #8fc2ff,
+  info-soft: rgb(143 194 255 / 12%),
+  info-border: rgb(143 194 255 / 32%),
+  ring: rgb(77 143 240 / 45%),
+  focus: #8fc2ff,
+  backdrop: rgb(2 5 14 / 70%),
+  skeleton: #16244a,
+  skeleton-shine: #1d2e5a,
+  shadow-sm: (
+    0 1px 2px rgb(0 0 0 / 35%),
+  ),
+  shadow: (
+    0 1px 2px rgb(0 0 0 / 30%),
+    0 10px 28px rgb(0 0 0 / 30%),
+  ),
+  shadow-lg: (
+    0 6px 16px rgb(0 0 0 / 35%),
+    0 28px 64px rgb(0 0 0 / 45%),
+  ),
+  mark-shadow: (
+    drop-shadow(0 0 1px rgb(255 255 255 / 70%)) drop-shadow(0 0 6px rgb(255 255 255 / 22%)),
+  ),
+);
+
+/// Tokens that are another token unless a site says otherwise: the brand's area
+/// ("account", "survey") has the bar's soft primary ink.
+$aliases: (
+  brand-area: primary-soft-text,
+);
+
+/// The same in both themes.
+$shared: (
+  font-sans: (
+    "Manrope Variable",
+    "Manrope",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif,
+  ),
+  font-mono: (
+    ui-monospace,
+    "Cascadia Code",
+    "SF Mono",
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace,
+  ),
+  radius-sm: 6px,
+  radius: 10px,
+  radius-lg: 16px,
+  radius-xl: 20px,
+  control-height: 44px,
+  control-height-sm: 34px,
+  // What sticks under the top bar starts there.
+  topbar-height: 60px,
+  duration: 160ms,
+  ease: cubic-bezier(0.2, 0.7, 0.2, 1),
+);
+
+@function _css($value) {
+  @return meta.inspect($value);
+}
+
+/// One token as CSS: `var(--anotoki-<name>, <the family's value>)`. Colours fall
+/// back on light-dark(), so they follow the page's color-scheme even where no
+/// token is written; shadows and the mark's filter fall back on the light value.
+@function token($name) {
+  @if map.has-key($aliases, $name) {
+    @return string.unquote("var(--anotoki-#{$name}, #{token(map.get($aliases, $name))})");
+  }
+  @if map.has-key($light, $name) {
+    $light-value: map.get($light, $name);
+    $dark-value: map.get($dark, $name);
+    @if meta.type-of($light-value) == color and meta.type-of($dark-value) == color {
+      @return string.unquote("var(--anotoki-#{$name}, light-dark(#{_css($light-value)}, #{_css($dark-value)}))");
+    }
+    @return string.unquote("var(--anotoki-#{$name}, #{_css($light-value)})");
+  }
+  @if map.has-key($shared, $name) {
+    @return string.unquote("var(--anotoki-#{$name}, #{_css(map.get($shared, $name))})");
+  }
+  @error "There is no anotoki token `#{$name}`.";
+}
+
+@function _checked($overrides, $known, $where) {
+  @if $overrides == null {
+    @return ();
+  }
+  @if meta.type-of($overrides) != map {
+    @error "anotoki: `#{$where}` takes a map of tokens, as (primary: #1f6fd1).";
+  }
+  @each $name in map.keys($overrides) {
+    @if not map.has-key($known, $name) and not map.has-key($aliases, $name) {
+      @error "anotoki: there is no #{$where} token `#{$name}`.";
+    }
+  }
+  @return $overrides;
+}
+
+/// One palette's custom properties, with a site's colours over the family's,
+/// and its color-scheme - for a site that switches themes on a selector of its
+/// own (root() writes both palettes on :root).
+///
+/// @param {String} $scheme - light or dark
+/// @param {Map} $overrides - the site's colours, as (primary: #1f6fd1)
+@mixin palette($scheme, $overrides: ()) {
+  @if $scheme != light and $scheme != dark {
+    @error "anotoki.palette() takes light or dark, not `#{$scheme}`.";
+  }
+  $base: $light;
+  @if $scheme == dark {
+    $base: $dark;
+  }
+  $mine: _checked($overrides, $base, $scheme);
+  color-scheme: $scheme;
+  @each $name, $value in map.merge($base, $mine) {
+    @if not map.has-key($aliases, $name) {
+      --anotoki-#{$name}: #{_css($value)};
+    }
+  }
+  @each $name, $to in $aliases {
+    @if map.has-key($mine, $name) {
+      --anotoki-#{$name}: #{_css(map.get($mine, $name))};
+    } @else {
+      --anotoki-#{$name}: var(--anotoki-#{$to});
+    }
+  }
+}
+
+/// The tokens that are the same in both themes (fonts, radii, sizes, motion).
+@mixin shared($overrides: ()) {
+  $mine: _checked($overrides, $shared, "shared");
+  @each $name, $value in map.merge($shared, $mine) {
+    --anotoki-#{$name}: #{_css($value)};
+  }
+}
+
+/// The family's tokens on :root: light, and dark under prefers-color-scheme
+/// (unless data-theme="light") and under data-theme="dark" - the attribute the
+/// shell's ThemeService and the theme-boot script write.
+///
+/// @param {Map} $options - `light` and `dark` (maps of colours), and any shared
+///   token (`font-sans`, `font-mono`, `radius`, `control-height`, ...)
+/// @example scss
+///   @include anotoki.root((
+///     light: (primary: #1f6fd1, link: #1f6fd1),
+///     dark: (primary: #5aa9ff, link: #5aa9ff),
+///     font-sans: ("Manrope Variable", system-ui, sans-serif),
+///   ));
+@mixin root($options: ()) {
+  @if meta.type-of($options) != map and list.length($options) > 0 {
+    @error "anotoki.root() takes a map: (light: (...), dark: (...), font-sans: ...).";
+  }
+  $light-overrides: map.get($options, light);
+  $dark-overrides: map.get($options, dark);
+  $shared-overrides: map.remove($options, light, dark);
+
+  :root {
+    @include palette(light, $light-overrides);
+    @include shared($shared-overrides);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      @include palette(dark, $dark-overrides);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    @include palette(dark, $dark-overrides);
+  }
+}

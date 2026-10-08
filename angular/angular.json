@@ -41,6 +41,52 @@
           }
         }
       }
+    },
+    "showcase": {
+      "projectType": "application",
+      "root": "projects/showcase",
+      "sourceRoot": "projects/showcase/src",
+      "prefix": "show",
+      "schematics": {
+        "@schematics/angular:component": {
+          "inlineTemplate": false,
+          "inlineStyle": false,
+          "style": "scss",
+          "changeDetection": "OnPush"
+        }
+      },
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/showcase",
+            "index": "projects/showcase/src/index.html",
+            "browser": "projects/showcase/src/main.ts",
+            "tsConfig": "projects/showcase/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              { "glob": "**/*", "input": "projects/showcase/public" },
+              { "glob": "theme-boot.js", "input": "projects/lib/assets", "output": "/" }
+            ],
+            "styles": ["projects/showcase/src/styles.scss"]
+          },
+          "configurations": {
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "showcase:build",
+            "port": 4320
+          }
+        }
+      }
     }
   }
 }

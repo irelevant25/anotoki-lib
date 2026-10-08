@@ -1,0 +1,62 @@
+@use "../../../sass/kit";
+
+:host {
+  --_segment-height: 30px;
+  display: inline-flex;
+  flex: none;
+  max-width: 100%;
+}
+
+:host([data-size="sm"]) {
+  --_segment-height: 26px;
+}
+
+// Three round icons in one pill: 102 by 38 in the bar.
+.segmented {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid kit.token(border-strong);
+  border-radius: 999px;
+  background: kit.token(surface-2);
+}
+
+.segment {
+  @include kit.button-reset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 2.5rem;
+  height: var(--_segment-height);
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: transparent;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  white-space: nowrap;
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: transparent;
+    color: kit.token(text);
+  }
+
+  &[aria-checked="true"] {
+    background: kit.token(surface);
+    color: kit.token(text);
+    box-shadow: kit.token(shadow-sm);
+  }
+
+  @include kit.focus-ring(1px);
+}
+
+.segment.is-icon {
+  width: var(--_segment-height);
+  min-width: 0;
+  padding: 0;
+}

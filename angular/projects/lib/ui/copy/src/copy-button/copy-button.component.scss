@@ -1,0 +1,9 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: inline-flex;
+}
+
+.visually-hidden {
+  @include kit.visually-hidden;
+}

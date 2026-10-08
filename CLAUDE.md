@@ -4,8 +4,9 @@ What the anotoki sites share (the IAM, genshin, survey, Piano Academy, Japanese
 Academy, the build analyzer), in two halves with one version: the Composer
 package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 `@anotoki/lib` (`angular/projects/lib/`, one secondary entry point per module:
-`@anotoki/lib/migrations`). `README.md` says how a site installs, uses and
-updates it, and how to release; `CHANGELOG.md` what each version changed.
+`@anotoki/lib/migrations`, `@anotoki/lib/auth`). `README.md` says how a site
+installs, uses and updates it, and how to release; `CHANGELOG.md` what each
+version changed.
 
 ## Commands
 
@@ -48,3 +49,9 @@ bun run test            # ng test lib --watch=false (Vitest + jsdom)
   works at 360 px; headings, roles and focus for keyboards and screen readers.
 - No composer.lock (a library); nothing sensitive in a file; never print a
   database password.
+- **Signing in** (auth): the IAM's rules do not loosen here - RS256 and `typ`
+  pinned, PKCE, the exact redirect, the same storage keys as the IAM's SDK; who a
+  request is comes from a verified token only, never a cookie (the IAM's sign-in
+  hint says nothing of who), and roles from the token, never the database.
+- **People**: the site's own `users` table through a mapping - the library never
+  makes or reshapes it, keeps no email, and the scrub only UPDATEs.

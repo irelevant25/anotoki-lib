@@ -6,14 +6,17 @@ version:
 
 | Half | Package | Where |
 | --- | --- | --- |
-| PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/` |
+| PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/`, `php/testing/` |
 | Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
 
 Version 0.1.1 holds one module: **migrations** - the engine that brings a
 site's database up to date, and one behaviour for every site while an update
 waits. Unreleased (0.3.0, CHANGELOG.md): the engine's **library sets** - the
 library's own migration files beside a site's - and the PHP half of
-**translations** (the section "Translations" below).
+**translations** (the section "Translations" below). Unreleased (0.4.0):
+**auth** - signing in through the anotoki IAM, both halves, with the sign-in
+hint - and **people** - each site's record of the accounts that use it, and the
+scrub of the accounts the IAM deleted (the sections "Auth" and "People").
 
 ## The behaviour
 
@@ -373,6 +376,299 @@ Angular half is to read the same file and never keep a copy by hand: a script
 is stale - so a page has the library's words while the database cannot be
 reached, and never shows a library key as a key.
 
+## Auth (unreleased, 0.4.0)
+
+Every anotoki site signs in through the anotoki IAM, the same way: the browser
+goes to the IAM (authorization code with PKCE), brings tokens back, and sends
+the access token to the site's own server, which checks it without asking the
+IAM. The IAM's docs/integrating-an-app.md is the contract. This module is that
+contract once, for every site: the IAM's SDKs (`sdk/js/anotoki-auth.mjs` 1.2.0,
+`sdk/php/anotoki_iam.php` 1.1.0) moved into the library - the IAM keeps its
+`sdk/` frozen, for everybody outside the family - with the sites' own wrappers
+around them made one, and the **sign-in hint** (the owner's decision of
+2026-10-07): a person signed in at the IAM is signed in, without a click, on a
+site that lets visitors in.
+
+### The server: `Anotoki\Lib\Auth`
+
+```php
+use Anotoki\Lib\Auth\AccessTokens;
+use Anotoki\Lib\Auth\Http\AuthRoutes;
+use Anotoki\Lib\Auth\Http\Identify;
+use Anotoki\Lib\Auth\Http\RequireCaller;
+use Anotoki\Lib\Auth\Http\RequirePerson;
+use Anotoki\Lib\Auth\Http\RequireRole;
+use Anotoki\Lib\Auth\IamClient;
+use Anotoki\Lib\Auth\SignInRule;
+
+$iam = IamClient::fromArray(['cache_dir' => storageDir() . '/cache'] + iamSettings());  // the SDK's keys: the settings file stays
+$rule = new SignInRule($iam);                                    // requiredWhen: fn (): bool => … - the site's own reason
+
+AuthRoutes::config($app, $rule, $iam, extra: fn (): array => ['visitor_days' => VISITOR_KEEP_DAYS]);   // GET /api/auth/config
+$app->group('/api/admin', $adminRoutes)->add(RequireRole::any('ADMIN', 'EDITOR'));
+MigrationsRoutes::admin($app, '/api/admin/migrations', $migrator)->add(RequireRole::admin());
+$app->get('/api/surveys/{id}', $survey)->add(new RequireCaller('empty'));   // a person's, a visitor's, or nobody's
+
+// Who a request is, once, for every route - inside the SiteGate (Slim runs the last added first):
+$app->add(new Identify(new AccessTokens($iam), $rule, $app->getResponseFactory(),
+    visitor: fn (string $key): ?SiteVisitor => visitorFind($key),  // the site's visitor, null for a key it does not know
+));
+$app->add(new SiteGate($state, $app->getResponseFactory(), [AuthRoutes::openPath(), /* … */]));
+```
+
+- `IamClient` - the IAM and the application: `fromArray()` takes the SDK's keys
+  (`issuer`, `client_id`, `cache_dir`, `jwks_file`, `application_file`, … and
+  `anonymized_file`), so every `config/iam.local.php` stays as it is. Give it a
+  **private `cache_dir`** (the site's `storage/cache`): the key set and the
+  answer about signing in are kept there, in the SDK's own files - a site that
+  moves keeps them; without one nothing is kept, and the IAM is asked on every
+  request.
+- `AccessTokens::verify($token): ?Person` - the SDK's rules: RS256 and `typ`
+  `at+jwt` pinned (never read from the token), a `kid` of the IAM's key set
+  (`Jwks`: an hour on disk, one fetch per unknown `kid` at most every five
+  minutes, and five minutes' rest after a failed fetch), no `crit`, `iss`
+  exact, `aud` (and `client_id`, when there is one) this application, the
+  times with 60 s of leeway, `sub` an IAM id. Why a token failed is
+  `lastReason()`, for the log only.
+- `Person` - `sub`, `name` (preferred_username), `email`, `locale`,
+  `preferences`, `roles` (upper case), `sid`, `authTime`, `scope`, `claims`;
+  `has()`, `isAdmin()`, `isStaff()`, `signedInWithin($seconds)`.
+- `SignInRule` - whether the site requires signing in: the IAM's switch (its
+  public answer about the application), **failing closed** - a 404 is "required",
+  no answer keeps the last one or "required"; a minute on disk, one request
+  asking at a time, two seconds' wait, one answer per request (Identify resets
+  it). `known()` is false once the IAM answered 404 (a site it does not know or
+  has switched off): the boot configuration's `sign_in_available`.
+- `Http\Identify` - in this order: a `Bearer` header is a person's - a verified
+  token or 401 `invalid_token`, never the visitor; while signing in is required,
+  nobody (the visitor key is not read); an `X-Visitor-Key` is the site's
+  visitor, or 401 `visitor_unknown`; else nobody. It sets `anotoki.person`,
+  `anotoki.visitor`, `anotoki.caller`; it reads no table but the site's
+  visitor closure. **No cookie is ever read as somebody** - the IAM's sign-in
+  hint least of all.
+- `Http\RequirePerson` (401 `sign_in_required`), `Http\RequireRole` (from the
+  token, never the database - the Migrations routes keep working while `users`
+  waits; 403 `forbidden`, or `->refusing('admin_only', '…')`),
+  `Http\RequireCaller('refuse'|'empty'|'make')` (the "owner" check:
+  `anotoki.nobody` or `anotoki.makeVisitor` for the route), `Http\SignInGate`
+  (genshin's one gate: while signing in is required, every path but the open
+  ones needs a person).
+- Answers are `{code, message}` with `Cache-Control: no-store` and, on a 401,
+  `WWW-Authenticate: Bearer realm="<client id>"` (`error="invalid_token"` for a
+  token that was sent); `responder:` keeps a site's own shape while it adopts.
+- `Http\AuthRoutes::config()` - `GET /api/auth/config` → `{issuer, client_id,
+  login_required, sign_in_available, …extra}`; `configBody()` for a site that
+  puts it in its own boot answer (genshin's `/api/settings/public`, the build
+  analyzer's `/api/meta`); `openPath()` for the SiteGate.
+- Testing (`Anotoki\Lib\Auth\Testing`, shipped): `TestIam::create($dir)` - a key
+  pair, `token($sub, $roles, $claims)`, `sign()` for the tokens that must be
+  refused, `client()` (an IamClient on its files), `signInRule(false)`,
+  `anonymized([...])`; `StandInIam::start($dir)` - **the family's one stand-in
+  IAM** (`php/testing/stand-in-iam.php`) on a free port: discovery, keys,
+  authorize with PKCE (and `prompt=none`'s `login_required` /
+  `interaction_required`), token with rotation, revoke, logout, preferences,
+  the public application answer, the paged deleted accounts, and the sign-in
+  hint set and cleared as the IAM does; its state is `POST /_test/state`. For a
+  browser check: `STAND_IN_DIR=<dir> STAND_IN_ISSUER=http://localhost:8597 php -S
+  localhost:8597 vendor/anotoki/lib/php/testing/stand-in-iam.php`. It answers
+  nothing but under PHP's built-in server.
+
+### The browser: `@anotoki/lib/auth`
+
+```ts
+// app.config.ts
+provideHttpClient(withInterceptors([siteStatusInterceptor, anotokiAuthInterceptor /* , the site's own */])),
+provideAnotokiAuth(() => ({
+  config: '/api/auth/config',                         // or () => inject(SiteSettings).auth(): the site's own boot answer
+  visitors: () => inject(VisitorKey),                 // current(), remember(), forget(); none: no visitors
+  language: () => inject(TranslationService).language(),   // ui_locales, and the built-in words' language
+  beforeSignIn: () => inject(SignInChecks).ready(),   // settle the writes, ask about unsaved work; false stops it
+  beforeSignOut: () => inject(SignInChecks).ready(),
+  preferences: () => inject(SitePreferences),         // apply(preferences, locale): the theme, the dates, the language
+  // api: { prefixes: ['/api/'], skip: [...], visitorPrefixes: ['/api/surveys'] }, headers: () => ({ 'X-Time-Zone': … }),
+  // hint: { cookieName: 'anotoki_signed_in' } | false, makesVisitor, forbiddenRoute, words, translate
+})),
+provideAppInitializer(() => {
+  const status = inject(SiteStatus), auth = inject(AnotokiAuth);   // inject before the first await
+  return status.check().then(() => auth.init());
+}),
+
+// app.routes.ts
+{ path: 'auth/callback', component: AuthCallbackComponent },
+{ path: '', canActivateChild: [personOrVisitorGuard], children: [/* … */] },   // personGuard where only a person may
+{ path: 'admin', canActivate: [staffGuard], children: [/* … */] },             // adminGuard for ADMIN alone
+```
+
+- **The same storage as the SDK**: the tokens in localStorage under
+  `anotoki-auth:{clientId}`, the sign-in in progress in sessionStorage under
+  `anotoki-auth:{clientId}:login:{state}`, discovery under
+  `anotoki-auth:discovery:{issuer}`, refreshes under the Web Lock
+  `anotoki-auth-refresh:{storageKey}` - nobody is signed out by the switch, and a
+  sign-in in flight while the site is uploaded still lands. The client
+  (`createAuthClient`) is the SDK's code, ported: PKCE, state and nonce, the ID
+  token's checks, `safeReturnTo`, RFC 9207, rotation, `savePreferences`' own-token
+  rule.
+- `AnotokiAuth` - `init()` reads the boot configuration (snake_case, or the
+  camelCase the sites answer today), finishes a callback, restores the session,
+  follows the IAM, and - for a visitor - may make the hint's hop. Signals:
+  `state` (`starting | signed-in | visitor | signed-out | unavailable`), `user`,
+  `signedIn`, `sub`, `roles`, `isAdmin`, `isStaff`, `displayName`,
+  `loginRequired` (failing closed), `visitorsWelcome`, `signInAvailable`,
+  `signInFailure` (`{code, returnTo}`, never the IAM's sentence),
+  `preferences`, `locale`. Methods: `signIn({returnTo, prompt, maxAge})`,
+  `register()`, `signOut({local})`, `token()` (none for another person than the
+  page's), `refresh()`, `caller()`, `fetch(url, init, as)`,
+  `savePreferences()`, `accountUrl()`, `noteSignInRequired()`. Another person
+  signing in in another tab - or anybody, on a page shown to a visitor - loads
+  the page afresh.
+- `anotokiAuthInterceptor` - who a request of the site's API is, decided when
+  it is issued (`issuedAs('person' | 'visitor' | 'nobody' | 'caller')`,
+  `CARRIES_VISITOR_KEY` for the move): a person's with the token or never sent
+  (a 401 `sign_in_required` of its own), one retry after a 401 for the same
+  person, a 502 when an answer to a person's request made a visitor; a
+  visitor's with the key (the first save going alone), a key brought kept, a
+  `visitor_unknown` key forgotten and tried once more, `sign_in_required` noted;
+  writes counted in `SavesInFlight`, which a sign-in waits for.
+- `personGuard`, `personOrVisitorGuard`, `staffGuard`, `adminGuard` - a sign-in
+  started for the page asked for; every page while `SiteStatus.blocked()`; the
+  callback route when a sign-in came back without one (sent to the IAM again,
+  the browser would go round).
+- `AccountPreferences.save(name, value)` → `saved | refused(code) | superseded |
+  device` (genshin's), one save at a time; with the site's `preferences`, its
+  `apply(preferences, locale)` is given what to show - a choice on its way as
+  made, a refused one taken back, a language the IAM does not offer kept for the
+  visit.
+- `<anotoki-auth-callback>` - "Signing you in…" on the callback route, or why a
+  sign-in failed (from its code: `anotoki.signIn.*` words, English and informal
+  Slovak, overridable with `words` or the site's bundle through `translate`),
+  with Try again and Back; `noindex` while it shows.
+- `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth({user, roles,
+  loginRequired, visitors, cookie})` and `FakeAuthClient` for a site's specs
+  (then `await TestBed.inject(AnotokiAuth).init()`).
+
+### The sign-in hint
+
+The IAM sets `anotoki_signed_in` wherever it opens a session - a random value
+per session, readable by script, for every host under its parent domain on a
+real host (host-only `localhost` in development: open the sites as `localhost`,
+never `127.0.0.1`) - and clears it when its session ends. It says somebody
+signed in at the IAM in this browser, never who. A site never writes it.
+
+- **The hop**: at boot, on a site that lets visitors in, for a visitor (no
+  tokens of the site's own), on a top-level page that is not prerendering and
+  not the callback route, while the site is not blocked, when the cookie is
+  there in its shape and the IAM knows the site - one `prompt=none` sign-in,
+  after the IAM has answered its discovery document (1.5 s). Its error, whatever
+  it is, is never shown.
+- **Loop protection**: a marker in localStorage, `anotoki-auth:{clientId}:hint` =
+  `{value, at, failed?}`, written and read back before the hop (no storage, no
+  hop): each value once, at most one hop a minute whatever the value, ten
+  minutes after the IAM did not answer. Signing out (everywhere or here) and a
+  refresh refused under the value the session was made with mark it tried.
+- **Following the IAM**: when the hint is gone or another one since the session
+  was made, `init()` refreshes once (waiting at most five seconds) - signed out
+  at the IAM is signed out here at the next page load.
+- A site that requires signing in sends people to the IAM as ever
+  (`personGuard`), and its sessions follow the IAM the same way.
+- **Search engines** never get the cookie, so are never sent anywhere. A site
+  keeps them off the callback: its `robots.txt` says `Disallow: /auth/`, and
+  `<anotoki-auth-callback>` sets `noindex`.
+
+## People (unreleased, 0.4.0)
+
+Each site keeps its own record of the accounts that use it - its `users`
+table, keyed by the IAM's `sub` (every foreign key, every visitor and two
+sites' per-person locks live there) - and blanks its copies of a person's name
+when the IAM deletes their account, thirty days after they asked: the data
+stays, nobody's now. No site keeps a copy of anybody's email (the owner's
+decision of 2026-10-07). The People admin page comes with the UI kit; its API
+is here.
+
+### The schema
+
+- The site's own migration adds `users.anonymized_at TIMESTAMPTZ` (and nothing
+  else) before the library's set runs.
+- The library's set `anotoki_people` (`People\Schema::migrationSet()`, after the
+  site's own sets) makes `anotoki_people_sync` (one row: `since`, `checked_at`,
+  `ok_at`, `error`, `scrubbed`) and `anotoki_people_anonymized` (every id the
+  IAM listed: `sub`, `anonymized_at`, `scrubbed_at`, `had_row`). It names no
+  table of a site's; applied on databases built from each site's own
+  migrations, it changes no site table.
+
+### The PHP half: `Anotoki\Lib\People`
+
+```php
+use Anotoki\Lib\People\Http\PeopleRoutes;
+use Anotoki\Lib\People\Http\PeopleUpkeep;
+use Anotoki\Lib\People\Http\RecordPerson;
+use Anotoki\Lib\People\People;
+use Anotoki\Lib\People\PeopleColumn;
+use Anotoki\Lib\People\PeopleTable;
+
+$people = new People(
+    new PeopleTable(name: 'preferred_username', firstSeen: 'created_at', lastSeen: 'last_seen_at'),
+    fn (): PDO => db(),
+    $iam,
+    hooks: [fn (PDO $pdo, int $sub, ?array $former) => /* the site's copies of the name elsewhere */ null],
+);
+
+$app->group('/api', $siteRoutes)->add(new RecordPerson($people));            // never on the Migrations routes
+PeopleRoutes::admin($app, '/api/admin/people', $people,
+    columns: [new PeopleColumn('notes', 'Notes', 'count', fn (PDO $pdo, array $subs): array => …)],
+    visitors: fn (PDO $pdo): array => ['count' => …],
+    delete: fn (PDO $pdo, int $sub, $request): ?array => ['deleted' => ['Progress' => …]],   // null: nobody with that id
+)->add(RequireRole::admin());
+$app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState::READY));   // inside the SiteGate
+// and after $app->run(): \Anotoki\Lib\Support\AfterResponse::run();
+```
+
+- `PeopleTable` - the site's table and columns: `name` (genshin `username`, the
+  build analyzer `name`), `firstSeen`, `lastSeen` (null where people have none),
+  `updatedAt`, `nameFallback` (a NOT NULL name and a token without one), read
+  from the catalog: a name clipped to the column, a TIMESTAMP written as UTC.
+- `PeopleRecorder::seen($pdo, $person, $extra)` - one statement: the row made on
+  a first request, the name kept to the token's (a token without one keeps the
+  stored name), last-seen at most every five minutes, the site's own columns
+  (`$extra`; a NULL keeps them); never an anonymized row, never a row for an id
+  the IAM listed. `Http\RecordPerson` calls it for the routes a site names; a
+  site that needs the row inside its own transaction or lock calls it there.
+- `Scrubber::run()` - asks the IAM's `GET /api/public/anonymized-accounts` from
+  `since` (inclusive), following `next` within the run (at most 8 s); each
+  account in a transaction of its own: listed in `anotoki_people_anonymized`, its
+  row held `FOR UPDATE`, the name `deleted-{sub}` and `anonymized_at` the IAM's
+  time - only UPDATEs, never a visitor's row - then the site's hooks with the row
+  as it was (`['name', 'anonymized_at']`, null when the site never knew the
+  person). A hook that throws rolls its account back and stops the run (the
+  error is kept for the People page); an IAM that does not answer keeps `since`;
+  one run at a time; idle until the column and the tables are there. Hooks must
+  be idempotent - an id comes again.
+- `Http\PeopleUpkeep` - the scrub after the answer (`Support\AfterResponse`), at
+  most hourly (the stamp `{cache_dir}/anotoki-people.stamp`), while the site is
+  ready; no cron.
+- `Http\PeopleRoutes::admin()` - `GET $base?q=&page=` (50 a page, newest seen
+  first; `{people: [{sub, name, first_seen_at, last_seen_at, anonymized_at,
+  iam_url, …columns}], columns, total, page, page_size, visitors, sync, ready,
+  problems}`; `q` finds a name or an id), `DELETE $base/{sub}` (the site's hook;
+  404 `not_found`), `POST $base/sync` (the scrub now). `iam_url` is the account
+  in the IAM's admin panel, for its administrators.
+
+### Adopting auth and people, site by site
+
+In one release per site: `anotoki/lib ^0.4` and the 0.4.0 tarball; the site's
+migration adding `users.anonymized_at`, then `People\Schema::migrationSet()` in
+its sets (after `Translations\Schema::migrationSet()` where it has it); the
+vendored SDKs deleted; the wiring above; its sign-in words' keys
+(`anotoki.signIn.*`) taken over where it rewords them. Existing sign-ins
+survive: the storage keys are the same.
+
+| Site | Mapping | Scrub hooks | Deleted | Notes |
+| --- | --- | --- | --- | --- |
+| survey | `preferred_username`, `first_seen_at`, `last_seen_at` | - | `api/anotoki_iam.php`, `core/auth/anotoki-auth.*`, `tests/tools/fake-iam.php`; `requestUser`/`usersSeen`/`requireUser`/`requireRole`/`requireTokenRole`/`requireTaker` | its migration also drops `users.email` once the results, the response page and the CSV stop showing it (the CHECK `users_visitor_check` rewritten without it); `api: { skip: [..., '/api/images/'], visitorPrefixes: ['/api/surveys'] }` |
+| piano | `preferred_username`, `created_at`, `last_seen_at` | - | `api/anotoki_iam.php`, `core/auth/anotoki-auth.*`, its fake IAM; `requestUser`/`usersSeen`/`requireOwner` | the Migrations routes take `RequireRole::admin()` - `users` is no longer written there; `peopleDelete()` is the delete hook (under `storeLockGeneration()`), its counts the columns |
+| japanese | `preferred_username`, `created_at`, `last_seen_at`; `extra: time_zone` | `exam_attempts.candidate` → `''`, `meta - 'candidate'`, the report's header → "Unnamed candidate" | `src/anotoki_iam.php`, `core/auth/sdk/*`, `tests/tools/stand-in-iam.php`, the SDK version-pin test | `SignInRule(requiredWhen: fn () => !visitors_ready())`; `RequireRole` with `admin_only` / `staff_only`; `api: { prefixes: ['/api/', '/report/'] }`, `headers: X-Time-Zone`; its 008 is a draft - the people set waits behind it |
+| build analyzer | `name`, `created_at`, no last-seen (or `last_seen_at`: its CHECK allows it), `updatedAt: 'updated_at'`, `nameFallback: "user $sub"` | `sync_runs.log`: "by {former}" → "by a deleted person" | `src/Support/Iam/*`, `SignInPolicy`, `IamSignInPolicy`, `UserProvisioner`, `core/iam/*`, its fake IAM | `/api/meta` carries `AuthRoutes::configBody()`; a bad token now answers `invalid_token`; the hint acts here; `robots.txt` `Disallow: /auth/` |
+| genshin | `username`, `created_at`, no last-seen, `nameFallback: "user$sub"` | `feedback`: `username` → `deleted-{sub}`, `email`, `ip`, `user_agent` → NULL (the words stay) | `api/anotoki_iam.php`, `shared/local-lib/iam/*` | its migration is `users/050_people.sql`; `users.email` and `feedback.email` go once nothing reads them; `SignInGate` with its open prefixes; the library's routes in `SKIP_PREFIXES`; the hint acts here; `robots.txt` `Disallow: /auth/` |
+
 ## Working on the library
 
 ```
@@ -380,11 +676,12 @@ reached, and never shows a library key as a key.
 php composer.phar install
 ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vendor/bin/phpunit
 #   or ANOTOKI_LIB_TEST_PGHOST / _PGPORT / _PGUSER / _PGPASSWORD; the user needs CREATEDB:
-#   each test case makes a database anotoki_lib_test_<random> and drops it
+#   each test case makes a database anotoki_lib_test_<random> and drops it; the auth tests
+#   start the stand-in IAM under PHP's built-in server on a free local port (needs openssl, curl)
 
 # Angular (from angular/)
 bun install
-bun run build        # ng build lib -> angular/dist/lib
+bun run build        # ng build lib -> angular/dist/lib (the auth specs import @anotoki/lib/migrations from it)
 bun run test         # ng test lib --watch=false (Vitest, jsdom)
 ```
 

@@ -6,7 +6,7 @@ namespace Anotoki\Lib\Feedback\Http;
 
 use Anotoki\Lib\Admin\AdminContext;
 use Anotoki\Lib\Admin\Http\Routes;
-use Anotoki\Lib\Audit\AuditLog;
+use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\Feedback\Feedback;
 use Anotoki\Lib\Support\JsonResponse;
 use Anotoki\Lib\Support\Refusal;
@@ -70,7 +70,7 @@ final class FeedbackRoutes
         string $base,
         Feedback $feedback,
         AdminContext $context,
-        ?AuditLog $audit = null,
+        ?AuditRecorder $audit = null,
         ?Closure $names = null,
     ): RouteGroupInterface {
         return $app->group($base, function (RouteCollectorProxyInterface $group) use ($feedback, $context, $audit, $names): void {

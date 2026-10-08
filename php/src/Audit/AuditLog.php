@@ -37,7 +37,7 @@ use Throwable;
  * withScope() files every entry meanwhile under what it belongs to (genshin's
  * withAuditScope(): a character's talents under the character).
  */
-final class AuditLog
+final class AuditLog implements AuditRecorder
 {
     /** The most details one entry keeps, as JSON: a longer value is cut, with a mark. */
     public const DETAILS_LIMIT = 65536;

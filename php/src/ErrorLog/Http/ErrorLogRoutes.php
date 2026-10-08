@@ -6,7 +6,7 @@ namespace Anotoki\Lib\ErrorLog\Http;
 
 use Anotoki\Lib\Admin\AdminContext;
 use Anotoki\Lib\Admin\Http\Routes;
-use Anotoki\Lib\Audit\AuditLog;
+use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\ErrorLog\ErrorLog;
 use Anotoki\Lib\Support\JsonBody;
 use Anotoki\Lib\Support\JsonResponse;
@@ -42,7 +42,7 @@ final class ErrorLogRoutes
         string $base,
         ErrorLog $log,
         AdminContext $context,
-        ?AuditLog $audit = null,
+        ?AuditRecorder $audit = null,
     ): RouteGroupInterface {
         $log->ignorePath($base);
         $reader = $log->reader();

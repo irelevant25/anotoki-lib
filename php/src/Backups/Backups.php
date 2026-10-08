@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Anotoki\Lib\Backups;
 
 use Anotoki\Lib\Admin\Schema;
-use Anotoki\Lib\Audit\AuditLog;
+use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\AtomicFile;
@@ -93,7 +93,7 @@ final class Backups
     private readonly int $staleManualDays;
     private readonly string $schema;
     private readonly ?Closure $defer;
-    private readonly ?AuditLog $audit;
+    private readonly ?AuditRecorder $audit;
     private readonly int $lock;
     private readonly ?Closure $ready;
     private readonly string $storage;
@@ -115,7 +115,7 @@ final class Backups
      *   keepDaily?: int, keepBeforeMigration?: int, keepBeforeRestore?: int, staleManualDays?: int,
      *   schema?: string,
      *   defer?: Closure(callable): void,
-     *   audit?: AuditLog,
+     *   audit?: AuditRecorder,
      *   lock?: int,
      *   ready?: Closure(PDO): bool,
      *   storage?: string,
@@ -172,8 +172,8 @@ final class Backups
         $this->schema = (string) ($options['schema'] ?? 'public');
         $this->defer = $options['defer'] ?? null;
         $audit = $options['audit'] ?? null;
-        if ($audit !== null && !$audit instanceof AuditLog) {
-            throw new InvalidArgumentException('The option audit must be an AuditLog.');
+        if ($audit !== null && !$audit instanceof AuditRecorder) {
+            throw new InvalidArgumentException('The option audit must be an AuditRecorder (the AuditLog).');
         }
         $this->audit = $audit;
         $this->lock = (int) ($options['lock'] ?? Migrator::DEFAULT_LOCK);

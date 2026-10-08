@@ -95,7 +95,13 @@ final class FoundationsTest extends TestCase
         self::assertFileExists($storage . '/.htaccess', 'a storage folder it made is guarded');
 
         $other = $this->temporaryFolder();
+        self::assertFileDoesNotExist($other . '/.htaccess');
         self::assertNotSame($key, Keys::installation($other), 'every installation has its own');
+        self::assertFileExists($other . '/.htaccess', 'a storage folder that was there gets its guard too: the key is never served');
+        $own = $this->temporaryFolder();
+        file_put_contents($own . '/.htaccess', "# the site's own\n");
+        Keys::installation($own);
+        self::assertSame("# the site's own\n", file_get_contents($own . '/.htaccess'), 'never over the site\'s');
 
         // A file a dying process left empty, long ago: made again.
         $stale = $this->temporaryFolder();
@@ -159,6 +165,35 @@ final class FoundationsTest extends TestCase
         self::assertSame('/api/x/{…}', Redactor::path('/api/x/' . str_repeat('word', 11)));
         self::assertSame('/api/reset', Redactor::path('/api/reset?token=abc#x'), 'never a query or a fragment');
         self::assertSame(200, Utf8::length(Redactor::path('/' . str_repeat('a/', 300))));
+    }
+
+    public function testAHugeOrHostileMessageIsReadOnlyAsFarAsALineKeepsAndNeverGivenUnredacted(): void
+    {
+        $huge = 'Failed for ana@example.com ' . str_repeat('x', 200000) . ' bo@example.com';
+        $started = microtime(true);
+        $redacted = Redactor::text($huge);
+        self::assertLessThan(1.0, microtime(true) - $started);
+        self::assertStringStartsWith('Failed for {email} ', $redacted);
+        self::assertSame(Redactor::TEXT_LIMIT, Utf8::length($redacted) - strlen('{email}') + strlen('ana@example.com'), 'the first 4,096 characters, no more');
+
+        // Quotes doubled without end: a quoted-value rule that backtracks would take its time on them.
+        $hostile = 'ERROR: "' . str_repeat('""', 2000) . ' x';
+        $started = microtime(true);
+        $result = Redactor::text($hostile);
+        self::assertLessThan(1.0, microtime(true) - $started);
+        self::assertTrue($result === $hostile || $result === Redactor::UNREADABLE, 'as it was (nothing to take out), or not given at all - never half done');
+
+        // PCRE's limits made tiny (and its JIT, which has limits of its own, off) in a process of its own, where no
+        // pattern was compiled before: no rule can run.
+        $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) . ';'
+            . ' echo Anotoki\Lib\Support\Redactor::text("Key (email)=(ana@example.com) " . str_repeat("ab ", 50));';
+        $process = proc_open([PHP_BINARY, '-d', 'pcre.jit=0', '-d', 'pcre.backtrack_limit=10', '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        self::assertIsResource($process);
+        $output = (string) stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+        self::assertSame(Redactor::UNREADABLE, $output, 'a rule that cannot run: nothing of the message, never the message unredacted');
     }
 
     public function testTextThatIsNoUtf8IsReadAnyway(): void

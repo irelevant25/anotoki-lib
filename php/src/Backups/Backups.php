@@ -724,7 +724,7 @@ final class Backups
                     $file = 'schema/' . self::fileName($record['set'], 64) . '/' . $n . '-' . self::fileName($record['name'], 140);
                 }
                 $taken[$file] = true;
-                $schemaFiles[] =['set' => $record['set'], 'name' => $record['name'], 'file' => $file, 'sha256' => hash('sha256', $sql)];
+                $schemaFiles[] = ['set' => $record['set'], 'name' => $record['name'], 'file' => $file, 'sha256' => hash('sha256', $sql)];
                 $entries[] = ['name' => $file, 'data' => $sql];
             }
 

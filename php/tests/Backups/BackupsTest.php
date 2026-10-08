@@ -434,6 +434,24 @@ final class BackupsTest extends BackupsTestCase
         self::assertLessThan($order['roles'], $order['people'], 'parents first');
     }
 
+    public function testTwoFileNamesThatReadTheSameOnceMadePlainKeepAPartEach(): void
+    {
+        $this->siteSet = $this->set('shop', ['002_a b.sql' => 'SELECT 2;', '002_a_b.sql' => 'SELECT 3;']);
+        self::assertNull($this->siteMigrator($this->pdo)->apply()['error']);
+        $backups = $this->backupsWith();
+        $backup = $backups->create();
+        self::assertIsArray($backup);
+
+        $manifest = $backups->extractTo($backup['id'], $this->path('plain'));
+
+        $files = array_column(array_filter($manifest['schema_files'], static fn (array $f): bool => $f['set'] === 'shop'), 'file', 'name');
+        self::assertSame('schema/shop/001_init.sql', $files['001_init.sql']);
+        self::assertEqualsCanonicalizing(['schema/shop/002_a_b.sql', 'schema/shop/2-002_a_b.sql'], [$files['002_a b.sql'], $files['002_a_b.sql']], 'one part each');
+        self::assertSame('SELECT 2;', file_get_contents($this->path('plain/' . $files['002_a b.sql'])));
+        self::assertSame('SELECT 3;', file_get_contents($this->path('plain/' . $files['002_a_b.sql'])));
+        self::assertIsArray($backups->restore($backup['id']), 'and it reads back whole');
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     /** The body of a backup that is not encrypted, decompressed. */

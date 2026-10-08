@@ -36,6 +36,9 @@ for file in \
     php/src/Auth/Http/Identify.php \
     php/src/Auth/Testing/TestIam.php \
     php/testing/stand-in-iam.php \
+    php/src/People/Scrubber.php \
+    php/src/People/Http/PeopleRoutes.php \
+    php/migrations/people/001_people.sql \
     php/migrations/translations/001_languages_and_strings.sql \
     php/migrations/translations/002_library_words.sql \
     php/resources/library-words.json

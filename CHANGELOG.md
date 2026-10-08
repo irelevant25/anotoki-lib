@@ -5,7 +5,7 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## 0.2.0 - unreleased
+## 0.2.0 - 2026-10-08
 
 Angular only; the PHP half is unchanged (a site may keep `vendor/anotoki/lib` at 0.1.x).
 The UI kit the owner asked for (round 2, 2026-10-07): one kit for the family, built

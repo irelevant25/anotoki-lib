@@ -7,5 +7,5 @@
     "types": ["vitest/globals"],
     "resolveJsonModule": true
   },
-  "include": ["test-setup.ts", "src/**/*.d.ts", "src/**/*.spec.ts", "migrations/**/*.spec.ts", "migrations/**/testing.ts"]
+  "include": ["test-setup.ts", "src/**/*.d.ts", "src/**/*.spec.ts", "migrations/**/*.spec.ts", "migrations/**/testing.ts", "auth/**/*.spec.ts", "auth/**/testing.ts"]
 }

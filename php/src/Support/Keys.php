@@ -67,9 +67,8 @@ final class Keys
             }
 
             if (!file_exists($file)) {
-                if (!is_dir($storageDir)) {
-                    GuardedDirectory::ensure($storageDir);
-                }
+                // The folder that keeps the key is never served: its guard, where it has none (never over the site's).
+                GuardedDirectory::ensure($storageDir);
                 // 'x': made by exactly one process; the others find it there and read it.
                 $handle = @fopen($file, 'x');
                 if ($handle !== false) {

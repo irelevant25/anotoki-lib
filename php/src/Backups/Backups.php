@@ -550,6 +550,9 @@ final class Backups
             }
             try {
                 try {
+                    if (!GuardedDirectory::ensure($work)) {
+                        throw new RuntimeException('its working folder cannot be made.');
+                    }
                     $manifest = $this->unpack($id, $info, $work);
                 } catch (Throwable $e) {
                     return new Refusal(422, 'archive_invalid', 'The backup cannot be read: ' . Redactor::text($e->getMessage()));
@@ -630,6 +633,10 @@ final class Backups
     {
         $info = $this->get($id) ?? throw new RuntimeException('There is no such backup.');
 
+        if (file_exists($directory) || !@mkdir($directory, 0700, true)) {
+            throw new RuntimeException('The folder to read it into must be a new one.');
+        }
+
         return $this->unpack($id, $info, $directory);
     }
 
@@ -705,13 +712,19 @@ final class Backups
 
             $schemaFiles = [];
             $entries = [];
+            $taken = [];
             foreach ($records as $record) {
                 $sql = $migrator->source($record['set'], $record['name']);
                 if ($sql === null) {
                     continue;
                 }
                 $file = 'schema/' . self::fileName($record['set'], 64) . '/' . self::fileName($record['name'], 150);
-                $schemaFiles[] = ['set' => $record['set'], 'name' => $record['name'], 'file' => $file, 'sha256' => hash('sha256', $sql)];
+                // Two names that read the same once made plain ("a b.sql", "a_b.sql") each keep a part of their own.
+                for ($n = 2; isset($taken[$file]); $n++) {
+                    $file = 'schema/' . self::fileName($record['set'], 64) . '/' . $n . '-' . self::fileName($record['name'], 140);
+                }
+                $taken[$file] = true;
+                $schemaFiles[] =['set' => $record['set'], 'name' => $record['name'], 'file' => $file, 'sha256' => hash('sha256', $sql)];
                 $entries[] = ['name' => $file, 'data' => $sql];
             }
 
@@ -919,8 +932,8 @@ final class Backups
                 throw new RuntimeException('Its checksum is not the one it was written with: it was changed or damaged.');
             }
         }
-        if (!GuardedDirectory::ensure($work)) {
-            throw new RuntimeException('Its working folder cannot be made.');
+        if (!is_dir($work)) {
+            throw new RuntimeException('Its working folder is not there.');
         }
 
         $manifest = null;

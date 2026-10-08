@@ -36,17 +36,27 @@ final class Redactor
 {
     public const MARK = '{…}';
 
-    /** A message, with the personal data and the secrets taken out (see the class). */
+    /** What text() reads of a message at most: more than any line keeps, and no rule takes long on it. */
+    public const TEXT_LIMIT = 4096;
+
+    /** What a message reads as when a rule could not be run on it: never the text unredacted. */
+    public const UNREADABLE = '{a message the redactor could not read}';
+
+    /**
+     * A message - its first 4,096 characters - with the personal data and the
+     * secrets taken out (see the class). Should a rule fail (PCRE's limits), the
+     * message is not given at all.
+     */
     public static function text(string $text): string
     {
-        $text = Utf8::scrub($text);
+        $text = Utf8::prefix($text, self::TEXT_LIMIT);
 
         $rules = [
             // PostgreSQL's detail lines, from the first to the end: they quote rows and values.
             '/(?:^|\R)[ \t]*(?:DETAIL|HINT|CONTEXT|WHERE|QUERY|STATEMENT|LINE \d+):.*$/suD' => '',
             '/\s(?:DETAIL|HINT|CONTEXT):\s.*$/suD' => '',
             // A value echoed back at the end of a line: 'invalid input syntax for type uuid: "..."'.
-            '/(:\s+)"(?:[^"\\\\\n]|\\\\.|"")*"(?=[ \t]*(?:$|\R))/mu' => '$1"' . self::MARK . '"',
+            '/(:\s+)"(?:[^"\\\\\n]++|\\\\.|"")*+"(?=[ \t]*(?:$|\R))/mu' => '$1"' . self::MARK . '"',
             '/\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/=-]+/iu' => '$1 ' . self::MARK,
             '/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/u' => '{token}',
             '/\b(pass(?:word|wd)?|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|access[_-]?key|authorization|cookie|session(?:[_-]?id)?|sid|ticket|code_verifier|signature|sig)\b(\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s&,;"\']+)/iu' => '$1$2' . self::MARK,
@@ -56,7 +66,10 @@ final class Redactor
             '/(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])/u' => '{ip}',
         ];
         foreach ($rules as $pattern => $replacement) {
-            $text = preg_replace($pattern, $replacement, $text) ?? $text;
+            $text = preg_replace($pattern, $replacement, $text);
+            if ($text === null) {
+                return self::UNREADABLE;
+            }
         }
 
         // IPv6: a candidate the shape allows, kept only when it is an address indeed - "10:01:02" and
@@ -71,13 +84,16 @@ final class Redactor
                     : $match[0];
             },
             $text
-        ) ?? $text;
+        );
+        if ($text === null) {
+            return self::UNREADABLE;
+        }
 
         return preg_replace_callback(
             '/(?<![A-Za-z0-9_+=-])[A-Za-z0-9_+=-]{24,}(?![A-Za-z0-9_+=-])/u',
             static fn (array $match): string => self::isToken($match[0]) ? '{token}' : $match[0],
             $text
-        ) ?? $text;
+        ) ?? self::UNREADABLE;
     }
 
     /**

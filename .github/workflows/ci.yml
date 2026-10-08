@@ -53,6 +53,18 @@ jobs:
           ANOTOKI_LIB_TEST_PGUSER: anotoki
           ANOTOKI_LIB_TEST_PGPASSWORD: anotoki
 
+  # What a site's vendor/anotoki/lib holds: GitHub's archive of the tag, trimmed by .gitattributes.
+  # Built here the same way, and checked: the PHP half and nothing else, its migration files and words
+  # among it, with LF line endings.
+  package:
+    name: Composer archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the archive's contents
+        run: sh .github/scripts/check-archive.sh
+
   angular:
     name: Angular
     runs-on: ubuntu-latest

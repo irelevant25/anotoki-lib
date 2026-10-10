@@ -13,8 +13,10 @@ record of the accounts that use it, and the scrub of the accounts the IAM delete
 page comes with the UI kit); and the PHP half of the **admin tools** every site's panel shares (the
 owner's request of 2026-10-07, step 4): the error log, the audit log, feedback, backups and the file
 explorer - for the site's ADMIN alone (the owner's decision: EDITORs see none of them). The admin tools'
-Angular pages come later, on the UI kit. Nothing a site uses of 0.3.0 changes; each module is taken
-when the site adopts it (README.md: "Auth", "People", "Admin tools").
+Angular pages come later, on the UI kit. Nothing a site's code uses of 0.3.0 changes; each module is
+taken when the site adopts it (README.md: "Auth", "People", "Admin tools"). A site on the translations
+module gets one more library migration to apply (`anotoki_translations/003`, the sign-in page's words),
+and the library's words in its first load grow by those (0.3 kB gzipped).
 
 PHP, auth (`Anotoki\Lib\Auth`):
 - `IamClient` (the SDK's configuration keys), `AccessTokens` and `Jwks` (the SDK 1.1.0's rules: RS256

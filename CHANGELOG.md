@@ -5,7 +5,7 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-10-11
 
 The engine's library sets, the translations module - both halves -, the helpers the modules share, and
 a Composer archive that ships the library's migration files and words; the kit's core a file per piece

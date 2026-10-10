@@ -20,8 +20,11 @@ export type Caller = 'person' | 'visitor' | 'nobody';
  * anotokiAuthInterceptor as it is handed over - which, for HttpClient, is the
  * moment it is issued - never from whether a token happens to be there when it
  * leaves.
+ *
+ * Marked pure, as every top-level `new` of the library but an InjectionToken:
+ * a site's build keeps one it is not told is pure, used or not.
  */
-export const ISSUED_AS = new HttpContextToken<Caller | 'caller' | null>(() => null);
+export const ISSUED_AS = /* @__PURE__ */ new HttpContextToken<Caller | 'caller' | null>(() => null);
 
 /**
  * The one request that carries the person's token and the visitor's key
@@ -29,7 +32,7 @@ export const ISSUED_AS = new HttpContextToken<Caller | 'caller' | null>(() => nu
  * The interceptor then adds the token and leaves the key the request set
  * itself; on any other person's request a key is taken off.
  */
-export const CARRIES_VISITOR_KEY = new HttpContextToken<boolean>(() => false);
+export const CARRIES_VISITOR_KEY = /* @__PURE__ */ new HttpContextToken<boolean>(() => false);
 
 /** A request's context saying whom it is for. */
 export function issuedAs(caller: Caller | 'caller', context: HttpContext = new HttpContext()): HttpContext {

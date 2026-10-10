@@ -5,6 +5,11 @@
  * is issued, the guards, the callback, the sign-in hint's silent hop, the
  * account's preferences followed and saved. The server's half is the PHP
  * package anotoki/lib (Anotoki\Lib\Auth).
+ *
+ * Eager (every page of a site that signs in reads it). It imports the kit's
+ * pieces from their own entry points (the callback's button, the library's
+ * words in ui/config) and the migrations module (whether the site is blocked),
+ * never @anotoki/lib/ui; a spec's stand-in is @anotoki/lib/auth/testing.
  */
 
 export type {
@@ -41,5 +46,5 @@ export { AccountPreferences } from './src/preferences';
 export type { HintMarker } from './src/hint';
 export { HINT_SHAPE, readHint } from './src/hint';
 export type { SignInWords } from './src/words';
-export { failureText, signInKey, signInWords } from './src/words';
+export { SIGN_IN_WORD_NAMES, failureText, signInKey, signInWords } from './src/words';
 export { AuthCallbackComponent } from './src/callback/auth-callback.component';

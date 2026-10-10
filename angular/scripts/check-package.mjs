@@ -2,14 +2,15 @@
 // first load takes of it.
 //
 // - Sizes: every entry point's FESM, raw and gzipped. A site's build places whole files in its chunks, and an entry
-//   point is one file, so the eager ones (the ui core, ui/menu, shell, migrations, translations: every page of a
+//   point is one file, so the eager ones (the ui core, ui/menu, shell, migrations, translations, auth: every page of a
 //   site) have limits; the rest are printed. The ui core is a file per piece (@anotoki/lib/ui/button, /spinner, ...):
 //   its limit holds the pieces together.
 // - Boundaries: what each entry point may import. The library imports the core's pieces from their own entry points,
 //   never through @anotoki/lib/ui, which holds re-exports and nothing else: a build that reaches it from a first page
 //   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
-//   Languages pages into the translations module's.
+//   Languages pages into the translations module's. The auth module imports the core's pieces and the migrations
+//   module (whether the site is blocked), and nothing imports it but its testing helper.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Floors: an entry point nothing is used of leaves nothing in a site's bundle. A site's build keeps a top-level call
@@ -40,11 +41,16 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
 /**
  * Gzipped kB each eager entry point may weigh - its code, without the comments, which never reach a site's bundle -
  * the core with all its pieces, and the shell with the core together (the spec's "about 25 kB"; 26.3 at 0.2.0, 27.8
- * at 0.3.0 with the kit's own class names). Room to grow a little; a limit crossed is a reason to move something into
- * an entry point of its own, not to raise the limit.
+ * at 0.3.0 with the kit's own class names; 28.2 at 0.4.0, the library's words in ui/config 0.3 kB more with the sign-in
+ * page's eight - every module's visitors' words are there, one table: raised for that alone). Room to grow a little; a
+ * limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
+ *
+ * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences and the
+ * callback page - 14.9 at 0.4.0. Every site that signs in loads it on its first page, as it loads the SDK and its
+ * wrappers today.
  */
-const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8 };
-const UI_AND_SHELL = 28;
+const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16 };
+const UI_AND_SHELL = 28.5;
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
@@ -81,6 +87,8 @@ const MAY_IMPORT = {
     "@anotoki/lib/translations": PIECES,
     "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
+    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations"],
+    "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
 
@@ -88,13 +96,22 @@ const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
  * A site's first page, what it imports of the package, and the gzipped kB its first load may take of the package
  * beside lazy pages that use every other entry point. "the gate": genshin's and the build analyzer's whole use (the
  * status page, its buttons, the library's words); "the bar": the family's top bar and its theme; "the words": the
- * translations module; "a button": one piece alone.
+ * translations module; "a button": one piece alone; "the sign-in": the gate and the auth module's every eager part,
+ * the callback page routed with the first page (it is in the gate's company on every site that signs in).
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9 },
     { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5 },
     { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5 },
     { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5 },
+    {
+        title: "the sign-in",
+        imports: {
+            "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"],
+            "@anotoki/lib/auth": ["AnotokiAuth", "anotokiAuthInterceptor", "provideAnotokiAuth", "personOrVisitorGuard", "staffGuard", "AccountPreferences", "AuthCallbackComponent"],
+        },
+        limit: 19.5,
+    },
 ];
 
 /**

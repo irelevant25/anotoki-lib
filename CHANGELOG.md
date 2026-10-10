@@ -94,12 +94,32 @@ Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
 - `AnotokiAuth` (Japanese Academy's state machine, for every site), `anotokiAuthInterceptor` (who a
   request is, decided when issued), `personGuard`, `personOrVisitorGuard`, `staffGuard`, `adminGuard`,
   `AccountPreferences` (genshin's outcomes; the site's `apply()` follows the account),
-  `<anotoki-auth-callback>` (noindex), `SavesInFlight`, the visitors' words in English and informal
-  Slovak.
+  `<anotoki-auth-callback>` (noindex), `SavesInFlight`. The shell's theme and the translations
+  module's language follow the account through `AnotokiAuth` (README, "The browser").
 - The sign-in hint: one silent hop per hint value, for a visitor, guarded by a marker in localStorage
   (one try a value, one a minute, ten minutes after the IAM did not answer); following the IAM - a hint
   gone or changed means one refresh at boot.
 - `provideTestAnotokiAuth`, `FakeAuthClient` for a site's specs.
+- On 0.3.0's structure: `<anotoki-auth-callback>` is drawn with the kit - its buttons
+  (`@anotoki/lib/ui/button`), the status page's frame, classes of its own (`anotoki-auth-callback__panel`,
+  `__message`, `__actions`; `[data-retry]`, `[data-back]`); the module imports the kit's pieces from their
+  own entry points and the migrations module, never `@anotoki/lib/ui`; its top-level `HttpContextToken`s
+  and words are marked pure.
+- The sign-in page's words are library words: `anotoki.signIn.signingIn|notCompleted|expired|
+  storageUnavailable|unavailable|failed|retry|back`, English and informal Slovak, in
+  `php/resources/library-words.json`, generated into `LIBRARY_WORDS` (`bun run words`) and read from there
+  (`SIGN_IN_WORD_NAMES`, as the status page reads its own); an owner's rewording through `translate`
+  (with the translations module, `libraryWord()`). They weigh on every first load that holds the kit:
+  `ui/config` holds every module's words (0.3 kB gzipped more).
+- `scripts/check-package.mjs` knows the two entry points: auth is eager (16 kB at most; 14.9 kB), its
+  testing helper imports it alone; a fifth first load, "the sign-in" (the gate and every eager part of
+  auth, 19.5 kB at most; 18.5 kB); ui and shell together may weigh 28.5 kB (28.2 kB: the library's
+  words in `ui/config`). The generated words file is left alone by prettier (`bun run format` would
+  rewrite what `bun run words --check` holds byte for byte - its first word with an apostrophe).
+
+PHP, translations: the library's set `anotoki_translations` gains `003_sign_in_words.sql` - the sign-in
+page's eight keys, by 002's rule (descriptions the library's; strings only for a key that has none; a
+gate on English). A site that applies the set gets it as any migration: the upload waits for Apply.
 
 What a site must do - auth and people (README.md, "Adopting auth and people, site by site"):
 `anotoki/lib ^0.4` and the 0.4.0 tarball together; a migration of its own adding

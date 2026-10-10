@@ -1,9 +1,13 @@
+import { LIBRARY_WORDS } from '@anotoki/lib/ui/config';
+
 /**
  * The visitors' words of signing in - the callback's "Signing you in…" and what
  * a sign-in that came back without one says: from its code alone, never from
- * the IAM's or the client's English sentence. Built in for English and Slovak
- * (informal, "ty"); a site words them its own way per language (`words`), or
- * from its own bundle (`translate`, the library keys anotoki.signIn.<name>).
+ * the IAM's or the client's English sentence. Each is the library's word
+ * `anotoki.signIn.<name>`: built in for English and Slovak (informal, "ty"),
+ * and in every site's database (anotoki_translations/003), where its owner may
+ * reword them. A site words them its own way per language (`words`), or from
+ * its database (`translate`: the translations module's libraryWord()).
  */
 export interface SignInWords {
   signingIn: string;
@@ -21,30 +25,27 @@ export interface SignInWords {
   back: string;
 }
 
+/** The words' names, each the library's word `anotoki.signIn.<name>`. */
+export const SIGN_IN_WORD_NAMES = ['signingIn', 'notCompleted', 'expired', 'storageUnavailable', 'unavailable', 'failed', 'retry', 'back'] as const satisfies readonly (keyof SignInWords)[];
+
+function builtIn(language: 'en' | 'sk'): SignInWords {
+  return Object.fromEntries(SIGN_IN_WORD_NAMES.map((name) => [name, LIBRARY_WORDS[language][`anotoki.signIn.${name}`]])) as unknown as SignInWords;
+}
+
+/**
+ * The built-in words: the library's words `anotoki.signIn.*`, generated from
+ * php/resources/library-words.json (ui/config's LIBRARY_WORDS) - never a copy
+ * by hand.
+ *
+ * The calls are marked pure: a site's build keeps a top-level call it is not
+ * told is pure, and with it the library's every word, signing in or not.
+ */
 export const BUILT_IN_WORDS: Readonly<Record<'en' | 'sk', SignInWords>> = {
-  en: {
-    signingIn: 'Signing you in…',
-    notCompleted: 'The sign-in was not completed.',
-    expired: 'The sign-in took too long or did not start on this page. Try again.',
-    storageUnavailable: "This browser does not let the site remember a sign-in. Allow the site's storage, then try again.",
-    unavailable: 'Signing in is not available right now. Try again in a few minutes.',
-    failed: 'The sign-in failed ({code}).',
-    retry: 'Try again',
-    back: 'Back',
-  },
-  sk: {
-    signingIn: 'Prihlasujeme ťa…',
-    notCompleted: 'Prihlásenie sa nedokončilo.',
-    expired: 'Prihlásenie trvalo príliš dlho alebo sa nezačalo na tejto stránke. Skús to znova.',
-    storageUnavailable: 'Tento prehliadač nedovolí stránke zapamätať si prihlásenie. Povoľ jej ukladanie údajov a skús to znova.',
-    unavailable: 'Prihlásenie teraz nie je dostupné. Skús to znova o pár minút.',
-    failed: 'Prihlásenie zlyhalo ({code}).',
-    retry: 'Skúsiť znova',
-    back: 'Späť',
-  },
+  en: /* @__PURE__ */ builtIn('en'),
+  sk: /* @__PURE__ */ builtIn('sk'),
 };
 
-/** The library's key of a word, as a site's bundle would hold it. */
+/** The library's key of a word, as a site's database holds it. */
 export function signInKey(name: keyof SignInWords): string {
   return `anotoki.signIn.${name}`;
 }

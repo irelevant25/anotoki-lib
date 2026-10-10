@@ -1,15 +1,15 @@
 @if (message(); as said) {
-    <section class="callback" [attr.lang]="text().lang">
-        <p class="message" role="alert">{{ said }}</p>
-        <div class="actions">
-            <button type="button" class="button primary" [disabled]="busy()" (click)="retry()">{{ text().words.retry }}</button>
+    <section class="anotoki-auth-callback__panel" [attr.lang]="text().lang">
+        <p class="anotoki-auth-callback__message" role="alert">{{ said }}</p>
+        <div class="anotoki-auth-callback__actions">
+            <button anotokiButton variant="primary" data-retry [loading]="busy()" (click)="retry()">{{ text().words.retry }}</button>
             @if (failure()?.code !== "unavailable") {
-                <button type="button" class="button" (click)="back()">{{ text().words.back }}</button>
+                <button anotokiButton variant="secondary" data-back (click)="back()">{{ text().words.back }}</button>
             }
         </div>
     </section>
 } @else {
-    <section class="callback" role="status" [attr.lang]="text().lang">
-        <p class="message">{{ text().words.signingIn }}</p>
+    <section class="anotoki-auth-callback__panel" role="status" [attr.lang]="text().lang">
+        <p class="anotoki-auth-callback__message">{{ text().words.signingIn }}</p>
     </section>
 }

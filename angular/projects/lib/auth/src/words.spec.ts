@@ -1,4 +1,5 @@
-import { BUILT_IN_WORDS, failureText, signInKey, signInWords } from './words';
+import { LIBRARY_WORDS } from '@anotoki/lib/ui/config';
+import { BUILT_IN_WORDS, SIGN_IN_WORD_NAMES, failureText, signInKey, signInWords } from './words';
 
 describe('the words of signing in', () => {
   it('built in for English and informal Slovak, the same words in both', () => {
@@ -7,6 +8,16 @@ describe('the words of signing in', () => {
     expect(signInWords('sk-SK').lang).toBe('sk-sk');
     expect(signInWords('de')).toEqual({ lang: 'en', words: BUILT_IN_WORDS.en });
     expect(signInWords(null).lang).toBe('en');
+  });
+
+  it("the library's words anotoki.signIn.*, every one of them, from php/resources/library-words.json", () => {
+    const keys = Object.keys(LIBRARY_WORDS.en).filter((key) => key.startsWith('anotoki.signIn.'));
+    expect(keys).toEqual(SIGN_IN_WORD_NAMES.map((name) => signInKey(name)));
+    for (const language of ['en', 'sk'] as const) {
+      for (const name of SIGN_IN_WORD_NAMES) {
+        expect(BUILT_IN_WORDS[language][name], `${language} ${name}`).toBe(LIBRARY_WORDS[language][`anotoki.signIn.${name}`]);
+      }
+    }
   });
 
   it("the site's own words, and its bundle's, over the built-in ones", () => {

@@ -67,25 +67,26 @@ PHP - in `backend/composer.json`:
 
 ```json
 "repositories": [{ "type": "vcs", "url": "https://github.com/irelevant25/anotoki-lib" }],
-"require": { "anotoki/lib": "^0.1" }
+"require": { "anotoki/lib": "^0.3" }
 ```
 
 then `php composer.phar update anotoki/lib --prefer-dist` in `backend/`. Composer
 takes the version from the git tag and installs GitHub's archive of it, which
 holds the PHP half only - its code (`php/src`), the migration files of the
-library's sets (`php/migrations`) and its resources (`php/resources`), with
+library's sets (`php/migrations`), its resources (`php/resources`) and, from
+0.4.0, the stand-in IAM a site's tests start (`php/testing`), with
 `composer.json`, this README and CHANGELOG.md: `.gitattributes` is an
 allow-list, and CI builds the archive and checks it
 (`.github/scripts/check-archive.sh`). Where the site uploads `vendor/`,
 `vendor/anotoki/lib` goes with it - kept from being served as the site's own
 `migrations/` is (a deny-all `.htaccess`), since it holds SQL too. (0.2.0
-changed only the Angular half: `^0.1` keeps a site's PHP half at 0.1.x, which
-is the same code.)
+changed only the Angular half; 0.3.0 changed both: a site takes `^0.3` and the
+0.3.0 tarball together.)
 
 Angular - in `frontend/package.json`:
 
 ```json
-"@anotoki/lib": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.2.0/anotoki-lib-0.2.0.tgz"
+"@anotoki/lib": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.3.0/anotoki-lib-0.3.0.tgz"
 ```
 
 then `bun install` in `frontend/` (and `npm install` too where the site keeps a
@@ -155,7 +156,7 @@ MigrationsRoutes::admin($app, '/api/admin/migrations', $migrator, function ($req
   (filename))`, with `folder VARCHAR(64) NOT NULL` and `UNIQUE (folder,
   filename)` for more than one set of the site's own. A table it cannot read (no
   file column) counts as nothing applied until `prepare` adopts it.
-- **Library sets** (unreleased, 0.3.0): `MigrationSet::library($name, $dir)` is a
+- **Library sets** (0.3.0): `MigrationSet::library($name, $dir)` is a
   set the library ships - `Translations\Schema::migrationSet()` is one - and the
   names that begin with `anotoki_` are theirs alone (a site's set named so is
   refused). A site lists them with its own, in the order they run:
@@ -210,6 +211,8 @@ uses is in the first load again.
 | `@anotoki/lib/translations` | the translation service, the `translate` and `translatePlural` pipes, the kit's and the shell's wiring, the status page's words, the admin pages' guard | yes (every page) |
 | `@anotoki/lib/translations/admin` | the admin Translations and Languages pages, their drafts | lazy admin routes |
 | `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
+| `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page ("Auth" below) | yes (every page of a site that signs in) |
+| `@anotoki/lib/auth/testing` (0.4.0) | `provideTestAnotokiAuth()`, `FakeAuthClient`: the module without an IAM, for a site's specs | a site's specs |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
 `--anotoki-*` custom properties, each read with the family's own value as its
@@ -623,7 +626,7 @@ of the Migrations page; everything else is new.
    `is-link`, no more `.button.quiet`). Its words and behaviour are the same,
    except that it reloads without first marking the site ready.
 
-## Upgrading from 0.2.x (0.3.0, unreleased)
+## Upgrading from 0.2.x (0.3.0)
 
 1. **The kit's core, a piece at a time.** Nothing has to change to keep
    building: `@anotoki/lib/ui` re-exports every piece. For the smaller first
@@ -660,7 +663,7 @@ of the Migrations page; everything else is new.
    no property takes) - by themselves; the IAM's account pages give their frame
    its 88rem: `<anotoki-shell maxWidth="88rem">`.
 
-## Translations (unreleased, 0.3.0)
+## Translations (0.3.0)
 
 Every site keeps its words in three tables - `languages`, `translation_keys`,
 `translations` - which the IAM wrote first and the survey, Piano Academy,
@@ -703,6 +706,9 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   descriptions are the library's; their strings are written only for a library
   key that has none, so a site that took a key over - its own words, a language
   left blank on purpose - keeps them, and so does an owner's rewording.
+- `003_sign_in_words.sql` (0.4.0) adds the auth module's sign-in page's words
+  (`anotoki.signIn.*`: "Signing you in…", why a sign-in came back without one,
+  Try again, Back), 8 keys in English and Slovak, by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -812,11 +818,15 @@ Angular half reads the same file and keeps no copy by hand: `bun run words`
 (`angular/scripts/library-words.mjs`) generates its built-in words,
 `angular/projects/lib/ui/config/src/library-words.ts` (committed; `LIBRARY_WORDS`
 of `@anotoki/lib/ui/config`) - the kit reads its own from there, the status page
-its `siteStatus.*`, the translations module every one - and a spec
-(`library-words.spec.ts`), CI (`bun run words --check`) and the PHP half's
-`LibraryWordsTest` fail when that file is stale. So a page has the library's
-words while the database cannot be reached, and never shows a library key as a
-key. They are in a site's first load once, in `ui/config`.
+its `siteStatus.*`, the sign-in page its `signIn.*`, the translations module
+every one - and a spec (`library-words.spec.ts`), CI (`bun run words --check`)
+and the PHP half's `LibraryWordsTest` fail when that file is stale (prettier
+leaves it alone: `bun run format` would rewrite what `--check` holds byte for
+byte). So a page has the library's words while the database cannot be reached,
+and never shows a library key as a key. They are in a site's first load once,
+in `ui/config` - every module's words, one table: each word a module adds
+weighs on every first load that holds the kit (the sign-in page's eight, 0.3 kB
+gzipped).
 
 ### The Angular half: `@anotoki/lib/translations`
 
@@ -1102,21 +1112,40 @@ $app->add(new SiteGate($state, $app->getResponseFactory(), [AuthRoutes::openPath
 ### The browser: `@anotoki/lib/auth`
 
 ```ts
-// app.config.ts
+// app.config.ts - beside the gate, the shell and the translations module, each from its own entry point
 provideHttpClient(withInterceptors([siteStatusInterceptor, anotokiAuthInterceptor /* , the site's own */])),
-provideAnotokiAuth(() => ({
-  config: '/api/auth/config',                         // or () => inject(SiteSettings).auth(): the site's own boot answer
-  visitors: () => inject(VisitorKey),                 // current(), remember(), forget(); none: no visitors
-  language: () => inject(TranslationService).language(),   // ui_locales, and the built-in words' language
-  beforeSignIn: () => inject(SignInChecks).ready(),   // settle the writes, ask about unsaved work; false stops it
-  beforeSignOut: () => inject(SignInChecks).ready(),
-  preferences: () => inject(SitePreferences),         // apply(preferences, locale): the theme, the dates, the language
-  // api: { prefixes: ['/api/'], skip: [...], visitorPrefixes: ['/api/surveys'] }, headers: () => ({ 'X-Time-Zone': … }),
-  // hint: { cookieName: 'anotoki_signed_in' } | false, makesVisitor, forbiddenRoute, words, translate
-})),
+provideAnotokiAuth(() => {
+  const i18n = inject(TranslationService);              // the factory runs in an injection context; so do its functions
+  return {
+    config: '/api/auth/config',                         // or () => inject(SiteSettings).auth(): the site's own boot answer
+    visitors: () => inject(VisitorKey),                 // current(), remember(), forget(); none: no visitors
+    language: () => i18n.language(),                    // ui_locales, and the sign-in page's language
+    translate: (key) => i18n.libraryWord(key),          // an owner's rewording of anotoki.signIn.*, as the kit's lookup
+    beforeSignIn: () => inject(SignInChecks).ready(),   // settle the writes, ask about unsaved work; false stops it
+    beforeSignOut: () => inject(SignInChecks).ready(),
+    // preferences: () => inject(SitePreferences),      // apply(preferences, locale) - below
+    // api: { prefixes: ['/api/'], skip: [...], visitorPrefixes: ['/api/surveys'] }, headers: () => ({ 'X-Time-Zone': … }),
+    // hint: { cookieName: 'anotoki_signed_in' } | false, makesVisitor, forbiddenRoute, words
+  };
+}),
+provideAnotokiShell(() => {
+  const auth = inject(AnotokiAuth);
+  return {
+    theme: { storageKey: 'anotoki-survey:theme', account: () => auth.preferences()?.theme ?? null, save: (theme) => auth.savePreferences({ theme }) },
+    languages: inject(TranslationService).forShell(),
+  };
+}),
+provideAnotokiTranslations(() => {
+  const auth = inject(AnotokiAuth);
+  return {
+    storagePrefix: 'anotoki-survey',
+    account: { language: () => auth.locale(), decides: () => auth.preferences() !== null, save: (code) => auth.savePreferences({ language: code }), userKey: () => auth.sub() },
+    // ...
+  };
+}),
 provideAppInitializer(() => {
-  const status = inject(SiteStatus), auth = inject(AnotokiAuth);   // inject before the first await
-  return status.check().then(() => auth.init());
+  const status = inject(SiteStatus), auth = inject(AnotokiAuth), i18n = inject(TranslationService);   // inject before the first await
+  return status.check().then(() => auth.init()).then(() => i18n.init());   // the words after the sign-in put the address back
 }),
 
 // app.routes.ts
@@ -1124,6 +1153,13 @@ provideAppInitializer(() => {
 { path: '', canActivateChild: [personOrVisitorGuard], children: [/* … */] },   // personGuard where only a person may
 { path: 'admin', canActivate: [staffGuard], children: [/* … */] },             // adminGuard for ADMIN alone
 ```
+
+The shell's theme and the translations module's language follow the account
+through `AnotokiAuth` (`preferences()`, `locale()`, `savePreferences()`: one save
+at a time, rejected with the IAM's `code`); `AccountPreferences` is for the rest -
+the dates and the clock, and a site that keeps its own theme or language
+controls (genshin's header) - and, with `preferences`, hands the site what to
+show.
 
 - **The same storage as the SDK**: the tokens in localStorage under
   `anotoki-auth:{clientId}`, the sign-in in progress in sessionStorage under
@@ -1165,9 +1201,13 @@ provideAppInitializer(() => {
   made, a refused one taken back, a language the IAM does not offer kept for the
   visit.
 - `<anotoki-auth-callback>` - "Signing you in…" on the callback route, or why a
-  sign-in failed (from its code: `anotoki.signIn.*` words, English and informal
-  Slovak, overridable with `words` or the site's bundle through `translate`),
-  with Try again and Back; `noindex` while it shows.
+  sign-in failed, from its code alone, with Try again and Back; `noindex` while
+  it shows. Drawn with the kit (its buttons, the status page's frame; its own
+  classes `anotoki-auth-callback__panel`, `__message`, `__actions`; the buttons
+  `[data-retry]`, `[data-back]`). Its words are the library's
+  `anotoki.signIn.*` (`php/resources/library-words.json`, every site's database
+  through `anotoki_translations/003`): an owner's rewording through `translate`,
+  then the site's `words`, then the built-in English and informal Slovak.
 - `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth({user, roles,
   loginRequired, visitors, cookie})` and `FakeAuthClient` for a site's specs
   (then `await TestBed.inject(AnotokiAuth).init()`).
@@ -1628,9 +1668,9 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 bun install
 bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs: each entry point's
                         # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
-                        # build keeps of an entry point nothing is used of (nothing); and four first loads - the
-                        # gate, the bar, the words, a button - beside lazy pages that use the rest (no file of
-                        # theirs, under a limit), each file through Angular's own linker and the CLI's esbuild
+                        # build keeps of an entry point nothing is used of (nothing); and five first loads - the
+                        # gate, the bar, the words, a button, the sign-in - beside lazy pages that use the rest (no
+                        # file of theirs, under a limit), each file through Angular's own linker and the CLI's esbuild
 bun run test            # ng test lib --watch=false (Vitest, jsdom)
 bun run showcase        # projects/showcase on http://localhost:4320: every piece and the bar, from the source
                         # (?theme=dark, ?lang=sk, ?account=1 for a refused theme, ?frame=88rem for the frame's

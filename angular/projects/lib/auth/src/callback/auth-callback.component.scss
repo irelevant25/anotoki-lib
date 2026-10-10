@@ -1,35 +1,47 @@
-@use "../../../migrations/src/theme";
+@use "../../../sass/kit";
+
+// The status page's frame (<anotoki-site-status>): the one page of signing in a visitor sees on the site
+// itself stands where a page of the site would, in the family's tokens, whatever the site's own styles say.
 
 :host {
-  @include theme.tokens;
   display: block;
   padding: 3rem 1rem;
-  color: var(--_text);
+  color: kit.token(text);
 }
 
-@include theme.buttons;
-
-.callback {
+.anotoki-auth-callback__panel {
   box-sizing: border-box;
   max-width: 34rem;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-  border: 1px solid var(--_border);
-  border-radius: var(--_radius);
-  background: var(--_surface);
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
   text-align: center;
 }
 
-.message {
+.anotoki-auth-callback__message {
   margin: 0;
+  color: kit.token(text);
+  font-size: 1rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
-.actions {
+.anotoki-auth-callback__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
   margin-top: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  :host {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .anotoki-auth-callback__panel {
+    padding: 1.5rem 1rem;
+  }
 }

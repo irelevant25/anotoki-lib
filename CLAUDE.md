@@ -44,10 +44,12 @@ bun run words           # ui/config/src/library-words.ts from php/resources/libr
   in for `en` and `sk` (Slovak informal, "ty") and overridable per language. The
   library's words (`anotoki.*`) have one source, `php/resources/library-words.json`:
   the SQL of `anotoki_translations` is held to it by a test, and the Angular half's
-  `ui/config/src/library-words.ts` is generated from it (`bun run words`) - the kit's
-  words (`ui/config/src/words.ts`, read through `AnotokiWords`) and the status page's
-  come from there; a new one is a JSON entry and a new library migration. Names
-  (a site's sections, brand area) are never kit words.
+  `ui/config/src/library-words.ts` is generated from it (`bun run words`; prettier
+  leaves it alone) - the kit's words (`ui/config/src/words.ts`, read through
+  `AnotokiWords`), the status page's and the sign-in page's (`auth/src/words.ts`)
+  come from there; a new one is a JSON entry and a new library migration
+  (`anotoki_translations/003` brought `anotoki.signIn.*`; released files are never
+  edited). Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says
@@ -78,8 +80,9 @@ bun run words           # ui/config/src/library-words.ts from php/resources/libr
   `new` of anything but an InjectionToken - is kept whether used or not: mark it
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
   limits, every entry point to its imports (the shell imports only the core's
-  pieces and `ui/menu`; nothing imports the shell) and to an empty floor, and the
-  first loads of the gate, the bar, the words and a button to theirs.
+  pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces
+  and `migrations`) and to an empty floor, and the first loads of the gate, the
+  bar, the words, a button and the sign-in to theirs.
 - No composer.lock (a library); nothing sensitive in a file; never print a
   database password.
 - **Signing in** (auth): the IAM's rules do not loosen here - RS256 and `typ`

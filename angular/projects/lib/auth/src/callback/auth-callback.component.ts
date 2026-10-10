@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DOCUMENT, EnvironmentInjector, OnDestroy, OnInit, computed, inject, runInInjectionContext, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
 import { AnotokiAuth } from '../auth.service';
 import { ANOTOKI_AUTH_BROWSER } from '../browser';
 import { ANOTOKI_AUTH_CONFIG } from '../config';
@@ -17,10 +18,12 @@ import { failureText, signInWords } from '../words';
  *   code alone - with Try again and Back.
  *
  * The page asks search engines not to index it (noindex); a site keeps
- * crawlers off /auth/ in its robots.txt too.
+ * crawlers off /auth/ in its robots.txt too. Drawn with the kit's buttons, in
+ * the status page's frame; its words are the library's `anotoki.signIn.*`.
  */
 @Component({
   selector: 'anotoki-auth-callback',
+  imports: [ButtonComponent],
   templateUrl: './auth-callback.component.html',
   styleUrl: './auth-callback.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

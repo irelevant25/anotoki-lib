@@ -1,3 +1,6 @@
 .angular/
 dist/
 node_modules/
+# Generated from php/resources/library-words.json by scripts/library-words.mjs and held to it byte for byte
+# (`bun run words --check`, LibraryWordsTest): `bun run format` must leave it as the script wrote it.
+projects/lib/ui/config/src/library-words.ts

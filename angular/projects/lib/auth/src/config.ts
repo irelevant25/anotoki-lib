@@ -63,7 +63,10 @@ export interface AnotokiAuthConfig {
   visitors?: () => VisitorKeyStore | null;
   /** A save that makes a visitor when nobody sends it: it goes alone, and the others wait for the key it brings. */
   makesVisitor?: (request: HttpRequest<unknown>) => boolean;
-  /** The page's language: the IAM's pages open in it (ui_locales), and the built-in words are in it. */
+  /**
+   * The page's language: the IAM's pages open in it (ui_locales), and the built-in words are in it. With the
+   * translations module: `() => inject(TranslationService).language()`.
+   */
   language?: () => string | null | undefined;
   /** Before the browser leaves for the IAM: settle the writes, ask about unsaved work. false stops it. */
   beforeSignIn?: () => boolean | Promise<boolean>;
@@ -81,9 +84,13 @@ export interface AnotokiAuthConfig {
   postLogoutPath?: string;
   /** Where staffGuard and adminGuard send somebody signed in without the role. Default '/'. */
   forbiddenRoute?: string;
-  /** Per language, words to use instead of the built-in ones. */
+  /** Per language, words to use instead of the built-in ones (the library's `anotoki.signIn.*`). */
   words?: Record<string, Partial<SignInWords>>;
-  /** The site's own words for a library key (`anotoki.signIn.retry`), from its bundle - before the built-in ones. */
+  /**
+   * The site's own string for a library key (`anotoki.signIn.retry`) - an owner's rewording in its database -
+   * before its `words` and the built-in ones; null, '' or the key itself for none. With the translations module:
+   * `(key) => inject(TranslationService).libraryWord(key)`, as the kit's `lookup` reads it.
+   */
   translate?: (key: string) => string | null | undefined;
 }
 

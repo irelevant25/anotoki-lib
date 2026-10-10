@@ -10,7 +10,11 @@ said here, with what a site must do.
 Two modules, both halves: **auth** - signing in through the anotoki IAM, the IAM's SDKs moved into the
 library, and the sign-in hint (the owner's decisions of 2026-10-07) - and **people** - each site's
 record of the accounts that use it, and the scrub of the accounts the IAM deleted (the Angular People
-page comes with the UI kit).
+page comes with the UI kit); and the PHP half of the **admin tools** every site's panel shares (the
+owner's request of 2026-10-07, step 4): the error log, the audit log, feedback, backups and the file
+explorer - for the site's ADMIN alone (the owner's decision: EDITORs see none of them). The admin tools'
+Angular pages come later, on the UI kit. Nothing a site uses of 0.3.0 changes; each module is taken
+when the site adopts it (README.md: "Auth", "People", "Admin tools").
 
 PHP, auth (`Anotoki\Lib\Auth`):
 - `IamClient` (the SDK's configuration keys), `AccessTokens` and `Jwks` (the SDK 1.1.0's rules: RS256
@@ -26,8 +30,6 @@ PHP, auth (`Anotoki\Lib\Auth`):
   IAM (the survey's, Piano's and Japanese Academy's in one, with the hint cookie, `prompt=none`, the
   paged deleted accounts and any answer a test names); it ships in the Composer archive and answers
   nothing but under PHP's built-in server. `ext-openssl` is required now; `ext-curl` suggested.
-- `Support\HttpGet` (a GET with a timeout, status 0 for no answer), `Support\Log` (where the library's
-  log lines go), `Support\AfterResponse` (work after the answer, without cron).
 
 PHP, people (`Anotoki\Lib\People`):
 - The library's set `anotoki_people` (`php/migrations/people/001`): `anotoki_people_sync` and
@@ -39,6 +41,52 @@ PHP, people (`Anotoki\Lib\People`):
   `Http\RecordPerson`, `Http\PeopleUpkeep` (after the answer, at most hourly, while ready),
   `Http\PeopleRoutes` (list, search, paging, the site's columns and visitors line, the delete hook,
   sync now, the IAM's user page).
+
+PHP, the admin tools - what they share:
+- `Admin\AdminContext` - the site's actor, proof (the IAM's `accountProof()`; the sites'
+  `recentSignIn()` from the token's `auth_time`), address bucket and error body, given once.
+- The library's migration set `anotoki_admin` (`Admin\Schema`, `php/migrations/admin`): `001`
+  `anotoki_audit_log`, `002` `anotoki_feedback`. It runs **first** in a site's list.
+
+PHP, the admin tools:
+- `ErrorLog` - JSON lines in `storage/logs`, UTC days, parts past 4 MB, 30 days, 64 MB in all,
+  redacted, traces without arguments, an HMAC of the address bucket instead of an address;
+  `wrapHandler()`, `ErrorLogMiddleware::outer()/inner()`, `installPhpHandlers()` (fatals, chained
+  warnings); `ErrorLogReader` (genshin's report, its own lines read too); `Http\ErrorLogRoutes`
+  (`admin()`, `client()` for the pages' errors, `openPaths()`). By default every 5xx and 404, 405,
+  413, 415, 429 are written.
+- `Audit\AuditLog` (`AuditRecorder`) - never throws, a savepoint inside the caller's transaction,
+  a pending file while the table is missing (`flushPending()` after every Apply), the request's
+  actor held by `AuditContextMiddleware`, `withScope()`, `page()`/`facets()`, `scrubPeople()`
+  (the IAM's rules); `Http\AuditRoutes` (the IAM's answer).
+- `Feedback\Feedback` - the open form (identity from the token, a honeypot, 5 an hour / 20 a day
+  per address bucket and 300 a day in all, never an address kept, no id returned, no mail), the
+  admin list with an unread count for the panel's badge, `prune()` (spam 30 days, resolved 365,
+  the bucket's hash 30), `forgetPeople()`; `Http\FeedbackRoutes`.
+- `Backups\Backups` - no pg_dump: every table by COPY through PDO in one snapshot, with the applied
+  migrations, into `<id>.anotoki-backup` (a gzip'd ustar; the IAM's in AES-256-GCM chunks under a
+  key derived from its master key); daily after the answer (14), before every update (5), before
+  a restore (5), manual; restore in place only where the schema is the backup's, all or nothing,
+  never touching the bookkeeping or the audit log (`restore: false` for the IAM); downloads by
+  single-use 60-second tickets; `Http\BackupsRoutes` (the proof and an audit entry for every
+  create, delete, download and restore; `openPaths()` without restore), `Cli\BackupsCommand`.
+- `Files\FileExplorer` - roots (`FileRoot`) confined by real paths (`PathGuard`), genshin's upload
+  rules (`UploadPolicy`: one extension per name, no script or markup part, bytes checked, a guard
+  of RemoveHandler/RemoveType only), snapshot listings, a trash, signed previews;
+  `Http\FilesRoutes`.
+
+PHP, shared (`Anotoki\Lib\Support`):
+- `AfterResponse` - work after the answer, without cron: one runner for the people's scrub and the
+  admin tools' daily work. `AfterResponse::shared()->defer($work)` while answering (a module's
+  `defer:` option takes it, or a site's own runner), `->run()` after `$app->run()` - PHP-FPM and
+  LiteSpeed close the connection first; each piece on its own, a failure said in the log (redacted)
+  or to the site's `$onError`, never stopping the next; work a piece queues runs too. A site that
+  never calls `run()` has it run at the end of the request all the same (a shutdown function).
+- `HttpGet` (a GET with a timeout, status 0 for no answer), `Log` (where the library's log lines go:
+  PHP's error log, or the site's sink), `GuardedDirectory`, `Keys` (`derive()`: HKDF-SHA256
+  `anotoki-lib/<purpose>/v1`; `installation()`: a key in `storage/anotoki-lib.key` for a site
+  without a secret), `Redactor` (messages and paths without personal data or secrets; 4,096
+  characters at most; fail closed), `Throttle`, `AtomicFile`, `Utf8`.
 
 Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
 - `createAuthClient` - the IAM's browser SDK 1.2.0 ported, **with the same storage keys** (tokens,
@@ -53,12 +101,27 @@ Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
   gone or changed means one refresh at boot.
 - `provideTestAnotokiAuth`, `FakeAuthClient` for a site's specs.
 
-What a site must do (README.md, "Adopting auth and people, site by site"): `anotoki/lib ^0.4` and the
-0.4.0 tarball together; a migration of its own adding `users.anonymized_at TIMESTAMPTZ`, then
-`People\Schema::migrationSet()` after its sets; its vendored SDKs deleted (the IAM keeps `sdk/` frozen
-for third parties) and its wrappers replaced by the wiring in README.md; `robots.txt`
-`Disallow: /auth/` where visitors are welcome (genshin, the build analyzer). The boot configuration
-answers snake_case now - the Angular half reads the camelCase the sites answer today too.
+What a site must do - auth and people (README.md, "Adopting auth and people, site by site"):
+`anotoki/lib ^0.4` and the 0.4.0 tarball together; a migration of its own adding
+`users.anonymized_at TIMESTAMPTZ`, then `People\Schema::migrationSet()` after its sets; its vendored
+SDKs deleted (the IAM keeps `sdk/` frozen for third parties) and its wrappers replaced by the wiring in
+README.md; `robots.txt` `Disallow: /auth/` where visitors are welcome (genshin, the build analyzer). The
+boot configuration answers snake_case now - the Angular half reads the camelCase the sites answer today
+too.
+
+What a site must do - the admin tools: nothing until it takes them. Taking them:
+`Admin\Schema::migrationSet()` **first** in every place that builds its Migrator (the site, its
+installer, its command line) - genshin's order guard must let it through, and the upload then waits for
+Apply like any migration; an `AdminContext` from its auth; the modules and their routes behind its ADMIN
+check (the file and raw routes outside it); `ErrorLogRoutes::openPaths()` and
+`BackupsRoutes::openPaths()` in its gate's open paths; `flushPending()` in its migrations' `afterApply`;
+`dailyIfDue()` on requests and `beforeApplyHook()` in its Migrator. The IAM: `AfterResponse` after
+`$app->run()`, its backups encrypted with restore off, and its `audit_log` moved into the library's
+table by a migration of its own (`AuditLog`'s `ready` holds entries back until it ran).
+
+The order of the library's sets in a site's list: `[Admin\Schema::migrationSet(), ...$siteSets,
+Translations\Schema::migrationSet(), People\Schema::migrationSet()]` - the admin set first, the others
+after the site's own.
 
 ## 0.3.0 - 2026-10-11
 

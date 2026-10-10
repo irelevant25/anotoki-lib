@@ -41,6 +41,14 @@ for file in \
     php/migrations/people/001_people.sql \
     php/migrations/translations/001_languages_and_strings.sql \
     php/migrations/translations/002_library_words.sql \
+    php/migrations/admin/001_audit_log.sql \
+    php/migrations/admin/002_feedback.sql \
+    php/src/Admin/Schema.php \
+    php/src/Audit/AuditLog.php \
+    php/src/Backups/Backups.php \
+    php/src/ErrorLog/ErrorLog.php \
+    php/src/Feedback/Feedback.php \
+    php/src/Files/FileExplorer.php \
     php/resources/library-words.json
 do
     if ! printf '%s\n' "$list" | grep -q -x -F "$file"; then

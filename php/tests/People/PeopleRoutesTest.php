@@ -50,7 +50,7 @@ final class PeopleRoutesTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        AfterResponse::clear();
+        AfterResponse::shared()->clear();
         LogLines::take();
         parent::tearDown();
     }
@@ -180,20 +180,31 @@ final class PeopleRoutesTest extends DatabaseTestCase
         $ready = true;
         self::assertTrue($upkeep->soon());
         self::assertFileExists($stamp, 'the hour claimed before the work');
-        self::assertSame(1, AfterResponse::pending());
+        self::assertSame(1, AfterResponse::shared()->pending());
         self::assertSame('alice', $this->value('SELECT preferred_username FROM users WHERE id = 7'), 'nothing before the answer');
         self::assertFalse($upkeep->soon(), 'the hour is taken');
-        AfterResponse::run();
+        AfterResponse::shared()->run();
         self::assertSame('deleted-7', $this->value('SELECT preferred_username FROM users WHERE id = 7'));
 
         touch($stamp, time() - 3601);
         self::assertTrue($upkeep->soon(), 'an hour later');
-        AfterResponse::clear();
+        AfterResponse::shared()->clear();
 
         $app = $this->app(upkeep: $upkeep);
         touch($stamp, time() - 3601);
         self::assertSame(200, $this->sendTo($app, 'GET', '/api/progress', $this->iam->token(8))->getStatusCode());
-        self::assertSame(1, AfterResponse::pending(), 'ordinary traffic carries it');
+        self::assertSame(1, AfterResponse::shared()->pending(), 'ordinary traffic carries it');
+
+        // A site's own runner, given as `defer`, gets the work instead.
+        AfterResponse::shared()->clear();
+        $own = [];
+        $withOwn = new PeopleUpkeep($this->people, static fn (): bool => true, function (callable $work) use (&$own): void {
+            $own[] = $work;
+        });
+        touch($stamp, time() - 3601);
+        self::assertTrue($withOwn->soon());
+        self::assertCount(1, $own);
+        self::assertSame(0, AfterResponse::shared()->pending());
 
         $noCache = new People(SiteShapes::table('piano'), fn (): PDO => $this->pdo, $this->iam->client(['cache_dir' => null]));
         self::assertFalse((new PeopleUpkeep($noCache, static fn (): bool => true))->soon(), 'no cache folder, no stamp, no run');
@@ -202,18 +213,26 @@ final class PeopleRoutesTest extends DatabaseTestCase
     public function testAPieceOfWorkAfterTheAnswerThatFailsStopsNothing(): void
     {
         $done = [];
-        AfterResponse::add(static function (): void {
+        $after = AfterResponse::shared();
+        $after->defer(static function (): void {
             throw new \RuntimeException('a sweep failed');
         });
-        AfterResponse::add(static function () use (&$done): void {
+        $after->defer(static function () use (&$done): void {
             $done[] = 'the next';
         });
 
-        AfterResponse::run();
+        $after->run();
 
         self::assertSame(['the next'], $done);
         self::assertSame(['[anotoki] after the answer: RuntimeException: a sweep failed'], LogLines::take());
-        self::assertSame(0, AfterResponse::pending());
+        self::assertSame(0, $after->pending());
+
+        // What the log is told is redacted: a message that holds an address or a token says neither.
+        $after->defer(static function (): void {
+            throw new \RuntimeException('no answer for alice@example.test from 203.0.113.7');
+        });
+        $after->run();
+        self::assertSame(['[anotoki] after the answer: RuntimeException: no answer for {email} from {ip}'], LogLines::take());
     }
 
     /** The site: Identify, its routes recording the person, the Migrations route not, the People API for its ADMIN. */

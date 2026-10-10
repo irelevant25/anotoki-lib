@@ -35,7 +35,8 @@ final class PeopleUpkeep implements MiddlewareInterface
 
     /**
      * @param Closure(): bool $ready  the site is ready (SiteState::state() === SiteState::READY)
-     * @param ?Closure(callable): void $defer  how the work is put off till after the answer (AfterResponse::add())
+     * @param ?Closure(callable): void $defer  how the work is put off till after the answer: a site's own runner;
+     *                                         default AfterResponse::shared()->defer()
      */
     public function __construct(
         private readonly People $people,
@@ -79,7 +80,7 @@ final class PeopleUpkeep implements MiddlewareInterface
         $work = function (): void {
             $this->people->scrubber()->run();
         };
-        $this->defer !== null ? ($this->defer)($work) : AfterResponse::add($work);
+        $this->defer !== null ? ($this->defer)($work) : AfterResponse::shared()->defer($work);
 
         return true;
     }

@@ -12,6 +12,7 @@ use Anotoki\Lib\Audit\Http\AuditRoutes;
 use Anotoki\Lib\Migrations\Http\MigrationsRoutes;
 use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
+use Anotoki\Lib\Tests\Support\LogLines;
 use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -44,6 +45,16 @@ final class AuditLogTest extends DatabaseTestCase
         $site->record($this->request(), '1234', 'content.update', 'characters', 3);
         $row = $this->rows("SELECT actor_id, ip, details FROM anotoki_audit_log WHERE action = 'content.update'")[0];
         self::assertSame([1234, null, null], [$row['actor_id'], $row['ip'], $row['details']], 'a site keeps no address unless it says so; an IAM sub as text is an id');
+    }
+
+    public function testWithoutAnOnErrorWhyAnEntryWasNotWrittenIsTheLibrarysLogLine(): void
+    {
+        LogLines::take();
+        $audit = new AuditLog(fn (): PDO => $this->pdo);
+
+        $audit->record(null, 1, 'Not An Action', 'thing', 1);
+
+        self::assertSame(['[audit] not recorded: "Not An Action" is no action name (area.verb, small letters)'], LogLines::take());
     }
 
     public function testAFailedEntryNeverUndoesTheChangeItRecords(): void

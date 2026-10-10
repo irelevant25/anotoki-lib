@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anotoki\Lib\Auth;
 
+use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\HttpGet;
 use Anotoki\Lib\Support\Log;
 use Closure;
@@ -324,24 +325,15 @@ final class SignInRule
         return is_array($record) ? self::record($record) : null;
     }
 
-    /** Keeps the record: written beside and renamed over, so no reader sees half of it. */
+    /** Keeps the record, whole or not at all, so no reader sees half of it. */
     private static function write(string $file, array $record): bool
     {
         $directory = dirname($file);
         if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
             return false;
         }
-        $temporary = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        if (@file_put_contents($temporary, json_encode(self::record($record))) === false) {
-            return false;
-        }
-        if (!@rename($temporary, $file)) {
-            @unlink($temporary);
 
-            return false;
-        }
-
-        return true;
+        return AtomicFile::write($file, (string) json_encode(self::record($record)));
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Anotoki\Lib\Auth;
 
+use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\HttpGet;
 use Closure;
 
@@ -184,11 +185,9 @@ final class Jwks
 
             return;
         }
-        // Written beside and renamed over, so a request reading the copy while another writes it never sees half a file.
-        $temporary = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        if (@file_put_contents($temporary, json_encode($record, JSON_UNESCAPED_SLASHES)) === false || !@rename($temporary, $file)) {
-            @unlink($temporary);
-        }
+        // Whole or not at all, so a request reading the copy while another writes it never sees half a file. A copy
+        // that cannot be kept is no error: the key set is fetched again when it is needed.
+        AtomicFile::write($file, (string) json_encode($record, JSON_UNESCAPED_SLASHES));
     }
 
     private static function length(int $length): string

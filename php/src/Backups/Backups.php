@@ -10,6 +10,7 @@ use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\GuardedDirectory;
+use Anotoki\Lib\Support\Log;
 use Anotoki\Lib\Support\Redactor;
 use Anotoki\Lib\Support\Refusal;
 use Anotoki\Lib\Support\Utf8;
@@ -136,7 +137,8 @@ final class Backups
      *   - lock: the migrations' advisory lock (the site's Migrator `lock`, default Migrator::DEFAULT_LOCK)
      *   - ready: whether the site is ready for the daily backup (default: nothing to apply)
      *   - storage: the storage folder (the daily's stamp, the tickets); default the folder above $directory
-     *   - onError: told of the daily backup's failure (the error log); default error_log
+     *   - onError: told of the daily backup's failure (the error log); default: the library's log line
+     *     (Support\Log - PHP's error log unless the site sends the lines elsewhere), redacted
      */
     public function __construct(private readonly Closure $connect, string $directory, array $options)
     {
@@ -180,7 +182,7 @@ final class Backups
         $this->ready = $options['ready'] ?? null;
         $this->storage = rtrim((string) ($options['storage'] ?? dirname($this->directory)), '/\\');
         $this->onError = $options['onError'] ?? static function (Throwable $e): void {
-            error_log('[backups] ' . get_class($e) . ': ' . Redactor::text($e->getMessage()));
+            Log::say('[backups] ' . get_class($e) . ': ' . Redactor::text($e->getMessage()));
         };
         $this->tickets = new Tickets($this->storage . '/cache/backup-tickets', max(5, (int) ($options['ticketSeconds'] ?? 60)));
     }

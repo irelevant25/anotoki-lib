@@ -7,6 +7,8 @@ namespace Anotoki\Lib\Feedback;
 use Anotoki\Lib\Admin\Schema;
 use Anotoki\Lib\Audit\AuditLog;
 use Anotoki\Lib\Support\Keys;
+use Anotoki\Lib\Support\Log;
+use Anotoki\Lib\Support\Redactor;
 use Anotoki\Lib\Support\Refusal;
 use Anotoki\Lib\Support\Throttle;
 use Anotoki\Lib\Support\Utf8;
@@ -586,7 +588,8 @@ final class Feedback
         try {
             $work();
         } catch (Throwable $e) {
-            error_log('[feedback] ' . $e->getMessage());
+            // The library's log line, redacted: a site's notify may name the sender's address in its failure.
+            Log::say('[feedback] ' . Redactor::text($e->getMessage()));
         }
     }
 

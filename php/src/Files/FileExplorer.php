@@ -7,6 +7,8 @@ namespace Anotoki\Lib\Files;
 use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\GuardedDirectory;
 use Anotoki\Lib\Support\Keys;
+use Anotoki\Lib\Support\Log;
+use Anotoki\Lib\Support\Redactor;
 use Anotoki\Lib\Support\Refusal;
 use Closure;
 use InvalidArgumentException;
@@ -1045,7 +1047,7 @@ final class FileExplorer
         try {
             ($this->afterWrite)($root, $op, $path, $from);
         } catch (Throwable $e) {
-            error_log('[files] afterWrite: ' . $e->getMessage());
+            Log::say('[files] afterWrite: ' . Redactor::text($e->getMessage()));
         }
     }
 

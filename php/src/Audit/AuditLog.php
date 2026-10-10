@@ -7,6 +7,7 @@ namespace Anotoki\Lib\Audit;
 use Anotoki\Lib\Admin\Schema;
 use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\GuardedDirectory;
+use Anotoki\Lib\Support\Log;
 use Anotoki\Lib\Support\Utf8;
 use Closure;
 use DateTimeImmutable;
@@ -75,12 +76,13 @@ final class AuditLog implements AuditRecorder
      *   - recordAddress: keep the requester's address (the IAM does; the sites do not), from `address` -
      *     the site's trusted-proxy address - or the connection's REMOTE_ADDR
      *   - pendingFile: where entries wait while the table is missing (storage/logs/audit-pending.jsonl);
-     *     without one they go to PHP's error log
+     *     without one they go to `onError`
      *   - ready: whether entries may go into the table now (default: it exists). The IAM: only once its
      *     own migration has moved the old rows in
      *   - personTargetType: the target type of a person, for scrubPeople() ('user')
      *   - actorIds: a name typed into the page's actor filter, as the ids it may mean
-     *   - onError: told why an entry could not be written (default error_log)
+     *   - onError: told why an entry could not be written (default: the library's log line, Support\Log -
+     *     PHP's error log unless the site sends the lines elsewhere)
      */
     public function __construct(private readonly Closure $pdo, array $options = [])
     {
@@ -96,7 +98,7 @@ final class AuditLog implements AuditRecorder
         $this->personTargetType = (string) ($options['personTargetType'] ?? 'user');
         $this->actorIds = $options['actorIds'] ?? null;
         $this->onError = $options['onError'] ?? static function (string $message): void {
-            error_log($message);
+            Log::say($message);
         };
     }
 

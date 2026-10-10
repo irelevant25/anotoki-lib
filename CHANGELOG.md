@@ -87,6 +87,10 @@ PHP, shared (`Anotoki\Lib\Support`):
   `anotoki-lib/<purpose>/v1`; `installation()`: a key in `storage/anotoki-lib.key` for a site
   without a secret), `Redactor` (messages and paths without personal data or secrets; 4,096
   characters at most; fail closed), `Throttle`, `AtomicFile`, `Utf8`.
+- One of each for the modules of both: the auth module's kept files (the IAM's key set, its answer
+  about signing in) are written by `AtomicFile`; the admin tools' default reporters (the audit log's
+  `onError`, the backups', feedback's and the file explorer's) say their lines through `Log`, as
+  auth, people and the runner do - feedback's and the file explorer's redacted now too.
 
 Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
 - `createAuthClient` - the IAM's browser SDK 1.2.0 ported, **with the same storage keys** (tokens,

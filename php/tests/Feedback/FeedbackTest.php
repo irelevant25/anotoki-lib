@@ -10,6 +10,7 @@ use Anotoki\Lib\Audit\AuditLog;
 use Anotoki\Lib\Feedback\Feedback;
 use Anotoki\Lib\Feedback\Http\FeedbackRoutes;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
+use Anotoki\Lib\Tests\Support\LogLines;
 use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -242,6 +243,17 @@ final class FeedbackTest extends DatabaseTestCase
             $work();
         }
         self::assertSame('Tell me', $this->notified[0]['message']);
+    }
+
+    public function testANotifyThatFailsWithNoRunnerIsTheLibrarysLogLineRedacted(): void
+    {
+        LogLines::take();
+        $app = $this->app(['defer' => null, 'notify' => static function (array $message): void {
+            throw new \RuntimeException('no mail went to owner@example.test');
+        }]);
+
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'Tell me'])->getStatusCode(), 'the message is kept all the same');
+        self::assertSame(['[feedback] no mail went to {email}'], LogLines::take());
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

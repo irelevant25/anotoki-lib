@@ -13,7 +13,9 @@ Version 0.1.1 holds one module: **migrations** - the engine that brings a
 site's database up to date, and one behaviour for every site while an update
 waits. Unreleased (0.3.0, CHANGELOG.md): the engine's **library sets** - the
 library's own migration files beside a site's - and the PHP half of
-**translations** (the section "Translations" below).
+**translations** (the section "Translations" below). Unreleased (0.5.0): the PHP
+half of the **admin tools** - error log, audit log, feedback, backups, file
+explorer (the section "Admin tools").
 
 ## The behaviour
 
@@ -372,6 +374,322 @@ Angular half is to read the same file and never keep a copy by hand: a script
 (`translations/src/library-words.ts`, committed), and a spec fails when that file
 is stale - so a page has the library's words while the database cannot be
 reached, and never shows a library key as a key.
+
+## Admin tools (unreleased, 0.5.0: the PHP half)
+
+Five tools every site's admin panel shares, for the site's **ADMIN alone**
+(EDITORs see none of them - the owner's decision of 2026-10-07). The library
+decides nobody's permissions: each `*Routes::admin()` returns its route group
+and the site adds its own ADMIN check (the IAM: `requireSession()` +
+`requireAdmin()`, and its CSRF header on every write, as on every first-party
+write). The Angular pages come later, on the UI kit.
+
+| tool | namespace | kept in | sites |
+| --- | --- | --- | --- |
+| error log | `Anotoki\Lib\ErrorLog` | files, `storage/logs/errors-*.jsonl` | every site |
+| audit log | `Anotoki\Lib\Audit` | table `anotoki_audit_log` | every site |
+| feedback | `Anotoki\Lib\Feedback` | table `anotoki_feedback` | genshin, piano, Japanese, build analyzer |
+| backups | `Anotoki\Lib\Backups` | files, `storage/backups/*.anotoki-backup` | every site (the IAM's encrypted) |
+| file explorer | `Anotoki\Lib\Files` | the site's folders; `storage/trash/` | genshin |
+
+The error log and the backups need no table: they work while the database is
+down or an update waits. Every folder the tools write under storage gets a
+deny-all `.htaccess` and an empty `index.html` where it has none
+(`Support\GuardedDirectory`). Every time they write is UTC, ISO 8601 with `Z`
+on the wire, TIMESTAMPTZ in the tables.
+
+### What a site gives once: `AdminContext`
+
+```php
+use Anotoki\Lib\Admin\AdminContext;
+
+$context = new AdminContext(
+    actorId: fn ($request) => $request->getAttribute('user')['id'] ?? null,   // from the session or the token, never a body
+    proof: AdminContext::recentSignIn(fn ($request) => $request->getAttribute('claims')['auth_time'] ?? null),  // the sites: 10 minutes
+    // the IAM: proof: fn ($request, array $body) => accountProof($pdo, $request, $user, $session, $body['password'] ?? null, 'backup'),
+    //          proofKind: 'password' (or a closure: 'recent_sign_in' where the account has no password)
+    clientKey: fn ($request) => clientAddressCounted($request),               // the trusted proxy's address, its IPv6 /64
+    error: fn ($response, Refusal $refusal) => ...,                            // optional: the site's error body
+);
+```
+
+The proof guards every backup made, deleted, downloaded and restored: the IAM's
+`accountProof()` (its password, or a sign-in of the last 15 minutes; its
+`array` answers are taken as they are), the sites' token `auth_time`
+(`403 reauth_required`; the page offers "Sign in again" with `prompt: 'login'`).
+A context without a proof refuses those (`proof_unavailable`). The client key
+defaults to `REMOTE_ADDR` - behind Cloudflare a bucket shared by strangers:
+stricter, never looser; `X-Forwarded-For` is never read.
+
+### The schema: the library's set `anotoki_admin`, FIRST
+
+```php
+use Anotoki\Lib\Admin\Schema;
+
+$migrator = new Migrator($pdo, [Schema::migrationSet(), ...$siteSets, \Anotoki\Lib\Translations\Schema::migrationSet()], $options);
+```
+
+- `001_audit_log.sql` makes `anotoki_audit_log` (the IAM's columns plus
+  `actor_session`, `scope_type`, `scope_id`), `002_feedback.sql` makes
+  `anotoki_feedback`. Each proves the shape of a table of that name that is
+  there already, ends with `-- end of NNN` (Japanese Academy's draft rule takes
+  it), and names no site table. Released files are never edited.
+- It runs **first** - in the site, its installer and its command line alike:
+  the sites' own files move their old rows into its tables (the IAM's
+  `audit_log`, genshin's `audit_logs` and `feedback`), and nothing else makes an
+  `anotoki_*` table. It is recorded as `anotoki_admin/<file>` in a bookkeeping
+  table without `folder`, as `folder = anotoki_admin` in genshin's.
+- While a file of it waits, the modules ask `Schema::has()` (a `to_regclass`,
+  never memoised) and do without: the audit log keeps entries in a pending file,
+  feedback answers `503 feature_unavailable` (`Retry-After: 60`).
+- A site's hooks see its files: genshin's `migrationsOrderRefusal()` must let a
+  set before `users` through; the build analyzer's `beforeFile` and Japanese
+  Academy's `upkeep_before_apply()` must not mind them.
+
+### Error log
+
+```php
+use Anotoki\Lib\ErrorLog\ErrorLog;
+use Anotoki\Lib\ErrorLog\ErrorLogMiddleware;
+use Anotoki\Lib\ErrorLog\Http\ErrorLogRoutes;
+
+$errorLog = new ErrorLog(storageDir() . '/logs', [
+    'root' => dirname(__DIR__),        // file paths are written relative to it
+    'context' => $context,             // the user id, and an HMAC of the address bucket
+    'app' => $app,                     // the route's pattern in each line
+    // 'key' => Keys::derive(appSecret(), 'error-log'),   default: the installation's key (storage/anotoki-lib.key)
+    // 'responses' => fn (int $status) => $status >= 400, default: every 5xx and 404, 405, 413, 415, 429
+    // 'ignoreExceptions' => [ApiRefusal::class],         a site's decided answers: logged as their answer
+]);
+$errorLog->installPhpHandlers();                                        // fatals (shutdown) and warnings (chained)
+$errors = $app->addErrorMiddleware(false, true, true);
+$errors->setDefaultErrorHandler($errorLog->wrapHandler($siteHandler));  // or ErrorLogMiddleware::inner() inside a site's own
+$app->add(ErrorLogMiddleware::outer($errorLog));                        // added last: outside the error middleware
+ErrorLogRoutes::admin($app, '/api/admin/errors', $errorLog, $context, $audit)->add($requireAdmin);
+ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the pages' own errors (optional)
+```
+
+- One JSON line (`v: 1`) per event: `at` (UTC, ms), `source` (server, php,
+  client), `level`, `status`, `type`, `code`, `message` (redacted, 500 at
+  most), `file` (relative), `line`, `method`, `route`, `path` (redacted),
+  `user_id`, `client` (12 hex of an HMAC - never an address), `trace` (12
+  frames, never a call's arguments), `fingerprint`. Never a query string, a
+  header, a cookie, a body (an answer gives only its `code` and its sentence),
+  a token or the session.
+- `Support\Redactor`: PostgreSQL's DETAIL/HINT/CONTEXT/QUERY lines go whole,
+  echoed values, e-mail and IP addresses, JWTs, Bearer credentials,
+  `password=`-like secrets, query strings and token-like runs become marks; at
+  most 4,096 characters are read, and a rule that cannot run gives nothing of
+  the message.
+- A day's file goes into parts past 4 MB, days past 30 are deleted, and past
+  64 MB in all a day's lines are dropped and counted (`dropped` in the
+  report). One line per fingerprint per request. genshin's own lines are read
+  as they were (their `at` in the server's zone, their `ip` shown).
+- `GET $base` (`days`, `level`, `status`, `search`) answers genshin's report -
+  `{total, errors, warnings, notices, distinct, truncated, days, daily,
+  statuses, groups, dropped}`, the newest 2,000 lines grouped by fingerprint;
+  `GET $base/{fingerprint}` every occurrence; `DELETE $base` clears it
+  (audited `errors.cleared`). The log's own routes are never logged.
+- The client route: `POST {type?, message, page?, stack?, status?}` -> 204,
+  8 KB at most, 20 an hour from one address bucket and 500 a day in all
+  (`429 too_many`), each redacted, `source: client`.
+
+### Audit log
+
+```php
+use Anotoki\Lib\Audit\AuditContextMiddleware;
+use Anotoki\Lib\Audit\AuditLog;
+use Anotoki\Lib\Audit\Http\AuditRoutes;
+
+$audit = new AuditLog(fn (): PDO => db(), [
+    'pendingFile' => storageDir() . '/logs/audit-pending.jsonl',
+    // 'recordAddress' => true, 'address' => fn ($request) => requestIp($request),   the IAM keeps the address
+    // 'ready' => fn (PDO $pdo) => auditMovedToLibrary($pdo),                         the IAM: once its own move ran
+    // 'actorIds' => fn (string $name): array => ...,                                 the page's actor filter by name
+]);
+$audit->record($request, $actorId, 'user.roles_set', 'user', $id, ['roles' => $roles]);
+MigrationsRoutes::admin($app, '/api/admin/migrations', $migrator, function ($request, array $result) use ($audit): void {
+    $audit->flushPending();
+    $audit->record($request, $actorOf($request), 'migrations.applied', null, null, ['files' => $result['applied']]);
+});
+AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): array => namesOf($ids))->add($requireAdmin);
+```
+
+- `record()` never throws; inside the caller's transaction it writes behind a
+  savepoint, so a failed entry never undoes the change it records; details are
+  cut at 64 KB. While the table is missing (or `ready` says not yet) entries
+  wait in the pending file and go in, with their own times, at
+  `flushPending()` - after every Apply - or with the next entry written outside
+  a transaction.
+- `AuditContextMiddleware::fromRequest($audit, fn ($request) => ['actor' => ..., 'session' => ...])`
+  (inside the site's sign-in check) or `begin()`/`end()` hold who acts, so deep
+  code records with `recordHere()`; `withScope('characters', 42, fn () => ...)`
+  files every entry meanwhile under what it belongs to (genshin's
+  `withAuditScope()`).
+- `page()` (the IAM's filters - `actor` by id or name, `action` by its
+  beginning, `target_type` - plus `target_id`, `scope_type`, `scope_id`,
+  `from`, `to`), `facets()`, `countSince()`, `latest()`; `scrubPeople($ids)` -
+  the IAM's rules: no address on a person's own entries or on the entries about
+  them nobody else did, their names gone from the details about them.
+- `GET $base` answers the IAM's `{total, page, pageSize: 50, items}` (its
+  `AuditEntry` plus `actor_session`, `scope_type`, `scope_id`); `GET $base/facets`.
+- The modules record their own actions through it (or any `AuditRecorder`):
+  `errors.cleared`, `backup.created|deleted|downloaded|restored|restore_failed`,
+  `feedback.status_changed|deleted`, `file.uploaded|moved|renamed|deleted|restored|trash_emptied`,
+  `folder.created`.
+
+### Feedback
+
+```php
+use Anotoki\Lib\Feedback\Feedback;
+use Anotoki\Lib\Feedback\Http\FeedbackRoutes;
+
+$feedback = new Feedback(fn (): PDO => db(), [
+    'storage' => storageDir(),                       // the installation's key, the daily prune's stamp
+    'sections' => ['Characters', 'Weapons'],         // the site's places, optional
+    'fields' => ['steps' => 5000, 'expected' => 2000], // the site's extra fields, into details
+    'defer' => afterResponse(...),                   // the prune after the answer
+    // 'kinds' => ['bug', 'idea', 'other'], 'limits' => ['perHour' => 5, 'perDay' => 20, 'allPerDay' => 300],
+    // 'keep' => ['spam' => 30, 'resolved' => 365, 'client_hash' => 30], 'honeypot' => 'website', 'notify' => fn (array $message) => ...
+]);
+FeedbackRoutes::public($app, '/api/feedback', $feedback, $context, fn ($request): ?array => optionalSender($request));
+FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, fn (array $ids): array => namesOf($ids))->add($requireAdmin);
+```
+
+- The form: identity from the token only (`anonymous` drops the id and the
+  address); the page as a path; a filled honeypot answers `202` and keeps
+  nothing; the limits count an HMAC of the address bucket (never an address),
+  under one advisory lock; 64 KB a body; `201 {ok: true}` - no id. No mail: the
+  panel's badge reads `GET $base/unread`.
+- The admin side: `GET $base` (`kind`, `status`, `section`, `search`, `page`),
+  `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
+  `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited).
+  `forgetPeople($ids)` for an anonymized account; `prune()` daily.
+
+### Backups
+
+```php
+use Anotoki\Lib\Backups\Backups;
+use Anotoki\Lib\Backups\Copy;
+use Anotoki\Lib\Backups\Http\BackupsRoutes;
+
+$backups = new Backups(fn (): PDO => Copy::connect($dsn, $user, $password), storageDir() . '/backups', [
+    'site' => 'survey',
+    'migrator' => fn (PDO $pdo): Migrator => siteMigrator($pdo),   // the site's sets (the library's first), table and hooks
+    'lock' => SITE_MIGRATION_LOCK,                                 // its Migrator's advisory lock, when it names its own
+    'audit' => $audit,
+    'defer' => afterResponse(...),
+    'onError' => fn (Throwable $e) => $errorLog->record($e),
+    // the IAM: 'encryption' => Keys::derive(iamMasterKey(), 'iam-backup'), 'restore' => false
+    // 'afterRestore' => fn (array $manifest, PDO $pdo) => sweepAnonymizedAccountsSince($manifest['created_at']),
+]);
+$backups->dailyIfDue();                                                        // on requests: once a UTC day, after the answer
+$migratorOptions['beforeApply'] = $backups->beforeApplyHook($siteOwnHook);    // a backup before every update
+BackupsRoutes::admin($app, '/api/admin/backups', $backups, $context)->add($requireAdmin);
+BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          // OUTSIDE the admin check
+```
+
+- No pg_dump: COPY through PDO (`Pdo\Pgsql::copyToFile()` on PHP 8.4+ -
+  open the connection with `Copy::connect()`; `PDO::pgsqlCopyToFile()` before,
+  deprecated by 8.5), every table in one `REPEATABLE READ, READ ONLY`
+  transaction, parents first (a circle of keys that cannot be deferred is
+  refused by name), with the list and the SQL of the applied migrations. One
+  backup or Apply at a time (a lock file and the migrations' advisory lock).
+- `<id>.anotoki-backup` (`YYYYMMDD-HHMMSSZ-<kind>-<32 hex>`): `ANOTOKI-BACKUP 1`,
+  a JSON header, then a gzip'd ustar of `manifest.json`, `schema/<set>/<file>.sql`
+  and `data/NNN-<table>.copy` (COPY's text format) - opened anywhere by
+  `tail -n +3 x.anotoki-backup | tar -xz` - or, with `encryption`, that body in
+  1 MB AES-256-GCM chunks bound to the header, their index and the last one's
+  flag (another key, a changed byte, swapped chunks, a cut tail: refused). A
+  sidecar `<id>.anotoki-backup.json` feeds the list; a file without one is
+  listed from its header.
+- Kinds and keeping: `daily` (14), `before-migration` (5, once per list of
+  pending files; a backup that fails stops the Apply), `before-restore` (5),
+  `manual` (until deleted; `stale` after 90 days). Only files of these names
+  are ever deleted: whatever else is in the folder stays.
+- Restore in place, all or nothing, only where the live database's applied
+  migrations and columns equal the backup's (`409 schema_differs`): a
+  `before-restore` backup first, then one transaction (locks within 5 s, user
+  triggers off, one TRUNCATE, COPY back, sequences set, deferred keys checked,
+  triggers on, rows counted). Never restored: the bookkeeping table, the audit
+  log and `keep`. `restore: false` refuses it (the IAM, until an
+  `afterRestore` that ends every session and token and deletes again the
+  accounts deleted since has been reviewed).
+- Downloads: `POST $base/{id}/ticket` (the proof, audited) answers `{url,
+  expires_in: 60}`; the page navigates to it; the ticket is 32 random bytes,
+  kept as its hash, good once, for one backup, for a minute; the file comes as
+  an attachment, `no-store`, `nosniff`, `no-referrer`.
+- `GET $base` `{backups, status}` (space, last daily, encryption, whether a
+  restore can run here), `GET $base/proof` `{kind}`, `POST $base`,
+  `GET|DELETE $base/{id}`, `GET $base/{id}/preview` (the rows a restore would
+  take away), `POST $base/{id}/restore` `{confirm: the id's last 6, password?}`.
+- The command line - `Backups\Cli\BackupsCommand` in a site's `backup.php`
+  (never uploaded): `--list`, `--create`, `--inspect=<id>`,
+  `--extract=<id> <folder>` (decrypted and checked, with the order to load it
+  into another database: the schema files, then `psql \copy`), `--restore=<id>
+  --confirm=<last 6>`.
+
+### File explorer
+
+```php
+use Anotoki\Lib\Files\FileExplorer;
+use Anotoki\Lib\Files\FileRoot;
+use Anotoki\Lib\Files\Http\FilesRoutes;
+
+$explorer = new FileExplorer([
+    new FileRoot('assets', _assetsRoot(), label: 'Assets', write: true, extensions: UPLOAD_ALLOWED_EXTENSIONS, maxBytes: 50 * 1048576, snapshot: true),
+], [
+    'storage' => storageDir(),
+    'afterWrite' => fn (string $root, string $op, string $path, ?string $from) => keepTheCatalogueInStep($op, $path, $from),
+]);
+FilesRoutes::admin($app, '/api/admin/files', $explorer, $context, $audit)->add($requireAdmin);
+FilesRoutes::raw($app, '/api/admin/files/raw', $explorer, $context);          // OUTSIDE the admin check: signed links
+```
+
+- Paths (`PathGuard`): relative, `/`-separated, NFC; no NUL or control
+  characters, `\`, `:`, leading `/`, `.`/`..`, dot-names, trailing dots or
+  spaces; every existing part must be no link and resolve to itself inside the
+  root's real path plus a separator (symbolic links, Windows junctions, short
+  names and a sibling `assets-old/` all fail).
+- Names and bytes (`UploadPolicy`, genshin's rules): one extension per name,
+  from the root's list, every other dot a dash; a name with any script,
+  server-configuration or browser-markup part refused (`shell.php.png`,
+  `.htaccess`, `.user.ini`, `x.svg.png`); the bytes must be what the extension
+  says; a renamed file's new extension is checked the same way.
+- The guard: a written root gets an `.htaccess` before its first write - only
+  `RemoveHandler` and `RemoveType` for the script extensions, never `php_flag`,
+  `Options` or `Require` (each can answer 500 for every file of the folder where
+  AllowOverride does not allow it) - never over the site's own.
+- `GET $base/roots`; `GET $base/{root}` (`path`, `search`, `page`, `mode=new`);
+  `POST $base/{root}/rescan`, `/upload` (multipart: `path`, `replace`, the
+  files), `/folder`, `/move`; `DELETE $base/{root}?path=` (to
+  `storage/trash/<root>/`); `GET|DELETE $base/{root}/trash`,
+  `POST $base/{root}/trash/restore`. Previews: links signed for five minutes;
+  inline only raster pictures, sound and text up to 64 KB, everything else (SVG
+  among it) a download; CSP `sandbox`, `nosniff`, same-origin, `no-store`, byte
+  ranges.
+
+### What else a site adds
+
+- **Its gate's open paths** (a site that blocks while an update waits - every
+  site but the IAM): the error log and the backups need no table, and a backup
+  just before Apply is the point - restore stays closed:
+  `[...ErrorLogRoutes::openPaths(), ...BackupsRoutes::openPaths(), '~^/api/admin/migrations(/file|/apply)?$~D']`
+  (`'~^/api/admin/errors(/[0-9a-f]{12})?$~D'`,
+  `'~^/api/admin/backups(/proof|/[A-Za-z0-9-]{20,80}(/(ticket|file|preview))?)?$~D'`).
+  Their ADMIN check must judge by the token alone, as the migrations routes'.
+- **The runner after the answer**: a site with one passes it as `defer`; the IAM,
+  which has none, takes `Support\AfterResponse` - `AfterResponse::shared()->defer(...)`
+  while answering, `->run()` after `$app->run()` (PHP-FPM and LiteSpeed close the
+  connection first; each piece on its own).
+- `Support\Keys`: `derive($secret, $purpose)` (HKDF-SHA256, `anotoki-lib/<purpose>/v1`);
+  `installation($storage)` - 32 random bytes in `storage/anotoki-lib.key` for a
+  site without a secret, its folder guarded.
+- **genshin** moves its `audit_logs` and `feedback` rows into the library's
+  tables in its own migrations (gated, the old tables dropped by a later one) and
+  drops `ip` and `submitter_hash` in the move; **the IAM** moves `audit_log`
+  (017, keeping ids) with `AuditLog`'s `ready` holding entries back until 017
+  ran.
 
 ## Working on the library
 

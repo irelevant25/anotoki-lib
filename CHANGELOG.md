@@ -5,6 +5,60 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.5.0 - unreleased
+
+The PHP half of the admin tools every site's panel shares (the owner's request of 2026-10-07, step 4):
+the error log, the audit log, feedback, backups and the file explorer - for the site's ADMIN alone (the
+owner's decision: EDITORs see none of them). The Angular pages come later, on the UI kit. README.md,
+"Admin tools", says how a site adopts each.
+
+PHP, shared:
+- `Support\GuardedDirectory`, `Keys` (`derive()`: HKDF-SHA256 `anotoki-lib/<purpose>/v1`;
+  `installation()`: a key in `storage/anotoki-lib.key` for a site without a secret), `Redactor`
+  (messages and paths without personal data or secrets; 4,096 characters at most; fail closed),
+  `Throttle`, `AfterResponse` (the runner after the answer, for the IAM), `AtomicFile`, `Utf8`.
+- `Admin\AdminContext` - the site's actor, proof (the IAM's `accountProof()`; the sites'
+  `recentSignIn()` from the token's `auth_time`), address bucket and error body, given once.
+- The library's migration set `anotoki_admin` (`Admin\Schema`, `php/migrations/admin`): `001`
+  `anotoki_audit_log`, `002` `anotoki_feedback`. It runs **first** in a site's list.
+
+PHP, the tools:
+- `ErrorLog` - JSON lines in `storage/logs`, UTC days, parts past 4 MB, 30 days, 64 MB in all,
+  redacted, traces without arguments, an HMAC of the address bucket instead of an address;
+  `wrapHandler()`, `ErrorLogMiddleware::outer()/inner()`, `installPhpHandlers()` (fatals, chained
+  warnings); `ErrorLogReader` (genshin's report, its own lines read too); `Http\ErrorLogRoutes`
+  (`admin()`, `client()` for the pages' errors, `openPaths()`). By default every 5xx and 404, 405,
+  413, 415, 429 are written.
+- `Audit\AuditLog` (`AuditRecorder`) - never throws, a savepoint inside the caller's transaction,
+  a pending file while the table is missing (`flushPending()` after every Apply), the request's
+  actor held by `AuditContextMiddleware`, `withScope()`, `page()`/`facets()`, `scrubPeople()`
+  (the IAM's rules); `Http\AuditRoutes` (the IAM's answer).
+- `Feedback\Feedback` - the open form (identity from the token, a honeypot, 5 an hour / 20 a day
+  per address bucket and 300 a day in all, never an address kept, no id returned, no mail), the
+  admin list with an unread count for the panel's badge, `prune()` (spam 30 days, resolved 365,
+  the bucket's hash 30), `forgetPeople()`; `Http\FeedbackRoutes`.
+- `Backups\Backups` - no pg_dump: every table by COPY through PDO in one snapshot, with the applied
+  migrations, into `<id>.anotoki-backup` (a gzip'd ustar; the IAM's in AES-256-GCM chunks under a
+  key derived from its master key); daily after the answer (14), before every update (5), before
+  a restore (5), manual; restore in place only where the schema is the backup's, all or nothing,
+  never touching the bookkeeping or the audit log (`restore: false` for the IAM); downloads by
+  single-use 60-second tickets; `Http\BackupsRoutes` (the proof and an audit entry for every
+  create, delete, download and restore; `openPaths()` without restore), `Cli\BackupsCommand`.
+- `Files\FileExplorer` - roots (`FileRoot`) confined by real paths (`PathGuard`), genshin's upload
+  rules (`UploadPolicy`: one extension per name, no script or markup part, bytes checked, a guard
+  of RemoveHandler/RemoveType only), snapshot listings, a trash, signed previews;
+  `Http\FilesRoutes`.
+
+What a site must do: nothing until it takes the tools. Taking them: `Admin\Schema::migrationSet()`
+**first** in every place that builds its Migrator (the site, its installer, its command line) -
+genshin's order guard must let it through, and the upload then waits for Apply like any migration;
+an `AdminContext` from its auth; the modules and their routes behind its ADMIN check (the file and
+raw routes outside it); `ErrorLogRoutes::openPaths()` and `BackupsRoutes::openPaths()` in its gate's
+open paths; `flushPending()` in its migrations' `afterApply`; `dailyIfDue()` on requests and
+`beforeApplyHook()` in its Migrator. The IAM: `AfterResponse` after `$app->run()`, its backups
+encrypted with restore off, and its `audit_log` moved into the library's table by a migration of
+its own (`AuditLog`'s `ready` holds entries back until it ran).
+
 ## 0.3.0 - unreleased
 
 The PHP half of these: the engine's library sets, the translations module, the helpers the modules

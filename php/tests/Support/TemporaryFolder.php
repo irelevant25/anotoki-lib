@@ -34,18 +34,22 @@ trait TemporaryFolder
 
     protected static function removeFolder(string $path): void
     {
-        if (is_link($path) || is_file($path)) {
+        // A link - or a Windows junction, which PHP may take for neither a link nor a folder, and whose real path
+        // is its target's (or none, once the target went) - is removed itself, never walked into.
+        $real = realpath($path);
+        if (is_link($path) || (PHP_OS_FAMILY === 'Windows' && !is_file($path) && ($real === false || str_replace('\\', '/', $real) !== str_replace('\\', '/', $path)))) {
+            if (!@rmdir($path)) {
+                @unlink($path);
+            }
+
+            return;
+        }
+        if (is_file($path)) {
             @unlink($path);
 
             return;
         }
         if (!is_dir($path)) {
-            return;
-        }
-        // A Windows junction is a folder to scandir(): removed as a link, never walked into.
-        if (PHP_OS_FAMILY === 'Windows' && realpath($path) !== false && str_replace('\\', '/', (string) realpath($path)) !== str_replace('\\', '/', $path)) {
-            @rmdir($path);
-
             return;
         }
         foreach (scandir($path) ?: [] as $entry) {

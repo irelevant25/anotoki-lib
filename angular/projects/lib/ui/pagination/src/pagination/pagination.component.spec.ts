@@ -15,16 +15,16 @@ describe('<anotoki-pagination>', () => {
     const next = host.querySelector<HTMLButtonElement>('[data-next]')!;
 
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Pages');
-    expect(words(host.querySelector('.range'))).toBe('51-100 of 230');
-    expect(host.querySelector('.range')?.getAttribute('aria-live')).toBe('polite');
-    expect(words(host.querySelector('.page'))).toBe('Page 2 of 5');
+    expect(words(host.querySelector('.anotoki-pagination__range'))).toBe('51-100 of 230');
+    expect(host.querySelector('.anotoki-pagination__range')?.getAttribute('aria-live')).toBe('polite');
+    expect(words(host.querySelector('.anotoki-pagination__page'))).toBe('Page 2 of 5');
     previous.click();
     next.click();
     expect(moves).toEqual([1, 3]);
 
     fixture.componentRef.setInput('page', 5);
     await settle(fixture);
-    expect(words(host.querySelector('.range'))).toBe('201-230 of 230');
+    expect(words(host.querySelector('.anotoki-pagination__range'))).toBe('201-230 of 230');
     expect(next.disabled).toBe(true);
 
     fixture.componentRef.setInput('busy', true);
@@ -36,8 +36,8 @@ describe('<anotoki-pagination>', () => {
     fixture.componentRef.setInput('page', 1);
     await settle(fixture);
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Strany');
-    expect(words(host.querySelector('.range'))).toBe('Nie je čo zobraziť');
-    expect(words(host.querySelector('.page'))).toBe('Strana 1 z 1');
+    expect(words(host.querySelector('.anotoki-pagination__range'))).toBe('Nie je čo zobraziť');
+    expect(words(host.querySelector('.anotoki-pagination__page'))).toBe('Strana 1 z 1');
     expect(words(previous)).toBe('Predchádzajúca');
     host.remove();
   });

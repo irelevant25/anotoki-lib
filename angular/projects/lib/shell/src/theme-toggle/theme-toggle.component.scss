@@ -12,7 +12,7 @@
 // Why a choice could not be saved: over the page, from the switch's right edge
 // (the switch stands near the bar's right, so there is room to its left), and
 // moved onto the screen when it would stick out.
-.note {
+.anotoki-theme-toggle__note {
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;

@@ -21,9 +21,9 @@ describe('<anotoki-language-switcher>', () => {
 
   afterEach(() => host?.remove());
 
-  const button = () => host.querySelector<HTMLButtonElement>('.switcher')!;
+  const button = () => host.querySelector<HTMLButtonElement>('.anotoki-language-switcher__switcher')!;
   const items = () => Array.from(host.querySelectorAll<HTMLElement>('[role=menuitemradio]'));
-  const note = () => host.querySelector('.note');
+  const note = () => host.querySelector('.anotoki-language-switcher__note');
 
   async function open(): Promise<void> {
     button().focus();

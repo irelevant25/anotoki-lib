@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, booleanAttribute, input, model } from '@angular/core';
-import { uniqueId } from '@anotoki/lib/ui';
+import { uniqueId } from '@anotoki/lib/ui/dom';
 
 /**
  * A checkbox with its label as content: `<anotoki-checkbox [(checked)]="keep">Keep me signed in</anotoki-checkbox>`.

@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, DOCUMENT, DestroyRef, ElementRef, afterNextRender, booleanAttribute, inject, input, output, viewChild } from '@angular/core';
-import { AnotokiWords, IconComponent, tabbable, uniqueId } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { tabbable, uniqueId } from '@anotoki/lib/ui/dom';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 
 /**
  * A modal dialog on the native `<dialog>` element.
@@ -111,7 +113,7 @@ export class DialogComponent {
   private focusFirst(dialog: HTMLDialogElement): void {
     const preferred = dialog.querySelector<HTMLElement>('[autofocus]');
     const focusable = tabbable(dialog);
-    const target = preferred ?? focusable.find((element) => !element.classList.contains('close')) ?? focusable[0];
+    const target = preferred ?? focusable.find((element) => !element.classList.contains('anotoki-dialog__close')) ?? focusable[0];
     target?.focus();
   }
 

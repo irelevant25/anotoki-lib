@@ -241,8 +241,8 @@ describe('<anotoki-menu> of radio items: one choice out of a few (the languages)
     const radios = Array.from(host.querySelectorAll<HTMLElement>('[role=menuitemradio]'));
     expect(radios.map((radio) => radio.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
     expect(radios.map((radio) => radio.getAttribute('lang'))).toEqual(['en', 'sk', 'de']);
-    expect(radios[1].querySelector('.check')).not.toBeNull();
-    expect(radios[0].querySelector('.check')).toBeNull();
+    expect(radios[1].querySelector('.anotoki-menu-item__check')).not.toBeNull();
+    expect(radios[0].querySelector('.anotoki-menu-item__check')).toBeNull();
     expect(document.activeElement).toBe(radios[1]);
     expect(host.querySelector('[role=menu]')?.getAttribute('aria-label')).toBe('Language');
 

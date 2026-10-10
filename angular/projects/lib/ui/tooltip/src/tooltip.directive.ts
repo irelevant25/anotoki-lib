@@ -1,5 +1,5 @@
 import { ApplicationRef, ComponentRef, DOCUMENT, DestroyRef, Directive, ElementRef, EnvironmentInjector, createComponent, effect, inject, input } from '@angular/core';
-import { uniqueId } from '@anotoki/lib/ui';
+import { uniqueId } from '@anotoki/lib/ui/dom';
 import { TooltipBubbleComponent } from './tooltip-bubble/tooltip-bubble.component';
 
 /** How far from the element, and from the window's edges, in px. */

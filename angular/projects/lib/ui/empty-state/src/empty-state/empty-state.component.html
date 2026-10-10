@@ -1,0 +1,8 @@
+<div class="anotoki-empty-state__empty">
+    <span class="anotoki-empty-state__icon"><anotoki-icon [name]="icon()" [size]="22" /></span>
+    <p class="anotoki-empty-state__heading">{{ heading() }}</p>
+    @if (text()) {
+        <p class="anotoki-empty-state__text">{{ text() }}</p>
+    }
+    <div class="anotoki-empty-state__actions"><ng-content /></div>
+</div>

@@ -11,7 +11,7 @@
  * Generated from the IAM's and the survey's icon sets.
  */
 
-import type { IconPaths } from '@anotoki/lib/ui';
+import type { IconPaths } from '@anotoki/lib/ui/config';
 
 export const iconActivity: IconPaths = ['M22 12h-4l-3 9L9 3l-3 9H2'];
 export const iconAppWindow: IconPaths = ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z', 'M2 9h20', 'M6 6.5h.01', 'M9 6.5h.01'];

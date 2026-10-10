@@ -7,7 +7,7 @@
 @include kit.slot-wrappers(dialogFooter);
 
 // Its own name, always set here: a custom property inherits, and an ancestor's --_width (the frame's) must not size the dialog.
-.dialog {
+.anotoki-dialog__dialog {
   --_dialog-width: 34rem;
 
   box-sizing: border-box;
@@ -26,15 +26,15 @@
   line-height: 1.55;
 }
 
-.dialog[data-size="sm"] {
+.anotoki-dialog__dialog[data-size="sm"] {
   --_dialog-width: 27rem;
 }
 
-.dialog[data-size="lg"] {
+.anotoki-dialog__dialog[data-size="lg"] {
   --_dialog-width: 46rem;
 }
 
-.dialog[open] {
+.anotoki-dialog__dialog[open] {
   animation: dialog-in 180ms kit.token(ease);
 
   @media (prefers-reduced-motion: reduce) {
@@ -42,18 +42,18 @@
   }
 }
 
-.dialog::backdrop {
+.anotoki-dialog__dialog::backdrop {
   background: kit.token(backdrop);
   backdrop-filter: blur(2px);
 }
 
-.panel {
+.anotoki-dialog__panel {
   display: flex;
   flex-direction: column;
   max-height: inherit;
 }
 
-.header {
+.anotoki-dialog__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -61,14 +61,14 @@
   padding: 1.2rem 1.35rem 0.4rem;
 }
 
-.titles {
+.anotoki-dialog__titles {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   min-width: 0;
 }
 
-.title {
+.anotoki-dialog__title {
   margin: 0;
   color: kit.token(text);
   font-size: 1.125rem;
@@ -77,13 +77,13 @@
   overflow-wrap: anywhere;
 }
 
-.description {
+.anotoki-dialog__description {
   margin: 0;
   color: kit.token(muted);
   font-size: 0.9rem;
 }
 
-.close {
+.anotoki-dialog__close {
   @include kit.button-reset;
   display: inline-flex;
   flex: none;
@@ -108,22 +108,22 @@
   @include kit.focus-ring;
 }
 
-.body {
+.anotoki-dialog__body {
   padding: 0.6rem 1.35rem 1.1rem;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 // A question said by its heading and description alone has no body.
-.body:empty {
+.anotoki-dialog__body:empty {
   display: none;
 }
 
-.header:has(+ .body:empty) {
+.anotoki-dialog__header:has(+ .anotoki-dialog__body:empty) {
   padding-bottom: 1.1rem;
 }
 
-.footer {
+.anotoki-dialog__footer {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -133,26 +133,26 @@
   background: kit.token(surface-2);
 }
 
-.footer:empty {
+.anotoki-dialog__footer:empty {
   display: none;
 }
 
 @media (max-width: 520px) {
-  .dialog {
+  .anotoki-dialog__dialog {
     width: calc(100% - 1rem);
     max-height: calc(100dvh - 1rem);
     border-radius: kit.token(radius-lg);
   }
 
-  .header {
+  .anotoki-dialog__header {
     padding: 1rem 1rem 0.35rem;
   }
 
-  .body {
+  .anotoki-dialog__body {
     padding: 0.5rem 1rem 1rem;
   }
 
-  .footer {
+  .anotoki-dialog__footer {
     padding: 0.8rem 1rem 1rem;
   }
 }

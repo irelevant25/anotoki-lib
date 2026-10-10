@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, input, model, viewChild } from '@angular/core';
-import { IconComponent } from '@anotoki/lib/ui';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 import { FieldBase } from '../field-base';
 
 export interface SelectOption {
@@ -23,7 +23,7 @@ export interface SelectOption {
   templateUrl: './select.component.html',
   styleUrl: './select.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'anotoki-select', '[class.is-inline]': 'inline()' },
+  host: { class: 'anotoki-select', '[class.anotoki-select--inline]': 'inline()' },
 })
 export class SelectComponent extends FieldBase {
   readonly value = model<string>('');

@@ -17,7 +17,7 @@ const NAV: ShellNavItem[] = [
   imports: [ShellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <anotoki-shell [nav]="nav()" [navLabel]="navLabel()" [skipLabel]="skipLabel()">
+    <anotoki-shell [nav]="nav()" [navLabel]="navLabel()" [skipLabel]="skipLabel()" [maxWidth]="maxWidth()">
       <header topBar class="their-bar">A site's own header</header>
       <h1 id="title">The page</h1>
       <footer shellFooter class="their-footer">The foot</footer>
@@ -28,6 +28,7 @@ class FramePageComponent {
   readonly nav = signal<readonly ShellNavItem[]>([]);
   readonly navLabel = signal<string | null>(null);
   readonly skipLabel = signal<string | null>(null);
+  readonly maxWidth = signal<string | null>(null);
 }
 
 describe('<anotoki-shell>: the frame of a site’s pages', () => {
@@ -46,7 +47,7 @@ describe('<anotoki-shell>: the frame of a site’s pages', () => {
     const fixture = await draw();
     const frame: HTMLElement = fixture.nativeElement.querySelector('anotoki-shell');
     const order = Array.from(frame.children).map((child) => child.tagName.toLowerCase() + (child.classList.length ? '.' + child.classList[0] : ''));
-    expect(order).toEqual(['a.skip-link', 'header.their-bar', 'div.frame', 'footer.their-footer']);
+    expect(order).toEqual(['a.anotoki-shell__skip-link', 'header.their-bar', 'div.anotoki-shell__frame', 'footer.their-footer']);
     expect(frame.querySelector('main#main')?.getAttribute('tabindex')).toBe('-1');
     expect(frame.querySelector('main #title')).not.toBeNull();
     expect(frame.querySelector('nav')).toBeNull();
@@ -55,7 +56,7 @@ describe('<anotoki-shell>: the frame of a site’s pages', () => {
 
   it('the skip link moves the focus to the page by hand - with <base href="/"> a bare #main would leave it', async () => {
     const fixture = await draw();
-    const skip = fixture.nativeElement.querySelector('.skip-link') as HTMLAnchorElement;
+    const skip = fixture.nativeElement.querySelector('.anotoki-shell__skip-link') as HTMLAnchorElement;
     expect(words(skip)).toBe('Skip to content');
     const click = new MouseEvent('click', { bubbles: true, cancelable: true });
     skip.dispatchEvent(click);
@@ -79,12 +80,34 @@ describe('<anotoki-shell>: the frame of a site’s pages', () => {
     await TestBed.inject(Router).navigateByUrl('/admin/users');
     await settle(fixture);
     const frame: HTMLElement = fixture.nativeElement.querySelector('anotoki-shell');
-    expect(frame.classList).toContain('has-nav');
+    expect(frame.classList).toContain('anotoki-shell--has-nav');
     expect(frame.querySelector('nav')?.getAttribute('aria-label')).toBe('Admin panel');
     const links = Array.from(frame.querySelectorAll<HTMLAnchorElement>('nav a'));
     expect(links.map(words)).toEqual(['Overview', 'Users']);
     expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([null, 'page']);
-    expect(links[1].classList).toContain('is-active');
+    expect(links[1].classList).toContain('anotoki-shell__nav-link--active');
+    fixture.nativeElement.remove();
+  });
+
+  it('as wide as the site says (maxWidth), the bar inside lined up with it; the kit’s widths without it', async () => {
+    const fixture = await draw();
+    const frame: HTMLElement = fixture.nativeElement.querySelector('anotoki-shell');
+    const widths = () => [frame.style.getPropertyValue('--_shell-width'), frame.style.getPropertyValue('--anotoki-topbar-max-width')];
+    // Without it the stylesheet's own (84rem, 88rem beside a side navigation) hold: nothing is written on the element.
+    expect(widths()).toEqual(['', '']);
+
+    fixture.componentInstance.maxWidth.set('88rem');
+    await settle(fixture);
+    expect(widths()).toEqual(['88rem', '88rem']);
+
+    fixture.componentInstance.nav.set(NAV);
+    fixture.componentInstance.maxWidth.set('96rem');
+    await settle(fixture);
+    expect(widths()).toEqual(['96rem', '96rem']);
+
+    fixture.componentInstance.maxWidth.set(null);
+    await settle(fixture);
+    expect(widths()).toEqual(['', '']);
     fixture.nativeElement.remove();
   });
 });

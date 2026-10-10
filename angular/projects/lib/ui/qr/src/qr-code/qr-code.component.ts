@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { AnotokiWords } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
 import { encodeQr } from '../qr-encoder';
 
 /**

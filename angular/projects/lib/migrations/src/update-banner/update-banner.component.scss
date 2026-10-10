@@ -5,7 +5,7 @@
   display: block;
 }
 
-.banner {
+.anotoki-update-banner__banner {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -19,7 +19,7 @@
   line-height: 1.4;
 }
 
-.link {
+.anotoki-update-banner__link {
   color: var(--_primary);
   font-weight: 600;
   text-underline-offset: 0.2em;

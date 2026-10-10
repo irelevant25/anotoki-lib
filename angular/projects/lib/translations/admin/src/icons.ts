@@ -1,4 +1,5 @@
-import { AnotokiIcons, IconSet } from '@anotoki/lib/ui';
+import { IconSet } from '@anotoki/lib/ui/config';
+import { AnotokiIcons } from '@anotoki/lib/ui/icon';
 import { iconArrowUp, iconDatabase, iconDownload, iconLanguages, iconMail, iconTrash, iconUndo } from '@anotoki/lib/ui/icons';
 
 /** The icons the two pages draw beside the kit's own. */

@@ -1,5 +1,5 @@
 import { Directive, ElementRef, effect, inject, input } from '@angular/core';
-import { uniqueId } from '@anotoki/lib/ui';
+import { uniqueId } from '@anotoki/lib/ui/dom';
 import { MenuComponent } from './menu/menu.component';
 
 /**

@@ -10,7 +10,7 @@
 // In the top layer (popover="manual"), placed by the component under its
 // button; the popover's own defaults (centred, a border, Canvas colours) are
 // set aside here.
-.panel {
+.anotoki-menu__panel {
   position: fixed;
   inset: auto;
   z-index: 40;

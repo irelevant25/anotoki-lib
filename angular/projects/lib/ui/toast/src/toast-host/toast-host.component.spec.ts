@@ -25,20 +25,20 @@ describe('ToastService and <anotoki-toast-host>', () => {
     toasts.success('Uložené.');
     await settle(fixture);
     expect(host.querySelector('section')?.getAttribute('aria-label')).toBe('Oznámenia');
-    const toast = host.querySelector('.toast')!;
+    const toast = host.querySelector('.anotoki-toast-host__toast')!;
     expect(toast.getAttribute('data-tone')).toBe('success');
-    expect(words(toast.querySelector('.message'))).toBe('Uložené.');
+    expect(words(toast.querySelector('.anotoki-toast-host__message'))).toBe('Uložené.');
     expect(toast.querySelector('button')?.getAttribute('aria-label')).toBe('Zavrieť');
 
     for (const n of [2, 3, 4, 5]) {
       toasts.info(`Message ${n}`);
     }
     await settle(fixture);
-    expect(Array.from(host.querySelectorAll('.message')).map(words)).toEqual(['Message 2', 'Message 3', 'Message 4', 'Message 5']);
+    expect(Array.from(host.querySelectorAll('.anotoki-toast-host__message')).map(words)).toEqual(['Message 2', 'Message 3', 'Message 4', 'Message 5']);
 
-    host.querySelector<HTMLButtonElement>('.toast button')!.click();
+    host.querySelector<HTMLButtonElement>('.anotoki-toast-host__toast button')!.click();
     await settle(fixture);
-    expect(host.querySelectorAll('.toast').length).toBe(3);
+    expect(host.querySelectorAll('.anotoki-toast-host__toast').length).toBe(3);
     host.remove();
   });
 

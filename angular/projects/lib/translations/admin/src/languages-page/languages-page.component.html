@@ -1,10 +1,10 @@
 @if (!allowed()) {
-    <p class="notice">The languages are for the people {{ siteName }} lets change them.</p>
+    <p class="anotoki-translations-admin__notice">The languages are for the people {{ siteName }} lets change them.</p>
 } @else {
-    <div class="page">
+    <div class="anotoki-translations-admin__page">
         <anotoki-page-header heading="Languages" [lead]="lead" [headingId]="id + '-title'">
             @if (loaded()) {
-                <p pageMeta class="counts">
+                <p pageMeta class="anotoki-translations-admin__counts">
                     <span>
                         <strong>{{ languages().length }}</strong>
                         {{ languages().length === 1 ? "language" : "languages" }}
@@ -25,7 +25,9 @@
 
         @if (unavailable()) {
             <anotoki-alert data-unavailable tone="warning" heading="Apply the pending database update first">
-                <p class="alert-text">The languages move into the database with an update that is uploaded and not applied yet. Until it is, there is nothing here to change.</p>
+                <p class="anotoki-translations-admin__alert-text">
+                    The languages move into the database with an update that is uploaded and not applied yet. Until it is, there is nothing here to change.
+                </p>
                 <div alertActions>
                     @if (migrationsRoute) {
                         <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="migrationsRoute">
@@ -42,23 +44,23 @@
         } @else if (loadError(); as message) {
             <anotoki-error-state heading="The languages could not be loaded" retryLabel="Try again" [message]="message" (retry)="load()" />
         } @else if (!loaded()) {
-            <div class="loading"><anotoki-spinner size="lg" label="Loading the languages" [showLabel]="true" /></div>
+            <div class="anotoki-translations-admin__loading"><anotoki-spinner size="lg" label="Loading the languages" [showLabel]="true" /></div>
         } @else {
-            <p class="happened" data-happened role="status">{{ happened() }}</p>
+            <p class="anotoki-translations-admin__happened" data-happened role="status">{{ happened() }}</p>
 
-            <ul class="list">
+            <ul class="anotoki-languages-page__list">
                 @for (language of languages(); track language.code) {
-                    <li class="language" [class.is-hidden]="!language.enabled" [attr.data-language]="language.code">
-                        <div class="head">
+                    <li class="anotoki-languages-page__language" [class.anotoki-languages-page__language--hidden]="!language.enabled" [attr.data-language]="language.code">
+                        <div class="anotoki-languages-page__head">
                             <anotoki-badge [mono]="true">{{ language.code }}</anotoki-badge>
-                            <strong class="name">{{ language.name }}</strong>
-                            <span class="native" [attr.lang]="language.code">{{ language.native_name }}</span>
+                            <strong class="anotoki-languages-page__name">{{ language.name }}</strong>
+                            <span class="anotoki-languages-page__native" [attr.lang]="language.code">{{ language.native_name }}</span>
                             @if (language.code === fallback) {
                                 <anotoki-badge tone="primary">Fallback</anotoki-badge>
                             } @else if (language.seeded) {
                                 <anotoki-badge>Released with {{ siteName }}</anotoki-badge>
                             }
-                            <span class="note">
+                            <span class="anotoki-languages-page__note">
                                 {{ language.strings === 1 ? "1 string" : language.strings + " strings" }}
                                 @if (noteOf(language); as note) {
                                     · {{ note }}
@@ -66,7 +68,7 @@
                             </span>
                         </div>
 
-                        <div class="fields">
+                        <div class="anotoki-languages-page__fields">
                             <anotoki-text-field label="Name in English" autocomplete="off" [maxlength]="50" [value]="draft(language).name" (valueChange)="edit(language, { name: $event })" />
                             <anotoki-text-field
                                 label="Name as its speakers write it"
@@ -76,7 +78,7 @@
                                 [value]="draft(language).native_name"
                                 (valueChange)="edit(language, { native_name: $event })" />
                             <anotoki-text-field
-                                class="order"
+                                class="anotoki-languages-page__order"
                                 label="Order"
                                 type="number"
                                 inputmode="numeric"
@@ -87,7 +89,7 @@
                                 (valueChange)="edit(language, { sort_order: $event })" />
                         </div>
 
-                        <div class="foot">
+                        <div class="anotoki-languages-page__foot">
                             <anotoki-switch
                                 data-offered
                                 [checked]="language.enabled"
@@ -98,7 +100,7 @@
                                 {{ language.enabled ? "Offered" : "Hidden" }}
                             </anotoki-switch>
 
-                            <div class="actions">
+                            <div class="anotoki-languages-page__actions">
                                 @if (isChanged(language)) {
                                     <button anotokiButton size="sm" variant="ghost" data-undo [disabled]="saving() === language.code" (click)="undo(language)">
                                         <anotoki-icon name="undo" [size]="15" />
@@ -126,7 +128,7 @@
                         </div>
 
                         @if (errorOf(language); as message) {
-                            <p class="field-error" role="alert">
+                            <p class="anotoki-translations-admin__field-error" role="alert">
                                 <anotoki-icon name="alert" [size]="15" />
                                 <span>{{ message }}</span>
                             </p>
@@ -136,9 +138,9 @@
             </ul>
 
             <anotoki-card heading="Add a language" subheading="It goes after the ones there are, and reads in English until its strings are written on the Translations page.">
-                <form class="add" (submit)="$event.preventDefault(); add()">
+                <form class="anotoki-languages-page__add" (submit)="$event.preventDefault(); add()">
                     <anotoki-text-field
-                        class="code"
+                        class="anotoki-languages-page__code"
                         label="Code"
                         autocomplete="off"
                         autocapitalize="none"
@@ -149,10 +151,10 @@
                         [(value)]="newCode" />
                     <anotoki-text-field label="Name in English" autocomplete="off" placeholder="Czech" [maxlength]="50" [(value)]="newName" />
                     <anotoki-text-field label="Name as its speakers write it" autocomplete="off" placeholder="Čeština" [maxlength]="50" [(value)]="newNativeName" />
-                    <anotoki-switch class="add-offered" hint="A new language starts hidden - write its strings, then offer it." [disabled]="adding()" [(checked)]="newOffered">
+                    <anotoki-switch class="anotoki-languages-page__add-offered" hint="A new language starts hidden - write its strings, then offer it." [disabled]="adding()" [(checked)]="newOffered">
                         Offer it to readers right away
                     </anotoki-switch>
-                    <div class="add-actions">
+                    <div class="anotoki-languages-page__add-actions">
                         <button anotokiButton variant="primary" type="submit" data-add [loading]="adding()" [disabled]="!canAdd() || newCodeError() !== null">
                             <anotoki-icon name="plus" [size]="17" />
                             Add the language
@@ -160,7 +162,7 @@
                     </div>
                 </form>
                 @if (addError(); as message) {
-                    <p class="field-error add-error" role="alert">
+                    <p class="anotoki-translations-admin__field-error anotoki-languages-page__add-error" role="alert">
                         <anotoki-icon name="alert" [size]="15" />
                         <span>{{ message }}</span>
                     </p>

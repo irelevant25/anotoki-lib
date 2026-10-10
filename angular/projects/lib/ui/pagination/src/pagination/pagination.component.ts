@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, booleanAttribute, computed, inject, input, output } from '@angular/core';
-import { AnotokiWords, ButtonComponent, IconComponent } from '@anotoki/lib/ui';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 
 /**
  * "51-100 of 230", with Previous and Next - in the page's language (an admin

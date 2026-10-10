@@ -71,9 +71,9 @@ final class LibraryWordsTest extends TestCase
 
     public function testTheAngularHalfsBuiltInWordsAreTheseWordForWord(): void
     {
-        // angular/projects/lib/ui/src/library-words.ts, generated from the JSON by angular/scripts/library-words.mjs
+        // angular/projects/lib/ui/config/src/library-words.ts, generated from the JSON by angular/scripts/library-words.mjs
         // (`bun run words`) and read here as text: the kit, the status page and the translations module read it.
-        $source = str_replace("\r\n", "\n", (string) file_get_contents(dirname(__DIR__, 3) . '/angular/projects/lib/ui/src/library-words.ts'));
+        $source = str_replace("\r\n", "\n", (string) file_get_contents(dirname(__DIR__, 3) . '/angular/projects/lib/ui/config/src/library-words.ts'));
         foreach (['en' => 'EN', 'sk' => 'SK'] as $language => $constant) {
             self::assertSame(1, preg_match('/^const ' . $constant . '\b[^=]*= \{\n(.*?)\n\}/ms', $source, $block), $language);
             preg_match_all("/^  '([^']+)': '((?:[^'\\\\]|\\\\.)*)',$/m", $block[1], $entries, PREG_SET_ORDER);

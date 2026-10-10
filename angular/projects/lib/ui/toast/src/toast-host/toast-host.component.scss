@@ -1,6 +1,6 @@
 @use "../../../../sass/kit";
 
-.toasts {
+.anotoki-toast-host__toasts {
   position: fixed;
   right: 1rem;
   bottom: 1rem;
@@ -12,7 +12,7 @@
   pointer-events: none;
 }
 
-.toast {
+.anotoki-toast-host__toast {
   --_accent: #{kit.token(info)};
 
   display: flex;
@@ -33,24 +33,24 @@
   }
 }
 
-.toast[data-tone="success"] {
+.anotoki-toast-host__toast[data-tone="success"] {
   --_accent: #{kit.token(success)};
 }
 
-.toast[data-tone="warning"] {
+.anotoki-toast-host__toast[data-tone="warning"] {
   --_accent: #{kit.token(warning)};
 }
 
-.toast[data-tone="danger"] {
+.anotoki-toast-host__toast[data-tone="danger"] {
   --_accent: #{kit.token(danger)};
 }
 
-.icon {
+.anotoki-toast-host__icon {
   margin-top: 0.1rem;
   color: var(--_accent);
 }
 
-.message {
+.anotoki-toast-host__message {
   flex: 1;
   margin: 0;
   font-size: 0.9rem;
@@ -59,7 +59,7 @@
   overflow-wrap: anywhere;
 }
 
-.dismiss {
+.anotoki-toast-host__dismiss {
   @include kit.button-reset;
   display: inline-flex;
   flex: none;
@@ -80,7 +80,7 @@
 }
 
 @media (max-width: 520px) {
-  .toasts {
+  .anotoki-toast-host__toasts {
     right: 50%;
     bottom: 0.75rem;
     transform: translateX(50%);

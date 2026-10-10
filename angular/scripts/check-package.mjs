@@ -1,74 +1,130 @@
-// Checks the built package (dist/lib) after `ng build lib`, and prints what each entry point weighs.
+// Checks the built package (dist/lib) after `ng build lib`, and prints what each entry point weighs and what a site's
+// first load takes of it.
 //
-// - Sizes: every entry point's FESM, raw and gzipped. An entry point lands whole in the chunk of whatever imports it,
-//   so the eager ones (ui, ui/menu, shell, migrations, translations: every page of a site) have limits; the rest are
-//   printed.
-// - Boundaries: what each entry point may import. The shell imports only ui and ui/menu; nothing imports the shell;
-//   ui imports no other entry point of the kit; the Migrations page is never pulled back into the gate's entry point,
-//   nor the admin Translations and Languages pages into the translations module's.
+// - Sizes: every entry point's FESM, raw and gzipped. A site's build places whole files in its chunks, and an entry
+//   point is one file, so the eager ones (the ui core, ui/menu, shell, migrations, translations: every page of a
+//   site) have limits; the rest are printed. The ui core is a file per piece (@anotoki/lib/ui/button, /spinner, ...):
+//   its limit holds the pieces together.
+// - Boundaries: what each entry point may import. The library imports the core's pieces from their own entry points,
+//   never through @anotoki/lib/ui, which holds re-exports and nothing else: a build that reaches it from a first page
+//   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
+//   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
+//   Languages pages into the translations module's.
+// - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
+//   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
+// - Floors: an entry point nothing is used of leaves nothing in a site's bundle. A site's build keeps a top-level call
+//   or `new` it is not told is pure - the Angular CLI marks them so in @angular/* alone - and everything it reads: the
+//   call is marked /* @__PURE__ */.
+// - First loads: what a site's first page takes of the package in a site's own production build - every file through
+//   Angular's linker and the CLI's optimizations (its JavaScriptTransformer), then the CLI's esbuild, splitting
+//   chunks - beside lazy pages that use every other entry point whole. The first load holds no file of the package
+//   that the first page alone does not, gains no more than SHARED_SLACK from what shares a file with it, and stays
+//   under its limit.
 //
-// Run by `bun run build` (and so by CI and the release); exits 1 when a limit or a boundary is broken.
+// Run by `bun run build` (and so by CI and the release); exits 1 when a limit, a boundary, a floor or a first load is
+// broken.
 
-import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "lib");
-const fesm = join(dist, "fesm2022");
 const manifest = JSON.parse(readFileSync(join(dist, "package.json"), "utf8"));
+
+/** The ui core: @anotoki/lib/ui re-exports these, each an entry point - a file - of its own. */
+const CORE = "@anotoki/lib/ui";
+const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", "card", "empty-state", "error-state", "page-header", "avatar", "segmented", "autofocus"].map((piece) => `${CORE}/${piece}`);
 
 /**
  * Gzipped kB each eager entry point may weigh - its code, without the comments, which never reach a site's bundle -
- * and the shell with the core together (the spec's "about 25 kB"; 26.3 at 0.2.0). Room to grow a little; a limit
- * crossed is a reason to move something into an entry point of its own, not to raise the limit.
+ * the core with all its pieces, and the shell with the core together (the spec's "about 25 kB"; 26.3 at 0.2.0, 27.8
+ * at 0.3.0 with the kit's own class names). Room to grow a little; a limit crossed is a reason to move something into
+ * an entry point of its own, not to raise the limit.
  */
-const LIMITS = { "@anotoki/lib/ui": 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8 };
+const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8 };
 const UI_AND_SHELL = 28;
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
     "@anotoki/lib": [],
-    "@anotoki/lib/ui": [],
-    "@anotoki/lib/ui/icons": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/menu": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/dialog": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/toast": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/forms": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/tabs": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/pagination": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/drawer": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/tooltip": ["@anotoki/lib/ui"],
-    "@anotoki/lib/ui/copy": ["@anotoki/lib/ui", "@anotoki/lib/ui/toast"],
-    "@anotoki/lib/ui/qr": ["@anotoki/lib/ui"],
-    "@anotoki/lib/shell": ["@anotoki/lib/ui", "@anotoki/lib/ui/menu"],
-    "@anotoki/lib/migrations": ["@anotoki/lib/ui"],
-    "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", "@anotoki/lib/ui", "@anotoki/lib/ui/dialog"],
-    "@anotoki/lib/translations": ["@anotoki/lib/ui"],
-    "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", "@anotoki/lib/ui", "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
+    [CORE]: PIECES,
+    "@anotoki/lib/ui/config": [],
+    "@anotoki/lib/ui/dom": [],
+    "@anotoki/lib/ui/icon": ["@anotoki/lib/ui/config"],
+    "@anotoki/lib/ui/spinner": ["@anotoki/lib/ui/config"],
+    "@anotoki/lib/ui/button": ["@anotoki/lib/ui/spinner"],
+    "@anotoki/lib/ui/badge": [],
+    "@anotoki/lib/ui/alert": ["@anotoki/lib/ui/icon"],
+    "@anotoki/lib/ui/card": [],
+    "@anotoki/lib/ui/empty-state": ["@anotoki/lib/ui/icon"],
+    "@anotoki/lib/ui/error-state": ["@anotoki/lib/ui/alert", "@anotoki/lib/ui/button", "@anotoki/lib/ui/config", "@anotoki/lib/ui/icon"],
+    "@anotoki/lib/ui/page-header": [],
+    "@anotoki/lib/ui/avatar": [],
+    "@anotoki/lib/ui/segmented": ["@anotoki/lib/ui/icon"],
+    "@anotoki/lib/ui/autofocus": [],
+    "@anotoki/lib/ui/icons": [],
+    "@anotoki/lib/ui/menu": PIECES,
+    "@anotoki/lib/ui/dialog": PIECES,
+    "@anotoki/lib/ui/toast": PIECES,
+    "@anotoki/lib/ui/forms": PIECES,
+    "@anotoki/lib/ui/tabs": PIECES,
+    "@anotoki/lib/ui/pagination": PIECES,
+    "@anotoki/lib/ui/drawer": PIECES,
+    "@anotoki/lib/ui/tooltip": PIECES,
+    "@anotoki/lib/ui/copy": [...PIECES, "@anotoki/lib/ui/toast"],
+    "@anotoki/lib/ui/qr": PIECES,
+    "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
+    "@anotoki/lib/migrations": PIECES,
+    "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
+    "@anotoki/lib/translations": PIECES,
+    "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
 
-const files = readdirSync(fesm).filter((file) => file.endsWith(".mjs"));
+/**
+ * A site's first page, what it imports of the package, and the gzipped kB its first load may take of the package
+ * beside lazy pages that use every other entry point. "the gate": genshin's and the build analyzer's whole use (the
+ * status page, its buttons, the library's words); "the bar": the family's top bar and its theme; "the words": the
+ * translations module; "a button": one piece alone.
+ */
+const FIRST_LOADS = [
+    { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9 },
+    { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5 },
+    { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5 },
+    { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5 },
+];
+
+/**
+ * Gzipped kB a first load may gain beside those lazy pages: what they use of a file the first page uses too (a token,
+ * a provider function, the menu's popover beside the menu) and the exports the shared chunk gains for them. A
+ * component of the kit is more; a first load that gains one has an import that reaches a piece it does not use.
+ */
+const SHARED_SLACK = 1;
+
+/** Each entry point's name and its FESM, from the package's exports. */
+const entries = Object.entries(manifest.exports)
+    .filter(([key, value]) => key.startsWith(".") && typeof value === "object" && value?.default?.endsWith(".mjs"))
+    .map(([key, value]) => ({ name: "@anotoki/lib" + key.slice(1), file: join(dist, value.default) }));
+const fileOf = new Map(entries.map((entry) => [entry.name, entry.file]));
+
 const problems = [];
 const rows = [];
+const codeOf = {};
 const weights = {};
 
-for (const file of files) {
-    const name =
-        "@anotoki/" +
-        file
-            .replace(/\.mjs$/, "")
-            .replace(/^anotoki-/, "")
-            .replace(/-/g, "/");
-    const source = readFileSync(join(fesm, file), "utf8");
+const kb = (bytes) => (bytes / 1024).toFixed(1);
+const gz = (code) => gzipSync(code, { level: 9 }).length;
+
+for (const { name, file } of entries) {
+    const source = readFileSync(file, "utf8");
     // The code alone: the comments (JSDoc, the license's) stay out of a site's bundle.
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    const raw = Buffer.byteLength(source) / 1024;
-    const gz = gzipSync(code, { level: 9 }).length / 1024;
-    weights[name] = gz;
-    rows.push([name, raw.toFixed(1), gz.toFixed(1), LIMITS[name] ? `${LIMITS[name]}` : ""]);
+    codeOf[name] = code;
+    weights[name] = gz(code) / 1024;
+    rows.push([name, kb(Buffer.byteLength(source)), weights[name].toFixed(1), name in LIMITS && name !== CORE ? `${LIMITS[name]}` : ""]);
 
     if (!(name in MAY_IMPORT)) {
         problems.push(`${name}: an entry point check-package.mjs does not know - add it to MAY_IMPORT (and LIMITS if it is eager).`);
@@ -83,36 +139,48 @@ for (const file of files) {
             problems.push(`${name} imports ${specifier}, which it may not.`);
         }
     }
-    if (LIMITS[name] && gz > LIMITS[name]) {
-        problems.push(`${name} is ${gz.toFixed(1)} kB gzipped, over its ${LIMITS[name]} kB.`);
+    if (name !== CORE && LIMITS[name] && weights[name] > LIMITS[name]) {
+        problems.push(`${name} is ${weights[name].toFixed(1)} kB gzipped, over its ${LIMITS[name]} kB.`);
     }
 }
 
+// The core's barrel holds re-exports alone: code of its own would be one more file every first page reaching it takes.
+if (codeOf[CORE].replace(/export\s*\{[^}]*\}\s*from\s*['"][^'"]+['"];?/g, "").trim() !== "") {
+    problems.push(`${CORE} holds code of its own: it re-exports the pieces (${CORE}/...), and a piece is an entry point of its own.`);
+}
+
+// The core whole: its pieces' code in one, as a site that uses every piece takes them.
+const core = gz(PIECES.map((piece) => codeOf[piece] ?? "").join("\n")) / 1024;
+if (core > LIMITS[CORE]) {
+    problems.push(`${CORE} with its pieces is ${core.toFixed(1)} kB gzipped, over its ${LIMITS[CORE]} kB.`);
+}
+rows.push([`${CORE} + pieces`, "", core.toFixed(1), `${LIMITS[CORE]}`]);
+
 // The Migrations page stays out of the gate's entry point: it is in every site's first load.
-if (readFileSync(join(fesm, "anotoki-lib-migrations.mjs"), "utf8").includes("anotoki-migrations-page")) {
+if (codeOf["@anotoki/lib/migrations"].includes("anotoki-migrations-page")) {
     problems.push("@anotoki/lib/migrations holds the Migrations page again: it belongs to @anotoki/lib/migrations/page alone.");
 }
 
 // The same for the translations: the service and the pipes are in every site's first load, the admin pages never.
-if (/anotoki-(translations|languages)-page/.test(readFileSync(join(fesm, "anotoki-lib-translations.mjs"), "utf8"))) {
+if (/anotoki-(translations|languages)-page/.test(codeOf["@anotoki/lib/translations"])) {
     problems.push("@anotoki/lib/translations holds an admin page: they belong to @anotoki/lib/translations/admin alone.");
 }
 
-const together = (weights["@anotoki/lib/ui"] ?? 0) + (weights["@anotoki/lib/shell"] ?? 0);
+const together = core + (weights["@anotoki/lib/shell"] ?? 0);
 if (together > UI_AND_SHELL) {
     problems.push(`ui and shell together are ${together.toFixed(1)} kB gzipped, over ${UI_AND_SHELL} kB.`);
 }
 
 const exported = Object.keys(manifest.exports).filter((key) => key !== "./package.json" && !key.endsWith("*") && key !== "./styles");
-if (exported.length !== files.length) {
-    problems.push(`package.json exports ${exported.length} entry points, dist/lib/fesm2022 holds ${files.length}.`);
+if (exported.length !== entries.length) {
+    problems.push(`package.json exports ${exported.length} entry points with code, ${entries.length} of them name an FESM.`);
 }
 if (manifest.exports["./styles"]?.sass !== "./styles/_index.scss") {
     problems.push("package.json does not export ./styles to Sass.");
 }
 
 rows.sort((a, b) => a[0].localeCompare(b[0], "en"));
-const widths = [32, 10, 10, 8];
+const widths = [36, 10, 10, 8];
 const line = (cells) => cells.map((cell, index) => String(cell)[index ? "padStart" : "padEnd"](widths[index])).join(" ");
 console.log("\n" + line(["entry point", "raw kB", "code gz kB", "limit"]));
 for (const row of rows) {
@@ -120,8 +188,183 @@ for (const row of rows) {
 }
 console.log(line(["ui + shell", "", together.toFixed(1), String(UI_AND_SHELL)]));
 
+// The CLI's own tools: its Sass and its esbuild, and the transformer its esbuild plugin runs on a package's files (a
+// private export of @angular/build - an Angular update that moves it fails here, and this check follows it).
+const require = createRequire(import.meta.url);
+const angularBuild = createRequire(require.resolve("@angular/build/package.json"));
+const sass = angularBuild("sass");
+const esbuild = angularBuild("esbuild");
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Valid CSS: where Sass inspects a one-item list it writes `(…,)`, which no property takes - a shadow or a filter
+// that reads it is dropped (0.2.0's shadow-sm in both themes, and the mark's light outline in dark). Neither the tokens
+// as root() and token() write them - the family's, and a site's own one-item values - nor any component's styles hold
+// one.
+
+const TRAILING_COMMA = /,\s*\)/;
+const tokens = sass.compileString(
+    `@use "sass:map";
+    @use "styles" as anotoki;
+    @include anotoki.root;
+    @include anotoki.root((light: (shadow-sm: (0 1px 2px red,)), dark: (mark-shadow: (drop-shadow(0 0 1px white),)), font-sans: ("A Site Font",)));
+    @include anotoki.base;
+    @include anotoki.utilities;
+    @include anotoki.tables;
+    @each $name, $value in map.merge(anotoki.$light, anotoki.$shared) { .token-#{$name} { value: anotoki.token($name); } }`,
+    { loadPaths: [dist] },
+).css;
+const invalid = new Set();
+for (const declaration of tokens.split(/[;{}]/).filter((part) => TRAILING_COMMA.test(part))) {
+    invalid.add(`@anotoki/lib/styles writes a one-item list as Sass reads it, not as CSS: ${declaration.trim().slice(0, 140)}`);
+}
+for (const { name, file } of entries) {
+    const source = readFileSync(file, "utf8");
+    for (const styles of source.matchAll(/styles:\s*\[\s*("(?:[^"\\]|\\.)*"(?:\s*,\s*"(?:[^"\\]|\\.)*")*)\s*\]/g)) {
+        for (const broken of styles[1].match(/[^;{}"]*,\s*\)[^;{}"]*/g) ?? []) {
+            invalid.add(`${name}: a component's styles hold a one-item list as Sass reads it, not as CSS: ${broken.trim().slice(0, 140)}`);
+        }
+    }
+}
+problems.push(...invalid);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Floors and first loads: the package as a site's production build takes it.
+const { JavaScriptTransformer } = require("@angular/build/private");
+if (typeof JavaScriptTransformer !== "function") {
+    console.error("\ncheck-package: @angular/build/private has no JavaScriptTransformer any more - find what the CLI's esbuild plugin runs on a package's files now, and run that here.");
+    process.exit(1);
+}
+
+// As the CLI's esbuild plugin does for a package's file: linked, its top-level code marked pure where Angular's own
+// rules allow (in a package that is not @angular/*, a class with Angular's static fields and InjectionToken alone),
+// the package's "sideEffects": false given.
+const transformer = new JavaScriptTransformer({ sourcemap: false, advancedOptimizations: true, jit: false }, 2);
+const transformed = new Map();
+async function transform(file) {
+    if (!transformed.has(file)) {
+        transformed.set(file, Buffer.from(await transformer.transformFile(file, false, false)).toString("utf8"));
+    }
+    return transformed.get(file);
+}
+
+/** Bundles `modules` (name -> code) as the CLI does for production, Angular and rxjs left outside. */
+async function bundle(modules, { forced = null } = {}) {
+    return esbuild.build({
+        entryPoints: Object.keys(modules).map((name) => "page:" + name),
+        bundle: true,
+        format: "esm",
+        splitting: true,
+        write: false,
+        outdir: "out",
+        metafile: true,
+        minify: true,
+        target: "es2022",
+        pure: ["forwardRef"],
+        conditions: ["module", "production"],
+        define: { ngDevMode: "false", ngJitMode: "false", ngServerMode: "false", ngHmrMode: "false" },
+        logLevel: "silent",
+        plugins: [
+            {
+                name: "check-package",
+                setup(build) {
+                    build.onResolve({ filter: /^page:/ }, (args) => ({ path: args.path.slice(5), namespace: "page" }));
+                    build.onLoad({ filter: /.*/, namespace: "page" }, (args) => ({ contents: modules[args.path], loader: "js", resolveDir: dist }));
+                    build.onResolve({ filter: /^@anotoki\/lib(\/.*)?$/ }, (args) =>
+                        fileOf.has(args.path) ? { path: fileOf.get(args.path), sideEffects: args.path === forced } : { errors: [{ text: `no entry point ${args.path}` }] },
+                    );
+                    build.onResolve({ filter: /^(@angular\/|rxjs|tslib)/ }, (args) => ({ path: args.path, external: true }));
+                    build.onLoad({ filter: /\.mjs$/ }, async (args) => ({ contents: await transform(args.path), loader: "js" }));
+                },
+            },
+        ],
+    });
+}
+
+/** The code of an output, without its import statements (Angular's, which stay outside here, and the chunks'). */
+const withoutImports = (text) => text.replace(/import\s*(?:[^;"']*?\s*from\s*)?["'][^"']+["'];?/g, "").trim();
+
+/** What a page loads before it runs: its own output and every chunk it imports, transitively; the package's files in it. */
+function firstLoad(result, page) {
+    const outputs = result.metafile.outputs;
+    const start = Object.keys(outputs).find((name) => outputs[name].entryPoint === "page:" + page);
+    const loaded = new Set();
+    const visit = (name) => {
+        if (loaded.has(name)) {
+            return;
+        }
+        loaded.add(name);
+        outputs[name].imports.filter((record) => record.kind === "import-statement" && !record.external).forEach((record) => visit(record.path));
+    };
+    visit(start);
+    const files = new Map();
+    let code = "";
+    for (const name of loaded) {
+        code += withoutImports(result.outputFiles.find((output) => output.path.replace(/\\/g, "/").endsWith("/" + name)).text);
+        for (const [input, { bytesInOutput }] of Object.entries(outputs[name].inputs)) {
+            if (input.replace(/\\/g, "/").includes("/fesm2022/")) {
+                files.set(basename(input), (files.get(basename(input)) ?? 0) + bytesInOutput);
+            }
+        }
+    }
+    return { files, gz: gz(code) / 1024 };
+}
+
+const firstLoadRows = [];
+try {
+    // Floors: an entry point taken for nothing - its module kept, nothing of it used - leaves no code.
+    for (const { name } of entries) {
+        const result = await bundle({ floor: `import "${name}";` }, { forced: name });
+        const left = withoutImports(result.outputFiles.map((output) => output.text).join(""));
+        if (left !== "") {
+            problems.push(`${name} leaves ${Buffer.byteLength(left)} bytes in a bundle that uses nothing of it - top-level code a site's build keeps: ${left.slice(0, 160)}`);
+        }
+    }
+
+    // First loads, beside lazy pages that use every other entry point whole (a testing helper is never in a page).
+    for (const { title, imports, limit } of FIRST_LOADS) {
+        const names = Object.values(imports).flat();
+        const page = Object.entries(imports)
+            .map(([entry, used]) => `import { ${used.join(", ")} } from "${entry}";`)
+            .concat(`export default [${names.join(", ")}];`)
+            .join("\n");
+        const others = entries.filter(({ name }) => !(name in imports) && !name.endsWith("/testing") && name !== "@anotoki/lib");
+        const lazy = others
+            .map(({ name }, index) => `import * as m${index} from "${name}";`)
+            .concat(`export default [${others.map((_, index) => "m" + index).join(", ")}];`)
+            .join("\n");
+        const alone = firstLoad(await bundle({ first: page }), "first");
+        const beside = firstLoad(await bundle({ first: page, lazy }), "first");
+        const extra = [...beside.files.keys()].filter((file) => !alone.files.has(file));
+        if (extra.length) {
+            problems.push(`${title}: the first load takes ${extra.join(", ")} when lazy pages use them, files it does not use itself - an import of the first page reaches them (through ${CORE}?).`);
+        }
+        if (beside.gz - alone.gz > SHARED_SLACK) {
+            const grown = [...beside.files]
+                .map(([file, bytes]) => [file, bytes - (alone.files.get(file) ?? 0)])
+                .filter(([, more]) => more > 0)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4)
+                .map(([file, more]) => `${file} +${kb(more)} kB`);
+            problems.push(`${title}: the first load gains ${(beside.gz - alone.gz).toFixed(1)} kB gzipped when lazy pages use the rest of the package, over ${SHARED_SLACK} kB - what they use shares a file with what it uses (${grown.join(", ")}).`);
+        }
+        if (beside.gz > limit) {
+            problems.push(`${title}: the first load takes ${beside.gz.toFixed(1)} kB gzipped of the package, over its ${limit} kB.`);
+        }
+        firstLoadRows.push([title, alone.gz.toFixed(1), beside.gz.toFixed(1), String(limit)]);
+    }
+} finally {
+    await transformer.close();
+}
+
+const loadWidths = [36, 10, 10, 8];
+const loadLine = (cells) => cells.map((cell, index) => String(cell)[index ? "padStart" : "padEnd"](loadWidths[index])).join(" ");
+console.log("\n" + loadLine(["first load (code gz kB)", "alone", "+ lazy", "limit"]));
+for (const row of firstLoadRows) {
+    console.log(loadLine(row));
+}
+
 if (problems.length) {
     console.error("\n" + problems.map((problem) => "check-package: " + problem).join("\n"));
     process.exit(1);
 }
-console.log("\ncheck-package: every entry point within its limits and boundaries.");
+console.log("\ncheck-package: every entry point within its limits and boundaries, its CSS valid, nothing kept that is not used, every first load within its own.");

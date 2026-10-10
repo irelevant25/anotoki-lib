@@ -156,8 +156,10 @@ export const ANOTOKI_TRANSLATIONS_CONFIG = new InjectionToken<AnotokiTranslation
  * Marks the bundle's request, so a site's interceptor can leave its failure
  * alone: a 503 there (`translations_unavailable` between an upload and Apply)
  * means "read the compiled English", not an error to show or a sign-in to start.
+ * Marked pure: a site's build keeps a top-level `new` it is not told is pure
+ * (the Angular CLI tells it so for an InjectionToken alone).
  */
-export const ANOTOKI_TRANSLATION_BUNDLE = new HttpContextToken<boolean>(() => false);
+export const ANOTOKI_TRANSLATION_BUNDLE = /* @__PURE__ */ new HttpContextToken<boolean>(() => false);
 
 /**
  * Configures the module. The factory runs in an injection context - so it can

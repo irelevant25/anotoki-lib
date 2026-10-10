@@ -1,5 +1,6 @@
 import { Directive, ElementRef, Signal, afterNextRender, booleanAttribute, computed, inject, input } from '@angular/core';
-import { AnotokiWords, uniqueId } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { uniqueId } from '@anotoki/lib/ui/dom';
 
 /**
  * What every field of the kit has: a label (a real `<label for>` on a native

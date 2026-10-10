@@ -1,14 +1,19 @@
-<a class="skip-link" href="#main" [attr.lang]="skipLabel() ? null : words.foreignLang()" (click)="skipTo($event, main)">{{ skip() }}</a>
+<a class="anotoki-shell__skip-link" href="#main" [attr.lang]="skipLabel() ? null : words.foreignLang()" (click)="skipTo($event, main)">{{ skip() }}</a>
 
 <ng-content select="[topBar]" />
 
-<div class="frame">
+<div class="anotoki-shell__frame">
     @if (nav().length) {
-        <nav class="sidenav" [attr.aria-label]="navLabel() || words.t('topbar.sections')">
+        <nav class="anotoki-shell__sidenav" [attr.aria-label]="navLabel() || words.t('topbar.sections')">
             <ul>
                 @for (item of nav(); track item.link) {
                     <li>
-                        <a class="nav-link" [routerLink]="item.link" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: !!item.exact }" ariaCurrentWhenActive="page">
+                        <a
+                            class="anotoki-shell__nav-link"
+                            [routerLink]="item.link"
+                            routerLinkActive="anotoki-shell__nav-link--active"
+                            [routerLinkActiveOptions]="{ exact: !!item.exact }"
+                            ariaCurrentWhenActive="page">
                             @if (item.icon) {
                                 <anotoki-icon [name]="item.icon" [size]="18" />
                             }
@@ -20,7 +25,7 @@
         </nav>
     }
 
-    <main #main id="main" class="content" tabindex="-1">
+    <main #main id="main" class="anotoki-shell__content" tabindex="-1">
         <ng-content />
     </main>
 </div>

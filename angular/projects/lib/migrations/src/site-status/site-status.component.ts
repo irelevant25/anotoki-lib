@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ButtonComponent } from '@anotoki/lib/ui';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
 import { ANOTOKI_MIGRATIONS_CONFIG, DEFAULT_RETRY_SECONDS, DEFAULT_SETUP_URL } from '../config';
 import { RELOAD_PAGE } from '../reload';
 import { SiteStatus } from '../site-status.service';

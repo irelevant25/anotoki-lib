@@ -1,7 +1,14 @@
 import { ChangeDetectionStrategy, Component, DOCUMENT, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminLanguage, FALLBACK_LANGUAGE, HoldsUnsavedChanges, LanguageChanges, TranslationService } from '@anotoki/lib/translations';
-import { AlertComponent, AnotokiIcons, BadgeComponent, ButtonComponent, CardComponent, ErrorStateComponent, IconComponent, PageHeaderComponent, SpinnerComponent } from '@anotoki/lib/ui';
+import { AlertComponent } from '@anotoki/lib/ui/alert';
+import { BadgeComponent } from '@anotoki/lib/ui/badge';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
+import { CardComponent } from '@anotoki/lib/ui/card';
+import { ErrorStateComponent } from '@anotoki/lib/ui/error-state';
+import { AnotokiIcons, IconComponent } from '@anotoki/lib/ui/icon';
+import { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
+import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 import { SwitchComponent, TextFieldComponent } from '@anotoki/lib/ui/forms';
 import { TranslationsAdminApi, readFailure } from '../admin-api';
 import { registerPageIcons } from '../icons';

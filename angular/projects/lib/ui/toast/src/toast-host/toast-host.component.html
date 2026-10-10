@@ -1,9 +1,15 @@
-<section class="toasts" role="status" aria-live="polite" aria-relevant="additions" [attr.aria-label]="words.t('ui.notifications')">
+<section class="anotoki-toast-host__toasts" role="status" aria-live="polite" aria-relevant="additions" [attr.aria-label]="words.t('ui.notifications')">
     @for (toast of toasts.toasts(); track toast.id) {
-        <div class="toast" [attr.data-tone]="toast.tone">
-            <anotoki-icon class="icon" [name]="icons[toast.tone]" [size]="18" />
-            <p class="message">{{ toast.message }}</p>
-            <button type="button" class="dismiss" [attr.aria-label]="words.t('ui.dismiss')" [attr.title]="words.t('ui.dismiss')" [attr.lang]="words.foreignLang()" (click)="toasts.dismiss(toast.id)">
+        <div class="anotoki-toast-host__toast" [attr.data-tone]="toast.tone">
+            <anotoki-icon class="anotoki-toast-host__icon" [name]="icons[toast.tone]" [size]="18" />
+            <p class="anotoki-toast-host__message">{{ toast.message }}</p>
+            <button
+                type="button"
+                class="anotoki-toast-host__dismiss"
+                [attr.aria-label]="words.t('ui.dismiss')"
+                [attr.title]="words.t('ui.dismiss')"
+                [attr.lang]="words.foreignLang()"
+                (click)="toasts.dismiss(toast.id)">
                 <anotoki-icon name="x" [size]="16" />
             </button>
         </div>

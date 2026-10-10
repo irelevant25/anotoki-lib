@@ -3,19 +3,19 @@
 
 @include field.styles;
 
-.code {
+.anotoki-code-input__code {
   position: relative;
   width: fit-content;
   max-width: 100%;
 }
 
-.cells {
+.anotoki-code-input__cells {
   display: grid;
   grid-template-columns: repeat(var(--_code-cells), minmax(0, 3rem));
   gap: 0.5rem;
 }
 
-.cell {
+.anotoki-code-input__cell {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -31,17 +31,17 @@
     box-shadow kit.token(duration) kit.token(ease);
 }
 
-.cell.is-filled {
+.anotoki-code-input__cell.anotoki-code-input__cell--filled {
   border-color: color-mix(in srgb, #{kit.token(border-strong)} 50%, #{kit.token(text)} 50%);
 }
 
-.cell.is-active {
+.anotoki-code-input__cell.anotoki-code-input__cell--active {
   border-color: kit.token(primary);
   box-shadow: 0 0 0 3px kit.token(ring);
 }
 
 // The caret, drawn in the box it would be in.
-.cell.is-active:not(.is-filled)::after {
+.anotoki-code-input__cell.anotoki-code-input__cell--active:not(.anotoki-code-input__cell--filled)::after {
   content: "";
   width: 2px;
   height: 1.4rem;
@@ -50,15 +50,15 @@
   animation: caret 1s steps(1) infinite;
 }
 
-.is-invalid .cell {
+.anotoki-code-input__code--invalid .anotoki-code-input__cell {
   border-color: kit.token(danger);
 }
 
-.is-disabled .cell {
+.anotoki-code-input__code--disabled .anotoki-code-input__cell {
   opacity: 0.6;
 }
 
-.code-input {
+.anotoki-code-input__code-input {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -75,11 +75,11 @@
 }
 
 @media (max-width: 400px) {
-  .cells {
+  .anotoki-code-input__cells {
     gap: 0.35rem;
   }
 
-  .cell {
+  .anotoki-code-input__cell {
     height: 3rem;
     font-size: 1.25rem;
   }

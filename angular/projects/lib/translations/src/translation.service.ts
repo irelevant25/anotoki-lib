@@ -1,6 +1,6 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { DOCUMENT, Injectable, Injector, computed, effect, inject, signal, untracked } from '@angular/core';
-import { AnotokiUiConfig, LIBRARY_WORDS } from '@anotoki/lib/ui';
+import { AnotokiUiConfig, LIBRARY_WORDS } from '@anotoki/lib/ui/config';
 import { firstValueFrom, isObservable } from 'rxjs';
 import { ANOTOKI_TRANSLATIONS_CONFIG, ANOTOKI_TRANSLATION_BUNDLE, TranslationSettings, translationSettings } from './config';
 import { FALLBACK_LANGUAGE, LanguageCandidate, TranslationParams, addressLanguage, bundleFrom, fillPlaceholders, languageCandidates, languageCode, pickLanguage } from './language';

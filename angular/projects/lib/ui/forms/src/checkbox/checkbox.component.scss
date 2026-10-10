@@ -5,7 +5,7 @@
   color: kit.token(text);
 }
 
-.checkbox {
+.anotoki-checkbox__checkbox {
   position: relative;
   display: inline-flex;
   align-items: flex-start;
@@ -13,7 +13,7 @@
   line-height: 1.45;
   cursor: pointer;
 
-  &.is-disabled {
+  &.anotoki-checkbox__checkbox--disabled {
     cursor: not-allowed;
     opacity: 0.6;
   }
@@ -31,7 +31,7 @@ input {
   cursor: inherit;
 }
 
-.box {
+.anotoki-checkbox__box {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -50,28 +50,28 @@ input {
     border-color kit.token(duration) kit.token(ease);
 }
 
-input:checked + .box {
+input:checked + .anotoki-checkbox__box {
   border-color: kit.token(primary);
   background: kit.token(primary);
   color: kit.token(primary-contrast);
 }
 
-input:focus-visible + .box {
+input:focus-visible + .anotoki-checkbox__box {
   outline: 2px solid kit.token(focus);
   outline-offset: 2px;
 }
 
-.checkbox:hover input:not(:checked, :disabled) + .box {
+.anotoki-checkbox__checkbox:hover input:not(:checked, :disabled) + .anotoki-checkbox__box {
   border-color: kit.token(text);
 }
 
-.text {
+.anotoki-checkbox__text {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
 }
 
-.hint {
+.anotoki-checkbox__hint {
   color: kit.token(muted);
   font-size: 0.8125rem;
 }

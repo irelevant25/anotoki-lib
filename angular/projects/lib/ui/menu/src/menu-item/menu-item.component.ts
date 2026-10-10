@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, computed, inject, input } from '@angular/core';
-import { IconComponent } from '@anotoki/lib/ui';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 
 /** `[radio]`: true / false makes a radio item, checked or not; left out, a plain item. */
 function radioAttribute(value: boolean | '' | null | undefined): boolean | null {

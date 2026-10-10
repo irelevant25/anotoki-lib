@@ -1,11 +1,11 @@
-<nav class="pagination" [attr.aria-label]="words.t('ui.pages')" [attr.lang]="words.foreignLang()">
-    <p class="range" aria-live="polite">{{ range() }}</p>
-    <div class="buttons">
+<nav class="anotoki-pagination__pagination" [attr.aria-label]="words.t('ui.pages')" [attr.lang]="words.foreignLang()">
+    <p class="anotoki-pagination__range" aria-live="polite">{{ range() }}</p>
+    <div class="anotoki-pagination__buttons">
         <button anotokiButton size="sm" variant="secondary" data-previous [disabled]="page() <= 1 || busy()" (click)="pageChange.emit(page() - 1)">
             <anotoki-icon name="chevronLeft" [size]="15" />
             {{ words.t("ui.previous") }}
         </button>
-        <span class="page">{{ words.t("ui.pageOf", { page: page(), pages: pages() }) }}</span>
+        <span class="anotoki-pagination__page">{{ words.t("ui.pageOf", { page: page(), pages: pages() }) }}</span>
         <button anotokiButton size="sm" variant="secondary" data-next [disabled]="page() >= pages() || busy()" (click)="pageChange.emit(page() + 1)">
             {{ words.t("ui.next") }}
             <anotoki-icon name="chevronRight" [size]="15" />

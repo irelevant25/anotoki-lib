@@ -9,7 +9,7 @@ describe('<anotoki-brand>: the mark and the wordmark', () => {
     return draw(BrandComponent, inputs);
   }
 
-  const parts = (host: HTMLElement) => Array.from(host.querySelectorAll('.wordmark > span')).map(words);
+  const parts = (host: HTMLElement) => Array.from(host.querySelectorAll('.anotoki-brand__wordmark > span')).map(words);
 
   it('"anotoki" and the area, one link named by its label; the mark’s alt empty', async () => {
     const fixture = await brand({ area: 'survey', link: '/', label: 'anotoki survey: the open surveys' });
@@ -27,14 +27,14 @@ describe('<anotoki-brand>: the mark and the wordmark', () => {
   it('the admin panel’s form: "anotoki survey · admin panel"; short, the panel small under the area', async () => {
     const fixture = await brand({ area: 'survey', panel: 'admin panel', link: '/admin', label: 'anotoki survey · admin panel - home' });
     const host: HTMLElement = fixture.nativeElement;
-    expect(words(host.querySelector('.wordmark'))).toBe('anotoki survey · admin panel');
-    expect(host.querySelector('.dot')?.getAttribute('aria-hidden')).toBe('true');
+    expect(words(host.querySelector('.anotoki-brand__wordmark'))).toBe('anotoki survey · admin panel');
+    expect(host.querySelector('.anotoki-brand__dot')?.getAttribute('aria-hidden')).toBe('true');
 
     fixture.componentRef.setInput('showName', false);
     await settle(fixture);
     expect(parts(host)).toEqual(['survey', '·', 'admin panel']);
-    expect(host.querySelector('.wordmark')?.classList).toContain('is-short');
-    expect(host.querySelector('.wordmark')?.classList).toContain('has-panel');
+    expect(host.querySelector('.anotoki-brand__wordmark')?.classList).toContain('anotoki-brand__wordmark--short');
+    expect(host.querySelector('.anotoki-brand__wordmark')?.classList).toContain('anotoki-brand__wordmark--has-panel');
     host.remove();
   });
 
@@ -42,14 +42,14 @@ describe('<anotoki-brand>: the mark and the wordmark', () => {
     const fixture = await brand({ area: 'Japanese', link: '/', label: 'anotoki Japanese: home', current: true, lang: 'en', logo: '/brand/mark.png', size: 40 });
     const host: HTMLElement = fixture.nativeElement;
     expect(host.querySelector('a')?.getAttribute('aria-current')).toBe('page');
-    expect(host.querySelector('.wordmark')?.getAttribute('lang')).toBe('en');
+    expect(host.querySelector('.anotoki-brand__wordmark')?.getAttribute('lang')).toBe('en');
     expect(host.querySelector('img')?.getAttribute('src')).toBe('/brand/mark.png');
     expect(host.querySelector('img')?.getAttribute('width')).toBe('40');
 
     fixture.componentRef.setInput('link', null);
     await settle(fixture);
     expect(host.querySelector('a')).toBeNull();
-    expect(host.querySelector('span.brand')).not.toBeNull();
+    expect(host.querySelector('span.anotoki-brand__brand')).not.toBeNull();
     host.remove();
   });
 });

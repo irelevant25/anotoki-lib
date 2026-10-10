@@ -7,8 +7,11 @@ import { AdminLanguage, FALLBACK_LANGUAGE, TranslationChanges, TranslationGrid, 
  * cells changed, how a plural reads for a number, a language as a file.
  */
 
-/** The largest file an import takes by default: the server's body limit. */
-export const IMPORT_MAX_BYTES = 1024 * 1024;
+/**
+ * The largest file an import takes by default: the server's body limit, 1 MiB. Written out: a site's build keeps
+ * `1024 * 1024` at the top level whether anything reads it or not.
+ */
+export const IMPORT_MAX_BYTES = 1_048_576;
 
 /** The forms of a plural family, in the order the page shows them. */
 export const PLURAL_FORMS = ['one', 'few', 'other'] as const;

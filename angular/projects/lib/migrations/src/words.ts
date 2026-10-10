@@ -1,4 +1,4 @@
-import { LIBRARY_WORDS } from '@anotoki/lib/ui';
+import { LIBRARY_WORDS } from '@anotoki/lib/ui/config';
 import { SiteStatusWords } from './config';
 
 /** The status page's words, each the library's word `anotoki.siteStatus.<name>`. */
@@ -23,8 +23,14 @@ function builtIn(language: 'en' | 'sk'): SiteStatusWords {
  * (generated from php/resources/library-words.json - every site's database
  * holds them too, where its owner may reword them). The administrators' words
  * are English only, in the templates.
+ *
+ * The calls are marked pure: a site's build keeps a top-level call it is not
+ * told is pure, and with it the library's every word, status page or not.
  */
-export const BUILT_IN_WORDS: Readonly<Record<'en' | 'sk', SiteStatusWords>> = { en: builtIn('en'), sk: builtIn('sk') };
+export const BUILT_IN_WORDS: Readonly<Record<'en' | 'sk', SiteStatusWords>> = {
+  en: /* @__PURE__ */ builtIn('en'),
+  sk: /* @__PURE__ */ builtIn('sk'),
+};
 
 /**
  * The words for a language - English, under the built-in words of that

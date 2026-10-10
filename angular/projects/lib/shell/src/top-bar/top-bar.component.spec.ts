@@ -79,15 +79,15 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
   let signOut: Mock<() => unknown>;
   let signIn: Mock<() => unknown>;
 
-  const personButton = () => host.querySelector<HTMLButtonElement>('.person-button')!;
-  const phoneButton = () => host.querySelector<HTMLButtonElement>('.menu-button')!;
+  const personButton = () => host.querySelector<HTMLButtonElement>('.anotoki-top-bar__person-button')!;
+  const phoneButton = () => host.querySelector<HTMLButtonElement>('.anotoki-top-bar__menu-button')!;
   const menu = () => host.querySelector<HTMLElement>('anotoki-top-bar [role=menu]:not([aria-label="Language"]):not([aria-label="Jazyk"])');
   const items = () => Array.from(menu()?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? []);
-  const navLinks = () => Array.from(host.querySelectorAll<HTMLAnchorElement>('.nav a'));
+  const navLinks = () => Array.from(host.querySelectorAll<HTMLAnchorElement>('.anotoki-top-bar__nav a'));
   const parts = (selector: string) => Array.from(host.querySelectorAll(selector)).map(words);
   /** A link as "words href", with " [page]" for aria-current and " [here]" for the section the page is in. */
   const described = (link: HTMLAnchorElement) =>
-    `${words(link)} ${link.getAttribute('href')}${link.getAttribute('aria-current') === 'page' ? ' [page]' : ''}${link.classList.contains('is-active') ? ' [here]' : ''}`;
+    `${words(link)} ${link.getAttribute('href')}${link.getAttribute('aria-current') === 'page' ? ' [page]' : ''}${link.classList.contains('anotoki-top-bar__link--active') ? ' [here]' : ''}`;
   /** What stands in an element, in order: each child as tag.firstClass. */
   const childrenOf = (selector: string) => Array.from(host.querySelector(selector)!.children).map((child) => child.tagName.toLowerCase() + (child.classList.length ? '.' + child.classList[0] : ''));
 
@@ -121,7 +121,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
   }
 
   async function openMenu(): Promise<void> {
-    const button = host.querySelector<HTMLButtonElement>('.person-button') ?? phoneButton();
+    const button = host.querySelector<HTMLButtonElement>('.anotoki-top-bar__person-button') ?? phoneButton();
     button.focus();
     button.click();
     await settle(fixture);
@@ -135,16 +135,16 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
 
   it('is one row in the family’s order: the brand, the links, then the widgets, the language, the theme and the person', async () => {
     await draw();
-    expect(childrenOf('.row')).toEqual(['anotoki-brand.anotoki-brand', 'nav.nav', 'div.actions']);
-    expect(childrenOf('.actions')).toEqual([
+    expect(childrenOf('.anotoki-top-bar__row')).toEqual(['anotoki-brand.anotoki-brand', 'nav.anotoki-top-bar__nav', 'div.anotoki-top-bar__actions']);
+    expect(childrenOf('.anotoki-top-bar__actions')).toEqual([
       'span.widget',
       'anotoki-language-switcher.anotoki-language-switcher',
       'anotoki-theme-toggle.anotoki-theme-toggle',
-      'button.person-button',
+      'button.anotoki-top-bar__person-button',
       'anotoki-menu.anotoki-menu',
     ]);
-    expect(host.querySelector('.nav')?.getAttribute('aria-label')).toBe('Main navigation');
-    expect(parts('anotoki-brand .wordmark > span')).toEqual(['anotoki', 'survey']);
+    expect(host.querySelector('.anotoki-top-bar__nav')?.getAttribute('aria-label')).toBe('Main navigation');
+    expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['anotoki', 'survey']);
     expect(host.querySelector('anotoki-brand a')?.getAttribute('aria-label')).toBe('anotoki survey: the open surveys');
     // A widget reads the bar's fold through #bar="anotokiTopBar".
     expect(words(host.querySelector('.widget'))).toBe('desktop');
@@ -158,23 +158,23 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     expect(navLinks().map(described)[0]).toBe('Surveys /admin [here]');
     page.navLabel.set('The sections');
     await settle(fixture);
-    expect(host.querySelector('.nav')?.getAttribute('aria-label')).toBe('The sections');
+    expect(host.querySelector('.anotoki-top-bar__nav')?.getAttribute('aria-label')).toBe('The sections');
   });
 
   it('the person’s menu: its button named with the name it shows; the name, the address, the role; the site’s items; Sign out', async () => {
     await draw();
     expect(personButton().getAttribute('aria-label')).toBe('Your menu: Mira');
-    expect(words(personButton().querySelector('.person-name'))).toBe('Mira');
-    expect(words(personButton().querySelector('.initial'))).toBe('M');
+    expect(words(personButton().querySelector('.anotoki-top-bar__person-name'))).toBe('Mira');
+    expect(words(personButton().querySelector('.anotoki-top-bar__initial'))).toBe('M');
     await openMenu();
     expect(menu()?.getAttribute('aria-label')).toBe('Your menu');
-    expect(parts('.menu-head > span')).toEqual(['Mira', 'mira@example.test', 'Administrator']);
+    expect(parts('.anotoki-top-bar__menu-head > span')).toEqual(['Mira', 'mira@example.test', 'Administrator']);
     expect(items().map(words)).toEqual(['Your anotoki account', 'Admin panel', 'Sign out']);
     const account = items()[0];
     expect(account.getAttribute('href')).toBe('https://iam.example.test/account');
     expect(account.getAttribute('target')).toBe('_blank');
     expect(account.getAttribute('rel')).toBe('noopener');
-    expect(account.querySelector('.external')).not.toBeNull();
+    expect(account.querySelector('.anotoki-top-bar__external')).not.toBeNull();
     expect(items()[1].getAttribute('href')).toBe('/admin');
     expect(menu()?.querySelectorAll('anotoki-menu-separator').length).toBe(1);
   });
@@ -184,7 +184,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     page.person.set({ name: 'mira@example.test', email: 'mira@example.test' });
     await settle(fixture);
     await openMenu();
-    expect(parts('.menu-head > span')).toEqual(['mira@example.test']);
+    expect(parts('.anotoki-top-bar__menu-head > span')).toEqual(['mira@example.test']);
   });
 
   it('moves the focus into the menu as it opens; the arrows and End between its items; Escape back to its button', async () => {
@@ -243,7 +243,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
   it('closes on a click outside it - a click inside it is no reason to', async () => {
     await draw();
     await openMenu();
-    host.querySelector<HTMLElement>('.menu-head')!.click();
+    host.querySelector<HTMLElement>('.anotoki-top-bar__menu-head')!.click();
     await settle(fixture);
     expect(menu()).not.toBeNull();
     document.body.click();
@@ -257,7 +257,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     site.language.set('sk');
     await settle(fixture);
     expect(personButton().getAttribute('aria-label')).toBe('Tvoja ponuka: Mira');
-    expect(host.querySelector('.nav')?.getAttribute('aria-label')).toBe('Hlavná navigácia');
+    expect(host.querySelector('.anotoki-top-bar__nav')?.getAttribute('aria-label')).toBe('Hlavná navigácia');
     await openMenu();
     expect(menu()?.getAttribute('aria-label')).toBe('Tvoja ponuka');
     expect(items().at(-1)?.textContent?.trim()).toBe('Odhlásiť sa');
@@ -265,7 +265,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
 
   it('the language: the switcher where the site’s pages are translated; a choice made there is told (languageChanged)', async () => {
     await draw();
-    const switcher = host.querySelector<HTMLButtonElement>('anotoki-language-switcher .switcher')!;
+    const switcher = host.querySelector<HTMLButtonElement>('anotoki-language-switcher .anotoki-language-switcher__switcher')!;
     expect(switcher.getAttribute('aria-label')).toBe('Language: English (EN)');
     switcher.click();
     await settle(fixture);
@@ -295,7 +295,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       await openMenu();
       items().at(-1)!.click();
       await settle(fixture);
-      const item = menu()!.querySelector<HTMLButtonElement>('.sign-out-item')!;
+      const item = menu()!.querySelector<HTMLButtonElement>('.anotoki-top-bar__sign-out-item')!;
       expect(menu()).not.toBeNull();
       expect(item.disabled).toBe(true);
       expect(item.getAttribute('aria-busy')).toBe('true');
@@ -325,9 +325,9 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       page.person.set(null);
       page.signIn.set(signIn);
       await settle(fixture);
-      const button = host.querySelector<HTMLButtonElement>('.sign-in')!;
+      const button = host.querySelector<HTMLButtonElement>('.anotoki-top-bar__sign-in')!;
       expect(words(button)).toBe('Sign in');
-      expect(button.classList).toContain('is-primary');
+      expect(button.classList).toContain('anotoki-button--primary');
       let finish!: () => void;
       signIn.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
       button.click();
@@ -341,8 +341,8 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
 
       page.signIn.set(null);
       await settle(fixture);
-      expect(host.querySelector('.sign-in')).toBeNull();
-      expect(host.querySelector('.person-button')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__sign-in')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__person-button')).toBeNull();
     });
   });
 
@@ -394,27 +394,27 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     page.menuNote.set({ title: 'Not saved yet', text: 'Your progress waits for the connection.' });
     await settle(fixture);
     await openMenu();
-    expect(parts('.menu-note > *')).toEqual(['Not saved yet', 'Your progress waits for the connection.']);
+    expect(parts('.anotoki-top-bar__menu-note > *')).toEqual(['Not saved yet', 'Your progress waits for the connection.']);
   });
 
   it('narrow: the row as wide as a narrow page', async () => {
     await draw();
     page.width.set('narrow');
     await settle(fixture);
-    expect(host.querySelector('.row')?.classList).toContain('is-narrow');
+    expect(host.querySelector('.anotoki-top-bar__row')?.classList).toContain('anotoki-top-bar__row--narrow');
   });
 
   describe('on a phone', () => {
     it('is the brand (short), the widgets, the language, the theme and a menu button - nothing else in the row', async () => {
       await draw(390);
-      expect(parts('anotoki-brand .wordmark > span')).toEqual(['survey']);
-      expect(host.querySelector('.nav')).toBeNull();
-      expect(host.querySelector('.person-button')).toBeNull();
-      expect(childrenOf('.actions')).toEqual([
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['survey']);
+      expect(host.querySelector('.anotoki-top-bar__nav')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__person-button')).toBeNull();
+      expect(childrenOf('.anotoki-top-bar__actions')).toEqual([
         'span.widget',
         'anotoki-language-switcher.anotoki-language-switcher',
         'anotoki-theme-toggle.anotoki-theme-toggle',
-        'button.round',
+        'button.anotoki-top-bar__round',
         'anotoki-menu.anotoki-menu',
       ]);
       expect(words(host.querySelector('.widget'))).toBe('phone');
@@ -427,11 +427,11 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       await draw(390);
       page.brand.set({ ...SURVEY, area: 'Piano Academy', short: 'Piano' });
       await settle(fixture);
-      expect(parts('anotoki-brand .wordmark > span')).toEqual(['Piano']);
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['Piano']);
       page.brand.set(ADMIN);
       await settle(fixture);
-      expect(parts('anotoki-brand .wordmark > span')).toEqual(['survey', '·', 'admin panel']);
-      expect(host.querySelector('.wordmark')?.classList).toContain('has-panel');
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['survey', '·', 'admin panel']);
+      expect(host.querySelector('.anotoki-brand__wordmark')?.classList).toContain('anotoki-brand__wordmark--has-panel');
     });
 
     it('holds the links, a separator and the person’s menu: the focus in, the arrows, Home, Escape back to its button', async () => {
@@ -443,7 +443,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       expect(items().map(words)).toEqual(['Surveys', 'Translations', 'Languages', 'Your anotoki account', 'Admin panel', 'Sign out']);
       expect(items()[1].getAttribute('aria-current')).toBe('page');
       expect(menu()?.querySelectorAll('anotoki-menu-separator').length).toBe(2);
-      expect(parts('.menu-head > span')).toEqual(['Mira', 'mira@example.test', 'Administrator']);
+      expect(parts('.anotoki-top-bar__menu-head > span')).toEqual(['Mira', 'mira@example.test', 'Administrator']);
       expect(document.activeElement).toBe(items()[0]);
 
       press(items()[0], 'ArrowUp');
@@ -485,7 +485,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       items().at(-1)!.click();
       await settle(fixture);
       expect(menu()).not.toBeNull();
-      expect(words(menu()!.querySelector('.sign-in-item'))).toBe('Saving…');
+      expect(words(menu()!.querySelector('.anotoki-top-bar__sign-in-item'))).toBe('Saving…');
       expect(document.activeElement).toBe(phoneButton());
       finish();
       await settle(fixture);
@@ -505,7 +505,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
 
       page.person.set(null);
       await settle(fixture);
-      expect(host.querySelector('.menu-button')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__menu-button')).toBeNull();
     });
 
     it('a badge on the menu button, and the button’s name says it ("Menu: 125 reviews due")', async () => {
@@ -513,8 +513,8 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       page.links.set([{ id: 'kanji', label: 'Kanji', path: '/kanji', badge: 125 }]);
       page.phoneMark.set({ badge: 125, label: 'Menu: 125 reviews due' });
       await settle(fixture);
-      expect(words(phoneButton().querySelector('.mark-badge'))).toBe('125');
-      expect(phoneButton().querySelector('.mark-badge')?.getAttribute('aria-hidden')).toBe('true');
+      expect(words(phoneButton().querySelector('.anotoki-top-bar__mark-badge'))).toBe('125');
+      expect(phoneButton().querySelector('.anotoki-top-bar__mark-badge')?.getAttribute('aria-hidden')).toBe('true');
       expect(phoneButton().getAttribute('aria-label')).toBe('Menu: 125 reviews due');
       await openMenu();
       expect(words(items()[0])).toBe('Kanji 125');
@@ -524,7 +524,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       await draw(390);
       page.phoneMark.set({ dot: true, description: 'Not saved yet' });
       await settle(fixture);
-      expect(phoneButton().querySelector('.mark-dot')).not.toBeNull();
+      expect(phoneButton().querySelector('.anotoki-top-bar__mark-dot')).not.toBeNull();
       const described = phoneButton().getAttribute('aria-describedby')!;
       expect(words(document.getElementById(described))).toBe('Not saved yet');
       expect(phoneButton().getAttribute('aria-label')).toBe('Menu');
@@ -532,10 +532,10 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
 
     it('is a desktop’s bar from phoneMax + 1: the links and the person in the row again', async () => {
       await draw(761);
-      expect(host.querySelector('.menu-button')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__menu-button')).toBeNull();
       expect(navLinks().length).toBe(3);
       expect(personButton()).not.toBeNull();
-      expect(parts('anotoki-brand .wordmark > span')).toEqual(['anotoki', 'survey']);
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['anotoki', 'survey']);
     });
 
     it('closes an open menu when the window crosses phoneMax, either way', async () => {
@@ -544,7 +544,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       expect(items().length).toBe(6);
       window.resize(761);
       await settle(fixture);
-      expect(host.querySelector('.menu-button')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__menu-button')).toBeNull();
       expect(menu()).toBeNull();
       expect(personButton().getAttribute('aria-expanded')).toBe('false');
 
@@ -552,30 +552,30 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       expect(items().length).toBe(3);
       window.resize(760);
       await settle(fixture);
-      expect(host.querySelector('.person-button')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__person-button')).toBeNull();
       expect(menu()).toBeNull();
       expect(phoneButton().getAttribute('aria-expanded')).toBe('false');
     });
 
     it('a site’s own phoneMax', async () => {
       await draw(1000);
-      expect(host.querySelector('.menu-button')).toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__menu-button')).toBeNull();
       page.phoneMax.set(1040);
       await settle(fixture);
-      expect(host.querySelector('.menu-button')).not.toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__menu-button')).not.toBeNull();
     });
   });
 
   describe('only the person’s name gives way above phoneMax', () => {
     it('the name hides below nameMin (phoneMax + 201 by default)', async () => {
       await draw(960);
-      expect(host.querySelector('.topbar')?.classList).toContain('is-nameless');
+      expect(host.querySelector('.anotoki-top-bar__topbar')?.classList).toContain('anotoki-top-bar__topbar--nameless');
       window.resize(961);
       await settle(fixture);
-      expect(host.querySelector('.topbar')?.classList).not.toContain('is-nameless');
+      expect(host.querySelector('.anotoki-top-bar__topbar')?.classList).not.toContain('anotoki-top-bar__topbar--nameless');
       page.nameMin.set(1241);
       await settle(fixture);
-      expect(host.querySelector('.topbar')?.classList).toContain('is-nameless');
+      expect(host.querySelector('.anotoki-top-bar__topbar')?.classList).toContain('anotoki-top-bar__topbar--nameless');
     });
 
     it('shortBrandMax: an admin panel’s brand short above phoneMax, its links still in the row (the survey’s 761-960)', async () => {
@@ -583,11 +583,11 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       page.brand.set(ADMIN);
       page.shortBrandMax.set(960);
       await settle(fixture);
-      expect(parts('anotoki-brand .wordmark > span')).toEqual(['survey', '·', 'admin panel']);
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['survey', '·', 'admin panel']);
       expect(navLinks().length).toBe(3);
       window.resize(961);
       await settle(fixture);
-      expect(words(host.querySelector('anotoki-brand .wordmark'))).toBe('anotoki survey · admin panel');
+      expect(words(host.querySelector('anotoki-brand .anotoki-brand__wordmark'))).toBe('anotoki survey · admin panel');
     });
   });
 
@@ -605,7 +605,7 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       },
     );
     await draw();
-    const row = host.querySelector<HTMLElement>('.row')!;
+    const row = host.querySelector<HTMLElement>('.anotoki-top-bar__row')!;
     Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 900 });
     Object.defineProperty(row, 'clientWidth', { configurable: true, value: 800 });
     report!();

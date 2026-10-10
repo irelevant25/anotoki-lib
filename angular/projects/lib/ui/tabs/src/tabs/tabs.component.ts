@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, effect, input, model, viewChildren } from '@angular/core';
-import { uniqueId } from '@anotoki/lib/ui';
+import { uniqueId } from '@anotoki/lib/ui/dom';
 
 export interface TabItem {
   id: string;

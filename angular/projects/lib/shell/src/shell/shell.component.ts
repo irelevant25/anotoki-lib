@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { AnotokiWords, IconComponent } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 
 /** A section of the side navigation (an admin panel's). */
 export interface ShellNavItem {
@@ -21,8 +22,8 @@ export interface ShellNavItem {
  * The skip link moves the focus by hand: with `<base href="/">` a bare `#main`
  * would resolve to "/#main" and leave the page. The side navigation (`nav`) is
  * a list of 15rem beside the page, a scrolling strip under the bar up to
- * 860 px. With it the frame is 88rem wide, else 84rem - and the family's bar
- * inside lines up with it.
+ * 860 px. With it the frame is 88rem wide, else 84rem, unless the site says
+ * how wide (`maxWidth`) - and the family's bar inside lines up with it.
  */
 @Component({
   selector: 'anotoki-shell',
@@ -30,7 +31,12 @@ export interface ShellNavItem {
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'anotoki-shell', '[class.has-nav]': 'nav().length > 0' },
+  host: {
+    class: 'anotoki-shell',
+    '[class.anotoki-shell--has-nav]': 'nav().length > 0',
+    '[style.--_shell-width]': 'maxWidth()',
+    '[style.--anotoki-topbar-max-width]': 'maxWidth()',
+  },
 })
 export class ShellComponent {
   protected readonly words = inject(AnotokiWords);
@@ -40,6 +46,8 @@ export class ShellComponent {
   readonly navLabel = input<string | null>(null);
   /** The skip link's words; the kit's "Skip to content" by default. */
   readonly skipLabel = input<string | null>(null);
+  /** How wide the frame is, a CSS length (`'88rem'`); null for the kit's 84rem, 88rem with a side navigation. */
+  readonly maxWidth = input<string | null>(null);
 
   protected readonly skip = computed(() => this.skipLabel() || this.words.t('topbar.skipToContent'));
 

@@ -5,14 +5,14 @@
   color: kit.token(text);
 }
 
-.group {
+.anotoki-radio-group__group {
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.legend {
+.anotoki-radio-group__legend {
   margin-bottom: 0.45rem;
   padding: 0;
   color: kit.token(text);
@@ -20,13 +20,13 @@
   font-weight: 650;
 }
 
-.options {
+.anotoki-radio-group__options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: 0.6rem;
 }
 
-.option {
+.anotoki-radio-group__option {
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
@@ -43,7 +43,7 @@
     border-color: color-mix(in srgb, #{kit.token(primary)} 40%, #{kit.token(border-strong)});
   }
 
-  &.is-checked {
+  &.anotoki-radio-group__option--checked {
     border-color: kit.token(primary);
     background: kit.token(primary-soft);
   }
@@ -56,7 +56,7 @@
   }
 }
 
-.group:disabled .option {
+.anotoki-radio-group__group:disabled .anotoki-radio-group__option {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -73,17 +73,17 @@ input {
   }
 }
 
-.text {
+.anotoki-radio-group__text {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
 }
 
-.option-label {
+.anotoki-radio-group__option-label {
   font-weight: 650;
 }
 
-.option-hint {
+.anotoki-radio-group__option-hint {
   color: kit.token(muted);
   font-size: 0.8125rem;
 }

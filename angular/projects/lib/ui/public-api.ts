@@ -5,37 +5,37 @@
  * the library's own words (every `anotoki.*` key, English and Slovak), which
  * the kit, the migrations module and the translations module read.
  *
- * Small and eager (the shell uses it); the rest of the kit is in entry points
- * of its own - @anotoki/lib/ui/menu, /dialog, /toast, /forms, /tabs,
- * /pagination, /drawer, /tooltip, /copy, /qr, /icons - so what only a lazy
- * page uses stays out of a site's first load.
+ * Re-exports only: each piece is an entry point of its own (@anotoki/lib/ui/button,
+ * /spinner, /config, ...), because a site's build places whole files - a whole
+ * entry point - in a chunk. With the core in one file, a first page using the
+ * button (the status page does) took every piece any lazy page used into the
+ * first load; one file per piece, it takes only what it uses. Nothing here may
+ * hold code of its own (scripts/check-package.mjs says so), and nothing in a
+ * piece imports from here.
+ *
+ * The rest of the kit is in entry points that are not re-exported -
+ * @anotoki/lib/ui/menu, /dialog, /toast, /forms, /tabs, /pagination, /drawer,
+ * /tooltip, /copy, /qr, /icons.
  */
 
-export type { AnotokiUiConfig, IconPaths, IconSet } from './src/config';
-export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, provideAnotokiUi } from './src/config';
-export type { LibraryKey } from './src/library-words';
-export { LIBRARY_WORDS } from './src/library-words';
-export type { AnotokiWordKey, AnotokiWordTable } from './src/words';
-export { ANOTOKI_WORD_KEYS, BUILT_IN_WORDS } from './src/words';
-export type { WordParams } from './src/anotoki-words.service';
-export { AnotokiWords, fillWords } from './src/anotoki-words.service';
-export type { KitIconName } from './src/icons';
-export { AnotokiIcons, KIT_ICONS, circle, rect } from './src/icons';
-export { isShown, keepOnScreen, mediaQuery, tabbable, uniqueId } from './src/dom';
+export type { AnotokiUiConfig, AnotokiWordKey, AnotokiWordTable, IconPaths, IconSet, LibraryKey, WordParams } from '@anotoki/lib/ui/config';
+export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, ANOTOKI_WORD_KEYS, AnotokiWords, BUILT_IN_WORDS, LIBRARY_WORDS, fillWords, provideAnotokiUi } from '@anotoki/lib/ui/config';
+export type { KitIconName } from '@anotoki/lib/ui/icon';
+export { AnotokiIcons, IconComponent, KIT_ICONS, circle, rect } from '@anotoki/lib/ui/icon';
+export { isShown, keepOnScreen, mediaQuery, tabbable, uniqueId } from '@anotoki/lib/ui/dom';
 
-export { IconComponent } from './src/icon/icon.component';
-export type { ButtonSize, ButtonVariant } from './src/button/button.component';
-export { ButtonComponent } from './src/button/button.component';
-export { SpinnerComponent } from './src/spinner/spinner.component';
-export type { BadgeTone } from './src/badge/badge.component';
-export { BadgeComponent } from './src/badge/badge.component';
-export type { AlertTone } from './src/alert/alert.component';
-export { AlertComponent } from './src/alert/alert.component';
-export { CardComponent } from './src/card/card.component';
-export { EmptyStateComponent } from './src/empty-state/empty-state.component';
-export { ErrorStateComponent } from './src/error-state/error-state.component';
-export { PageHeaderComponent } from './src/page-header/page-header.component';
-export { AvatarComponent, initialsOf } from './src/avatar/avatar.component';
-export type { SegmentedOption } from './src/segmented/segmented.component';
-export { SegmentedComponent } from './src/segmented/segmented.component';
-export { AutofocusDirective } from './src/autofocus.directive';
+export type { ButtonSize, ButtonVariant } from '@anotoki/lib/ui/button';
+export { ButtonComponent } from '@anotoki/lib/ui/button';
+export { SpinnerComponent } from '@anotoki/lib/ui/spinner';
+export type { BadgeTone } from '@anotoki/lib/ui/badge';
+export { BadgeComponent } from '@anotoki/lib/ui/badge';
+export type { AlertTone } from '@anotoki/lib/ui/alert';
+export { AlertComponent } from '@anotoki/lib/ui/alert';
+export { CardComponent } from '@anotoki/lib/ui/card';
+export { EmptyStateComponent } from '@anotoki/lib/ui/empty-state';
+export { ErrorStateComponent } from '@anotoki/lib/ui/error-state';
+export { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
+export { AvatarComponent, initialsOf } from '@anotoki/lib/ui/avatar';
+export type { SegmentedOption } from '@anotoki/lib/ui/segmented';
+export { SegmentedComponent } from '@anotoki/lib/ui/segmented';
+export { AutofocusDirective } from '@anotoki/lib/ui/autofocus';

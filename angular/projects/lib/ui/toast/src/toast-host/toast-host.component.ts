@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { AnotokiWords, IconComponent, KitIconName } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { IconComponent, KitIconName } from '@anotoki/lib/ui/icon';
 import { ToastService, ToastTone } from '../toast.service';
 
 const ICONS: Record<ToastTone, KitIconName> = { success: 'checkCircle', info: 'info', warning: 'alert', danger: 'xCircle' };

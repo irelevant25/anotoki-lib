@@ -17,5 +17,4 @@ export { SiteStatusComponent } from './src/site-status/site-status.component';
 export { UpdateBannerComponent } from './src/update-banner/update-banner.component';
 
 // For @anotoki/lib/migrations/page only; not a site's API.
-export { defaultFormatDate as ɵdefaultFormatDate } from './src/config';
-export { messageOf as ɵmessageOf } from './src/http';
+export { jsonObject as ɵjsonObject } from './src/http';

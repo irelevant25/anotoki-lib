@@ -1,6 +1,6 @@
-<div class="grow" [class.is-changed]="changed()" [class.is-invalid]="invalid()" [attr.data-value]="value()">
+<div class="anotoki-translation-cell__grow" [class.anotoki-translation-cell__grow--changed]="changed()" [class.anotoki-translation-cell__grow--invalid]="invalid()" [attr.data-value]="value()">
     <textarea
-        class="box"
+        class="anotoki-translation-cell__box"
         rows="1"
         spellcheck="true"
         [value]="value()"
@@ -11,6 +11,6 @@
         [attr.aria-describedby]="invalid() ? describedBy() : null"
         (input)="onInput($event)"></textarea>
     @if (changed()) {
-        <span class="mark">Changed</span>
+        <span class="anotoki-translation-cell__mark">Changed</span>
     }
 </div>

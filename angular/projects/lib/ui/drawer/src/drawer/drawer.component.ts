@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, DOCUMENT, DestroyRef, ElementRef, afterNextRender, effect, inject, input, output, viewChild } from '@angular/core';
-import { AnotokiWords, IconComponent, tabbable, uniqueId } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { tabbable, uniqueId } from '@anotoki/lib/ui/dom';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 
 /**
  * A panel that slides in from the right, over the page: for looking closer at

@@ -20,7 +20,8 @@ Version 0.2.0 holds:
 The PHP half is unchanged since 0.1.0. Unreleased (0.3.0, CHANGELOG.md): the
 engine's **library sets** - the library's own migration files beside a site's -
 and **translations**, both halves: a site's words, its languages and their admin
-pages, one implementation for every site (the section "Translations" below).
+pages, one implementation for every site (the section "Translations" below); and
+the kit's core a file per piece, its class names its own ("Upgrading from 0.2.x").
 
 ## The behaviour
 
@@ -175,14 +176,24 @@ MigrationsRoutes::admin($app, '/api/admin/migrations', $migrator, function ($req
 
 ## The Angular half
 
-One secondary entry point per family of pieces: a whole entry point lands in the
-chunk of whatever imports it, so what only lazy pages use has an entry point of
-its own and stays out of a site's first load.
+One secondary entry point per family of pieces: a site's build places whole
+files in its chunks, and an entry point is one file - a file a first page and a
+lazy page both use goes to the first load whole, with everything any page uses
+of it - so what only lazy pages use has an entry point of its own and stays out
+of a site's first load. The kit's core is a file per piece (`ui/config`,
+`ui/button`, ..., below), and `@anotoki/lib/ui` re-exports them all: **import
+each piece from its own entry point**. A first page that imports anything from
+`@anotoki/lib/ui` reaches every piece through it, and then every piece any page
+uses is in the first load again.
 
 | Entry point | Holds | Eager in a site |
 | --- | --- | --- |
 | `@anotoki/lib/styles` | Sass: the tokens (one palette, light and dark), Manrope, the base, utilities, tables | the site's `styles.scss` |
-| `@anotoki/lib/ui` | configuration and words, icons, button, spinner, badge, alert, card, empty / error state, page header, avatar, segmented, autofocus, `uniqueId`, `keepOnScreen`, `mediaQuery`, `tabbable` | yes (small) |
+| `@anotoki/lib/ui` | re-exports the core's pieces below, nothing of its own | - |
+| `@anotoki/lib/ui/config` | `provideAnotokiUi`, `AnotokiWords`, the kit's words and the library's (`LIBRARY_WORDS`) | yes |
+| `@anotoki/lib/ui/icon`, `/dom` | `<anotoki-icon>`, `AnotokiIcons` and the kit's own icons; `uniqueId`, `keepOnScreen`, `mediaQuery`, `tabbable`, `isShown` | yes (the bar) |
+| `@anotoki/lib/ui/button`, `/spinner` | the button, the spinner | yes (the status page) |
+| `@anotoki/lib/ui/badge`, `/alert`, `/card`, `/empty-state`, `/error-state`, `/page-header`, `/avatar`, `/segmented`, `/autofocus` | one piece each | where a first page uses it |
 | `@anotoki/lib/ui/icons` | the family's other icons, data only (`iconTrash`, `iconUsers`, ...) | what the site registers |
 | `@anotoki/lib/ui/menu` | menu button, menu, menu item, separator; popover | yes (the bar) |
 | `@anotoki/lib/ui/dialog` | dialog, `AnotokiDialog.open()`, `ConfirmService` + `<anotoki-confirm-host>` | where the host is in the root |
@@ -200,10 +211,17 @@ Every component is standalone, OnPush and zoneless-safe; colours only through
 `--anotoki-*` custom properties, each read with the family's own value as its
 fallback (on `light-dark()`), so a page that sets no tokens still gets the
 family look; each component sets every property it relies on, so a site's
-element rules (`button { ... }`) do not show through; host classes are
-prefixed (`anotoki-card`, never `card`). Words the kit says come built in for
-English and Slovak; names (a site's sections, brand area, "Back to ...") are
-never kit words - the site passes them worded.
+element rules (`button { ... }`) do not show through. Every class the kit puts
+in a page is its own - BEM on the component's host class, so a site's global
+`.icon`, `.panel` or `.is-active` never reaches in: a part `anotoki-<component>__<part>`
+(`anotoki-alert__icon`), a state of the component `anotoki-<component>--<state>`
+(`anotoki-button--primary`), a state of a part `anotoki-<component>__<part>--<state>`
+(`anotoki-top-bar__link--active`); the fields' shared parts are `anotoki-field`
+and `anotoki-field__*`, and every component hides a word from sight with
+`anotoki-visually-hidden`. A site's spec that reads the kit's markup reads these
+names. Words the kit says come built in for English and Slovak; names (a site's
+sections, brand area, "Back to ...") are never kit words - the site passes them
+worded.
 
 ### Setting a site up
 
@@ -285,9 +303,10 @@ The tokens (each `--anotoki-<name>`, light and dark): `bg`, `surface`,
 `danger-contrast`, `danger-soft`, `danger-border`, `success`, `success-text`,
 `success-soft`, `success-border`, `warning`, `warning-text`, `warning-soft`,
 `warning-border`, `info`, `info-soft`, `info-border`, `ring`, `focus`,
-`backdrop`, `skeleton`, `skeleton-shine`, `shadow-sm`, `shadow`, `shadow-lg`,
-`mark-shadow`, `brand-area` (the bar's area word; `primary-soft-text` unless
-set); the same in both themes: `font-sans`, `font-mono`, `radius-sm`, `radius`,
+`backdrop`, `skeleton`, `skeleton-shine`, `switch-thumb` (the switch's knob:
+white in both themes), `shadow-sm`, `shadow`, `shadow-lg`, `mark-shadow`,
+`brand-area` (the bar's area word; `primary-soft-text` unless set); the same in
+both themes: `font-sans`, `font-mono`, `radius-sm`, `radius`,
 `radius-lg`, `radius-xl`, `control-height`, `control-height-sm`,
 `topbar-height`, `duration`, `ease`. The palette is the IAM's; text on every
 ground the kit draws reaches 4.5:1 in both themes (badges: `success-text`
@@ -310,16 +329,20 @@ dark, and keeps the family's for the rest:
 A site may also define its old names as aliases while its own components move
 (`--ink: var(--anotoki-text)`).
 
-### `@anotoki/lib/ui`
+### `@anotoki/lib/ui` and the core's pieces
 
-`provideAnotokiUi(factory)` (optional; the factory runs in an injection
+Each piece below is imported from its own entry point, named beside it
+(`import { ButtonComponent } from '@anotoki/lib/ui/button'`); `@anotoki/lib/ui`
+re-exports every one, for a lazy page or a spec.
+
+`provideAnotokiUi(factory)` (`ui/config`; optional; the factory runs in an injection
 context): `language` (the page's, a signal is followed; default `'en'`),
 `words` (per language, the site's words over the built-in ones), `lookup` (a
 site's string for a kit word, or null / `''` for the kit's - checked first:
 every site's database holds the kit's words as `anotoki.<key>`, and the
 translations module's `forKit()` reads them there), `icons`.
 
-**Words** - `AnotokiWords.t(key, params?)`, reactive. Resolution per key:
+**Words** - `AnotokiWords.t(key, params?)` (`ui/config`), reactive. Resolution per key:
 `lookup(key)`, then `words[language]` (or its primary subtag: `sk-SK` -> `sk`),
 then the built-in words of the language, then the built-in English - never a
 key. `lang` is the language the words are in (`'en'` on a page nobody wrote
@@ -343,8 +366,9 @@ The keys: `ui.close`, `ui.dismiss`, `ui.notifications`, `ui.cancel`,
 `LIBRARY_WORDS` has every one). A site words its own menu items with them too:
 `words.t('topbar.account')` is "Tvoj anotoki účet" in Slovak.
 
-**Icons** - `<anotoki-icon name="..." [size] [strokeWidth] [filled] [label]>`,
-decorative unless labelled. The kit's own: `sun`, `moon`, `monitor`, `user`,
+**Icons** - `<anotoki-icon name="..." [size] [strokeWidth] [filled] [label]>`
+(`ui/icon`, with `AnotokiIcons`, `KIT_ICONS`, `circle()`, `rect()`), decorative
+unless labelled. The kit's own: `sun`, `moon`, `monitor`, `user`,
 `shield`, `logIn`, `logOut`, `chevronDown`, `chevronLeft`, `chevronRight`,
 `menu`, `x`, `check`, `alert`, `info`, `checkCircle`, `xCircle`, `eye`,
 `eyeOff`, `copy`, `refresh`, `arrowLeft`, `externalLink`, `sparkle`, `search`,
@@ -354,26 +378,27 @@ draws nothing and warns once in development.
 
 **Pieces** (selectors `anotoki-*`; slot attributes as the IAM's):
 
-- `button[anotokiButton], a[anotokiButton]` - `variant` (`primary`, `secondary`,
+- `button[anotokiButton], a[anotokiButton]` (`ui/button`) - `variant` (`primary`, `secondary`,
   `ghost`, `danger`, `link`), `size` (`sm`, `md`, `lg`), `loading`, `disabled`
   (on a link: aria-disabled and out of the tab order), `block`, `iconOnly` (give
   it an aria-label), `type` (`button` by default). 44 px high (34 for `sm`); a
   `link` button reads as a link with a 44 px target (24 px for `sm`).
-- `anotoki-spinner` - `size`, `label` (a bare `label` says the kit's "Loading…"),
+- `anotoki-spinner` (`ui/spinner`) - `size`, `label` (a bare `label` says the kit's "Loading…"),
   `showLabel`, `inline`, `delay` (ms before it shows).
-- `anotoki-badge` - `tone`, `dot`, `mono`. `anotoki-alert` - `tone`, `heading`,
+- `anotoki-badge` (`ui/badge`) - `tone`, `dot`, `mono`. `anotoki-alert` (`ui/alert`) - `tone`, `heading`,
   `announce` (`true`: role="alert", `'polite'`: role="status"); `[alertActions]`.
-- `anotoki-card` - `heading`, `subheading`, `headingId`, `headingLevel` (2, 3),
+- `anotoki-card` (`ui/card`) - `heading`, `subheading`, `headingId`, `headingLevel` (2, 3),
   `flush`, `tone`; `[cardActions]`.
-- `anotoki-empty-state` - `icon`, `heading`, `text`; content: actions.
-  `anotoki-error-state` - `heading`, `message`, `retryLabel`; `(retry)`.
-- `anotoki-page-header` - `heading`, `lead`, `headingId` (`page-title`);
+- `anotoki-empty-state` (`ui/empty-state`) - `icon`, `heading`, `text`; content: actions.
+  `anotoki-error-state` (`ui/error-state`) - `heading`, `message`, `retryLabel`; `(retry)`.
+- `anotoki-page-header` (`ui/page-header`) - `heading`, `lead`, `headingId` (`page-title`);
   `[pageEyebrow]`, `[pageMeta]`, content: actions.
-- `anotoki-avatar` - `name`, `imageUrl`, `size`, `shape` (`rounded`, `circle`).
-- `anotoki-segmented` - `label`, `options` (`{ value, label, icon?, hint?, name?, lang? }`),
+- `anotoki-avatar` (`ui/avatar`) - `name`, `imageUrl`, `size`, `shape` (`rounded`, `circle`).
+- `anotoki-segmented` (`ui/segmented`) - `label`, `options` (`{ value, label, icon?, hint?, name?, lang? }`),
   `value` + `(valueChange)` (or `[(value)]`), `iconsOnly`, `size`, `busy`: a radio
   group, one Tab stop, arrows move the choice and the focus once it is made.
-- `[anotokiAutofocus]`; `uniqueId()`, `keepOnScreen(element)`, `mediaQuery(query)`, `tabbable(root)`.
+- `[anotokiAutofocus]` (`ui/autofocus`); `uniqueId()`, `keepOnScreen(element)`,
+  `mediaQuery(query)`, `tabbable(root)`, `isShown(element)` (`ui/dom`).
 
 **`ui/menu`** - `[anotokiMenuTrigger]="menu"`, `<anotoki-menu #menu label align closeOnSelect>`,
 `button[anotokiMenuItem], a[anotokiMenuItem]` (`radio`, `disabled`, `stay`),
@@ -442,16 +467,18 @@ is none; `save` - rejects when the account refuses; `themeColor`) and
 - `<anotoki-brand area panel showName link label current lang size logo>` -
   "anotoki survey · admin panel"; without the name, the area alone and the
   panel small under it. `logo` is the site's own file (`anotoki.png`).
-- `<anotoki-shell [nav] navLabel skipLabel>` - the frame: a skip link (moving
+- `<anotoki-shell [nav] navLabel skipLabel maxWidth>` - the frame: a skip link (moving
   the focus by hand), the site's bar in `[topBar]` (the family's or a site's
   own header - genshin keeps its own), a side navigation (15rem; a strip under
-  the bar up to 860 px), `<main id="main">`, `[shellFooter]`.
+  the bar up to 860 px), `<main id="main">`, `[shellFooter]`. 84rem wide, 88rem
+  with a side navigation, or what `maxWidth` says (a CSS length: the IAM's
+  account pages `maxWidth="88rem"`); the family's bar inside lines up with it.
 - `<anotoki-top-bar #bar="anotokiTopBar">` - the family's one bar:
 
 | Input | |
 | --- | --- |
 | `brand` | `{ area, short?, panel?, link, label, current?, lang? }` - `panel: 'admin panel'` in an admin panel |
-| `links` | `{ id, label, path, under?, lang?, badge? }[]` - the page's link marked `aria-current`, its section `is-active` |
+| `links` | `{ id, label, path, under?, lang?, badge? }[]` - the page's link marked `aria-current`, its section `anotoki-top-bar__link--active` (in the phone menu `anotoki-menu-item--active`) |
 | `navLabel` | the links' name (the kit's "Main navigation") |
 | `person` | `{ name, email?, role? }`, or null - the site words the role |
 | `menuItems` | `{ id, label, icon?, path? or href?, newTab?, lang? }[]` - between the menu's head and Sign out |
@@ -460,7 +487,7 @@ is none; `save` - rejects when the account refuses; `themeColor`) and
 | `phoneMax` | the site's measured fold, px (760 by default) |
 | `nameMin` | the person's name shows from here (phoneMax + 201) |
 | `shortBrandMax` | the brand short up to here (phoneMax) - the survey's admin panel: 960 |
-| `width` | `wide` (84rem) or `narrow` (49rem); `--anotoki-topbar-max-width` overrides; in a frame with a side navigation, 88rem |
+| `width` | `wide` (84rem) or `narrow` (49rem); `--anotoki-topbar-max-width` overrides; in a frame with a side navigation, 88rem, and in one with a `maxWidth`, that |
 | `phoneMark` | `{ badge?, label? }` (the button's name says the count) or `{ dot, description? }` |
 | `menuNote` | `{ title, text? }` heading both menus |
 | `isolateKeys` | no key pressed in the bar reaches `document` (true) |
@@ -591,6 +618,43 @@ of the Migrations page; everything else is new.
 4. The status page's buttons are the kit's (`anotoki-button`; Sign in
    `is-link`, no more `.button.quiet`). Its words and behaviour are the same,
    except that it reloads without first marking the site ready.
+
+## Upgrading from 0.2.x (0.3.0, unreleased)
+
+1. **The kit's core, a piece at a time.** Nothing has to change to keep
+   building: `@anotoki/lib/ui` re-exports every piece. For the smaller first
+   load a site imports each piece from its own entry point - in every file its
+   first page loads, best everywhere: `provideAnotokiUi`, `AnotokiWords`,
+   `ANOTOKI_UI_CONFIG`, `ANOTOKI_ICONS`, `LIBRARY_WORDS`, `BUILT_IN_WORDS`,
+   `fillWords` and the words' types from `@anotoki/lib/ui/config`;
+   `IconComponent`, `AnotokiIcons`, `KIT_ICONS`, `circle`, `rect` from
+   `@anotoki/lib/ui/icon`; `uniqueId`, `keepOnScreen`, `mediaQuery`,
+   `tabbable`, `isShown` from `@anotoki/lib/ui/dom`; each component from its own
+   (`ButtonComponent` from `@anotoki/lib/ui/button`, `AlertComponent` from
+   `@anotoki/lib/ui/alert`, ...: the table in "The Angular half"). A site that
+   imports nothing of the kit itself - genshin, the build analyzer: the gate,
+   and the Migrations page on a lazy route - has nothing to change.
+2. **The kit's class names** are its own ("The Angular half" above has the
+   rule). A spec that reads the kit's markup by class changes its selectors:
+   `.x` inside `<anotoki-y>` becomes `.anotoki-y__x`, `is-x` on it
+   `anotoki-y--x`, `is-x` on its part `.p` `anotoki-y__p--x`; a field's parts are
+   `.anotoki-field__label`, `.anotoki-field__error`, ...; `visually-hidden` is
+   `anotoki-visually-hidden`. What 0.2.0 named here: `[data-confirm] .description`
+   -> `[data-confirm] .anotoki-dialog__description`, `[data-result] .heading` ->
+   `[data-result] .anotoki-alert__heading`, `.card-text`, `.result-text`,
+   `.result-note` -> `.anotoki-migrations-page__card-text`, `__result-text`,
+   `__result-note`, Sign in's `is-link` -> `anotoki-button--link`, the bar's
+   `is-active` -> `anotoki-top-bar__link--active` (a phone menu's item:
+   `anotoki-menu-item--active`). The IAM's top bar spec reads `.switcher`,
+   `.row`, `.nav`, `.actions`, `.menu-head`, `.wordmark` and `is-active`
+   (`.anotoki-language-switcher__switcher`, `.anotoki-top-bar__row`, ...,
+   `.anotoki-brand__wordmark`); Japanese Academy's `[data-result] .heading` and
+   `anotoki-brand .wordmark`.
+3. **The IAM's look**: the switch's thumb is white in dark, a field's label
+   1.55 high and an avatar's initials 0.45 of it again, and the small shadows and
+   the mark's light outline in dark are back (0.2.0 wrote them as `(…,)`, which
+   no property takes) - by themselves; the IAM's account pages give their frame
+   its 88rem: `<anotoki-shell maxWidth="88rem">`.
 
 ## Translations (unreleased, 0.3.0)
 
@@ -742,13 +806,13 @@ entry there and a new library migration; a rewording of a released one is a
 migration that changes it only where it still has the earlier words. The
 Angular half reads the same file and keeps no copy by hand: `bun run words`
 (`angular/scripts/library-words.mjs`) generates its built-in words,
-`angular/projects/lib/ui/src/library-words.ts` (committed; `LIBRARY_WORDS` of
-`@anotoki/lib/ui`) - the kit reads its own from there, the status page its
-`siteStatus.*`, the translations module every one - and a spec
-(`library-words.spec.ts`) and the PHP half's `LibraryWordsTest` fail when that
-file is stale. So a page has the library's words while the database cannot be
-reached, and never shows a library key as a key. They are in a site's first
-load once, in the kit's core.
+`angular/projects/lib/ui/config/src/library-words.ts` (committed; `LIBRARY_WORDS`
+of `@anotoki/lib/ui/config`) - the kit reads its own from there, the status page
+its `siteStatus.*`, the translations module every one - and a spec
+(`library-words.spec.ts`), CI (`bun run words --check`) and the PHP half's
+`LibraryWordsTest` fail when that file is stale. So a page has the library's
+words while the database cannot be reached, and never shows a library key as a
+key. They are in a site's first load once, in `ui/config`.
 
 ### The Angular half: `@anotoki/lib/translations`
 
@@ -946,19 +1010,23 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 # Angular (from angular/)
 bun install
 bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs: each entry point's
-                        # size (gzipped code; limits for the eager ones) and import boundaries
+                        # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
+                        # build keeps of an entry point nothing is used of (nothing); and four first loads - the
+                        # gate, the bar, the words, a button - beside lazy pages that use the rest (no file of
+                        # theirs, under a limit), each file through Angular's own linker and the CLI's esbuild
 bun run test            # ng test lib --watch=false (Vitest, jsdom)
 bun run showcase        # projects/showcase on http://localhost:4320: every piece and the bar, from the source
-                        # (?theme=dark, ?lang=sk, ?account=1 for a refused theme; /migrations, /translations,
-                        # /languages against an imagined server; never published)
+                        # (?theme=dark, ?lang=sk, ?account=1 for a refused theme, ?frame=88rem for the frame's
+                        # maxWidth; /migrations, /translations, /languages against an imagined server; never published)
 bun run build:showcase  # the same, built into angular/dist/showcase
 bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)
 ```
 
 CI (`.github/workflows/ci.yml`) runs the PHP tests on 8.2 and 8.4 against
 PostgreSQL 16, builds the Composer archive and checks what it holds
-(`sh .github/scripts/check-archive.sh` does the same locally), and builds (with
-the package check) and tests the Angular library.
+(`sh .github/scripts/check-archive.sh` does the same locally), checks that the
+Angular half's library words are the JSON's (`bun run words --check`), and builds
+(with the package check) and tests the Angular library.
 
 ## Releasing
 

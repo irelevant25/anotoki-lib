@@ -101,9 +101,9 @@ describe('the wiring: the kit’s words, the shell’s switcher and the status p
 
     afterEach(() => host?.remove());
 
-    const button = () => host.querySelector<HTMLButtonElement>('.switcher')!;
+    const button = () => host.querySelector<HTMLButtonElement>('.anotoki-language-switcher__switcher')!;
     const items = () => Array.from(host.querySelectorAll<HTMLElement>('[role=menuitemradio]'));
-    const note = () => host.querySelector('.note')?.textContent?.trim() ?? null;
+    const note = () => host.querySelector('.anotoki-language-switcher__note')?.textContent?.trim() ?? null;
 
     async function choose(index: number): Promise<void> {
       button().click();

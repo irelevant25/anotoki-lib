@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, afterRenderEffect, booleanAttribute, computed, inject, input, viewChild } from '@angular/core';
-import { AnotokiWords, SegmentedComponent, SegmentedOption, keepOnScreen } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { keepOnScreen } from '@anotoki/lib/ui/dom';
+import { SegmentedComponent, SegmentedOption } from '@anotoki/lib/ui/segmented';
 import { AnotokiThemeMode } from '../config';
 import { ThemeService } from '../theme.service';
 

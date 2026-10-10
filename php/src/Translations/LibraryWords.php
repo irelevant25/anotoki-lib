@@ -18,7 +18,7 @@ use RuntimeException;
  * this class (the placeholders LibraryKeyRules holds the keys to), the SQL of
  * the library's migrations (a test applies them to a new database and holds
  * the result to the file), and the Angular half's built-in words
- * (angular/projects/lib/ui/src/library-words.ts), which a script there
+ * (angular/projects/lib/ui/config/src/library-words.ts), which a script there
  * generates from the same file (`bun run words`). A new library string is an entry
  * here plus a new library migration; a rewording of a released one is a
  * migration that changes it only where it still has the earlier words.

@@ -1,0 +1,11 @@
+<header class="anotoki-page-header__page-header">
+    <div class="anotoki-page-header__titles">
+        <ng-content select="[pageEyebrow]" />
+        <h1 class="anotoki-page-header__heading" [id]="headingId()" tabindex="-1">{{ heading() }}</h1>
+        @if (lead()) {
+            <p class="anotoki-page-header__lead">{{ lead() }}</p>
+        }
+        <ng-content select="[pageMeta]" />
+    </div>
+    <div class="anotoki-page-header__actions"><ng-content /></div>
+</header>

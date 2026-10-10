@@ -13,20 +13,20 @@
     color: kit.token(text);
   }
 
-  .page {
+  .anotoki-translations-admin__page {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
     min-width: 0;
   }
 
-  .notice {
+  .anotoki-translations-admin__notice {
     margin: 0;
     color: kit.token(muted);
     line-height: 1.5;
   }
 
-  .counts {
+  .anotoki-translations-admin__counts {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem 1.1rem;
@@ -40,14 +40,14 @@
     }
   }
 
-  .loading {
+  .anotoki-translations-admin__loading {
     display: flex;
     justify-content: center;
     padding: 3rem 0;
   }
 
   // What became of an action that is not about one row: one line, read out as it changes.
-  .happened {
+  .anotoki-translations-admin__happened {
     margin: 0;
     color: kit.token(success-text);
     font-size: 0.875rem;
@@ -59,13 +59,13 @@
     }
   }
 
-  .alert-text {
+  .anotoki-translations-admin__alert-text {
     margin: 0;
     line-height: 1.5;
   }
 
   // A refusal, beside what it is about.
-  .field-error {
+  .anotoki-translations-admin__field-error {
     display: flex;
     align-items: flex-start;
     gap: 0.35rem;

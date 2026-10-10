@@ -4,7 +4,7 @@
 
 import { EnvironmentProviders, Provider, Type, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { AnotokiUiConfig, provideAnotokiUi } from './config';
+import { AnotokiUiConfig, provideAnotokiUi } from '@anotoki/lib/ui/config';
 
 /** A zoneless app, with the kit configured when the test says how. */
 export function kitProviders(config?: () => AnotokiUiConfig, ...extra: (Provider | EnvironmentProviders)[]): (Provider | EnvironmentProviders)[] {

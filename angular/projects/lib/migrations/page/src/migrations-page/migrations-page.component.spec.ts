@@ -130,20 +130,20 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     expect(host.getAttribute('lang')).toBe('en');
     expect(text('h1')).toBe('Migrations');
     expect(host.querySelector('anotoki-page-header h1')).not.toBeNull();
-    expect(text('.lead')).toBe('The database schema is what these files build. Back the database up before applying anything.');
+    expect(text('.anotoki-page-header__lead')).toBe('The database schema is what these files build. Back the database up before applying anything.');
     expect(text('[data-pending] h2')).toBe('Pending');
     expect(host.querySelector('anotoki-card[data-pending]')).not.toBeNull();
     expect(rows('[data-pending]')).toEqual(['003_more.sql pending', '004_most.sql pending']);
     expect(host.querySelector('[data-pending] anotoki-badge')?.getAttribute('data-tone')).toBe('warning');
     expect(host.querySelector('[data-pending] h3')).toBeNull();
     expect(text('[data-applied] h2')).toBe('Applied');
-    expect(text('[data-applied] .card-text')).toBe('2 files');
+    expect(text('[data-applied] .anotoki-migrations-page__card-text')).toBe('2 files');
     expect(rows('[data-applied]')).toEqual(['001_initial.sql on 2026-09-28 View', '002_strings.sql on 2026-09-30 View']);
     expect(host.querySelector('[data-applied] button')?.getAttribute('aria-label')).toBe('View 001_initial.sql');
     expect(host.querySelector('[data-applied] time')?.getAttribute('datetime')).toBe('2026-09-28T10:00:00Z');
     expect(host.querySelector('[data-missing]')).toBeNull();
     expect(text('[data-apply]')).toBe('Apply pending');
-    expect(applyButton().classList).toContain('is-primary');
+    expect(applyButton().classList).toContain('anotoki-button--primary');
     expect(applyButton().disabled).toBe(false);
   });
 
@@ -165,10 +165,10 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     await settle(fixture);
     expect(confirm()?.open).toBe(true);
     expect(text('[data-confirm] h2')).toBe('Apply 2 pending migrations?');
-    expect(text('[data-confirm] .description')).toBe('They run now, against the live database, in order - stopping at the first one that fails. Make sure there is a fresh backup.');
+    expect(text('[data-confirm] .anotoki-dialog__description')).toBe('They run now, against the live database, in order - stopping at the first one that fails. Make sure there is a fresh backup.');
     expect(document.getElementById(confirm()!.getAttribute('aria-describedby')!)?.textContent).toContain('They run now');
     expect(document.activeElement).toBe(host.querySelector('[data-confirm-cancel]'));
-    expect(host.querySelector('[data-confirm-apply]')?.classList).toContain('is-danger');
+    expect(host.querySelector('[data-confirm-apply]')?.classList).toContain('anotoki-button--danger');
 
     click('[data-confirm-cancel]');
     await settle(fixture);
@@ -209,11 +209,11 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
 
     expect(result()?.getAttribute('role')).toBe('status');
     expect(result()?.getAttribute('data-tone')).toBe('success');
-    expect(text('[data-result] .heading')).toBe('Up to date');
-    expect(text('[data-result] .result-text')).toBe('Applied: 003_more.sql, 004_most.sql.');
-    expect(text('[data-result] .result-note')).toBe('A copy of every table was saved first.');
-    expect(text('[data-pending] .card-text')).toBe('Nothing pending - the database is up to date with the files.');
-    expect(text('[data-applied] .card-text')).toBe('4 files');
+    expect(text('[data-result] .anotoki-alert__heading')).toBe('Up to date');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('Applied: 003_more.sql, 004_most.sql.');
+    expect(text('[data-result] .anotoki-migrations-page__result-note')).toBe('A copy of every table was saved first.');
+    expect(text('[data-pending] .anotoki-migrations-page__card-text')).toBe('Nothing pending - the database is up to date with the files.');
+    expect(text('[data-applied] .anotoki-migrations-page__card-text')).toBe('4 files');
     expect(applyButton().disabled).toBe(true);
     expect(site.onUpToDate).toHaveBeenCalledTimes(1);
     expect(status.state()).toBe('ready');
@@ -247,8 +247,8 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
 
     expect(result()?.getAttribute('role')).toBe('alert');
     expect(result()?.getAttribute('data-tone')).toBe('danger');
-    expect(text('[data-result] .heading')).toBe('Stopped at 004_most.sql');
-    expect(text('[data-result] .result-text')).toBe('Applied first: 003_more.sql. The failed file was rolled back as a whole.');
+    expect(text('[data-result] .anotoki-alert__heading')).toBe('Stopped at 004_most.sql');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('Applied first: 003_more.sql. The failed file was rolled back as a whole.');
     // Its own lines, as PostgreSQL wrote them: text, never markup.
     expect(host.querySelector('[data-result] pre')?.textContent).toBe(ERROR);
     expect(rows('[data-pending]')).toEqual(['004_most.sql pending']);
@@ -261,7 +261,7 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     await load();
     await apply((request) => request.flush({ applied: [], failed: { set: 'site', name: '003_more.sql' }, error: 'statement 1 of 9: SQLSTATE[23505]: Unique violation', note: null }), BEHIND);
 
-    expect(text('[data-result] .result-text')).toBe('Nothing was applied. The failed file was rolled back as a whole.');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('Nothing was applied. The failed file was rolled back as a whole.');
   });
 
   it('another update running (409): its message, and nothing else', async () => {
@@ -271,7 +271,7 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
 
     expect(result()?.getAttribute('role')).toBe('alert');
     expect(result()?.getAttribute('data-tone')).toBe('warning');
-    expect(host.querySelector('[data-result] .heading')).toBeNull();
+    expect(host.querySelector('[data-result] .anotoki-alert__heading')).toBeNull();
     expect(text('[data-result]')).toBe(BUSY);
     expect(site.onUpToDate).not.toHaveBeenCalled();
   });
@@ -280,14 +280,14 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     setUp();
     await load();
     await apply((request) => request.flush({ code: 'forbidden', message: 'Only an ADMIN can apply migrations.' }, { status: 403, statusText: 'Forbidden' }), BEHIND);
-    expect(text('[data-result] .heading')).toBe('Nothing was applied.');
-    expect(text('[data-result] .result-text')).toBe('Only an ADMIN can apply migrations.');
+    expect(text('[data-result] .anotoki-alert__heading')).toBe('Nothing was applied.');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('Only an ADMIN can apply migrations.');
 
     await apply((request) => request.error(new ProgressEvent('error')), BEHIND);
-    expect(text('[data-result] .result-text')).toBe('The server could not be reached.');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('The server could not be reached.');
 
     await apply((request) => request.flush('<html>oops</html>', { status: 500, statusText: 'Internal Server Error' }), BEHIND);
-    expect(text('[data-result] .result-text')).toBe('The server answered 500 Internal Server Error.');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('The server answered 500 Internal Server Error.');
   });
 
   it('a site hook refused before anything ran: "Nothing was applied." and its words', async () => {
@@ -295,8 +295,8 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     await load();
     await apply((request) => request.flush({ applied: [], failed: null, error: 'The backup folder is not writable.', note: null }), BEHIND);
 
-    expect(text('[data-result] .heading')).toBe('Nothing was applied.');
-    expect(text('[data-result] .result-text')).toBe('The backup folder is not writable.');
+    expect(text('[data-result] .anotoki-alert__heading')).toBe('Nothing was applied.');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('The backup folder is not writable.');
   });
 
   it('nothing left to apply when it ran (another way applied it): said so - and the site runs again', async () => {
@@ -359,8 +359,8 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
       (request) => request.flush({ applied: [{ set: 'users', name: '041_news.sql' }], failed: { set: 'genshin_impact', name: '052_weapons.sql' }, error: 'statement 1 of 1: boom', note: null }),
       { sets: ['users', 'genshin_impact'], applied: [], pending: [{ set: 'genshin_impact', name: '052_weapons.sql', ready: true, blocked: false }], missing: [] },
     );
-    expect(text('[data-result] .heading')).toBe('Stopped at genshin_impact/052_weapons.sql');
-    expect(text('[data-result] .result-text')).toBe('Applied first: users/041_news.sql. The failed file was rolled back as a whole.');
+    expect(text('[data-result] .anotoki-alert__heading')).toBe('Stopped at genshin_impact/052_weapons.sql');
+    expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('Applied first: users/041_news.sql. The failed file was rolled back as a whole.');
   });
 
   it('Missing: listed only when a recorded file is not here', async () => {
@@ -368,7 +368,7 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     await load({ ...BEHIND, missing: [{ set: 'site', name: '000_gone.sql', applied_at: '2026-09-01T00:00:00Z' }] });
 
     expect(text('[data-missing] h2')).toBe('Missing');
-    expect(text('[data-missing] .card-text')).toBe('Recorded as applied, but the file is not here:');
+    expect(text('[data-missing] .anotoki-migrations-page__card-text')).toBe('Recorded as applied, but the file is not here:');
     expect(rows('[data-missing]')).toEqual(['000_gone.sql']);
   });
 
@@ -406,7 +406,7 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
       click('[data-copy]');
       await settle(fixture);
       expect(writeText).toHaveBeenCalledWith(SQL);
-      expect(text('[data-sql] .copied')).toBe('Copied.');
+      expect(text('[data-sql] .anotoki-migrations-page__copied')).toBe('Copied.');
 
       click('[data-close]');
       await settle(fixture);
@@ -425,7 +425,7 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
       click('[data-copy]');
       await settle(fixture);
       expect(document.getSelection()?.toString()).toBe(SQL);
-      expect(text('[data-sql] .copied')).toBe('The text is selected: copy it with Ctrl+C.');
+      expect(text('[data-sql] .anotoki-migrations-page__copied')).toBe('The text is selected: copy it with Ctrl+C.');
     });
 
     it('a file that cannot be read says so', async () => {
@@ -446,8 +446,8 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     http.expectOne(API_BASE).flush({ code: 'error', message: 'The database could not be reached.' }, { status: 500, statusText: 'Internal Server Error' });
     await settle(fixture);
 
-    expect(text('[data-load-error] .heading')).toBe('The migrations could not be read.');
-    expect(text('[data-load-error] .result-text')).toBe('The database could not be reached.');
+    expect(text('[data-load-error] .anotoki-alert__heading')).toBe('The migrations could not be read.');
+    expect(text('[data-load-error] .anotoki-migrations-page__result-text')).toBe('The database could not be reached.');
     expect(host.querySelector('[data-load-error]')?.getAttribute('role')).toBe('alert');
     expect(applyButton().disabled).toBe(true);
 

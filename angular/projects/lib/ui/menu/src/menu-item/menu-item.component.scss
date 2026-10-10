@@ -44,7 +44,7 @@
 
 // The page the item leads to is the one shown (a section in a phone's menu).
 :host([aria-current="page"]),
-:host(.is-active) {
+:host(.anotoki-menu-item--active) {
   background: kit.token(primary-soft);
   color: kit.token(primary-soft-text);
 }
@@ -58,7 +58,7 @@
   color: kit.token(muted);
 }
 
-.check {
+.anotoki-menu-item__check {
   margin-left: auto;
   color: kit.token(primary);
 }

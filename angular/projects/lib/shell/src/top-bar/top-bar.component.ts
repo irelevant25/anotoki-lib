@@ -19,7 +19,11 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { AnotokiWords, ButtonComponent, IconComponent, SpinnerComponent, mediaQuery, uniqueId } from '@anotoki/lib/ui';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { mediaQuery, uniqueId } from '@anotoki/lib/ui/dom';
+import { IconComponent } from '@anotoki/lib/ui/icon';
+import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 import { MenuComponent, MenuItemComponent, MenuSeparatorComponent, MenuTriggerDirective } from '@anotoki/lib/ui/menu';
 import { filter, map } from 'rxjs';
 import { BrandComponent } from '../brand/brand.component';

@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, DOCUMENT, DestroyRef, booleanAttribute, computed, inject, input, signal } from '@angular/core';
-import { AnotokiWords, ButtonComponent, ButtonSize, ButtonVariant, IconComponent } from '@anotoki/lib/ui';
+import { ButtonComponent, ButtonSize, ButtonVariant } from '@anotoki/lib/ui/button';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 import { ToastService } from '@anotoki/lib/ui/toast';
 import { copyText } from '../copy-text';
 

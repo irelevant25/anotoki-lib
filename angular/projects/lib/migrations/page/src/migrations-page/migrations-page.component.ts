@@ -1,9 +1,15 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DOCUMENT, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
-import { ANOTOKI_MIGRATIONS_CONFIG, SiteStatus, ɵdefaultFormatDate as defaultFormatDate, ɵmessageOf as messageOf } from '@anotoki/lib/migrations';
-import { AlertComponent, BadgeComponent, BadgeTone, ButtonComponent, CardComponent, PageHeaderComponent, SpinnerComponent } from '@anotoki/lib/ui';
+import { ANOTOKI_MIGRATIONS_CONFIG, SiteStatus } from '@anotoki/lib/migrations';
+import { AlertComponent } from '@anotoki/lib/ui/alert';
+import { BadgeComponent, BadgeTone } from '@anotoki/lib/ui/badge';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
+import { CardComponent } from '@anotoki/lib/ui/card';
+import { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
+import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 import { DialogComponent } from '@anotoki/lib/ui/dialog';
 import { firstValueFrom } from 'rxjs';
+import { defaultFormatDate, messageOf } from '../messages';
 
 /** A file of a set, as the server names it. */
 interface MigrationFile {

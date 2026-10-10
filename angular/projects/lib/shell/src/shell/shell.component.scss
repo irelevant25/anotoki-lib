@@ -9,12 +9,12 @@
 }
 
 // With a side navigation the frame is wider - and the family's bar in it lines up.
-:host(.has-nav) {
+:host(.anotoki-shell--has-nav) {
   --_shell-width: 88rem;
   --anotoki-topbar-max-width: 88rem;
 }
 
-.skip-link {
+.anotoki-shell__skip-link {
   position: absolute;
   top: -4rem;
   left: 1rem;
@@ -34,7 +34,7 @@
   @include kit.focus-ring;
 }
 
-.frame {
+.anotoki-shell__frame {
   display: grid;
   flex: 1;
   grid-template-columns: minmax(0, 1fr);
@@ -44,11 +44,11 @@
   margin: 0 auto;
 }
 
-:host(.has-nav) .frame {
+:host(.anotoki-shell--has-nav) .anotoki-shell__frame {
   grid-template-columns: 15rem minmax(0, 1fr);
 }
 
-.sidenav {
+.anotoki-shell__sidenav {
   position: sticky;
   top: kit.token(topbar-height);
   align-self: start;
@@ -64,7 +64,7 @@
   }
 }
 
-.nav-link {
+.anotoki-shell__nav-link {
   display: flex;
   align-items: center;
   gap: 0.7rem;
@@ -84,7 +84,7 @@
     text-decoration: none;
   }
 
-  &.is-active {
+  &.anotoki-shell__nav-link--active {
     background: kit.token(primary-soft);
     color: kit.token(primary-soft-text);
 
@@ -96,7 +96,7 @@
   @include kit.focus-ring;
 }
 
-.content {
+.anotoki-shell__content {
   min-width: 0;
   padding: 2rem 1.75rem 4rem;
 
@@ -106,12 +106,12 @@
 }
 
 @media (max-width: 860px) {
-  :host(.has-nav) .frame {
+  :host(.anotoki-shell--has-nav) .anotoki-shell__frame {
     grid-template-columns: minmax(0, 1fr);
   }
 
   // The side navigation becomes a strip of links under the bar.
-  .sidenav {
+  .anotoki-shell__sidenav {
     z-index: 10;
     padding: 0.5rem 0.75rem;
     overflow-x: auto;
@@ -126,12 +126,12 @@
     }
   }
 
-  .nav-link {
+  .anotoki-shell__nav-link {
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
   }
 
-  .content {
+  .anotoki-shell__content {
     padding: 1.25rem 1rem 3rem;
   }
 }

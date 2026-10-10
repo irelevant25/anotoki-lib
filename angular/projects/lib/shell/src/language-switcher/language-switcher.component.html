@@ -3,7 +3,7 @@
         @case ("menu") {
             <button
                 type="button"
-                class="switcher"
+                class="anotoki-language-switcher__switcher"
                 [anotokiMenuTrigger]="menu"
                 [attr.aria-label]="buttonName()"
                 [attr.title]="buttonName()"
@@ -21,8 +21,8 @@
             <anotoki-segmented size="sm" [label]="words.t('language.label')" [options]="segments()" [value]="current()" [busy]="switching()" (valueChange)="choose($event)" />
         }
         @default {
-            <label class="visually-hidden" [for]="selectId" [attr.lang]="words.foreignLang()">{{ words.t("language.label") }}</label>
-            <select #select class="select" [id]="selectId" [attr.aria-busy]="switching() ? 'true' : null" (change)="onSelect($event)">
+            <label class="anotoki-visually-hidden" [for]="selectId" [attr.lang]="words.foreignLang()">{{ words.t("language.label") }}</label>
+            <select #select class="anotoki-language-switcher__select" [id]="selectId" [attr.aria-busy]="switching() ? 'true' : null" (change)="onSelect($event)">
                 @for (language of languages(); track language.code) {
                     <option [value]="language.code" [selected]="language.code === current()" [attr.lang]="language.code">{{ language.name }}</option>
                 }
@@ -30,6 +30,6 @@
         }
     }
     @if (note(); as said) {
-        <p #note class="note" role="alert" [attr.lang]="words.foreignLang()">{{ said }}</p>
+        <p #note class="anotoki-language-switcher__note" role="alert" [attr.lang]="words.foreignLang()">{{ said }}</p>
     }
 }

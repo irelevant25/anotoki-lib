@@ -58,7 +58,7 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
     expect(shown.open).toBe(true);
     expect(document.getElementById(shown.getAttribute('aria-labelledby')!)?.textContent).toBe('Edit the name');
     expect(document.getElementById(shown.getAttribute('aria-describedby')!)?.textContent).toBe('Everybody sees it.');
-    expect(Array.from(shown.querySelectorAll('.footer button')).map(words)).toEqual(['Cancel', 'Save']);
+    expect(Array.from(shown.querySelectorAll('.anotoki-dialog__footer button')).map(words)).toEqual(['Cancel', 'Save']);
   });
 
   it('the focus starts on the first field - not on the close button, nor on what is out of the tab order', async () => {
@@ -68,7 +68,7 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
 
   it('Tab cycles inside, never stopping on tabindex="-1"; Shift+Tab the other way', async () => {
     await open();
-    const close = host.querySelector<HTMLElement>('.close')!;
+    const close = host.querySelector<HTMLElement>('.anotoki-dialog__close')!;
     el('save').focus();
     const tab = press(el('save'), 'Tab');
     expect(tab.defaultPrevented).toBe(true);
@@ -96,7 +96,7 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
 
   it('the close button is named in the page language and asks to be closed', async () => {
     await open();
-    const close = host.querySelector<HTMLButtonElement>('.close')!;
+    const close = host.querySelector<HTMLButtonElement>('.anotoki-dialog__close')!;
     expect(close.getAttribute('aria-label')).toBe('Close');
     close.click();
     await settle(fixture);
@@ -118,7 +118,7 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
   it('not dismissible: Escape, the browser’s cancel and the backdrop do nothing, and there is no close button', async () => {
     page.dismissible.set(false);
     await open();
-    expect(host.querySelector('.close')).toBeNull();
+    expect(host.querySelector('.anotoki-dialog__close')).toBeNull();
     press(el('name'), 'Escape');
     const cancel = new Event('cancel', { cancelable: true });
     dialog()!.dispatchEvent(cancel);
@@ -132,7 +132,7 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
     page.busy.set(true);
     await open();
     expect(dialog()!.getAttribute('aria-busy')).toBe('true');
-    expect(host.querySelector<HTMLButtonElement>('.close')!.disabled).toBe(true);
+    expect(host.querySelector<HTMLButtonElement>('.anotoki-dialog__close')!.disabled).toBe(true);
     press(el('name'), 'Escape');
     expect(page.dismissed).toBe(0);
   });
@@ -144,7 +144,7 @@ describe('<anotoki-dialog> in Slovak', () => {
     const fixture = await draw(DialogPageComponent);
     fixture.componentInstance.open.set(true);
     await settle(fixture);
-    expect(fixture.nativeElement.querySelector('.close').getAttribute('aria-label')).toBe('Zavrieť');
+    expect(fixture.nativeElement.querySelector('.anotoki-dialog__close').getAttribute('aria-label')).toBe('Zavrieť');
     fixture.nativeElement.remove();
   });
 });

@@ -39,6 +39,8 @@ export class AppComponent {
     { id: 'admin', label: this.words.t('topbar.admin'), icon: 'shield', path: '/translations' },
   ]);
   protected readonly mark = computed(() => ({ badge: 12, label: this.words.language() === 'sk' ? 'Ponuka: 12 opakovaní' : 'Menu: 12 reviews due' }));
+  /** ?frame=88rem: the frame as wide as a site says (the shell's maxWidth); the kit's 84rem without it. */
+  protected readonly frameWidth = new URLSearchParams(location.search).get('frame');
   /** Signing out takes a moment here: the item says "Saving…" meanwhile. */
   protected readonly signOut = () => new Promise<void>((done) => setTimeout(done, 2500));
 

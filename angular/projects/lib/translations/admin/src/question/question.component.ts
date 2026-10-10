@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { ButtonComponent } from '@anotoki/lib/ui';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
 import { DialogComponent } from '@anotoki/lib/ui/dialog';
 import { Questions } from '../questions';
 

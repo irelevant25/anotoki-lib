@@ -1,5 +1,5 @@
 import { DOCUMENT, DestroyRef, Directive, ElementRef, Injector, Signal, afterNextRender, inject, input, output, signal } from '@angular/core';
-import { uniqueId } from '@anotoki/lib/ui';
+import { uniqueId } from '@anotoki/lib/ui/dom';
 
 /** Where a box drawn under its trigger lines up with it. */
 export type PanelAlign = 'start' | 'end' | 'center';

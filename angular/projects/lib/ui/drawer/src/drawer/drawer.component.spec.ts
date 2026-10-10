@@ -38,25 +38,25 @@ describe('<anotoki-drawer>: a panel from the right', () => {
     expect(dialog.open).toBe(true);
     expect(document.getElementById(dialog.getAttribute('aria-labelledby')!)?.textContent).toBe('12 people');
     expect(document.activeElement?.tagName).toBe('H2');
-    expect(words(host.querySelector('.subtitle'))).toBe('Who answered');
-    expect(host.querySelector('.actions #export')).not.toBeNull();
-    expect(host.querySelector('.foot #done')).not.toBeNull();
-    expect(host.querySelector('.close')?.getAttribute('aria-label')).toBe('Close');
+    expect(words(host.querySelector('.anotoki-drawer__subtitle'))).toBe('Who answered');
+    expect(host.querySelector('.anotoki-drawer__actions #export')).not.toBeNull();
+    expect(host.querySelector('.anotoki-drawer__foot #done')).not.toBeNull();
+    expect(host.querySelector('.anotoki-drawer__close')?.getAttribute('aria-label')).toBe('Close');
 
     const done = host.querySelector<HTMLElement>('#done')!;
     done.focus();
     expect(press(done, 'Tab').defaultPrevented).toBe(true);
-    expect(document.activeElement).toBe(host.querySelector('.close'));
+    expect(document.activeElement).toBe(host.querySelector('.anotoki-drawer__close'));
 
     fixture.componentInstance.back.set('All 12 people');
     fixture.componentInstance.heading.set('Mira');
     await settle(fixture);
-    const back = host.querySelector<HTMLButtonElement>('.back')!;
+    const back = host.querySelector<HTMLButtonElement>('.anotoki-drawer__back')!;
     expect(words(back)).toBe('All 12 people');
     back.click();
     expect(fixture.componentInstance.backs).toBe(1);
 
-    press(host.querySelector('.close')!, 'Escape');
+    press(host.querySelector('.anotoki-drawer__close')!, 'Escape');
     await settle(fixture);
     expect(host.querySelector('dialog')).toBeNull();
     expect(document.activeElement).toBe(opener);

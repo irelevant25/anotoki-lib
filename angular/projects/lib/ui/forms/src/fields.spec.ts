@@ -92,28 +92,28 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
       form.name.set('Jo');
       await settle(fixture);
       expect(name.value).toBe('Jo');
-      expect(field('name').querySelector('.control #suffix')).not.toBeNull();
+      expect(field('name').querySelector('.anotoki-field__control #suffix')).not.toBeNull();
     });
 
     it('an error: said at once (role="alert"), tied to the input in place of the hint, aria-invalid', async () => {
       form.error.set('Write a name.');
       await settle(fixture);
       const name = input('name');
-      const error = field('name').querySelector('.error')!;
+      const error = field('name').querySelector('.anotoki-field__error')!;
       expect(error.getAttribute('role')).toBe('alert');
       expect(words(error)).toBe('Write a name.');
       expect(name.getAttribute('aria-invalid')).toBe('true');
       expect(name.getAttribute('aria-describedby')).toBe(error.id);
-      expect(field('name').querySelector('.hint')).toBeNull();
+      expect(field('name').querySelector('.anotoki-field__hint')).toBeNull();
     });
 
     it('"optional" after the label, in the page language', async () => {
       form.optional.set(true);
       await settle(fixture);
-      expect(words(field('name').querySelector('.optional'))).toBe('optional');
+      expect(words(field('name').querySelector('.anotoki-field__optional'))).toBe('optional');
       language.set('sk');
       await settle(fixture);
-      expect(words(field('name').querySelector('.optional'))).toBe('nepovinné');
+      expect(words(field('name').querySelector('.anotoki-field__optional'))).toBe('nepovinné');
     });
   });
 
@@ -129,7 +129,7 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
 
   it('password field: hidden at first; the show button says what it does (aria-pressed), in the page language; the aside beside the label, not in it', async () => {
     const password = input('password');
-    const reveal = field('password').querySelector<HTMLButtonElement>('.reveal')!;
+    const reveal = field('password').querySelector<HTMLButtonElement>('.anotoki-password-field__reveal')!;
     expect(password.type).toBe('password');
     expect(password.getAttribute('autocomplete')).toBe('current-password');
     expect(reveal.getAttribute('aria-pressed')).toBe('false');
@@ -148,7 +148,7 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
 
   it('select: native, its label for screen readers only, a placeholder, options with their own lang', async () => {
     const select = input('pick') as unknown as HTMLSelectElement;
-    expect(field('pick').querySelector('label')?.classList).toContain('visually-hidden');
+    expect(field('pick').querySelector('label')?.classList).toContain('anotoki-visually-hidden');
     expect(Array.from(select.options).map((option) => option.textContent)).toEqual(['Choose…', 'English', 'Slovenčina']);
     expect(select.options[2].getAttribute('lang')).toBe('sk');
     select.value = 'sk';
@@ -193,7 +193,7 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
     expect(document.activeElement).toBe(code);
     expect(code.getAttribute('autocomplete')).toBe('one-time-code');
     expect(code.getAttribute('inputmode')).toBe('numeric');
-    expect(field('code').querySelector('.cells')?.getAttribute('aria-hidden')).toBe('true');
+    expect(field('code').querySelector('.anotoki-code-input__cells')?.getAttribute('aria-hidden')).toBe('true');
     type(code, '12 3-45');
     expect(form.code()).toBe('12345');
     expect(form.completed).toEqual([]);
@@ -201,6 +201,6 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
     expect(form.code()).toBe('123456');
     expect(form.completed).toEqual(['123456']);
     await settle(fixture);
-    expect(Array.from(field('code').querySelectorAll('.cell')).map(words)).toEqual(['1', '2', '3', '4', '5', '6']);
+    expect(Array.from(field('code').querySelectorAll('.anotoki-code-input__cell')).map(words)).toEqual(['1', '2', '3', '4', '5', '6']);
   });
 });

@@ -4,7 +4,7 @@
   display: block;
 }
 
-.pagination {
+.anotoki-pagination__pagination {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -14,15 +14,15 @@
   border-top: 1px solid kit.token(border);
 }
 
-.range,
-.page {
+.anotoki-pagination__range,
+.anotoki-pagination__page {
   margin: 0;
   color: kit.token(muted);
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
 }
 
-.buttons {
+.anotoki-pagination__buttons {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

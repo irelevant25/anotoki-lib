@@ -1,5 +1,5 @@
 // Writes the Angular half's built-in library words from the one source, php/resources/library-words.json:
-// projects/lib/ui/src/library-words.ts (committed). The kit reads its own from it (ui.*, topbar.*,
+// projects/lib/ui/config/src/library-words.ts (committed). The kit reads its own from it (ui.*, topbar.*,
 // language.*, theme.*), the migrations module its status page's (siteStatus.*), and the translations
 // module every one of them - so a page has the library's words while the database cannot be reached, and
 // never shows a library key as a key.
@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const source = join(here, "..", "..", "php", "resources", "library-words.json");
-const target = join(here, "..", "projects", "lib", "ui", "src", "library-words.ts");
+const target = join(here, "..", "projects", "lib", "ui", "config", "src", "library-words.ts");
 
 const KEY = /^anotoki(?:\.[A-Za-z0-9][A-Za-z0-9_-]*)+$/;
 const LANGUAGES = ["en", "sk"];
@@ -98,11 +98,11 @@ if (process.argv.includes("--check")) {
         // No file at all: stale too.
     }
     if (current !== text) {
-        console.error("library-words: projects/lib/ui/src/library-words.ts is not what php/resources/library-words.json makes - run `bun run words`.");
+        console.error("library-words: projects/lib/ui/config/src/library-words.ts is not what php/resources/library-words.json makes - run `bun run words`.");
         process.exit(1);
     }
-    console.log(`library-words: projects/lib/ui/src/library-words.ts is the JSON's (${words.length} keys).`);
+    console.log(`library-words: projects/lib/ui/config/src/library-words.ts is the JSON's (${words.length} keys).`);
 } else {
     writeFileSync(target, text);
-    console.log(`library-words: wrote projects/lib/ui/src/library-words.ts (${words.length} keys).`);
+    console.log(`library-words: wrote projects/lib/ui/config/src/library-words.ts (${words.length} keys).`);
 }

@@ -6,7 +6,7 @@
 import { EnvironmentProviders, Provider, WritableSignal, signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { type Mock } from 'vitest';
-import { AnotokiUiConfig } from '../../ui/src/config';
+import { AnotokiUiConfig } from '@anotoki/lib/ui/config';
 import { kitProviders } from '../../ui/src/testing';
 import { AnotokiLanguage, AnotokiShellConfig, AnotokiThemeMode, provideAnotokiShell } from './config';
 

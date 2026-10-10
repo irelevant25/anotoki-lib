@@ -7,7 +7,7 @@
   display: block;
 }
 
-.topbar {
+.anotoki-top-bar__topbar {
   border-bottom: 1px solid kit.token(border);
   background: color-mix(in srgb, #{kit.token(surface)} 88%, transparent);
   backdrop-filter: saturate(1.4) blur(10px);
@@ -15,7 +15,7 @@
 }
 
 // One row: the brand, the links, then the controls pushed to the right.
-.row {
+.anotoki-top-bar__row {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -25,7 +25,7 @@
   margin: 0 auto;
   padding: 0 1.25rem;
 
-  &.is-narrow {
+  &.anotoki-top-bar__row--narrow {
     max-width: var(--anotoki-topbar-max-width, 49rem);
   }
 }
@@ -38,14 +38,14 @@ anotoki-language-switcher {
   flex: none;
 }
 
-.nav {
+.anotoki-top-bar__nav {
   display: flex;
   flex: none;
   align-items: center;
   gap: 0.25rem;
 }
 
-.link {
+.anotoki-top-bar__link {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -64,7 +64,7 @@ anotoki-language-switcher {
     text-decoration: none;
   }
 
-  &.is-active {
+  &.anotoki-top-bar__link--active {
     background: kit.token(primary-soft);
     color: kit.token(primary-soft-text);
   }
@@ -72,7 +72,7 @@ anotoki-language-switcher {
   @include kit.focus-ring;
 }
 
-.badge {
+.anotoki-top-bar__badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -86,12 +86,12 @@ anotoki-language-switcher {
   line-height: 1.35rem;
   font-variant-numeric: tabular-nums;
 
-  &.in-menu {
+  &.anotoki-top-bar__in-menu {
     margin-left: auto;
   }
 }
 
-.actions {
+.anotoki-top-bar__actions {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -99,8 +99,8 @@ anotoki-language-switcher {
   margin-left: auto;
 }
 
-.round,
-.person-button {
+.anotoki-top-bar__round,
+.anotoki-top-bar__person-button {
   @include kit.button-reset;
   position: relative;
   display: inline-flex;
@@ -124,11 +124,11 @@ anotoki-language-switcher {
   @include kit.focus-ring;
 }
 
-.round {
+.anotoki-top-bar__round {
   width: 40px;
 }
 
-.person-button {
+.anotoki-top-bar__person-button {
   flex: 0 1 auto;
   gap: 0.55rem;
   min-width: 0;
@@ -141,7 +141,7 @@ anotoki-language-switcher {
   }
 }
 
-.initial {
+.anotoki-top-bar__initial {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -155,7 +155,7 @@ anotoki-language-switcher {
   font-weight: 800;
 }
 
-.person-name {
+.anotoki-top-bar__person-name {
   min-width: 0;
   max-width: 12rem;
   overflow: hidden;
@@ -164,30 +164,30 @@ anotoki-language-switcher {
 }
 
 // Too narrow for the name as well as the links: the round button alone.
-.is-nameless {
-  .person-name {
+.anotoki-top-bar__topbar--nameless {
+  .anotoki-top-bar__person-name {
     display: none;
   }
 
-  .person-button {
+  .anotoki-top-bar__person-button {
     padding: 0 0.4rem 0 0.3rem;
   }
 }
 
 // The phone's bar: the brand, the widgets, the language, the theme, the menu button.
-.is-phone {
-  .row {
+.anotoki-top-bar__topbar--phone {
+  .anotoki-top-bar__row {
     gap: 0.5rem;
     padding: 0 0.75rem;
   }
 
-  .actions {
+  .anotoki-top-bar__actions {
     gap: 0.4rem;
   }
 }
 
 // The marks on the phone's menu button: a count, or a dot.
-.mark-badge {
+.anotoki-top-bar__mark-badge {
   position: absolute;
   top: -5px;
   right: -6px;
@@ -204,7 +204,7 @@ anotoki-language-switcher {
   font-variant-numeric: tabular-nums;
 }
 
-.mark-dot {
+.anotoki-top-bar__mark-dot {
   position: absolute;
   top: 2px;
   right: 2px;
@@ -215,13 +215,13 @@ anotoki-language-switcher {
   background: kit.token(warning);
 }
 
-.visually-hidden {
+.anotoki-visually-hidden {
   @include kit.visually-hidden;
 }
 
 // The menus' own parts (their boxes and items are the kit's menu).
-.menu-head,
-.menu-note {
+.anotoki-top-bar__menu-head,
+.anotoki-top-bar__menu-note {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -230,7 +230,7 @@ anotoki-language-switcher {
   border-bottom: 1px solid kit.token(border);
 }
 
-.menu-note {
+.anotoki-top-bar__menu-note {
   gap: 0.2rem;
   border-radius: kit.token(radius);
   border-bottom: 0;
@@ -247,18 +247,18 @@ anotoki-language-switcher {
   }
 }
 
-.menu-name {
+.anotoki-top-bar__menu-name {
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
-.menu-email {
+.anotoki-top-bar__menu-email {
   color: kit.token(muted);
   font-size: 0.8125rem;
   overflow-wrap: anywhere;
 }
 
-.menu-role {
+.anotoki-top-bar__menu-role {
   align-self: flex-start;
   margin-top: 0.35rem;
   padding: 0.1rem 0.5rem;
@@ -269,7 +269,7 @@ anotoki-language-switcher {
   font-weight: 700;
 }
 
-.external {
+.anotoki-top-bar__external {
   margin-left: auto;
 }
 

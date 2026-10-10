@@ -7,11 +7,14 @@ version.
 - `@anotoki/lib` - `ANOTOKI_LIB_VERSION`, the installed version.
 - `@anotoki/lib/styles` (Sass) - the family's tokens (one palette, light and dark),
   Manrope, the base, utilities and tables: `@use "@anotoki/lib/styles" as anotoki`.
-- `@anotoki/lib/ui` - the UI kit's core (configuration and words, icons, button,
-  spinner, badge, alert, card, empty and error states, page header, avatar,
-  segmented; the library's own words, `LIBRARY_WORDS`) and its entry points
-  `ui/icons`, `ui/menu`, `ui/dialog`, `ui/toast`, `ui/forms`, `ui/tabs`,
-  `ui/pagination`, `ui/drawer`, `ui/tooltip`, `ui/copy`, `ui/qr`.
+- `@anotoki/lib/ui` - the UI kit's core, a piece per entry point, all re-exported
+  here (import each from its own, for a small first load): `ui/config`
+  (configuration and words; the library's own words, `LIBRARY_WORDS`), `ui/icon`,
+  `ui/dom`, `ui/button`, `ui/spinner`, `ui/badge`, `ui/alert`, `ui/card`,
+  `ui/empty-state`, `ui/error-state`, `ui/page-header`, `ui/avatar`,
+  `ui/segmented`, `ui/autofocus`; and the kit's other entry points `ui/icons`,
+  `ui/menu`, `ui/dialog`, `ui/toast`, `ui/forms`, `ui/tabs`, `ui/pagination`,
+  `ui/drawer`, `ui/tooltip`, `ui/copy`, `ui/qr`.
 - `@anotoki/lib/shell` - the theme (service and switch), the language switcher, the
   brand, the family's top bar and the frame; `assets/theme-boot.js`.
 - `@anotoki/lib/migrations` - one behaviour for every site while its database waits

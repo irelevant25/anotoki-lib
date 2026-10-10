@@ -4,7 +4,7 @@
   display: block;
 }
 
-.tabs {
+.anotoki-tabs__tabs {
   display: flex;
   gap: 0.25rem;
   overflow-x: auto;
@@ -12,7 +12,7 @@
   scrollbar-width: none;
 }
 
-.tab {
+.anotoki-tabs__tab {
   @include kit.button-reset;
   position: relative;
   display: inline-flex;
@@ -47,7 +47,7 @@
   @include kit.focus-ring(-2px);
 }
 
-.count {
+.anotoki-tabs__count {
   padding: 0 0.45rem;
   border-radius: 999px;
   background: kit.token(surface-3);

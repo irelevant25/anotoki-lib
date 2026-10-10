@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, input, model, output, signal, viewChild } from '@angular/core';
-import { IconComponent } from '@anotoki/lib/ui';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 import { FieldBase } from '../field-base';
 
 /**

@@ -1,14 +1,14 @@
-<div class="field">
-    <label class="label" [for]="inputId" [class.visually-hidden]="hideLabel()">
+<div class="anotoki-field">
+    <label class="anotoki-field__label" [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
         <span>{{ label() }}</span>
         @if (optional()) {
-            <span class="optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
         }
     </label>
-    <div class="control" [class.is-invalid]="!!error()" [class.is-disabled]="disabled()">
+    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="!!error()" [class.anotoki-field__control--disabled]="disabled()">
         <textarea
             #control
-            class="input multiline"
+            class="anotoki-field__input anotoki-textarea__multiline"
             [id]="inputId"
             [attr.name]="name() || null"
             [value]="value()"
@@ -24,10 +24,10 @@
             (input)="onInput($event)"></textarea>
     </div>
     @if (hint() && !error()) {
-        <p class="hint" [id]="hintId">{{ hint() }}</p>
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
     }
     @if (error()) {
-        <p class="error" [id]="errorId" role="alert">
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
             <anotoki-icon name="alert" [size]="15" />
             <span>{{ error() }}</span>
         </p>

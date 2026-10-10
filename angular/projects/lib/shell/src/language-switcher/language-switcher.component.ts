@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, afterRenderEffect, computed, inject, input, output, signal, untracked, viewChild } from '@angular/core';
-import { AnotokiWords, SegmentedComponent, SegmentedOption, keepOnScreen, uniqueId } from '@anotoki/lib/ui';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { keepOnScreen, uniqueId } from '@anotoki/lib/ui/dom';
+import { SegmentedComponent, SegmentedOption } from '@anotoki/lib/ui/segmented';
 import { MenuComponent, MenuItemComponent, MenuTriggerDirective } from '@anotoki/lib/ui/menu';
 import { ANOTOKI_SHELL_CONFIG, AnotokiLanguage } from '../config';
 
@@ -34,7 +36,7 @@ const MOST_SEGMENTS = 4;
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'anotoki-language-switcher',
-    '[class.is-menu]': 'form() === "menu"',
+    '[class.anotoki-language-switcher--menu]': 'form() === "menu"',
     '[hidden]': '!offered()',
     '(keydown)': 'onKeydown($event)',
     '(document:click)': 'onDocumentClick($event)',

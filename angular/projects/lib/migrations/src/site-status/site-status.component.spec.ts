@@ -51,8 +51,8 @@ describe('<anotoki-site-status>: what people see while the site is not ready', (
       expect(actions()).toEqual(['Sign in']);
       // Quiet - it reads as a link - with a button's 44 px target all the same (the kit's link button).
       expect(host.querySelector('button')?.classList).toContain('anotoki-button');
-      expect(host.querySelector('button')?.classList).toContain('is-link');
-      expect(host.querySelector('button')?.classList).not.toContain('is-sm');
+      expect(host.querySelector('button')?.classList).toContain('anotoki-button--link');
+      expect(host.querySelector('button')?.classList).not.toContain('anotoki-button--sm');
       expect(host.textContent).not.toMatch(/update_pending|503|setup|migration|database|error/i);
       expect(section()?.getAttribute('role')).toBe('status');
 

@@ -1,5 +1,5 @@
 import { DOCUMENT, Injectable, Signal, computed, effect, inject, signal, untracked } from '@angular/core';
-import { mediaQuery } from '@anotoki/lib/ui';
+import { mediaQuery } from '@anotoki/lib/ui/dom';
 import { ANOTOKI_SHELL_CONFIG, AnotokiThemeMode, DEFAULT_THEME_COLOR, DEFAULT_THEME_STORAGE_KEY } from './config';
 import { latestChoiceSaver } from './latest-choice-saver';
 

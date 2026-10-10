@@ -7,7 +7,7 @@
 
 // The box and a copy of its text in one grid cell: the copy wraps as the text does and is what the cell is as
 // tall as.
-.grow {
+.anotoki-translation-cell__grow {
   position: relative;
   display: grid;
   min-width: 0;
@@ -33,12 +33,12 @@
     box-shadow: 0 0 0 3px kit.token(ring);
   }
 
-  &.is-changed {
+  &.anotoki-translation-cell__grow--changed {
     border-color: kit.token(warning);
     background: kit.token(warning-soft);
   }
 
-  &.is-invalid {
+  &.anotoki-translation-cell__grow--invalid {
     border-color: kit.token(danger);
 
     &:focus-within {
@@ -47,8 +47,8 @@
   }
 }
 
-.box,
-.grow::after {
+.anotoki-translation-cell__box,
+.anotoki-translation-cell__grow::after {
   grid-area: 1 / 1;
   box-sizing: border-box;
   min-width: 0;
@@ -64,7 +64,7 @@
   overflow-wrap: anywhere;
 }
 
-.box {
+.anotoki-translation-cell__box {
   width: 100%;
   min-height: 0;
   border: 0;
@@ -84,7 +84,7 @@
 }
 
 // The word, on the border like a legend: a changed box is not told by its colour alone.
-.mark {
+.anotoki-translation-cell__mark {
   position: absolute;
   top: -0.6rem;
   right: 0.6rem;

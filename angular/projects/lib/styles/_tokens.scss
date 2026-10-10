@@ -61,6 +61,8 @@ $light: (
   backdrop: rgb(15 27 51 / 45%),
   skeleton: #e6ebf3,
   skeleton-shine: #f3f6fb,
+  // The switch's knob, white in both themes.
+  switch-thumb: #ffffff,
   shadow-sm: (
     0 1px 2px rgb(15 27 51 / 6%),
   ),
@@ -116,6 +118,7 @@ $dark: (
   backdrop: rgb(2 5 14 / 70%),
   skeleton: #16244a,
   skeleton-shine: #1d2e5a,
+  switch-thumb: #ffffff,
   shadow-sm: (
     0 1px 2px rgb(0 0 0 / 35%),
   ),
@@ -170,7 +173,14 @@ $shared: (
   ease: cubic-bezier(0.2, 0.7, 0.2, 1),
 );
 
+/// A value as CSS. inspect() keeps a font's quotes, but writes a one-item list -
+/// a shadow kept a list, `(0 1px 2px …,)`, or a site's - as Sass reads it back:
+/// `(…,)`, which no property takes, so the shadow or the filter that read it was
+/// dropped. Such a list is written as its one item.
 @function _css($value) {
+  @if meta.type-of($value) == list and list.separator($value) == comma and list.length($value) == 1 {
+    @return _css(list.nth($value, 1));
+  }
   @return meta.inspect($value);
 }
 

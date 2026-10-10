@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, booleanAttribute, input, model } from '@angular/core';
-import { SpinnerComponent, uniqueId } from '@anotoki/lib/ui';
+import { uniqueId } from '@anotoki/lib/ui/dom';
+import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 
 /**
  * An on / off switch: `<anotoki-switch [(checked)]="on">Accept password sign-in</anotoki-switch>`.

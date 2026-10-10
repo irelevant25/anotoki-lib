@@ -15,7 +15,7 @@
 
 // The top bar's form: forty wide and no wider - beside it, on a 360 px phone,
 // the brand, the theme and the menu button still have to fit.
-.switcher {
+.anotoki-language-switcher__switcher {
   @include kit.button-reset;
   display: inline-flex;
   align-items: center;
@@ -46,7 +46,7 @@
 }
 
 // More languages than segments fit: a select of their names, no wider than it needs to be.
-.select {
+.anotoki-language-switcher__select {
   box-sizing: border-box;
   width: 11rem;
   max-width: 50vw;
@@ -75,12 +75,12 @@
   }
 }
 
-.visually-hidden {
+.anotoki-visually-hidden {
   @include kit.visually-hidden;
 }
 
 // Under the control: a language that could not be had, or that the account would not take.
-.note {
+.anotoki-language-switcher__note {
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;

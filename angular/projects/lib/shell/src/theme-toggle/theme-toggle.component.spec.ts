@@ -66,7 +66,7 @@ describe('<anotoki-theme-toggle>: the family’s segmented switch', () => {
     site.account.set('light');
     site.save.mockRejectedValue(new Error('access_denied'));
     await settle(fixture);
-    const note = () => host.querySelector('.note');
+    const note = () => host.querySelector('.anotoki-theme-toggle__note');
 
     radios()[1].click();
     await settle(fixture);

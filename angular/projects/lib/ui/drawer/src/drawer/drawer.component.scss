@@ -6,7 +6,7 @@
 
 @include kit.slot-wrappers(drawerActions, drawerFooter);
 
-.drawer {
+.anotoki-drawer__drawer {
   position: fixed;
   inset: 0 0 0 auto;
   box-sizing: border-box;
@@ -26,7 +26,7 @@
   line-height: 1.55;
 }
 
-.drawer[open] {
+.anotoki-drawer__drawer[open] {
   animation: drawer-in 220ms kit.token(ease);
 
   @media (prefers-reduced-motion: reduce) {
@@ -34,18 +34,18 @@
   }
 }
 
-.drawer::backdrop {
+.anotoki-drawer__drawer::backdrop {
   background: kit.token(backdrop);
   backdrop-filter: blur(1px);
 }
 
-.panel {
+.anotoki-drawer__panel {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.head {
+.anotoki-drawer__head {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -53,14 +53,14 @@
   border-bottom: 1px solid kit.token(border);
 }
 
-.head-row {
+.anotoki-drawer__head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: 2.5rem;
 }
 
-.back {
+.anotoki-drawer__back {
   @include kit.button-reset;
   display: inline-flex;
   align-items: center;
@@ -80,7 +80,7 @@
   @include kit.focus-ring;
 }
 
-.close {
+.anotoki-drawer__close {
   @include kit.button-reset;
   display: inline-flex;
   align-items: center;
@@ -99,7 +99,7 @@
   @include kit.focus-ring;
 }
 
-.title {
+.anotoki-drawer__title {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
@@ -111,25 +111,25 @@
   }
 }
 
-.subtitle {
+.anotoki-drawer__subtitle {
   margin: 0;
   color: kit.token(muted);
   font-size: 0.875rem;
   overflow-wrap: anywhere;
 }
 
-.actions {
+.anotoki-drawer__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
 
-.actions:empty {
+.anotoki-drawer__actions:empty {
   display: none;
 }
 
-.body {
+.anotoki-drawer__body {
   flex: 1;
   min-height: 0;
   padding: 1rem 1.25rem 1.5rem;
@@ -137,7 +137,7 @@
   overscroll-behavior: contain;
 }
 
-.foot {
+.anotoki-drawer__foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -148,14 +148,14 @@
   background: kit.token(surface-2);
 }
 
-.foot:empty {
+.anotoki-drawer__foot:empty {
   display: none;
 }
 
 @media (max-width: 560px) {
-  .head,
-  .body,
-  .foot {
+  .anotoki-drawer__head,
+  .anotoki-drawer__body,
+  .anotoki-drawer__foot {
     padding-right: 1rem;
     padding-left: 1rem;
   }

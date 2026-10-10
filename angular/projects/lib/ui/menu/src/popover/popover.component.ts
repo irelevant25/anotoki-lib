@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, input, viewChild } from '@angular/core';
-import { tabbable } from '@anotoki/lib/ui';
+import { tabbable } from '@anotoki/lib/ui/dom';
 import { AnchoredPanel } from '../anchored';
 
 /**

@@ -86,6 +86,11 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # ui/config/src/library-words.ts is generated from php/resources/library-words.json and committed: a JSON
+      # changed without `bun run words` would leave the Angular half's words behind the PHP half's.
+      - name: Check the library's words
+        run: bun run words --check
+
       - name: Build the library
         run: bun run build
 

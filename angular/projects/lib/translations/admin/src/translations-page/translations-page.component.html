@@ -1,10 +1,10 @@
 @if (!allowed()) {
-    <p class="notice">The translations are for the people {{ siteName }} lets change its words.</p>
+    <p class="anotoki-translations-admin__notice">The translations are for the people {{ siteName }} lets change its words.</p>
 } @else {
-    <div class="page">
+    <div class="anotoki-translations-admin__page">
         <anotoki-page-header heading="Translations" [lead]="lead" [headingId]="id + '-title'">
             @if (loaded()) {
-                <p pageMeta class="counts">
+                <p pageMeta class="anotoki-translations-admin__counts">
                     <span>
                         <strong>{{ total() }}</strong>
                         {{ total() === 1 ? "key" : "keys" }}
@@ -25,7 +25,7 @@
 
         @if (unavailable()) {
             <anotoki-alert data-unavailable tone="warning" heading="Apply the pending database update first">
-                <p class="alert-text">
+                <p class="anotoki-translations-admin__alert-text">
                     The words move into the database with an update that is uploaded and not applied yet. Until it is, the pages read the English built into them, and there is nothing here to change.
                 </p>
                 <div alertActions>
@@ -44,12 +44,12 @@
         } @else if (loadError(); as message) {
             <anotoki-error-state heading="The translations could not be loaded" retryLabel="Try again" [message]="message" (retry)="load()" />
         } @else if (!loaded()) {
-            <div class="loading"><anotoki-spinner size="lg" label="Loading the translations" [showLabel]="true" /></div>
+            <div class="anotoki-translations-admin__loading"><anotoki-spinner size="lg" label="Loading the translations" [showLabel]="true" /></div>
         } @else {
-            <ul class="languages" aria-label="Languages">
+            <ul class="anotoki-translations-page__languages" aria-label="Languages">
                 @for (item of coverage(); track item.language.code) {
-                    <li class="language" [attr.data-language]="item.language.code">
-                        <div class="language-name">
+                    <li class="anotoki-translations-page__language" [attr.data-language]="item.language.code">
+                        <div class="anotoki-translations-page__language-name">
                             <strong>{{ item.language.name }}</strong>
                             <anotoki-badge [mono]="true">{{ item.language.code }}</anotoki-badge>
                             @if (item.language.code === fallback) {
@@ -59,11 +59,13 @@
                                 <anotoki-badge>Hidden</anotoki-badge>
                             }
                         </div>
-                        <div class="coverage">
-                            <span class="bar" aria-hidden="true"><span class="bar-fill" [style.width.%]="item.percent"></span></span>
-                            <span class="coverage-count" [attr.aria-label]="item.done + ' of ' + item.total + ' keys have a string in ' + item.language.name">{{ item.done }} / {{ item.total }}</span>
+                        <div class="anotoki-translations-page__coverage">
+                            <span class="anotoki-translations-page__bar" aria-hidden="true"><span class="anotoki-translations-page__bar-fill" [style.width.%]="item.percent"></span></span>
+                            <span class="anotoki-translations-page__coverage-count" [attr.aria-label]="item.done + ' of ' + item.total + ' keys have a string in ' + item.language.name">
+                                {{ item.done }} / {{ item.total }}
+                            </span>
                         </div>
-                        <div class="language-actions">
+                        <div class="anotoki-translations-page__language-actions">
                             <button anotokiButton size="sm" data-export [loading]="exporting() === item.language.code" (click)="exportLanguage(item.language)">
                                 <anotoki-icon name="download" [size]="15" />
                                 Export
@@ -74,7 +76,7 @@
                             </button>
                             <input
                                 #file
-                                class="file"
+                                class="anotoki-translations-page__file"
                                 type="file"
                                 tabindex="-1"
                                 accept=".json,application/json"
@@ -85,34 +87,48 @@
                 }
             </ul>
 
-            <p class="happened" data-happened role="status">{{ happened() }}</p>
+            <p class="anotoki-translations-admin__happened" data-happened role="status">{{ happened() }}</p>
 
             @if (notice(); as problem) {
                 <anotoki-alert data-notice tone="danger" [heading]="problem.heading" [announce]="true">
-                    <p class="alert-text">{{ problem.message }}</p>
+                    <p class="anotoki-translations-admin__alert-text">{{ problem.message }}</p>
                     <div alertActions>
                         <button anotokiButton size="sm" (click)="notice.set(null)">Dismiss</button>
                     </div>
                 </anotoki-alert>
             }
 
-            <div class="tools">
-                <anotoki-text-field class="search" type="search" label="Find a key or a text" placeholder="Find a key or a text" autocomplete="off" [hideLabel]="true" [(value)]="search">
-                    <anotoki-icon fieldPrefix class="search-icon" name="search" [size]="16" />
+            <div class="anotoki-translations-page__tools">
+                <anotoki-text-field
+                    class="anotoki-translations-page__search"
+                    type="search"
+                    label="Find a key or a text"
+                    placeholder="Find a key or a text"
+                    autocomplete="off"
+                    [hideLabel]="true"
+                    [(value)]="search">
+                    <anotoki-icon fieldPrefix class="anotoki-translations-page__search-icon" name="search" [size]="16" />
                 </anotoki-text-field>
                 @if (missingOptions().length) {
-                    <anotoki-select class="missing" label="Show" placeholder="Every key" [hideLabel]="true" [inline]="true" [options]="missingOptions()" [(value)]="missingIn" />
+                    <anotoki-select
+                        class="anotoki-translations-page__missing"
+                        label="Show"
+                        placeholder="Every key"
+                        [hideLabel]="true"
+                        [inline]="true"
+                        [options]="missingOptions()"
+                        [(value)]="missingIn" />
                 }
-                <p class="shown" role="status">{{ visibleKeys() }} of {{ total() }} {{ total() === 1 ? "key" : "keys" }}</p>
+                <p class="anotoki-translations-page__shown" role="status">{{ visibleKeys() }} of {{ total() }} {{ total() === 1 ? "key" : "keys" }}</p>
             </div>
 
-            <p class="kept">
+            <p class="anotoki-translations-page__kept">
                 What you type is kept in this tab until it is saved or discarded - through a reload, and through signing out and in again as the same person. Signing out does not ask about it; closing
                 the tab loses it, and the browser asks first.
             </p>
 
-            <div class="grid" [class.is-stacked]="stacked()" [style.--_translations-languages]="languages().length">
-                <div class="grid-head" aria-hidden="true">
+            <div class="anotoki-translations-page__grid" [class.anotoki-translations-page__grid--stacked]="stacked()" [style.--_translations-languages]="languages().length">
+                <div class="anotoki-translations-page__grid-head" aria-hidden="true">
                     <span>Key</span>
                     @for (language of languages(); track language.code) {
                         <span>{{ language.name }}</span>
@@ -120,50 +136,54 @@
                 </div>
 
                 @for (part of parts(); track part.id) {
-                    <section class="part" [attr.aria-labelledby]="part.heading ? id + '-' + part.id : null">
+                    <section class="anotoki-translations-page__part" [attr.aria-labelledby]="part.heading ? id + '-' + part.id : null">
                         @if (part.heading) {
-                            <header class="part-head">
-                                <h2 class="part-title" [id]="id + '-' + part.id">{{ part.heading }}</h2>
+                            <header class="anotoki-translations-page__part-head">
+                                <h2 class="anotoki-translations-page__part-title" [id]="id + '-' + part.id">{{ part.heading }}</h2>
                                 @if (part.lead) {
-                                    <p class="part-lead">{{ part.lead }}</p>
+                                    <p class="anotoki-translations-page__part-lead">{{ part.lead }}</p>
                                 }
                             </header>
                         }
-                        <ul class="blocks">
+                        <ul class="anotoki-translations-page__blocks">
                             @for (block of part.blocks; track block.name) {
-                                <li class="block" [class.is-group]="block.kind === 'group'" [class.is-plural]="block.kind === 'plural'" [attr.data-block]="block.name">
+                                <li
+                                    class="anotoki-translations-page__block"
+                                    [class.anotoki-translations-page__block--group]="block.kind === 'group'"
+                                    [class.anotoki-translations-page__block--plural]="block.kind === 'plural'"
+                                    [attr.data-block]="block.name">
                                     @if (block.kind === "group") {
-                                        <div class="block-head">
+                                        <div class="anotoki-translations-page__block-head">
                                             @if (block.group?.icon; as icon) {
-                                                <anotoki-icon class="block-icon" [name]="icon" [size]="17" />
+                                                <anotoki-icon class="anotoki-translations-page__block-icon" [name]="icon" [size]="17" />
                                             }
                                             @if (about(block); as known) {
-                                                <strong class="block-title">{{ known.title }}</strong>
+                                                <strong class="anotoki-translations-page__block-title">{{ known.title }}</strong>
                                                 <code>{{ block.name }}</code>
                                                 @if (known.text) {
-                                                    <span class="block-text">{{ known.text }}</span>
+                                                    <span class="anotoki-translations-page__block-text">{{ known.text }}</span>
                                                 }
                                             } @else {
                                                 <code>{{ block.name }}</code>
                                             }
                                         </div>
                                     } @else if (block.kind === "plural") {
-                                        <div class="block-head">
+                                        <div class="anotoki-translations-page__block-head">
                                             <code>{{ block.name }}</code>
-                                            <span class="block-text">Plural: one text for each kind of number</span>
+                                            <span class="anotoki-translations-page__block-text">Plural: one text for each kind of number</span>
                                         </div>
                                     }
 
                                     @for (row of block.rows; track row.key.name) {
-                                        <div class="row" [id]="rowId(row.key.name)">
-                                            <div class="key">
-                                                <code class="key-name">{{ row.key.name }}</code>
+                                        <div class="anotoki-translations-page__row" [id]="rowId(row.key.name)">
+                                            <div class="anotoki-translations-page__key">
+                                                <code class="anotoki-translations-page__key-name">{{ row.key.name }}</code>
                                                 @if (row.key.description) {
-                                                    <p class="description">{{ row.key.description }}</p>
+                                                    <p class="anotoki-translations-page__description">{{ row.key.description }}</p>
                                                 }
                                                 @if (refusal(); as refused) {
                                                     @if (refused.key === row.key.name) {
-                                                        <p class="field-error" role="alert" [id]="refusalId(row.key.name)">
+                                                        <p class="anotoki-translations-admin__field-error" role="alert" [id]="refusalId(row.key.name)">
                                                             <anotoki-icon name="alert" [size]="15" />
                                                             <span>Nothing was saved. {{ refused.message }}</span>
                                                         </p>
@@ -171,12 +191,12 @@
                                                 }
                                             </div>
                                             @for (language of languages(); track language.code) {
-                                                <div class="cell">
-                                                    <p class="cell-head">
-                                                        <span class="cell-language">{{ language.name }}</span>
+                                                <div class="anotoki-translations-page__cell">
+                                                    <p class="anotoki-translations-page__cell-head">
+                                                        <span class="anotoki-translations-page__cell-language">{{ language.name }}</span>
                                                         @if (row.form) {
-                                                            <span class="numbers">
-                                                                <span class="visually-hidden">For the numbers:&nbsp;</span>
+                                                            <span class="anotoki-translations-page__numbers">
+                                                                <span class="anotoki-visually-hidden">For the numbers:&nbsp;</span>
                                                                 <span>{{ numbers(language, row.form) }}</span>
                                                             </span>
                                                         }
@@ -196,14 +216,14 @@
                                     }
 
                                     @if (block.kind === "plural") {
-                                        <div class="row samples">
-                                            <p class="key samples-lead">As {{ siteName }} says it for 1, 3 and 12</p>
+                                        <div class="anotoki-translations-page__row anotoki-translations-page__samples">
+                                            <p class="anotoki-translations-page__key anotoki-translations-page__samples-lead">As {{ siteName }} says it for 1, 3 and 12</p>
                                             @for (language of languages(); track language.code) {
-                                                <div class="cell">
-                                                    <p class="cell-head">
-                                                        <span class="cell-language">{{ language.name }}</span>
+                                                <div class="anotoki-translations-page__cell">
+                                                    <p class="anotoki-translations-page__cell-head">
+                                                        <span class="anotoki-translations-page__cell-language">{{ language.name }}</span>
                                                     </p>
-                                                    <ul class="sample" [attr.lang]="language.code">
+                                                    <ul class="anotoki-translations-page__sample" [attr.lang]="language.code">
                                                         @for (text of samples(block, language.code); track $index) {
                                                             <li>{{ text }}</li>
                                                         }
@@ -219,7 +239,7 @@
                 }
 
                 @if (!visible().length) {
-                    <div class="empty">
+                    <div class="anotoki-translations-page__empty">
                         @if (missingIn() && !search().trim()) {
                             <anotoki-empty-state icon="checkCircle" [heading]="'Nothing is missing in ' + missingName()" text="Every key has a string of its own in it.">
                                 <button anotokiButton (click)="showEverything()">Show every key</button>
@@ -233,15 +253,15 @@
                 }
             </div>
 
-            <div class="save-bar" [class.is-changed]="changed() > 0">
-                <p class="save-state" data-save-state role="status">
+            <div class="anotoki-translations-page__save-bar" [class.anotoki-translations-page__save-bar--changed]="changed() > 0">
+                <p class="anotoki-translations-page__save-state" data-save-state role="status">
                     @if (saveFailure(); as message) {
-                        <span class="save-refused">
+                        <span class="anotoki-translations-page__save-refused">
                             <anotoki-icon name="alert" [size]="15" />
                             <span>Nothing was saved. {{ message }}</span>
                         </span>
                     } @else if (refusal(); as refused) {
-                        <span class="save-refused">
+                        <span class="anotoki-translations-page__save-refused">
                             <anotoki-icon name="alert" [size]="15" />
                             <span>Nothing was saved: see {{ refused.key }}</span>
                         </span>
@@ -253,7 +273,7 @@
                         Everything is saved
                     }
                 </p>
-                <div class="save-actions">
+                <div class="anotoki-translations-page__save-actions">
                     @if (changed()) {
                         <button anotokiButton data-discard [disabled]="saving()" (click)="discard()">Discard</button>
                     }

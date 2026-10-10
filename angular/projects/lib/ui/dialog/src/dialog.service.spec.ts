@@ -38,7 +38,7 @@ describe('AnotokiDialog.open(): a component in a dialog, from code', () => {
     expect(dialog.getAttribute('data-size')).toBe('sm');
     expect(words(dialog.querySelector('h2'))).toBe('Edit Mira');
     expect(dialog.querySelector<HTMLInputElement>('#person-name')!.value).toBe('Mira');
-    expect(Array.from(dialog.querySelectorAll('.footer button')).map(words)).toEqual(['Cancel', 'Save']);
+    expect(Array.from(dialog.querySelectorAll('.anotoki-dialog__footer button')).map(words)).toEqual(['Cancel', 'Save']);
     expect(document.activeElement?.id).toBe('person-name');
 
     ref.heading.set('Edit Mira Nováková');

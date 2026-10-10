@@ -1,6 +1,6 @@
 <dialog
     #dialog
-    class="dialog"
+    class="anotoki-dialog__dialog"
     [attr.data-size]="size()"
     [attr.aria-labelledby]="headingId"
     [attr.aria-describedby]="description() ? descriptionId : null"
@@ -9,18 +9,18 @@
     (keydown)="onKeydown($event)"
     (pointerdown)="pointerDownTarget = $event.target"
     (click)="onClick($event)">
-    <div class="panel">
-        <header class="header">
-            <div class="titles">
-                <h2 class="title" [id]="headingId">{{ heading() }}</h2>
+    <div class="anotoki-dialog__panel">
+        <header class="anotoki-dialog__header">
+            <div class="anotoki-dialog__titles">
+                <h2 class="anotoki-dialog__title" [id]="headingId">{{ heading() }}</h2>
                 @if (description()) {
-                    <p class="description" [id]="descriptionId">{{ description() }}</p>
+                    <p class="anotoki-dialog__description" [id]="descriptionId">{{ description() }}</p>
                 }
             </div>
             @if (dismissible()) {
                 <button
                     type="button"
-                    class="close"
+                    class="anotoki-dialog__close"
                     [attr.aria-label]="words.t('ui.close')"
                     [attr.title]="words.t('ui.close')"
                     [attr.lang]="words.foreignLang()"
@@ -30,9 +30,9 @@
                 </button>
             }
         </header>
-        <div class="body">
+        <div class="anotoki-dialog__body">
             <ng-content />
         </div>
-        <footer class="footer"><ng-content select="[dialogFooter]" /></footer>
+        <footer class="anotoki-dialog__footer"><ng-content select="[dialogFooter]" /></footer>
     </div>
 </dialog>

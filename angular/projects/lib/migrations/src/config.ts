@@ -58,17 +58,3 @@ export function provideAnotokiMigrations(factory: () => AnotokiMigrationsConfig)
 
 export const DEFAULT_SETUP_URL = '/setup.php';
 export const DEFAULT_RETRY_SECONDS = 30;
-
-const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-/** '2026-10-06T10:01:02Z' -> '6 Oct 2026, 10:01' (in the browser's time zone). */
-export function defaultFormatDate(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : DATE_FORMAT.format(date);
-}

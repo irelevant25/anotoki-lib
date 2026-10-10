@@ -25,11 +25,11 @@ describe('ConfirmService and <anotoki-confirm-host>: "Are you sure?"', () => {
     await settle(fixture);
     expect(host.querySelector('dialog')?.getAttribute('data-size')).toBe('sm');
     expect(words(host.querySelector('h2'))).toBe('Delete the survey?');
-    expect(words(host.querySelector('.message'))).toBe('Its answers go with it.');
+    expect(words(host.querySelector('.anotoki-confirm-host__message'))).toBe('Its answers go with it.');
     expect(document.activeElement).toBe(answer('no'));
     expect(words(answer('no'))).toBe('Cancel');
     expect(words(answer('yes'))).toBe('Delete');
-    expect(answer('yes').classList).toContain('is-danger');
+    expect(answer('yes').classList).toContain('anotoki-button--danger');
 
     answer('yes').click();
     expect(await asked).toBe(true);
@@ -50,7 +50,7 @@ describe('ConfirmService and <anotoki-confirm-host>: "Are you sure?"', () => {
 
     const third = confirm.ask({ title: 'Three?' });
     await settle(fixture);
-    expect(answer('yes').classList).toContain('is-primary');
+    expect(answer('yes').classList).toContain('anotoki-button--primary');
     answer('no').click();
     expect(await third).toBe(false);
   });

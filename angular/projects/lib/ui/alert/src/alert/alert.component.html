@@ -1,0 +1,8 @@
+<anotoki-icon class="anotoki-alert__icon" [name]="icon()" [size]="20" />
+<div class="anotoki-alert__body">
+    @if (heading()) {
+        <p class="anotoki-alert__heading">{{ heading() }}</p>
+    }
+    <div class="anotoki-alert__text"><ng-content /></div>
+    <div class="anotoki-alert__actions"><ng-content select="[alertActions]" /></div>
+</div>

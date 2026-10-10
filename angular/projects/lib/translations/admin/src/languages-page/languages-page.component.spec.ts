@@ -64,12 +64,12 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
   it('lists every language in the server’s order, with what it is: the fallback, released with the site, hidden - and the site’s own words for its fields', async () => {
     await open({ siteName: 'the IAM', languageNotes: { row: (language) => `${language['accounts']} accounts have it` } });
     expect(Array.from(host.querySelectorAll('[data-language]')).map((element) => (element as HTMLElement).dataset['language'])).toEqual(['en', 'sk', 'cs']);
-    const head = (code: string) => Array.from(row(code).querySelector('.head')!.children).map(words);
+    const head = (code: string) => Array.from(row(code).querySelector('.anotoki-languages-page__head')!.children).map(words);
     expect(head('en')).toEqual(['en', 'English', 'English', 'Fallback', '7 strings · 12 accounts have it']);
     expect(head('sk')).toEqual(['sk', 'Slovak', 'Slovenčina', 'Released with the IAM', '4 strings · 3 accounts have it']);
-    expect(row('cs').classList).toContain('is-hidden');
-    expect(row('sk').querySelector('.native')?.getAttribute('lang')).toBe('sk');
-    expect(words(host.querySelector('.counts'))).toBe('3 languages 2 offered');
+    expect(row('cs').classList).toContain('anotoki-languages-page__language--hidden');
+    expect(row('sk').querySelector('.anotoki-languages-page__native')?.getAttribute('lang')).toBe('sk');
+    expect(words(host.querySelector('.anotoki-translations-admin__counts'))).toBe('3 languages 2 offered');
     // English is always offered; a released language is never deleted.
     expect(row('en').querySelector<HTMLInputElement>('[data-offered] input')!.disabled).toBe(true);
     expect(row('en').querySelector('[data-delete]')).toBeNull();
@@ -111,7 +111,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       await settle(fixture);
       row('cs').querySelector<HTMLButtonElement>('[data-save]')!.click();
       await settle(fixture);
-      expect(words(row('cs').querySelector('.field-error'))).toBe('The order is a whole number from 0 to 1000.');
+      expect(words(row('cs').querySelector('.anotoki-translations-admin__field-error'))).toBe('The order is a whole number from 0 to 1000.');
 
       type(field('cs', 'Order'), '9');
       type(field('cs', 'Name in English'), '');
@@ -119,7 +119,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       row('cs').querySelector<HTMLButtonElement>('[data-save]')!.click();
       http.expectOne({ method: 'PUT', url: `${API}/languages/cs` }).flush({ code: 'invalid_language', message: 'A language needs a name.' }, { status: 422, statusText: 'Unprocessable' });
       await settle(fixture);
-      expect(words(row('cs').querySelector('.field-error'))).toBe('A language needs a name.');
+      expect(words(row('cs').querySelector('.anotoki-translations-admin__field-error'))).toBe('A language needs a name.');
       // What was typed stays.
       expect(field('cs', 'Order').value).toBe('9');
     });
@@ -135,14 +135,14 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       await settle(fixture);
       expect(happened()).toBe('Czech is offered to readers now.');
       expect(offered().checked).toBe(true);
-      expect(row('cs').classList).not.toContain('is-hidden');
+      expect(row('cs').classList).not.toContain('anotoki-languages-page__language--hidden');
 
       offered().click();
       await settle(fixture);
       http.expectOne({ method: 'PUT', url: `${API}/languages/cs` }).error(new ProgressEvent('error'), { status: 0 });
       await settle(fixture);
       expect(offered().checked).toBe(true);
-      expect(words(row('cs').querySelector('.field-error'))).toBe('The server could not be reached. Check the connection and try again.');
+      expect(words(row('cs').querySelector('.anotoki-translations-admin__field-error'))).toBe('The server could not be reached. Check the connection and try again.');
     });
 
     it('keeps what is typed in a row for when the page is back', async () => {
@@ -160,7 +160,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
 
       let leaving = fixture.componentInstance.canLeave() as Promise<boolean>;
       await settle(fixture);
-      expect(words(question()?.querySelector('.description'))).toBe('1 language has changes that are not saved yet, and leaving loses them.');
+      expect(words(question()?.querySelector('.anotoki-dialog__description'))).toBe('1 language has changes that are not saved yet, and leaving loses them.');
       await answerQuestion(true);
       expect(await leaving).toBe(true);
       leaving = Promise.resolve(fixture.componentInstance.canLeave() as boolean);
@@ -191,7 +191,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       await settle(fixture);
 
       expect(words(question()?.querySelector('h2'))).toBe('Delete Czech (cs)?');
-      expect(words(question()?.querySelector('.description'))).toBe('Its 2 strings go with it, and none of them can be brought back. No account has it.');
+      expect(words(question()?.querySelector('.anotoki-dialog__description'))).toBe('Its 2 strings go with it, and none of them can be brought back. No account has it.');
       expect(document.activeElement).toBe(document.querySelector('[data-question-no]'));
       await answerQuestion(true);
       http.expectOne({ method: 'DELETE', url: `${API}/languages/cs` }).flush({ strings: 2, copy: 'academy-before-language-delete-cs.json' });
@@ -212,7 +212,9 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       http.expectOne({ method: 'GET', url: `${API}/translations/cs/export` }).error(new ProgressEvent('error'), { status: 0 });
       await settle(fixture);
       expect(question()).toBeNull();
-      expect(words(row('cs').querySelector('.field-error'))).toBe('The strings could not be exported, so nothing was deleted. The server could not be reached. Check the connection and try again.');
+      expect(words(row('cs').querySelector('.anotoki-translations-admin__field-error'))).toBe(
+        'The strings could not be exported, so nothing was deleted. The server could not be reached. Check the connection and try again.',
+      );
 
       row('cs').querySelector<HTMLButtonElement>('[data-delete]')!.click();
       await settle(fixture);
@@ -225,7 +227,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
   describe('adding a language', () => {
     it('checks the code as it is typed, adds it hidden unless asked otherwise, and puts it in its place', async () => {
       await open();
-      const form = host.querySelector('form.add')!;
+      const form = host.querySelector('form.anotoki-languages-page__add')!;
       const input = (label: string) =>
         Array.from(form.querySelectorAll<HTMLElement>('anotoki-text-field'))
           .find((element) => words(element.querySelector('label')) === label)!
@@ -236,7 +238,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       type(input('Name in English'), 'German');
       type(input('Name as its speakers write it'), 'Deutsch');
       await settle(fixture);
-      expect(words(form.querySelector('.error'))).toContain('A language’s code is two small letters');
+      expect(words(form.querySelector('.anotoki-field__error'))).toContain('A language’s code is two small letters');
       expect(add().disabled).toBe(true);
 
       type(input('Code'), 'DE');
@@ -255,7 +257,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
 
     it('says the server’s refusal under the form', async () => {
       await open();
-      const form = host.querySelector('form.add')!;
+      const form = host.querySelector('form.anotoki-languages-page__add')!;
       const fields = Array.from(form.querySelectorAll<HTMLInputElement>('anotoki-text-field input'));
       type(fields[0], 'sk');
       type(fields[1], 'Slovak');
@@ -264,7 +266,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       host.querySelector<HTMLButtonElement>('[data-add]')!.click();
       http.expectOne({ method: 'POST', url: `${API}/languages` }).flush({ code: 'language_exists', message: 'There is a language "sk" already.' }, { status: 409, statusText: 'Conflict' });
       await settle(fixture);
-      expect(words(host.querySelector('.add-error'))).toBe('There is a language "sk" already.');
+      expect(words(host.querySelector('.anotoki-languages-page__add-error'))).toBe('There is a language "sk" already.');
     });
   });
 
@@ -275,7 +277,7 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
     await settle(fixture);
     http.expectOne({ method: 'GET', url: `${API}/languages` }).flush({ code: 'translations_unavailable', message: 'Not yet.' }, { status: 503, statusText: 'Unavailable' });
     await settle(fixture);
-    expect(words(host.querySelector('[data-unavailable] .heading'))).toBe('Apply the pending database update first');
+    expect(words(host.querySelector('[data-unavailable] .anotoki-alert__heading'))).toBe('Apply the pending database update first');
     expect(host.querySelector('[data-migrations-link]')?.getAttribute('href')).toBe('/admin/migrations');
   });
 });

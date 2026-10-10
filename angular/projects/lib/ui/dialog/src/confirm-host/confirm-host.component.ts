@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { AnotokiWords, ButtonComponent } from '@anotoki/lib/ui';
+import { ButtonComponent } from '@anotoki/lib/ui/button';
+import { AnotokiWords } from '@anotoki/lib/ui/config';
 import { ConfirmService } from '../confirm.service';
 import { DialogComponent } from '../dialog/dialog.component';
 

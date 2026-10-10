@@ -80,16 +80,16 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
     it('shows each language - how much of it is written, its tags - and every key, a block each', async () => {
       await open();
       expect(words(host.querySelector('h1'))).toBe('Translations');
-      expect(words(host.querySelector('.counts'))).toBe('8 keys 2 languages');
-      const languages = Array.from(host.querySelectorAll('.language')).map((language) => [
-        ...Array.from(language.querySelector('.language-name')!.children).map(words),
-        words(language.querySelector('.coverage-count')),
+      expect(words(host.querySelector('.anotoki-translations-admin__counts'))).toBe('8 keys 2 languages');
+      const languages = Array.from(host.querySelectorAll('.anotoki-translations-page__language')).map((language) => [
+        ...Array.from(language.querySelector('.anotoki-translations-page__language-name')!.children).map(words),
+        words(language.querySelector('.anotoki-translations-page__coverage-count')),
       ]);
       expect(languages).toEqual([
         ['English', 'en', 'Fallback', '8 / 8'],
         ['Slovak', 'sk', '6 / 8'],
       ]);
-      expect(host.querySelector('[data-language="sk"] .coverage-count')?.getAttribute('aria-label')).toBe('6 of 8 keys have a string in Slovak');
+      expect(host.querySelector('[data-language="sk"] .anotoki-translations-page__coverage-count')?.getAttribute('aria-label')).toBe('6 of 8 keys have a string in Slovak');
       expect(blocks()).toEqual(['greeting.named', 'mail.reset.greeting', 'mail.reset.subject', 'reviews.due', 'sessions.ended.other', 'theme.label']);
       expect(box('theme.label').value).toBe('Vzhľad');
       expect(box('theme.label').getAttribute('lang')).toBe('sk');
@@ -102,8 +102,8 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
     it('shows a plural family as one block: the numbers each form is for, and the family as the site says it for 1, 3 and 12', async () => {
       await open();
       const family = host.querySelector('[data-block="reviews.due"]')!;
-      expect(Array.from(family.querySelector('.block-head')!.children).map(words)).toEqual(['reviews.due', 'Plural: one text for each kind of number']);
-      const numbers = Array.from(family.querySelectorAll('.numbers')).map(words);
+      expect(Array.from(family.querySelector('.anotoki-translations-page__block-head')!.children).map(words)).toEqual(['reviews.due', 'Plural: one text for each kind of number']);
+      const numbers = Array.from(family.querySelectorAll('.anotoki-translations-page__numbers')).map(words);
       expect(numbers).toEqual([
         'For the numbers: 1',
         'For the numbers: 1',
@@ -112,12 +112,12 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
         'For the numbers: everything else',
         'For the numbers: 0, 5 and more',
       ]);
-      expect(Array.from(family.querySelectorAll('.sample')).map((sample) => Array.from(sample.querySelectorAll('li')).map(words))).toEqual([
+      expect(Array.from(family.querySelectorAll('.anotoki-translations-page__sample')).map((sample) => Array.from(sample.querySelectorAll('li')).map(words))).toEqual([
         ['1 review due', '3 reviews due', '12 reviews due'],
         ['1 review due', '3 opakovania', '12 opakovaní'],
       ]);
       // A lone `.other` is a key, not a family.
-      expect(words(host.querySelector('[data-block="sessions.ended.other"] .block-head'))).toBeNull();
+      expect(words(host.querySelector('[data-block="sessions.ended.other"] .anotoki-translations-page__block-head'))).toBeNull();
     });
 
     it('puts the keys only the server reads in blocks of their own, in their own part, in the order and words the site gives', async () => {
@@ -133,14 +133,14 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
           },
         ],
       });
-      expect(Array.from(host.querySelectorAll('.part-title')).map(words)).toEqual(['Mails', 'Pages']);
+      expect(Array.from(host.querySelectorAll('.anotoki-translations-page__part-title')).map(words)).toEqual(['Mails', 'Pages']);
       expect(blocks()).toEqual(['mail.reset', 'greeting.named', 'reviews.due', 'sessions.ended.other', 'theme.label']);
       const mail = host.querySelector('[data-block="mail.reset"]')!;
-      expect(Array.from(mail.querySelector('.block-head')!.children).map(words)).toEqual(['', 'The password reset mail', 'mail.reset', 'Sent from "Forgotten password".']);
+      expect(Array.from(mail.querySelector('.anotoki-translations-page__block-head')!.children).map(words)).toEqual(['', 'The password reset mail', 'mail.reset', 'Sent from "Forgotten password".']);
       // The pages' own icons are registered as they come: the mail is drawn.
-      expect(mail.querySelector('.block-head anotoki-icon svg path')).not.toBeNull();
-      expect(Array.from(mail.querySelectorAll('.key-name')).map(words)).toEqual(['mail.reset.subject', 'mail.reset.greeting']);
-      expect(words(host.querySelector('.part-lead'))).toBe('One line each, no address.');
+      expect(mail.querySelector('.anotoki-translations-page__block-head anotoki-icon svg path')).not.toBeNull();
+      expect(Array.from(mail.querySelectorAll('.anotoki-translations-page__key-name')).map(words)).toEqual(['mail.reset.subject', 'mail.reset.greeting']);
+      expect(words(host.querySelector('.anotoki-translations-page__part-lead'))).toBe('One line each, no address.');
     });
 
     it('stacks the languages under one another above three of them', async () => {
@@ -149,7 +149,7 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       const many = grid();
       many.languages = [...many.languages, CZECH, { ...CZECH, code: 'de', name: 'German', native_name: 'Deutsch' }];
       await answer(many);
-      expect(host.querySelector('.grid')?.classList).toContain('is-stacked');
+      expect(host.querySelector('.anotoki-translations-page__grid')?.classList).toContain('anotoki-translations-page__grid--stacked');
     });
   });
 
@@ -160,19 +160,19 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       type(search, 'VZHLAD');
       await settle(fixture);
       expect(blocks()).toEqual(['theme.label']);
-      expect(words(host.querySelector('.shown'))).toBe('1 of 8 keys');
+      expect(words(host.querySelector('.anotoki-translations-page__shown'))).toBe('1 of 8 keys');
 
       type(search, 'nothing like it');
       await settle(fixture);
-      expect(words(host.querySelector('.empty'))).toContain('No key matches');
-      button('.empty button').click();
+      expect(words(host.querySelector('.anotoki-translations-page__empty'))).toContain('No key matches');
+      button('.anotoki-translations-page__empty button').click();
       await settle(fixture);
       expect(blocks()).toHaveLength(6);
     });
 
     it('missing in a language: the keys it has no string of its own for - by what is saved', async () => {
       await open();
-      const select = host.querySelector<HTMLSelectElement>('.missing select')!;
+      const select = host.querySelector<HTMLSelectElement>('.anotoki-translations-page__missing select')!;
       expect(Array.from(select.options).map((option) => option.text)).toEqual(['Every key', 'Missing in Slovak']);
       select.value = 'sk';
       select.dispatchEvent(new Event('change'));
@@ -191,7 +191,7 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       const reload = vi.spyOn(TestBed.inject(TranslationService), 'reload');
       expect(bar()).toBe('Everything is saved');
       await edit('theme.label', 'Farba');
-      expect(words(box('theme.label').parentElement?.querySelector('.mark'))).toBe('Changed');
+      expect(words(box('theme.label').parentElement?.querySelector('.anotoki-translation-cell__mark'))).toBe('Changed');
       expect(bar()).toBe('1 string changed, not saved yet');
 
       // Typed back: no change.
@@ -211,7 +211,7 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       await settle(fixture);
 
       expect(bar()).toBe('2 strings are saved.');
-      expect(box('theme.label').parentElement?.querySelector('.mark')).toBeNull();
+      expect(box('theme.label').parentElement?.querySelector('.anotoki-translation-cell__mark')).toBeNull();
       expect(reload).toHaveBeenCalledTimes(1);
     });
 
@@ -245,14 +245,16 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       await settle(fixture);
 
       expect(blocks()).toContain('greeting.named');
-      expect(words(host.querySelector('[data-block="greeting.named"] .field-error'))).toBe('Nothing was saved. The English string keeps {name}; another language may leave it out.');
+      expect(words(host.querySelector('[data-block="greeting.named"] .anotoki-translations-admin__field-error'))).toBe(
+        'Nothing was saved. The English string keeps {name}; another language may leave it out.',
+      );
       expect(box('greeting.named').getAttribute('aria-invalid')).toBe('true');
       expect(document.activeElement).toBe(box('greeting.named'));
       expect(bar()).toBe('Nothing was saved: see greeting.named');
 
       // Changing the box is the answer to it.
       await edit('greeting.named', 'Ahoj, {name}!!');
-      expect(host.querySelector('.field-error')).toBeNull();
+      expect(host.querySelector('.anotoki-translations-admin__field-error')).toBeNull();
     });
 
     it('reads the grid again when a key or a language went meanwhile, lets go of what was typed for it and keeps the rest', async () => {
@@ -309,7 +311,7 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       let leaving = fixture.componentInstance.canLeave() as Promise<boolean>;
       await settle(fixture);
       expect(words(question()?.querySelector('h2'))).toBe('Leave without saving?');
-      expect(words(question()?.querySelector('.description'))).toBe('1 changed string is not saved yet, and leaving loses it.');
+      expect(words(question()?.querySelector('.anotoki-dialog__description'))).toBe('1 changed string is not saved yet, and leaving loses it.');
       await answerQuestion(false);
       expect(await leaving).toBe(false);
       expect(box('theme.label').value).toBe('Farba');
@@ -409,7 +411,7 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       setUp();
       await draw();
       await answer({ status: 503, error: { code: 'translations_unavailable', message: 'Not yet.' } });
-      expect(words(host.querySelector('[data-unavailable] .heading'))).toBe('Apply the pending database update first');
+      expect(words(host.querySelector('[data-unavailable] .anotoki-alert__heading'))).toBe('Apply the pending database update first');
       expect(host.querySelector('[data-migrations-link]')?.getAttribute('href')).toBe('/admin/migrations');
     });
 

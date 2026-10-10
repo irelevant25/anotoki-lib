@@ -83,15 +83,18 @@ const ALIGNMENT: number[][] = [[], [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 3
 // Reed-Solomon works over the field the standard specifies: byte values, with
 // multiplication modulo the primitive polynomial x^8 + x^4 + x^3 + x^2 + 1.
 // The two tables turn that multiplication into an addition of logarithms.
+// Each is made by a call marked pure: a site's build keeps top-level code it
+// is not told is pure, whether a QR code is drawn or not.
 
-const EXP = new Uint8Array(512);
-const LOG = new Uint8Array(256);
+const EXP = /* @__PURE__ */ powersOfTwo();
+const LOG = /* @__PURE__ */ logarithms(EXP);
 
-(() => {
+/** 2^i in the field, for i up to 511. */
+function powersOfTwo(): Uint8Array {
+  const exp = new Uint8Array(512);
   let value = 1;
   for (let i = 0; i < 255; i++) {
-    EXP[i] = value;
-    LOG[value] = i;
+    exp[i] = value;
     value <<= 1;
     if (value & 0x100) {
       value ^= 0x11d;
@@ -99,9 +102,19 @@ const LOG = new Uint8Array(256);
   }
   // Doubled, so a sum of two logarithms never needs reducing before lookup.
   for (let i = 255; i < 512; i++) {
-    EXP[i] = EXP[i - 255];
+    exp[i] = exp[i - 255];
   }
-})();
+  return exp;
+}
+
+/** The inverse of the first 255 powers: log[2^i] = i. */
+function logarithms(exp: Uint8Array): Uint8Array {
+  const log = new Uint8Array(256);
+  for (let i = 0; i < 255; i++) {
+    log[exp[i]] = i;
+  }
+  return log;
+}
 
 function gfMultiply(a: number, b: number): number {
   return a === 0 || b === 0 ? 0 : EXP[LOG[a] + LOG[b]];

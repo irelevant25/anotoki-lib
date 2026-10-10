@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, input, model, viewChild } from '@angular/core';
-import { IconComponent } from '@anotoki/lib/ui';
+import { IconComponent } from '@anotoki/lib/ui/icon';
 import { FieldBase } from '../field-base';
 
 /** A labelled multi-line field, wired like the text field. */

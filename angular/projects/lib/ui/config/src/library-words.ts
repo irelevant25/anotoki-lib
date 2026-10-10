@@ -6,10 +6,11 @@
  * databases), then `bun run words`. A spec holds this file to the JSON (library-words.spec.ts), and the
  * PHP half's LibraryWordsTest does too.
  *
- * The same keys are in every site's database (anotoki_translations/002), where an owner may reword them;
- * these are what a page reads while it has no string from there. The kit reads its own words from here
- * (words.ts: ui.*, topbar.*, language.*, theme.*), the migrations module its status page's
- * (siteStatus.*), and the translations module every one of them.
+ * The same keys are in every site's database (anotoki_translations/002 and the library migrations after
+ * it), where an owner may reword them; these are what a page reads while it has no string from there. The
+ * kit reads its own words from here (words.ts: ui.*, topbar.*, language.*, theme.*), the migrations module
+ * its status page's (siteStatus.*), the auth module its sign-in page's (signIn.*), and the translations
+ * module every one of them.
  */
 
 const EN = {
@@ -67,6 +68,14 @@ const EN = {
   'anotoki.theme.auto': 'Automatic',
   'anotoki.theme.autoHint': 'As your device is set',
   'anotoki.theme.notSaved': 'The theme could not be saved to your anotoki account.',
+  'anotoki.signIn.signingIn': 'Signing you in…',
+  'anotoki.signIn.notCompleted': 'The sign-in was not completed.',
+  'anotoki.signIn.expired': 'The sign-in took too long or did not start on this page. Try again.',
+  'anotoki.signIn.storageUnavailable': 'This browser does not let the site remember a sign-in. Allow the site\'s storage, then try again.',
+  'anotoki.signIn.unavailable': 'Signing in is not available right now. Try again in a few minutes.',
+  'anotoki.signIn.failed': 'The sign-in failed ({code}).',
+  'anotoki.signIn.retry': 'Try again',
+  'anotoki.signIn.back': 'Back',
 } as const;
 
 /** A key of the library's own words: `anotoki.<module>.<word>`. */
@@ -127,6 +136,14 @@ const SK: Readonly<Record<LibraryKey, string>> = {
   'anotoki.theme.auto': 'Automaticky',
   'anotoki.theme.autoHint': 'Podľa nastavenia zariadenia',
   'anotoki.theme.notSaved': 'Vzhľad sa nepodarilo uložiť do tvojho anotoki účtu.',
+  'anotoki.signIn.signingIn': 'Prihlasujeme ťa…',
+  'anotoki.signIn.notCompleted': 'Prihlásenie sa nedokončilo.',
+  'anotoki.signIn.expired': 'Prihlásenie trvalo príliš dlho alebo sa nezačalo na tejto stránke. Skús to znova.',
+  'anotoki.signIn.storageUnavailable': 'Tento prehliadač nedovolí stránke zapamätať si prihlásenie. Povoľ jej ukladanie údajov a skús to znova.',
+  'anotoki.signIn.unavailable': 'Prihlásenie teraz nie je dostupné. Skús to znova o pár minút.',
+  'anotoki.signIn.failed': 'Prihlásenie zlyhalo ({code}).',
+  'anotoki.signIn.retry': 'Skúsiť znova',
+  'anotoki.signIn.back': 'Späť',
 };
 
 /** The library's words, per language: English and Slovak, each with every key. */

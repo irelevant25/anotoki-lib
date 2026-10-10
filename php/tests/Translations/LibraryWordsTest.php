@@ -54,6 +54,9 @@ final class LibraryWordsTest extends TestCase
             // ... and its theme switch.
             'anotoki.theme.label', 'anotoki.theme.light', 'anotoki.theme.dark', 'anotoki.theme.auto', 'anotoki.theme.autoHint',
             'anotoki.theme.notSaved',
+            // The auth module's sign-in page (angular/projects/lib/auth: <anotoki-auth-callback>), from 003.
+            'anotoki.signIn.signingIn', 'anotoki.signIn.notCompleted', 'anotoki.signIn.expired', 'anotoki.signIn.storageUnavailable',
+            'anotoki.signIn.unavailable', 'anotoki.signIn.failed', 'anotoki.signIn.retry', 'anotoki.signIn.back',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -63,6 +66,7 @@ final class LibraryWordsTest extends TestCase
         }
         self::assertSame('Language: {name} ({code})', LibraryWords::english('anotoki.language.button'));
         self::assertSame(['name', 'code'], LibraryWords::placeholders('anotoki.language.button'));
+        self::assertSame(['code'], LibraryWords::placeholders('anotoki.signIn.failed'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

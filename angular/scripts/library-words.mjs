@@ -1,8 +1,8 @@
 // Writes the Angular half's built-in library words from the one source, php/resources/library-words.json:
 // projects/lib/ui/config/src/library-words.ts (committed). The kit reads its own from it (ui.*, topbar.*,
-// language.*, theme.*), the migrations module its status page's (siteStatus.*), and the translations
-// module every one of them - so a page has the library's words while the database cannot be reached, and
-// never shows a library key as a key.
+// language.*, theme.*), the migrations module its status page's (siteStatus.*), the auth module its sign-in
+// page's (signIn.*), and the translations module every one of them - so a page has the library's words while
+// the database cannot be reached, and never shows a library key as a key.
 //
 //   bun run words            # writes the file
 //   bun run words --check    # exits 1 when the file is not what the JSON makes (a spec checks it too)
@@ -66,10 +66,11 @@ function generate(words) {
  * databases), then \`bun run words\`. A spec holds this file to the JSON (library-words.spec.ts), and the
  * PHP half's LibraryWordsTest does too.
  *
- * The same keys are in every site's database (anotoki_translations/002), where an owner may reword them;
- * these are what a page reads while it has no string from there. The kit reads its own words from here
- * (words.ts: ui.*, topbar.*, language.*, theme.*), the migrations module its status page's
- * (siteStatus.*), and the translations module every one of them.
+ * The same keys are in every site's database (anotoki_translations/002 and the library migrations after
+ * it), where an owner may reword them; these are what a page reads while it has no string from there. The
+ * kit reads its own words from here (words.ts: ui.*, topbar.*, language.*, theme.*), the migrations module
+ * its status page's (siteStatus.*), the auth module its sign-in page's (signIn.*), and the translations
+ * module every one of them.
  */
 
 const EN = {

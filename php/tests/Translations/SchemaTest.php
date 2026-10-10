@@ -191,7 +191,7 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertSame('anotoki_translations', $set->name);
         self::assertTrue($set->library);
-        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql'], $this->migrator([$set])->files($set));
+        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql'], $this->migrator([$set])->files($set));
     }
 
     // ─── A new database ─────────────────────────────────────────────────────
@@ -203,13 +203,17 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertSame(
-            [['set' => 'anotoki_translations', 'name' => '001_languages_and_strings.sql'], ['set' => 'anotoki_translations', 'name' => '002_library_words.sql']],
+            [
+                ['set' => 'anotoki_translations', 'name' => '001_languages_and_strings.sql'],
+                ['set' => 'anotoki_translations', 'name' => '002_library_words.sql'],
+                ['set' => 'anotoki_translations', 'name' => '003_sign_in_words.sql'],
+            ],
             $result['applied'],
             (string) $result['error']
         );
         self::assertTrue(Schema::ready($this->pdo));
         self::assertSame(
-            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql'],
+            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
         );
         self::assertSame(
@@ -271,7 +275,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator(['split' => false])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(2, $result['applied']);
+        self::assertCount(3, $result['applied']);
         self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
@@ -293,7 +297,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertNull($result['error'], (string) $result['error']);
-        self::assertCount(2, $result['applied']);
+        self::assertCount(3, $result['applied']);
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
@@ -445,6 +449,40 @@ final class SchemaTest extends DatabaseTestCase
         self::assertSame(['en'], $this->pdo->query("SELECT DISTINCT language_code FROM translations WHERE key_name LIKE 'anotoki.%'")->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    // ─── 003, the words of signing in: the same rule ────────────────────────
+
+    public function testTheSignInWordsComeOnADatabaseThatHas002AndASiteThatTookOneOverKeepsIt(): void
+    {
+        // An installed site: 001 and 002 applied before 0.4.0 shipped 003 ...
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/003_sign_in_words.sql'");
+        $this->pdo->exec("DELETE FROM translation_keys WHERE name LIKE 'anotoki.signIn.%'");
+        // ... that took one of the sign-in words over in its own words, in English alone.
+        $this->pdo->exec("INSERT INTO translation_keys (name, description) VALUES ('anotoki.signIn.retry', 'The site''s own description.')");
+        $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES ('anotoki.signIn.retry', 'en', 'Sign in again', 7)");
+        $kit = (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND key_name NOT LIKE 'anotoki.signIn.%'");
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '003_sign_in_words.sql']], $this->siteMigrator()->apply()['applied']);
+
+        self::assertSame([['language_code' => 'en', 'value' => 'Sign in again']], $this->rows("SELECT language_code, value FROM translations WHERE key_name = 'anotoki.signIn.retry'"), 'its words and its blank stay');
+        self::assertSame(LibraryWords::all()['anotoki.signIn.retry']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.signIn.retry'"), 'the description is the library\'s');
+        self::assertSame('Prihlásenie zlyhalo ({code}).', $this->value("SELECT value FROM translations WHERE key_name = 'anotoki.signIn.failed' AND language_code = 'sk'"), 'a key with no string at all gets the library\'s');
+        self::assertSame(2 * 8 - 1, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.signIn.%'"));
+        self::assertSame($kit, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND key_name NOT LIKE 'anotoki.signIn.%'"), 'nothing of 002\'s touched');
+    }
+
+    public function testASignInKeyWithoutEnglishIsRefusedBy003sGate(): void
+    {
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/003_sign_in_words.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.signIn.back' AND language_code = 'en'");
+
+        $result = $this->siteMigrator()->apply();
+
+        self::assertSame(['set' => 'anotoki_translations', 'name' => '003_sign_in_words.sql'], $result['failed']);
+        self::assertStringContainsString("anotoki_translations 003: the library's keys without an English string: anotoki.signIn.back", (string) $result['error']);
+    }
+
     // ─── The files themselves ───────────────────────────────────────────────
 
     public function testEveryFileIsInTheHouseStyle(): void
@@ -468,10 +506,19 @@ final class SchemaTest extends DatabaseTestCase
 
     public function testEveryStringIsOnALineOfItsOwn(): void
     {
-        $sql = (string) file_get_contents(Schema::directory() . '/002_library_words.sql');
+        // The library's words over the files that write them - every file after 001, the schema's: each key in
+        // one of them, a line each.
         $string = "'(?:[^']|'')*'";
-        $rows = preg_match_all("/^\\s*\\($string, ($string), ($string)\\),?\$/m", $sql);
-        $keys = preg_match_all("/^\\s*\\($string, $string\\),?\$/m", $sql);
+        $rows = 0;
+        $keys = 0;
+        foreach ($this->migrator([Schema::migrationSet()])->files(Schema::migrationSet()) as $name) {
+            if ($name === '001_languages_and_strings.sql') {
+                continue;
+            }
+            $sql = (string) file_get_contents(Schema::directory() . '/' . $name);
+            $rows += preg_match_all("/^\\s*\\($string, ($string), ($string)\\),?\$/m", $sql);
+            $keys += preg_match_all("/^\\s*\\($string, $string\\),?\$/m", $sql);
+        }
 
         self::assertSame(2 * count(LibraryWords::keys()), $rows, 'a row of the strings a line');
         self::assertSame(count(LibraryWords::keys()), $keys, 'a key and its description a line');
@@ -482,6 +529,7 @@ final class SchemaTest extends DatabaseTestCase
         $directory = Schema::directory();
         self::assertCount(7, Splitter::split((string) file_get_contents("$directory/001_languages_and_strings.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/002_library_words.sql")));
+        self::assertCount(3, Splitter::split((string) file_get_contents("$directory/003_sign_in_words.sql")));
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

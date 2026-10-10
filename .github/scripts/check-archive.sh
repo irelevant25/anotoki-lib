@@ -41,6 +41,7 @@ for file in \
     php/migrations/people/001_people.sql \
     php/migrations/translations/001_languages_and_strings.sql \
     php/migrations/translations/002_library_words.sql \
+    php/migrations/translations/003_sign_in_words.sql \
     php/migrations/admin/001_audit_log.sql \
     php/migrations/admin/002_feedback.sql \
     php/src/Admin/Schema.php \

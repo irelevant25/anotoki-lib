@@ -269,6 +269,46 @@
             "description": "The anotoki library's theme switch: said to somebody signed in when the look chosen there could not be saved to their anotoki account; the page shows the account's own again. No placeholders.",
             "en": "The theme could not be saved to your anotoki account.",
             "sk": "Vzhľad sa nepodarilo uložiť do tvojho anotoki účtu."
+        },
+        "anotoki.signIn.signingIn": {
+            "description": "The anotoki library's sign-in page (the site's address the anotoki account sends the reader back to): what it says for the moment the sign-in is being finished, before the page the reader was on comes back. No placeholders.",
+            "en": "Signing you in…",
+            "sk": "Prihlasujeme ťa…"
+        },
+        "anotoki.signIn.notCompleted": {
+            "description": "The anotoki library's sign-in page: said when the reader came back from their anotoki account without signing in - they went back from its page, or the account was turned away. Under it, the buttons to try again and to go back. No placeholders.",
+            "en": "The sign-in was not completed.",
+            "sk": "Prihlásenie sa nedokončilo."
+        },
+        "anotoki.signIn.expired": {
+            "description": "The anotoki library's sign-in page: said when a sign-in came back that did not start on this page or took too long (an old tab, a link opened twice). No placeholders.",
+            "en": "The sign-in took too long or did not start on this page. Try again.",
+            "sk": "Prihlásenie trvalo príliš dlho alebo sa nezačalo na tejto stránke. Skús to znova."
+        },
+        "anotoki.signIn.storageUnavailable": {
+            "description": "The anotoki library's sign-in page: said when the browser does not let the site keep anything (its storage blocked or switched off), so a sign-in cannot even start. No placeholders.",
+            "en": "This browser does not let the site remember a sign-in. Allow the site's storage, then try again.",
+            "sk": "Tento prehliadač nedovolí stránke zapamätať si prihlásenie. Povoľ jej ukladanie údajov a skús to znova."
+        },
+        "anotoki.signIn.unavailable": {
+            "description": "The anotoki library's sign-in page: said when the site cannot offer signing in right now (its server did not say where the anotoki accounts are, or they do not know the site). Under it, only the button to try again. No placeholders.",
+            "en": "Signing in is not available right now. Try again in a few minutes.",
+            "sk": "Prihlásenie teraz nie je dostupné. Skús to znova o pár minút."
+        },
+        "anotoki.signIn.failed": {
+            "description": "The anotoki library's sign-in page: said when a sign-in came back with any other failure. {code}: the failure's short code (\"server_error\"), shown as it is, for whoever helps the reader. Placeholders: {code}.",
+            "en": "The sign-in failed ({code}).",
+            "sk": "Prihlásenie zlyhalo ({code})."
+        },
+        "anotoki.signIn.retry": {
+            "description": "The anotoki library's sign-in page: the button under what went wrong that starts the sign-in again. No placeholders.",
+            "en": "Try again",
+            "sk": "Skúsiť znova"
+        },
+        "anotoki.signIn.back": {
+            "description": "The anotoki library's sign-in page: the button under what went wrong that goes back to the page the sign-in started on, without signing in. No placeholders.",
+            "en": "Back",
+            "sk": "Späť"
         }
     }
 }

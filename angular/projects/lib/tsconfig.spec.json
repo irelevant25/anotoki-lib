@@ -24,6 +24,8 @@
     "migrations/**/*.spec.ts",
     "migrations/**/testing.ts",
     "translations/**/*.spec.ts",
-    "translations/**/testing.ts"
+    "translations/**/testing.ts",
+    "auth/**/*.spec.ts",
+    "auth/**/testing.ts"
   ]
 }

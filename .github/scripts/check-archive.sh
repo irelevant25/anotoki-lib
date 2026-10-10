@@ -14,7 +14,7 @@ list=$(tar -tf "$archive")
 status=0
 
 # Nothing from the Angular workspace, the tests, the workflows - or a folder added later.
-unexpected=$(printf '%s\n' "$list" | grep -v -E '^(composer\.json|README\.md|CHANGELOG\.md|php/|php/(src|migrations|resources)/.*)$' || true)
+unexpected=$(printf '%s\n' "$list" | grep -v -E '^(composer\.json|README\.md|CHANGELOG\.md|php/|php/(src|migrations|resources|testing)/.*)$' || true)
 if [ -n "$unexpected" ]; then
     printf '::error::The Composer archive holds what no site needs:\n%s\n' "$unexpected"
     status=1
@@ -24,13 +24,21 @@ if printf '%s\n' "$list" | grep -q -E '^(angular|php/tests)/'; then
     status=1
 fi
 
-# What a site needs at run time: the code, the migration files of the library's sets, its words.
+# What a site needs at run time - the code, the migration files of the library's sets, its words - and in
+# its tests: the stand-in IAM.
 for file in \
     composer.json README.md CHANGELOG.md \
     php/src/Migrations/Migrator.php \
     php/src/Support/JsonResponse.php \
     php/src/Translations/Translations.php \
     php/src/Translations/Http/TranslationsRoutes.php \
+    php/src/Auth/AccessTokens.php \
+    php/src/Auth/Http/Identify.php \
+    php/src/Auth/Testing/TestIam.php \
+    php/testing/stand-in-iam.php \
+    php/src/People/Scrubber.php \
+    php/src/People/Http/PeopleRoutes.php \
+    php/migrations/people/001_people.sql \
     php/migrations/translations/001_languages_and_strings.sql \
     php/migrations/translations/002_library_words.sql \
     php/resources/library-words.json

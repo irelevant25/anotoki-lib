@@ -30,6 +30,13 @@ version.
 - `@anotoki/lib/translations/admin` - the admin pages `<anotoki-translations-page>`
   and `<anotoki-languages-page>`, and `LocalizationDrafts`.
 - `@anotoki/lib/translations/testing` - `provideTestTranslations()` for a site's specs.
+- `@anotoki/lib/auth` - signing in through the anotoki IAM: its browser client
+  (the IAM SDK 1.2.0, ported, with the same storage), `AnotokiAuth` (the session
+  as signals, the sign-in hint's silent hop, following the IAM),
+  `anotokiAuthInterceptor`, the guards, `AccountPreferences` and
+  `<anotoki-auth-callback>`, configured with `provideAnotokiAuth(...)`.
+- `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth()` and `FakeAuthClient` for a
+  site's specs.
 
 Installed from the GitHub release's tarball, not from a registry. How a site
 installs, configures and updates it: the repository's README,

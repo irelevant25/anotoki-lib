@@ -5,6 +5,61 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.4.0 - unreleased
+
+Two modules, both halves: **auth** - signing in through the anotoki IAM, the IAM's SDKs moved into the
+library, and the sign-in hint (the owner's decisions of 2026-10-07) - and **people** - each site's
+record of the accounts that use it, and the scrub of the accounts the IAM deleted (the Angular People
+page comes with the UI kit).
+
+PHP, auth (`Anotoki\Lib\Auth`):
+- `IamClient` (the SDK's configuration keys), `AccessTokens` and `Jwks` (the SDK 1.1.0's rules: RS256
+  and `typ` pinned, `kid` required; new: a header with `crit` refused, a `client_id` claim of another
+  application refused, five minutes' rest after a failed fetch of the key set), `Person`, `Bearer`,
+  `SignInRule` (the SDK's fail-closed table, single flight and kept file; new: `known()` - false after
+  the IAM's 404 - and the site's `requiredWhen`).
+- `Http\Identify` (who a request is, once: Bearer, then the sign-in rule, then the visitor key; never a
+  cookie), `Http\RequirePerson`, `Http\RequireRole` (from the token, never the database),
+  `Http\RequireCaller` (`refuse | empty | make`), `Http\SignInGate`, `Http\AuthRoutes`
+  (`GET /api/auth/config` with `sign_in_available`; `configBody()` for a site's own boot answer).
+- `Testing\TestIam`, `Testing\StandInIam` and `php/testing/stand-in-iam.php` - the family's one stand-in
+  IAM (the survey's, Piano's and Japanese Academy's in one, with the hint cookie, `prompt=none`, the
+  paged deleted accounts and any answer a test names); it ships in the Composer archive and answers
+  nothing but under PHP's built-in server. `ext-openssl` is required now; `ext-curl` suggested.
+- `Support\HttpGet` (a GET with a timeout, status 0 for no answer), `Support\Log` (where the library's
+  log lines go), `Support\AfterResponse` (work after the answer, without cron).
+
+PHP, people (`Anotoki\Lib\People`):
+- The library's set `anotoki_people` (`php/migrations/people/001`): `anotoki_people_sync` and
+  `anotoki_people_anonymized`; it names no site table.
+- `PeopleTable` (the site's table through a mapping; no email), `PeopleRecorder` (from the token, at
+  most every five minutes, never an anonymized row or a listed id), `AnonymizedAccounts` and `Scrubber`
+  (the IAM's list from an inclusive `since`, an account per transaction, UPDATEs only, the site's
+  hooks, a failed hook rolled back and kept as the error), `People`, `PeopleColumn`,
+  `Http\RecordPerson`, `Http\PeopleUpkeep` (after the answer, at most hourly, while ready),
+  `Http\PeopleRoutes` (list, search, paging, the site's columns and visitors line, the delete hook,
+  sync now, the IAM's user page).
+
+Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
+- `createAuthClient` - the IAM's browser SDK 1.2.0 ported, **with the same storage keys** (tokens,
+  the sign-in in progress, discovery, the refresh lock): nobody is signed out by the switch.
+- `AnotokiAuth` (Japanese Academy's state machine, for every site), `anotokiAuthInterceptor` (who a
+  request is, decided when issued), `personGuard`, `personOrVisitorGuard`, `staffGuard`, `adminGuard`,
+  `AccountPreferences` (genshin's outcomes; the site's `apply()` follows the account),
+  `<anotoki-auth-callback>` (noindex), `SavesInFlight`, the visitors' words in English and informal
+  Slovak.
+- The sign-in hint: one silent hop per hint value, for a visitor, guarded by a marker in localStorage
+  (one try a value, one a minute, ten minutes after the IAM did not answer); following the IAM - a hint
+  gone or changed means one refresh at boot.
+- `provideTestAnotokiAuth`, `FakeAuthClient` for a site's specs.
+
+What a site must do (README.md, "Adopting auth and people, site by site"): `anotoki/lib ^0.4` and the
+0.4.0 tarball together; a migration of its own adding `users.anonymized_at TIMESTAMPTZ`, then
+`People\Schema::migrationSet()` after its sets; its vendored SDKs deleted (the IAM keeps `sdk/` frozen
+for third parties) and its wrappers replaced by the wiring in README.md; `robots.txt`
+`Disallow: /auth/` where visitors are welcome (genshin, the build analyzer). The boot configuration
+answers snake_case now - the Angular half reads the camelCase the sites answer today too.
+
 ## 0.3.0 - 2026-10-11
 
 The engine's library sets, the translations module - both halves -, the helpers the modules share, and

@@ -6,8 +6,8 @@ package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 `@anotoki/lib` (`angular/projects/lib/`, one secondary entry point per family of
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
-`migrations/page`, `translations`, `translations/admin`, `translations/testing`;
-the Sass module `styles/`). `README.md` says how a site
+`migrations/page`, `translations`, `translations/admin`, `translations/testing`,
+`auth`, `auth/testing`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
 
@@ -82,3 +82,9 @@ bun run words           # ui/config/src/library-words.ts from php/resources/libr
   first loads of the gate, the bar, the words and a button to theirs.
 - No composer.lock (a library); nothing sensitive in a file; never print a
   database password.
+- **Signing in** (auth): the IAM's rules do not loosen here - RS256 and `typ`
+  pinned, PKCE, the exact redirect, the same storage keys as the IAM's SDK; who a
+  request is comes from a verified token only, never a cookie (the IAM's sign-in
+  hint says nothing of who), and roles from the token, never the database.
+- **People**: the site's own `users` table through a mapping - the library never
+  makes or reshapes it, keeps no email, and the scrub only UPDATEs.

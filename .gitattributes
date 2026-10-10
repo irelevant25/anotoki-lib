@@ -1,8 +1,10 @@
 # Composer installs a release from GitHub's archive of the tag, and the archive holds only what this
-# allow-list keeps: the PHP half - its code (php/src), its migration files (php/migrations) and its
-# resources (php/resources) - with composer.json, README.md and CHANGELOG.md. Everything else stays out,
-# a folder added later too: the Angular workspace, the tests, the workflows. Every site's build uploads
-# vendor/ whole. CI builds the archive and checks the list (.github/scripts/check-archive.sh).
+# allow-list keeps: the PHP half - its code (php/src), its migration files (php/migrations), its
+# resources (php/resources) and the stand-in IAM a site's tests start (php/testing, which answers nothing
+# but under PHP's built-in server) - with composer.json, README.md and CHANGELOG.md. Everything else stays
+# out, a folder added later too: the Angular workspace, the library's own tests, the workflows. Every
+# site's build uploads vendor/ whole. CI builds the archive and checks the list
+# (.github/scripts/check-archive.sh).
 /* export-ignore
 /php !export-ignore
 /php/tests export-ignore

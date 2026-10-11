@@ -144,8 +144,8 @@ describe('<anotoki-error-log-page>: what went wrong, grouped, and clearing it', 
     expect(days).toHaveLength(7);
     expect(words(days[6].querySelector('.anotoki-visually-hidden'))).toMatch(/: 3 errors, 1 warning, 0 notices$/);
     expect(rows().map((row) => cells(row).slice(0, 4))).toEqual([
-      ['3', '500', 'PDOException server_errorSQLSTATE[23505]: Unique violation: [redacted]', 'POST /api/admin/users/{id}and 1 more path'],
-      ['1', '404', 'HttpNotFoundException not_foundNot found.', 'POST /api/nowhere'],
+      ['3', '500', 'PDOException server_error SQLSTATE[23505]: Unique violation: [redacted]', 'POST /api/admin/users/{id} and 1 more path'],
+      ['1', '404', 'HttpNotFoundException not_found Not found.', 'POST /api/nowhere'],
     ]);
     expect(rows()[0].querySelector('anotoki-badge')?.getAttribute('data-level')).toBe('error');
     expect(host.querySelector('anotoki-pagination')).toBeNull();

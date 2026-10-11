@@ -57,9 +57,20 @@ export async function draw<T>(component: Type<T>): Promise<ComponentFixture<T>> 
   return fixture;
 }
 
-/** An element's words, its white space folded. */
+/**
+ * An element's words as a person reads them: each piece of text apart (a badge, then the title beside it -
+ * the template keeps no white space between elements), its white space folded.
+ */
 export function words(element: Element | null | undefined): string | null {
-  return element?.textContent?.replace(/\s+/g, ' ').trim() ?? null;
+  if (!element) {
+    return null;
+  }
+  const parts: string[] = [];
+  const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    parts.push(node.textContent ?? '');
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Types into a field, as a person does: the value, then the input event. */

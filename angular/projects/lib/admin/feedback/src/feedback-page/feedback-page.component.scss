@@ -1,0 +1,159 @@
+@use "../../../../sass/kit";
+@use "../../../parts/src/page";
+
+@include page.styles;
+
+// The statuses with their counts: one row that scrolls sideways rather than wraps in a narrow page.
+.anotoki-feedback-page__status {
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.anotoki-feedback-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &[aria-busy="true"] {
+    opacity: 0.7;
+  }
+}
+
+// A message: the whole card is its button, opening it.
+.anotoki-feedback-page__item {
+  @include kit.button-reset;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  box-shadow: kit.token(shadow-sm);
+  text-align: left;
+  transition:
+    border-color kit.token(duration) kit.token(ease),
+    background-color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    border-color: kit.token(border-strong);
+    background: kit.token(surface-2);
+  }
+
+  @include kit.focus-ring;
+}
+
+// Nobody opened it yet: its edge says so.
+.anotoki-feedback-page__item--new {
+  border-left: 4px solid kit.token(primary);
+  padding-left: calc(1rem - 3px);
+}
+
+.anotoki-feedback-page__item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.anotoki-feedback-page__section {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.anotoki-feedback-page__when {
+  margin-left: auto;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.anotoki-feedback-page__title {
+  color: kit.token(text);
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-feedback-page__excerpt {
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-feedback-page__from {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+// ── The open message ─────────────────────────────────────────────────────────
+
+.anotoki-feedback-page__viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.anotoki-feedback-page__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.anotoki-feedback-page__subject {
+  margin: 0;
+  font-size: 1rem;
+}
+
+// The sender's words, as they wrote them: their lines kept, never read as markup.
+.anotoki-feedback-page__words {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(bg);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-feedback-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  .anotoki-admin__section-title {
+    margin: 0;
+  }
+}
+
+.anotoki-feedback-page__agent dd {
+  font-family: kit.token(font-mono);
+  font-size: 0.8125rem;
+}
+
+// Mark as, at the footer's start; Delete and Close at its end.
+.anotoki-feedback-page__mark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: auto;
+  max-width: 100%;
+}
+
+.anotoki-feedback-page__mark-label {
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+}

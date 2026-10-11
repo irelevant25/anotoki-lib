@@ -1,0 +1,180 @@
+@use "../../../../sass/kit";
+@use "../../../parts/src/page";
+
+@include page.styles;
+
+.anotoki-audit-log-page__scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: 0;
+  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+  border: 1px solid kit.token(info-border);
+  border-radius: kit.token(radius);
+  background: kit.token(info-soft);
+  font-size: 0.875rem;
+}
+
+.anotoki-audit-log-page__action {
+  padding: 0.1rem 0.4rem;
+  border-radius: kit.token(radius-sm);
+  background: kit.token(surface-2);
+  white-space: nowrap;
+}
+
+// A cell's words that narrow the log to them: a link's look, a button's job.
+.anotoki-audit-log-page__link {
+  @include kit.button-reset;
+  min-height: 24px;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(link);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+
+  @include kit.focus-ring;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+.anotoki-audit-log-page__within {
+  display: block;
+  margin-top: 0.15rem;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+.anotoki-audit-log-page__row--open > td {
+  background: kit.token(surface-2);
+}
+
+.anotoki-audit-log-page__toggle {
+  @include kit.button-reset;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  max-width: 28rem;
+  min-height: 24px;
+  border-radius: kit.token(radius-sm);
+  text-align: left;
+
+  @include kit.focus-ring;
+
+  &:hover .anotoki-audit-log-page__summary {
+    text-decoration: underline;
+  }
+}
+
+.anotoki-audit-log-page__chevron {
+  flex: none;
+  margin-top: 0.15rem;
+  color: kit.token(muted);
+  transition: transform kit.token(duration) kit.token(ease);
+
+  [aria-expanded="true"] > & {
+    transform: rotate(90deg);
+  }
+}
+
+.anotoki-audit-log-page__summary {
+  min-width: 0;
+  color: kit.token(muted);
+  font-family: kit.token(font-mono);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-audit-log-page__detail-row > td {
+  background: kit.token(surface-2);
+}
+
+.anotoki-audit-log-page__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.anotoki-audit-log-page__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+
+  .anotoki-admin__section-title {
+    margin: 0;
+  }
+}
+
+.anotoki-audit-log-page__block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+// Before and after, side by side: what was on a tinted red, what it became on a tinted green.
+.anotoki-audit-log-page__changes {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+  font-size: 0.8125rem;
+  table-layout: fixed;
+
+  th,
+  td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid kit.token(border);
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  thead th {
+    color: kit.token(muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  tbody th {
+    width: 28%;
+    font-family: kit.token(font-mono);
+    font-weight: 600;
+  }
+
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+}
+
+.anotoki-audit-log-page__before {
+  background: kit.token(danger-soft);
+  color: kit.token(text);
+  font-family: kit.token(font-mono);
+}
+
+.anotoki-audit-log-page__after {
+  background: kit.token(success-soft);
+  color: kit.token(text);
+  font-family: kit.token(font-mono);
+}
+
+// A field that reads the same before and after: there, but quiet.
+.anotoki-audit-log-page__same {
+  .anotoki-audit-log-page__before,
+  .anotoki-audit-log-page__after {
+    background: none;
+    color: kit.token(muted);
+  }
+}

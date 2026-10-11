@@ -8,6 +8,6 @@
     "declarationMap": true,
     "types": []
   },
-  "include": ["src/**/*.ts", "ui/**/*.ts", "shell/**/*.ts", "migrations/**/*.ts", "translations/**/*.ts", "auth/**/*.ts", "people/**/*.ts", "words/**/*.ts", "admin/**/*.ts", "feedback/**/*.ts"],
+  "include": ["src/**/*.ts", "ui/**/*.ts", "shell/**/*.ts", "migrations/**/*.ts", "translations/**/*.ts", "auth/**/*.ts", "people/**/*.ts", "words/**/*.ts", "admin/**/*.ts", "feedback/**/*.ts", "error-report/**/*.ts"],
   "exclude": ["**/*.spec.ts", "**/testing.ts"]
 }

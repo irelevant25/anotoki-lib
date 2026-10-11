@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Anotoki\Lib\ErrorLog;
 
 use Anotoki\Lib\Admin\AdminContext;
+use Anotoki\Lib\Auth\Http\Identify;
+use Anotoki\Lib\Support\ClientAddress;
 use Anotoki\Lib\Support\GuardedDirectory;
 use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Redactor;
@@ -77,9 +79,15 @@ final class ErrorLog
     private const FATAL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
     private const WARNING = E_WARNING | E_USER_WARNING | E_CORE_WARNING | E_COMPILE_WARNING;
 
+    /**
+     * The answers that say a state the site is in, not a failure - an update waiting (the gate's update_pending, a
+     * module's feature_unavailable), a site not set up yet: never written by default, however often they come.
+     */
+    public const EXPECTED_CODES = ['update_pending', 'feature_unavailable', 'not_set_up'];
+
     private const OPTIONS = [
         'root', 'context', 'clientKey', 'actorId', 'days', 'responses', 'key', 'storage', 'maxBytes', 'totalBytes',
-        'ignore', 'ignoreExceptions', 'app', 'clientLimits', 'perFingerprintDay',
+        'ignore', 'ignoreExceptions', 'app', 'clientLimits', 'perFingerprintDay', 'expected', 'trustedProxies', 'clientHeader',
     ];
 
     private readonly string $directory;
@@ -93,6 +101,13 @@ final class ErrorLog
     private readonly int $maxBytes;
     private readonly int $totalBytes;
     private readonly int $perFingerprintDay;
+
+    /** @var list<string> the answers' codes that say a state, not a failure: never written */
+    private readonly array $expected;
+
+    /** @var list<string> */
+    private readonly array $trustedProxies;
+    private readonly string $clientHeader;
 
     /** @var list<string> paths never written down (the log's own routes): exact, or everything under them */
     private array $ignored;
@@ -134,9 +149,15 @@ final class ErrorLog
      *   app?: App,
      *   clientLimits?: array{perHour?: int, perDay?: int},
      *   perFingerprintDay?: int,
+     *   expected?: list<string>,
+     *   trustedProxies?: list<string>,
+     *   clientHeader?: string,
      * } $options
      *   - root: the site's folder, cut from every file's path (backend/)
-     *   - context / clientKey / actorId: who asked (an id) and from where (a keyed hash of the address bucket)
+     *   - context / clientKey / actorId: who asked (an id) and from where (a keyed hash of the address bucket);
+     *     without them, the person the auth module's Identify set (when a route of the library's admin tools
+     *     ran), and the address by ClientAddress's rule over `trustedProxies` and `clientHeader` (or the context's)
+     *   - expected: the answers' codes never written - states, not failures (EXPECTED_CODES by default)
      *   - days: kept, default 30
      *   - responses: the answered statuses written - a list (beside every 5xx), or a closure; default 404, 405,
      *     413, 415, 429 and every 5xx (genshin keeps every 4xx: fn (int $s) => $s >= 400)
@@ -147,7 +168,8 @@ final class ErrorLog
      *   - ignore: paths never written down - the log's routes add theirs (ErrorLogRoutes)
      *   - ignoreExceptions: classes that are a decided answer (genshin's ApiRefusal): their answer's line is written
      *   - app: the Slim app, to name a request's route pattern
-     *   - clientLimits: the pages' own errors, per address bucket an hour (20) and in all a day (500)
+     *   - clientLimits: the pages' own errors, an hour from one sender - an account, or a visitor's address bucket -
+     *     (perHour, 20), and a day from the visitors in all and from the signed-in people in all (perDay, 500 each)
      *   - perFingerprintDay: the most lines of one kind (one fingerprint) a day, 100; past it they are counted
      */
     public function __construct(string $directory, array $options = [])
@@ -167,6 +189,9 @@ final class ErrorLog
         }
         $this->clientKey = $options['clientKey'] ?? ($context !== null ? $context->clientKey(...) : null);
         $this->actorId = $options['actorId'] ?? ($context !== null ? $context->actorId(...) : null);
+        $this->trustedProxies = array_values(array_filter($options['trustedProxies'] ?? ($context?->trustedProxies() ?? []), 'is_string'));
+        $this->clientHeader = (string) ($options['clientHeader'] ?? ($context?->clientHeader() ?? ClientAddress::CLOUDFLARE_HEADER));
+        $this->expected = array_values(array_filter($options['expected'] ?? self::EXPECTED_CODES, 'is_string'));
 
         $this->days = max(1, (int) ($options['days'] ?? 30));
         $responses = $options['responses'] ?? self::DEFAULT_STATUSES;
@@ -271,7 +296,7 @@ final class ErrorLog
                 'source' => 'server',
                 'level' => $status >= 500 ? 'error' : 'warning',
                 'status' => $status,
-                'type' => self::shortClass($exception::class),
+                'type' => $this->className($exception::class),
                 'code' => $code,
                 'message' => Redactor::text($exception->getMessage()),
                 'file' => $this->relative($exception->getFile()),
@@ -295,6 +320,10 @@ final class ErrorLog
                 return;
             }
             [$code, $sentence] = self::answerWords($response);
+            // A state, not a failure: an update waiting answers so on every visit until it is applied.
+            if ($code !== null && in_array($code, $this->expected, true)) {
+                return;
+            }
 
             $this->write([
                 'source' => 'server',
@@ -386,8 +415,12 @@ final class ErrorLog
 
     /**
      * Whether the pages may write another error now: at most clientLimits.perHour
-     * an hour from one address bucket, perDay a day from everybody. Counted in a
-     * small file beside the log; null when it may, else 429 too_many.
+     * an hour from one sender - a signed-in person by their account, a visitor by
+     * their address bucket - and perDay a day from the visitors in all, and as
+     * many from the signed-in people in all: each its own budget, so visitors from
+     * a few IPv6 /64s cannot use up the reports of the people signed in. Counted
+     * in a small file beside the log (keyed hashes, never an address or an id);
+     * null when it may, else 429 too_many.
      */
     public function clientAllowance(ServerRequestInterface $request): ?Refusal
     {
@@ -405,21 +438,30 @@ final class ErrorLog
                 $hour = gmdate('Y-m-d\TH');
                 $day = gmdate('Y-m-d');
                 if (!is_array($state) || ($state['day'] ?? null) !== $day) {
-                    $state = ['day' => $day, 'total' => 0, 'hour' => $hour, 'clients' => []];
+                    $state = ['day' => $day, 'total' => 0, 'members' => 0, 'hour' => $hour, 'clients' => []];
                 }
                 if (($state['hour'] ?? null) !== $hour) {
                     $state['hour'] = $hour;
                     $state['clients'] = [];
                 }
-                $client = $this->clientHash($request) ?? '?';
+                $actor = $this->actor($request);
+                if ($actor !== null) {
+                    $this->key ??= Keys::derive(Keys::installation($this->storage), 'error-log');
+                    $client = 'a' . substr(hash_hmac('sha256', 'account:' . $actor, $this->key), 0, 12);
+                    $budget = 'members';
+                } else {
+                    $client = $this->clientHash($request) ?? '?';
+                    $budget = 'total';
+                }
                 $mine = (int) ($state['clients'][$client] ?? 0);
-                if ($mine >= $this->clientLimits['perHour'] || (int) $state['total'] >= $this->clientLimits['perDay']) {
+                $all = (int) ($state[$budget] ?? 0);
+                if ($mine >= $this->clientLimits['perHour'] || $all >= $this->clientLimits['perDay']) {
                     $wait = $mine >= $this->clientLimits['perHour'] ? 3600 - (time() % 3600) : 86400 - (time() % 86400);
 
                     return new Refusal(429, 'too_many', 'That is a lot of errors. They are no longer written down for a while.', ['retry_after' => $wait]);
                 }
                 $state['clients'][$client] = $mine + 1;
-                $state['total'] = (int) $state['total'] + 1;
+                $state[$budget] = $all + 1;
                 ftruncate($handle, 0);
                 rewind($handle);
                 fwrite($handle, (string) json_encode($state));
@@ -801,17 +843,33 @@ final class ErrorLog
         return false;
     }
 
+    /**
+     * Who asked: the site's actorId, on the request the log was given and on the one a route of the library's
+     * admin tools saw (later in the chain, with what the site's middleware set); else the person the auth
+     * module's Identify set on either - so a site whose own reader is missing on a route (the admin tools'
+     * routes carry no RecordPerson) still names the person.
+     */
     private function actor(ServerRequestInterface $request): int|string|null
     {
-        if ($this->actorId === null) {
-            return null;
+        $requests = [$request];
+        $later = $this->recordOf($request)?->latest;
+        if ($later !== null && $later !== $request) {
+            $requests[] = $later;
         }
-        $actor = ($this->actorId)($request);
-        if (is_int($actor)) {
-            return $actor;
+        foreach ($requests as $each) {
+            $actor = $this->actorId === null ? null : self::quietly(fn (): mixed => ($this->actorId)($each));
+            if (is_int($actor) || (is_string($actor) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $actor) === 1)) {
+                return $actor;
+            }
+        }
+        foreach ($requests as $each) {
+            $person = Identify::person($each);
+            if ($person !== null) {
+                return $person->sub;
+            }
         }
 
-        return is_string($actor) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $actor) === 1 ? $actor : null;
+        return null;
     }
 
     private function clientHash(ServerRequestInterface $request): ?string
@@ -821,8 +879,9 @@ final class ErrorLog
             $bucket = ($this->clientKey)($request);
         }
         if (!is_string($bucket) || $bucket === '') {
-            $address = $request->getServerParams()['REMOTE_ADDR'] ?? null;
-            $bucket = is_string($address) && $address !== '' ? $address : null;
+            // The library's one rule: a proxy's header from a trusted proxy alone, an IPv6 address as its /64.
+            $address = ClientAddress::of($request, $this->trustedProxies, $this->clientHeader);
+            $bucket = $address === null ? null : ClientAddress::bucket($address);
         }
         if ($bucket === null) {
             return null;
@@ -852,7 +911,9 @@ final class ErrorLog
 
     /**
      * A trace without a single call's arguments: "file:line Class->function()",
-     * at most 12 frames, files relative to the root.
+     * at most 12 frames, files relative to the root - the ones PHP writes into a
+     * name too: an anonymous class is "class@anonymous" and the file and line it
+     * was declared on, a closure of PHP 8.4 "{closure:file:line}".
      *
      * @param list<array<string, mixed>> $frames
      * @return list<string>
@@ -862,11 +923,52 @@ final class ErrorLog
         $lines = [];
         foreach (array_slice($frames, 0, 12) as $frame) {
             $where = isset($frame['file']) ? $this->relative((string) $frame['file']) . ':' . (int) ($frame['line'] ?? 0) : '[internal]';
-            $call = (isset($frame['class']) ? $frame['class'] . ($frame['type'] ?? '->') : '') . ($frame['function'] ?? '?') . '()';
-            $lines[] = $where . ' ' . $call;
+            $class = isset($frame['class']) ? $this->className((string) $frame['class'], short: false) . ($frame['type'] ?? '->') : '';
+            $lines[] = $where . ' ' . $class . $this->functionName((string) ($frame['function'] ?? '?')) . '()';
         }
 
         return $lines;
+    }
+
+    /**
+     * A class's name (with $short, without its namespace) - for an anonymous class, whose name PHP makes of
+     * "class@anonymous" (or its parent's name), a NUL and the absolute path of its file with the line and an
+     * index: "class@anonymous" and that place, relative like every file the log names.
+     */
+    private function className(string $class, bool $short = true): string
+    {
+        $anonymous = strpos($class, '@anonymous');
+        if ($anonymous === false) {
+            return $short ? self::shortClass($class) : $class;
+        }
+        $kind = ($short ? self::shortClass(substr($class, 0, $anonymous)) : substr($class, 0, $anonymous)) . '@anonymous';
+        $declared = substr($class, $anonymous + strlen('@anonymous'));
+        $declared = ltrim($declared, "\0");
+        if (preg_match('/^(.+?):(\d+)(?:\$[0-9a-f]+)?$/D', $declared, $match) === 1) {
+            return $kind . '(' . $this->relative($match[1]) . ':' . $match[2] . ')';
+        }
+
+        return $kind;
+    }
+
+    /**
+     * A function's name; a closure's as PHP 8.4 names it by where it is: "{closure:Foo::bar():42}" inside a
+     * method or a function (kept), "{closure:/var/www/x/routes.php:42}" at a file's own scope (the file
+     * relative), "{closure:{closure:…}:43}" inside another closure.
+     */
+    private function functionName(string $function): string
+    {
+        if (preg_match('/^\{closure:(.+):(\d+)\}$/sD', $function, $match) !== 1) {
+            return $function;
+        }
+        $scope = $match[1];
+        if (str_starts_with($scope, '{closure:')) {
+            $scope = $this->functionName($scope);
+        } elseif (!str_ends_with($scope, '()')) {
+            $scope = $this->relative($scope);
+        }
+
+        return '{closure:' . $scope . ':' . $match[2] . '}';
     }
 
     /** A file's path relative to the site's root; outside it, its last two parts. */

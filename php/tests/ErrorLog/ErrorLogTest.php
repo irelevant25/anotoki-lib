@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Anotoki\Lib\Tests\ErrorLog;
 
 use Anotoki\Lib\Admin\AdminContext;
+use Anotoki\Lib\Admin\Http\Routes;
+use Anotoki\Lib\Auth\Http\Identify;
+use Anotoki\Lib\Auth\Person;
 use Anotoki\Lib\ErrorLog\ErrorLog;
 use Anotoki\Lib\ErrorLog\ErrorLogMiddleware;
 use Anotoki\Lib\ErrorLog\Http\ErrorLogRoutes;
+use Anotoki\Lib\Support\ClientAddress;
 use Anotoki\Lib\Tests\Support\TemporaryFolder;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
@@ -141,6 +145,122 @@ final class ErrorLogTest extends TestCase
         self::assertSame(['php', 'warning', 'E_WARNING', 'Undefined array key 0', '/api/loop'], [$lines[0]['source'], $lines[0]['level'], $lines[0]['type'], $lines[0]['message'], $lines[0]['route']]);
         self::assertSame(['notice', 'E_DEPRECATED'], [$lines[1]['level'], $lines[1]['type']]);
         self::assertSame($lines[0]['fingerprint'], $lines[2]['fingerprint']);
+    }
+
+    public function testAnAnonymousClassOrAClosureNamesItsFileRelativeLikeEveryOther(): void
+    {
+        [$app] = $this->app();
+        $failing = new class () {
+            public function fail(): never
+            {
+                throw new RuntimeException('Failed inside an anonymous class');
+            }
+        };
+        $app->get('/api/anonymous', static function () use ($failing): ResponseInterface {
+            $failing->fail();
+        });
+        $app->get('/api/thrown', static function (): ResponseInterface {
+            throw new class ('An anonymous exception') extends RuntimeException {
+            };
+        });
+        $app->get('/api/routes-file', require __DIR__ . '/Fixtures/a-routes-file.php');
+        $this->send($app, 'GET', '/api/anonymous');
+        $this->send($app, 'GET', '/api/thrown');
+        $this->send($app, 'GET', '/api/routes-file');
+
+        $raw = $this->rawLog();
+        $root = str_replace('\\', '/', dirname(__DIR__, 3));
+        foreach ([$root, str_replace('/', '\\\\', $root), str_replace('/', '\\', $root)] as $absolute) {
+            self::assertStringNotContainsString($absolute, $raw, 'no absolute path anywhere in a line');
+        }
+        [$anonymous, $thrown, $routesFile] = $this->lines();
+        foreach (array_merge($anonymous['trace'], $thrown['trace'], $routesFile['trace'], [$anonymous['type'], $thrown['type'], $anonymous['file'], $thrown['file'], $routesFile['file']]) as $part) {
+            self::assertDoesNotMatchRegularExpression('~(?:^|[\s(:{])(?:[A-Za-z]:[\\\\/]|/(?:home|var|srv|Users|tmp)/)~', (string) $part, 'no absolute path: ' . $part);
+        }
+        self::assertMatchesRegularExpression('~^php/tests/ErrorLog/ErrorLogTest\.php:\d+ class@anonymous\(php/tests/ErrorLog/ErrorLogTest\.php:\d+\)->fail\(\)$~D', $anonymous['trace'][0]);
+        self::assertMatchesRegularExpression('~^RuntimeException@anonymous\(php/tests/ErrorLog/ErrorLogTest\.php:\d+\)$~D', $thrown['type']);
+        self::assertSame('php/tests/ErrorLog/Fixtures/a-routes-file.php', $routesFile['file']);
+        if (PHP_VERSION_ID >= 80400) {
+            self::assertMatchesRegularExpression('~' . preg_quote('::{closure:' . self::class . '::' . __FUNCTION__ . '():', '~') . '\d+\}\(\)$~D', $anonymous['trace'][1], 'PHP 8.4 names a closure in a method by the method: kept whole');
+            self::assertMatchesRegularExpression('~[ :]\{closure:php/tests/ErrorLog/Fixtures/a-routes-file\.php:\d+\}\(\)$~D', $routesFile['trace'][0], 'and one at a file\'s own scope by the file: relative');
+        }
+    }
+
+    public function testAStateAnUpdateLeavesTheSiteInIsNoFailure(): void
+    {
+        [$app, $log] = $this->app();
+        foreach (['update_pending', 'feature_unavailable', 'not_set_up', 'unavailable'] as $code) {
+            $app->get('/api/state/' . $code, static function (ServerRequestInterface $request, ResponseInterface $response) use ($code): ResponseInterface {
+                $response->getBody()->write((string) json_encode(['code' => $code, 'message' => 'Not now.']));
+
+                return $response->withStatus(503)->withHeader('Content-Type', 'application/json');
+            });
+        }
+        for ($visit = 0; $visit < 3; $visit++) {
+            foreach (['update_pending', 'feature_unavailable', 'not_set_up', 'unavailable'] as $code) {
+                $this->send($app, 'GET', '/api/state/' . $code);
+            }
+        }
+
+        self::assertSame(['unavailable'], array_values(array_unique(array_column($this->lines(), 'code'))), 'an update waiting, a site not set up: states, not failures - a database that does not answer is one');
+
+        [$strict] = $this->app(['expected' => []]);
+        $strict->get('/api/state', static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
+            $response->getBody()->write('{"code":"update_pending"}');
+
+            return $response->withStatus(503)->withHeader('Content-Type', 'application/json');
+        });
+        $this->send($strict, 'GET', '/api/state');
+        self::assertContains('update_pending', array_column($this->lines(), 'code'), 'a site that wants them written says so');
+    }
+
+    public function testAFailureOnAnAdminToolsRouteNamesWhoAskedFromTheRequestTheRouteSaw(): void
+    {
+        // The site's reader of who asks finds what its own middleware set - which the outer middleware never sees.
+        $context = new AdminContext(
+            static fn (ServerRequestInterface $request): ?int => is_int($request->getAttribute('site.person')) ? $request->getAttribute('site.person') : null,
+            isAdmin: static fn (): bool => true,
+        );
+        [$app] = $this->app(['context' => $context]);
+        Routes::adminGroup($app, '/api/admin/tool', $context, static function ($group): void {
+            $group->get('', static function (): ResponseInterface {
+                throw new RuntimeException('The tool failed');
+            });
+        })->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle($request->withAttribute('site.person', 42)));
+        $this->send($app, 'GET', '/api/admin/tool');
+        self::assertSame([42], array_column($this->lines(), 'user_id'));
+
+        // A log without a reader of its own names the person the auth module's Identify set.
+        $this->logs = $this->temporaryFolder() . '/logs';
+        $site = new AdminContext(static fn (ServerRequestInterface $request): ?int => Identify::person($request)?->sub, isAdmin: static fn (): bool => true);
+        $plain = AppFactory::create();
+        $log = new ErrorLog($this->logs, ['key' => str_repeat('k', 32), 'app' => $plain]);
+        $plain->addRoutingMiddleware();
+        $plain->addErrorMiddleware(false, false, false)->setDefaultErrorHandler($log->wrapHandler(static fn (): ResponseInterface => (new ResponseFactory())->createResponse(500)));
+        $plain->add(ErrorLogMiddleware::outer($log));
+        Routes::adminGroup($plain, '/api/admin/tool', $site, static function ($group): void {
+            $group->get('', static function (): ResponseInterface {
+                throw new RuntimeException('The tool failed again');
+            });
+        })->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle($request->withAttribute(Identify::PERSON, Person::fromClaims(['sub' => '77']))));
+        $this->send($plain, 'GET', '/api/admin/tool');
+        self::assertSame([77], array_column($this->lines(), 'user_id'));
+    }
+
+    public function testTheAddressBucketIsTheTrustedProxysHeaderFromThatProxyAloneAndKeptOnlyAsAHash(): void
+    {
+        [$app] = $this->app(['context' => new AdminContext(static fn (): ?int => null, trustedProxies: ClientAddress::CLOUDFLARE)]);
+        $app->get('/api/fail', static function (): ResponseInterface {
+            throw new RuntimeException('Failed');
+        });
+        $hash = static fn (string $bucket): string => substr(hash_hmac('sha256', $bucket, str_repeat('k', 32)), 0, 12);
+
+        $this->send($app, 'GET', '/api/fail', '', ['CF-Connecting-IP' => '198.51.100.7'], '173.245.48.1');
+        $this->send($app, 'GET', '/api/fail', '', ['CF-Connecting-IP' => '198.51.100.7'], '203.0.113.50');
+        $this->send($app, 'GET', '/api/fail', '', ['CF-Connecting-IP' => '2001:db8:1:2:3:4:5:6'], '2400:cb00::1');
+
+        self::assertSame([$hash('198.51.100.7'), $hash('203.0.113.50'), $hash('2001:db8:1:2::/64')], array_column($this->lines(), 'client'), 'Cloudflare\'s header from Cloudflare; anybody else\'s is not believed; an IPv6 address as its /64');
+        self::assertStringNotContainsString('198.51.100.7', $this->rawLog(), 'never the address itself');
     }
 
     public function testTheLogsOwnRoutesAreNeverWrittenDown(): void
@@ -326,7 +446,8 @@ final class ErrorLogTest extends TestCase
         foreach (glob($this->logs . '/errors-*.jsonl') ?: [] as $file) {
             $total += filesize($file);
         }
-        self::assertLessThan(4096 + 1024, $total, 'the whole log stays within its size and a part');
+        // A part is written to while it is under its size, so it may end a line past it: the size, a part, and a line.
+        self::assertLessThan(4096 + 2 * 1024, $total, 'the whole log stays within its size and a part');
         $dropped = $log->reader()->dropped();
         self::assertGreaterThan(0, $dropped[$today] ?? 0, 'what today alone does not fit is counted');
         self::assertSame($dropped, $log->reader()->report(['days' => 1])['dropped']);
@@ -393,18 +514,37 @@ final class ErrorLogTest extends TestCase
         self::assertSame(['at https://iam.example.sk/main-AB12CD34EF56GH78.js:1:2345', 'at render (https://iam.example.sk/chunk.js?{…}'], $line['trace']);
         self::assertStringNotContainsString('SECRET', $this->rawLog());
 
-        self::assertSame(422, $this->send($app, 'POST', '/api/client-errors', '{"type":"Error"}')->getStatusCode());
-        self::assertSame(413, $this->send($app, 'POST', '/api/client-errors', (string) json_encode(['message' => str_repeat('a', 9000)]))->getStatusCode());
-        self::assertSame(415, $this->send($app, 'POST', '/api/client-errors', 'message=x', ['Content-Type' => 'application/x-www-form-urlencoded'])->getStatusCode());
-        self::assertSame(204, $this->send($app, 'POST', '/api/client-errors', '{"message":"two"}')->getStatusCode());
-        self::assertSame(204, $this->send($app, 'POST', '/api/client-errors', '{"message":"three"}')->getStatusCode());
-        $limited = $this->send($app, 'POST', '/api/client-errors', '{"message":"four"}');
-        self::assertSame([429, 'too_many'], [$limited->getStatusCode(), $this->json($limited)['code']], 'three an hour from one address');
+        // Every refusal the browser's reporter may meet, in the library's one shape: {code, message}, the 429 with
+        // its wait in the body and in Retry-After - and none of them written into the log.
+        foreach ([
+            [422, 'message_required', '{"type":"Error"}', []],
+            [413, 'too_large', (string) json_encode(['message' => str_repeat('a', 9000)]), []],
+            [415, 'unsupported_media_type', 'message=x', ['Content-Type' => 'application/x-www-form-urlencoded']],
+        ] as [$status, $code, $body, $headers]) {
+            $refused = $this->send($app, 'POST', '/api/client-errors', $body, $headers);
+            self::assertSame([$status, $code], [$refused->getStatusCode(), $this->json($refused)['code']], $code);
+            self::assertIsString($this->json($refused)['message']);
+        }
+        // A visitor is counted by their address bucket - an IPv6 address by its /64 - and the visitors' day by itself.
+        $visitor = fn (string $message, string $address): int => $this->send($app, 'POST', '/api/client-errors', (string) json_encode(['message' => $message]), [], $address, admin: false)->getStatusCode();
+        self::assertSame([204, 204, 204], [$visitor('v1', '198.51.100.1'), $visitor('v2', '198.51.100.1'), $visitor('v3', '198.51.100.1')]);
+        self::assertSame(429, $visitor('v4', '198.51.100.1'), 'three an hour from one address');
+        self::assertSame([204, 204], [$visitor('v5', '2001:db8:1:1::5'), $visitor('v6', '2001:db8:1:1::6')]);
+        self::assertSame(429, $visitor('v7', '2001:db8:1:2::5'), 'five a day from the visitors in all');
+
+        // A signed-in person is counted by their account, from wherever they are - in a day of their own, which the
+        // visitors' spent budget does not touch.
+        self::assertSame(204, $this->send($app, 'POST', '/api/client-errors', '{"message":"two"}', [], '198.51.100.9')->getStatusCode(), 'the visitors\' day is not the signed-in people\'s');
+        self::assertSame(204, $this->send($app, 'POST', '/api/client-errors', '{"message":"three"}', [], '2001:db8:9::1')->getStatusCode());
+        $limited = $this->send($app, 'POST', '/api/client-errors', '{"message":"four"}', [], '203.0.113.200');
+        self::assertSame([429, 'too_many'], [$limited->getStatusCode(), $this->json($limited)['code']], 'three an hour from one account, whatever its address');
         self::assertGreaterThan(0, (int) $limited->getHeaderLine('Retry-After'));
-        self::assertSame(204, $this->send($app, 'POST', '/api/client-errors', '{"message":"other address"}', [], '198.51.100.1')->getStatusCode());
-        self::assertSame(204, $this->send($app, 'POST', '/api/client-errors', '{"message":"other again"}', [], '198.51.100.1')->getStatusCode());
-        self::assertSame(429, $this->send($app, 'POST', '/api/client-errors', '{"message":"a third"}', [], '198.51.100.2')->getStatusCode(), 'five a day from everybody');
-        self::assertCount(5, $this->lines());
+        self::assertSame($limited->getHeaderLine('Retry-After'), (string) $this->json($limited)['retry_after']);
+        self::assertCount(8, $this->lines());
+        $counts = (string) file_get_contents($this->logs . '/client-errors.json');
+        foreach (['198.51.100', '2001:db8', 'account:', '"7"'] as $never) {
+            self::assertStringNotContainsString($never, $counts, 'keyed hashes alone, never an address or an id');
+        }
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

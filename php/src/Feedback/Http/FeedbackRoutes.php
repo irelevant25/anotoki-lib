@@ -65,7 +65,8 @@ final class FeedbackRoutes
     }
 
     /**
-     * @param null|Closure(list<int>): array<int|string, string> $names  people's names by id, for the page
+     * @param null|Closure(list<int>): array<int|string, string> $names  people's names by id, for the page;
+     *        without one, the context's names
      */
     public static function admin(
         RouteCollectorProxyInterface $app,
@@ -75,6 +76,8 @@ final class FeedbackRoutes
         ?AuditRecorder $audit = null,
         ?Closure $names = null,
     ): RouteGroupInterface {
+        $names ??= static fn (array $ids): array => $context->names($ids);
+
         return Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($feedback, $context, $audit, $names): void {
             Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($feedback, $context, $names): ResponseInterface {
                 if (!$feedback->ready()) {

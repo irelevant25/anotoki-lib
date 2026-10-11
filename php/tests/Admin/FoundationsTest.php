@@ -9,6 +9,7 @@ use Anotoki\Lib\ErrorLog\ErrorLog;
 use Anotoki\Lib\ErrorLog\Http\ErrorLogRoutes;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\AtomicFile;
+use Anotoki\Lib\Support\ClientAddress;
 use Anotoki\Lib\Support\GuardedDirectory;
 use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Redactor;
@@ -47,6 +48,9 @@ final class FoundationsTest extends TestCase
         self::assertStringContainsString('Deny from all', $guard, 'Apache 2.2');
         self::assertStringContainsString('Options -Indexes', $guard);
         self::assertSame('', file_get_contents($base . '/storage/logs/index.html'));
+        if (PHP_OS_FAMILY !== 'Windows') {
+            self::assertSame(['700', '700'], [substr(sprintf('%o', fileperms($base . '/storage/logs')), -3), substr(sprintf('%o', fileperms($base . '/storage')), -3)], 'the site\'s own user\'s alone, the folders made on the way too');
+        }
 
         file_put_contents($base . '/storage/logs/.htaccess', "# the site's own\n");
         self::assertTrue(GuardedDirectory::ensure($base . '/storage/logs'));
@@ -67,6 +71,10 @@ final class FoundationsTest extends TestCase
         self::assertFalse(AtomicFile::write($base . '/a.json', '{"a":3}', exclusive: true));
         self::assertSame('{"a":2}', file_get_contents($base . '/a.json'));
         self::assertSame(['.', '..', 'a.json'], scandir($base), 'nothing left aside');
+        self::assertTrue(AtomicFile::write($base . '/secret.json', '{}', mode: 0600));
+        if (PHP_OS_FAMILY !== 'Windows') {
+            self::assertSame('600', substr(sprintf('%o', fileperms($base . '/secret.json')), -3));
+        }
     }
 
     public function testKeysAreDerivedForOnePurposeEach(): void
@@ -320,6 +328,72 @@ final class FoundationsTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         new AdminContext(static fn (): int => 1, null, 'magic');
+    }
+
+    public function testAnAddressIsTheTrustedProxysHeaderFromThatProxyAlone(): void
+    {
+        $request = static fn (string $remote, array $headers = []): ServerRequestInterface => array_reduce(
+            array_keys($headers),
+            static fn (ServerRequestInterface $r, string $name): ServerRequestInterface => $r->withHeader($name, $headers[$name]),
+            (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/', ['REMOTE_ADDR' => $remote])
+        );
+
+        foreach (['173.245.48.1', '104.16.0.9', '162.159.255.254', '2400:cb00::1', '2a06:98c0:3600::103'] as $edge) {
+            self::assertTrue(ClientAddress::trusted($edge, ClientAddress::CLOUDFLARE), "$edge is Cloudflare's");
+            self::assertSame('198.51.100.7', ClientAddress::of($request($edge, ['CF-Connecting-IP' => '198.51.100.7']), ClientAddress::CLOUDFLARE));
+        }
+        foreach (['203.0.113.9', '173.245.64.1', '2400:cb01::1', '10.0.0.1'] as $stranger) {
+            self::assertFalse(ClientAddress::trusted($stranger, ClientAddress::CLOUDFLARE), "$stranger is not");
+            self::assertSame($stranger, ClientAddress::of($request($stranger, ['CF-Connecting-IP' => '198.51.100.7', 'X-Forwarded-For' => '198.51.100.8']), ClientAddress::CLOUDFLARE), 'a header from anybody else is never believed');
+        }
+        self::assertSame('173.245.48.1', ClientAddress::of($request('173.245.48.1', ['CF-Connecting-IP' => 'not an address']), ClientAddress::CLOUDFLARE), 'a header that names no address: the connection\'s');
+        self::assertSame('173.245.48.1', ClientAddress::of($request('173.245.48.1', ['CF-Connecting-IP' => '198.51.100.7'])), 'no trusted proxies: the connection\'s');
+        self::assertSame('198.51.100.7', ClientAddress::of($request('192.0.2.10', ['X-Real-IP' => '198.51.100.7']), ['192.0.2.10'], 'X-Real-IP'), 'a site\'s own proxy and header');
+        self::assertNull(ClientAddress::of($request('')));
+
+        self::assertSame('2001:db8:1:2::/64', ClientAddress::bucket('2001:db8:1:2:3:4:5:6'), 'one subscriber\'s whole network');
+        self::assertSame('2001:db8:1:2::/64', ClientAddress::bucket('2001:0db8:0001:0002:ffff::1'));
+        self::assertSame('198.51.100.7', ClientAddress::bucket('198.51.100.7'));
+        self::assertTrue(ClientAddress::within('10.1.2.3', '10.0.0.0/8'));
+        self::assertFalse(ClientAddress::within('11.1.2.3', '10.0.0.0/8'));
+        self::assertTrue(ClientAddress::within('192.0.2.10', '192.0.2.10'));
+        self::assertFalse(ClientAddress::within('192.0.2.10', '192.0.2.10/33'), 'no such range');
+        self::assertFalse(ClientAddress::within('::ffff:173.245.48.1', '173.245.48.0/20'), 'an IPv6 address is never in an IPv4 range');
+    }
+
+    public function testTheContextCountsByTheTrustedProxyRuleAndNamesPeople(): void
+    {
+        $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/', ['REMOTE_ADDR' => '2400:cb00::1'])->withHeader('CF-Connecting-IP', '2001:db8:aa:bb:1::2');
+        $context = new AdminContext(static fn (): int => 1, trustedProxies: ClientAddress::CLOUDFLARE, names: static fn (array $ids): array => [1 => 'Ana', '2' => 'Bo', 3 => '', 4 => ['not a name']]);
+
+        self::assertSame('2001:db8:aa:bb::/64', $context->clientKey($request), 'Cloudflare\'s header, the address\'s /64');
+        self::assertSame('2400:cb00::/64', (new AdminContext(static fn (): int => 1))->clientKey($request), 'without trusted proxies, the edge\'s');
+        self::assertSame([1 => 'Ana', 2 => 'Bo'], $context->names([1, '2', 3, 4, 1, null, '']), 'names alone, each id once');
+        self::assertSame([], (new AdminContext(static fn (): int => 1))->names([1]), 'a site that gave none: no names');
+        self::assertSame([], (new AdminContext(static fn (): int => 1, names: static function (): array {
+            throw new RuntimeException('no database');
+        }))->names([1]), 'a lookup that fails: no names, never an error');
+    }
+
+    public function testASitesOwnSecretNamesAreRedactedToo(): void
+    {
+        $message = 'Could not save totp_secret=JBSWY3DP and {"recovery_code": "1234-5678"} for x.key=abc';
+        try {
+            self::assertSame($message, Redactor::text($message), 'names the library does not know stay');
+            Redactor::addSecretNames('totp_secret', 'Recovery_Code', 'x.key');
+            self::assertSame('Could not save totp_secret={…} and {"recovery_code": {…}} for x.key={…}', Redactor::text($message));
+            foreach (['', '1st', 'two words', 'name=', str_repeat('a', 65), 'ends.'] as $bad) {
+                try {
+                    Redactor::addSecretNames($bad);
+                    self::fail("\"$bad\" was taken");
+                } catch (InvalidArgumentException) {
+                    // refused
+                }
+            }
+        } finally {
+            Redactor::forgetSiteSecretNames();
+        }
+        self::assertSame($message, Redactor::text($message), 'forgotten again: the library\'s alone');
     }
 
     public function testTheContextSaysWhoTheAdminIsAndRefusesEverybodyElse(): void

@@ -3,7 +3,9 @@
 
 @include page.styles;
 
-.anotoki-error-log-page__range {
+// The Range at its own width, never squeezed with the fields beside it ("14 days30 days"): as a child of the bar, so
+// the bar's `> *` does not win (page.styles).
+.anotoki-error-log-page__filters > .anotoki-error-log-page__range {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;

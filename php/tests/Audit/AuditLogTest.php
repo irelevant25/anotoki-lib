@@ -105,8 +105,35 @@ final class AuditLogTest extends DatabaseTestCase
         self::assertSame([5, null], array_column($rows, 'actor_id'));
         self::assertSame(['count' => 3], json_decode((string) $rows[0]['details'], true));
         self::assertTrue($rows[0]['earlier'], 'with the time it was recorded');
-        self::assertSame('', file_get_contents($pending));
+        self::assertFileDoesNotExist($pending, 'set aside, put in, gone');
+        self::assertFileDoesNotExist($pending . '.flushing');
         self::assertSame([], $this->errors);
+    }
+
+    public function testAFlushKilledAfterItsCommitPutsNothingInTwice(): void
+    {
+        $this->applyAdminSet();
+        $pending = $this->path('logs/audit-pending.jsonl');
+        mkdir(dirname($pending), 0777, true);
+        $lines = [
+            ['created_at' => '2026-10-07T10:00:00.123456Z', 'actor_id' => 3, 'action' => 'first.entry', 'target_type' => 'user', 'target_id' => '9', 'details' => null],
+            ['created_at' => '2026-10-07T10:00:01.000001Z', 'actor_id' => null, 'action' => 'second.entry', 'details' => '{"n":2}'],
+        ];
+        // A flush set the file aside, put both in and committed - and its process was killed before the file went.
+        file_put_contents($pending . '.flushing', implode("\n", array_map('json_encode', $lines)) . "\n");
+        $audit = $this->audit(['pendingFile' => $pending]);
+        foreach ($lines as $line) {
+            $this->pdo->prepare('INSERT INTO anotoki_audit_log (created_at, actor_id, action, target_type, target_id, details) VALUES (CAST(? AS timestamptz), ?, ?, ?, ?, CAST(? AS jsonb))')
+                ->execute([$line['created_at'], $line['actor_id'], $line['action'], $line['target_type'] ?? null, $line['target_id'] ?? null, $line['details']]);
+        }
+        // Meanwhile a new entry waits in a new file.
+        file_put_contents($pending, json_encode(['created_at' => '2026-10-07T10:05:00.000000Z', 'actor_id' => 4, 'action' => 'third.entry', 'details' => null]) . "\n");
+
+        self::assertSame(0, $audit->flushPending(), 'the file set aside: both in already, none twice');
+        self::assertFileDoesNotExist($pending . '.flushing');
+        self::assertSame(1, $audit->flushPending(), 'and then the new file');
+        self::assertSame(['first.entry', 'second.entry', 'third.entry'], $this->pdo->query('SELECT action FROM anotoki_audit_log ORDER BY created_at')->fetchAll(PDO::FETCH_COLUMN));
+        self::assertFileDoesNotExist($pending);
     }
 
     public function testAnEntryThatCameLateGoesInWithTheNextOneOutsideATransaction(): void
@@ -120,7 +147,7 @@ final class AuditLogTest extends DatabaseTestCase
         $audit->record(null, 4, 'next.entry');
 
         self::assertSame(['late.entry', 'next.entry'], $this->pdo->query('SELECT action FROM anotoki_audit_log ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertSame('', file_get_contents($pending));
+        self::assertFileDoesNotExist($pending);
     }
 
     public function testTheSiteMayKeepEntriesWaitingWhileItsOwnMoveIsPending(): void
@@ -253,16 +280,38 @@ final class AuditLogTest extends DatabaseTestCase
 
         $audit->record(null, 1, 'translations.saved', null, null, ['huge' => str_repeat('ž', 80000), 'small' => 'kept']);
         $audit->record(null, 1, 'translations.imported', null, null, array_fill_keys(array_map(static fn (int $n): string => "k$n", range(1, 400)), str_repeat('a', 300)));
+        $audit->record(null, 1, 'translations.listed', null, null, ['languages' => ['sk' => ['strings' => range(1, 30000), 'by' => 'ana']], 'note' => 'x']);
+        $audit->record(null, 1, 'translations.dumped', null, null, array_fill_keys(array_map(static fn (int $n): string => "key$n", range(1, 600)), ['old' => str_repeat('o', 40), 'new' => str_repeat('n', 40), 'list' => range(1, 50)]));
+        $audit->record(null, 1, 'translations.flooded', null, null, array_fill_keys(array_map(static fn (int $n): string => "key$n", range(1, 3000)), ['old' => str_repeat('o', 40), 'new' => str_repeat('n', 40), 'list' => range(1, 50)]));
 
         $details = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.saved'"), true);
         self::assertSame('kept', $details['small']);
         self::assertStringEndsWith('…[cut]', $details['huge']);
         self::assertLessThanOrEqual(AuditLog::DETAILS_LIMIT, strlen((string) json_encode($details, JSON_UNESCAPED_UNICODE)));
+
+        // Cut, every key is kept: the texts shorter, the lists to their first items, each cut saying so.
         $many = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.imported'"), true);
-        self::assertSame(true, $many['_cut'], 'too much even cut: its keys alone');
-        self::assertSame('k1', $many['keys'][0]);
-        self::assertCount(50, $many['keys']);
-        self::assertLessThanOrEqual(AuditLog::DETAILS_LIMIT, strlen((string) json_encode($many)));
+        self::assertTrue($many['_cut']);
+        self::assertCount(401, $many, 'every one of the 400 keys, and the mark');
+        self::assertStringEndsWith('…[cut]', $many['k400']);
+        $listed = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.listed'"), true);
+        self::assertSame(['by' => 'ana', 'note' => 'x'], ['by' => $listed['languages']['sk']['by'], 'note' => $listed['note']]);
+        self::assertContains('…[29800 more]', $listed['languages']['sk']['strings']);
+
+        // Too much even cut: what it held, as its keys - the shape of every map.
+        $dumped = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.dumped'"), true);
+        self::assertTrue($dumped['_cut']);
+        self::assertCount(600, $dumped['keys'], 'every key');
+        $shape = $dumped['keys']['key600'];
+        ksort($shape);
+        self::assertSame(['list' => '[50 items]', 'new' => null, 'old' => null], $shape, 'a map as its keys (JSONB keeps them in an order of its own)');
+        // And past even that, its first keys, as many as fit - every one of them here.
+        $flooded = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.flooded'"), true);
+        self::assertTrue($flooded['_cut']);
+        self::assertSame(array_map(static fn (int $n): string => "key$n", range(1, 3000)), $flooded['keys']);
+        foreach (['translations.imported', 'translations.listed', 'translations.dumped', 'translations.flooded'] as $action) {
+            self::assertLessThanOrEqual(AuditLog::DETAILS_LIMIT, strlen((string) $this->value("SELECT details::text FROM anotoki_audit_log WHERE action = '$action'")));
+        }
     }
 
     public function testTheRoutesForTheAdminAlone(): void

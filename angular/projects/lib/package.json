@@ -1,7 +1,7 @@
 {
   "name": "@anotoki/lib",
   "version": "0.4.1",
-  "description": "What the anotoki sites share, the Angular half: the family's styles (@anotoki/lib/styles), UI kit (@anotoki/lib/ui and its entry points), top bar and frame (@anotoki/lib/shell), the migrations module (@anotoki/lib/migrations, @anotoki/lib/migrations/page), the translations module (@anotoki/lib/translations, @anotoki/lib/translations/admin, @anotoki/lib/translations/testing) signing in through the anotoki IAM (@anotoki/lib/auth, @anotoki/lib/auth/testing: the sign-in hint, the guards, the account's preferences, the sign-in failure's screen), the administrators' People page (@anotoki/lib/people, @anotoki/lib/people/page) and the library's own words (@anotoki/lib/words, @anotoki/lib/words/<namespace>). The PHP half is the Composer package anotoki/lib.",
+  "description": "What the anotoki sites share, the Angular half: the family's styles (@anotoki/lib/styles), UI kit (@anotoki/lib/ui and its entry points), top bar and frame (@anotoki/lib/shell), the migrations module (@anotoki/lib/migrations, @anotoki/lib/migrations/page), the translations module (@anotoki/lib/translations, @anotoki/lib/translations/admin, @anotoki/lib/translations/testing) signing in through the anotoki IAM (@anotoki/lib/auth, @anotoki/lib/auth/testing: the sign-in hint, the guards, the account's preferences, the sign-in failure's screen), the administrators' People page (@anotoki/lib/people, @anotoki/lib/people/page), the browser's errors in the site's error log (@anotoki/lib/error-report) and the library's own words (@anotoki/lib/words, @anotoki/lib/words/<namespace>). The PHP half is the Composer package anotoki/lib.",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",

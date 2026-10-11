@@ -66,6 +66,8 @@ final class Archive
         if ($handle === false) {
             throw new RuntimeException('The backup file could not be made.');
         }
+        // A database whole: the site's own user's alone, before a byte of it is written.
+        @chmod($target, 0600);
         $hash = hash_init('sha256');
         $size = 0;
         $put = static function (string $bytes) use ($handle, $hash, &$size): void {

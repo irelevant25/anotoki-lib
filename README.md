@@ -9,7 +9,7 @@ version:
 | PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/`, `php/testing/` |
 | Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
 
-Version 0.4.0 holds:
+Version 0.4.1 holds:
 
 - **migrations** - the engine that brings a site's database up to date, with
   the library's own migration sets beside a site's, and one behaviour for every
@@ -69,7 +69,7 @@ PHP - in `backend/composer.json`:
 
 ```json
 "repositories": [{ "type": "vcs", "url": "https://github.com/irelevant25/anotoki-lib" }],
-"require": { "anotoki/lib": "^0.3" }
+"require": { "anotoki/lib": "^0.4.1" }
 ```
 
 then `php composer.phar update anotoki/lib --prefer-dist` in `backend/`. Composer
@@ -82,13 +82,14 @@ allow-list, and CI builds the archive and checks it
 (`.github/scripts/check-archive.sh`). Where the site uploads `vendor/`,
 `vendor/anotoki/lib` goes with it - kept from being served as the site's own
 `migrations/` is (a deny-all `.htaccess`), since it holds SQL too. (0.2.0
-changed only the Angular half; 0.3.0 changed both: a site takes `^0.3` and the
-0.3.0 tarball together.)
+changed only the Angular half; 0.3.0 and 0.4.0 changed both: a site takes the
+constraint and the tarball of one version together. 0.4.1 is 0.4.0 working on
+PHP 8.2 - a site goes straight to `^0.4.1` and the 0.4.1 tarball.)
 
 Angular - in `frontend/package.json`:
 
 ```json
-"@anotoki/lib": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.3.0/anotoki-lib-0.3.0.tgz"
+"@anotoki/lib": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.4.1/anotoki-lib-0.4.1.tgz"
 ```
 
 then `bun install` in `frontend/` (and `npm install` too where the site keeps a
@@ -696,7 +697,10 @@ of the Migrations page; everything else is new.
    no property takes) - by themselves; the IAM's account pages give their frame
    its 88rem: `<anotoki-shell maxWidth="88rem">`.
 
-## Upgrading from 0.3.x (0.4.0)
+## Upgrading from 0.3.x (0.4.0, 0.4.1)
+
+Take 0.4.1, never 0.4.0: 0.4.0's search on the admin Feedback page fails on
+PHP 8.2 (CHANGELOG.md). Everything below is the same for both.
 
 1. **The library's words, a namespace at a time.** `LIBRARY_WORDS` (every
    library word) is `@anotoki/lib/words`' now, no longer `@anotoki/lib/ui/config`'s
@@ -1557,7 +1561,7 @@ take it with one route.
 
 ### Adopting auth and people, site by site
 
-In one release per site: `anotoki/lib ^0.4` and the 0.4.0 tarball; the site's
+In one release per site: `anotoki/lib ^0.4.1` and the 0.4.1 tarball; the site's
 migration adding `users.anonymized_at`, then `People\Schema::migrationSet()` in
 its sets (after `Translations\Schema::migrationSet()` where it has it); the
 vendored SDKs deleted; the wiring above; its sign-in words' keys
@@ -2074,6 +2078,9 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 #   or ANOTOKI_LIB_TEST_PGHOST / _PGPORT / _PGUSER / _PGPASSWORD; the user needs CREATEDB:
 #   each test case makes a database anotoki_lib_test_<random> and drops it; the auth tests
 #   start the stand-in IAM under PHP's built-in server on a free local port (needs openssl, curl)
+#   with the same PHP binary: give a PHP whose extensions come from its own php.ini through
+#   PHPRC=<its folder>, never -c (a child process does not get -c, and its server would have none).
+#   CI runs the tests on PHP 8.2 too: write no newer syntax, and run them on 8.2 before a release.
 
 # Angular (from angular/)
 bun install

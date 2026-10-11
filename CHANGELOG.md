@@ -5,6 +5,22 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.4.1 - 2026-10-11
+
+0.4.0 on PHP 8.2: a search on the admin Feedback page failed with `SQLSTATE[HY093]` - a 500. It said
+`ILIKE ? ESCAPE '\'` four times. Before PHP 8.4, PDO reads the SQL it prepares by MySQL's rule: it takes
+the `\'` in such a literal for an escaped quote, so the literal seems to run on to the next quote, and
+the `?` inside are missed - fewer placeholders than parameters. PHP 8.4 reads PostgreSQL's SQL as
+PostgreSQL does, which is why only CI's 8.2 job failed. The audit log's action filter said the same
+(`action LIKE ? ESCAPE '\'`); nothing quoted came after it in its queries, so it held - until the next
+change. Both `ESCAPE` clauses are gone: PostgreSQL's LIKE escapes with the backslash already, so a search
+means what it meant (`%`, `_` and `\` are themselves). No other SQL of the library has a backslash before
+a quote, and a test now reads every string of the library's code for one (`SqlLiteralsTest`, on every
+PHP); the audit log is tested with every filter at once.
+
+What a site does: go straight to 0.4.1 - `anotoki/lib ^0.4.1` and the 0.4.1 tarball - never 0.4.0.
+Nothing else changed; 0.4.0's notes below are 0.4.1's.
+
 ## 0.4.0 - 2026-10-11
 
 Two modules, both halves: **auth** - signing in through the anotoki IAM, the IAM's SDKs moved into the

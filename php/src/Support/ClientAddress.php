@@ -36,27 +36,45 @@ final class ClientAddress
 
     /**
      * The request's address: the header's (a valid address) when REMOTE_ADDR is in one of $trustedProxies,
-     * else REMOTE_ADDR; null when neither is an address.
+     * else REMOTE_ADDR; null when neither is an address. An IPv4 address written as IPv6 is read as the IPv4
+     * address it is (plain()), before it is judged.
      *
      * @param list<string> $trustedProxies  CIDR ranges (or single addresses) of the site's proxies
      */
     public static function of(ServerRequestInterface $request, array $trustedProxies = [], string $header = self::CLOUDFLARE_HEADER): ?string
     {
         $connection = $request->getServerParams()['REMOTE_ADDR'] ?? null;
-        $connection = is_string($connection) && filter_var($connection, FILTER_VALIDATE_IP) !== false ? $connection : null;
+        $connection = is_string($connection) && filter_var($connection, FILTER_VALIDATE_IP) !== false ? self::plain($connection) : null;
         if ($connection !== null && $header !== '' && self::trusted($connection, $trustedProxies)) {
             $named = trim($request->getHeaderLine($header));
             if (filter_var($named, FILTER_VALIDATE_IP) !== false) {
-                return $named;
+                return self::plain($named);
             }
         }
 
         return $connection;
     }
 
-    /** The bucket the limits count an address in: an IPv4 address whole, an IPv6 address its /64. */
+    /**
+     * An IPv4 address written as IPv6 - ::ffff:203.0.113.9, as a server listening on [::] for both kinds
+     * hands it over (nginx on [::] without ipv6only, PHP's built-in server) - as the IPv4 address it is;
+     * any other address as it is. Without it every IPv4 visitor would share the bucket ::/64, and
+     * Cloudflare's IPv4 ranges would never match.
+     */
+    public static function plain(string $address): string
+    {
+        $packed = @inet_pton($address);
+        if ($packed !== false && strlen($packed) === 16 && str_starts_with($packed, str_repeat("\0", 10) . "\xff\xff")) {
+            return (string) inet_ntop(substr($packed, 12));
+        }
+
+        return $address;
+    }
+
+    /** The bucket the limits count an address in: an IPv4 address whole (one written as IPv6 too), an IPv6 address its /64. */
     public static function bucket(string $address): string
     {
+        $address = self::plain($address);
         if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) === false) {
             return $address;
         }
@@ -84,7 +102,7 @@ final class ClientAddress
     public static function within(string $address, string $range): bool
     {
         [$network, $bits] = array_pad(explode('/', trim($range), 2), 2, null);
-        $packedAddress = @inet_pton($address);
+        $packedAddress = @inet_pton(self::plain($address));
         $packedNetwork = @inet_pton((string) $network);
         if ($packedAddress === false || $packedNetwork === false || strlen($packedAddress) !== strlen($packedNetwork)) {
             return false;

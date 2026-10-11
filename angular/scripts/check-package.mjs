@@ -76,7 +76,7 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * on lazy routes or loaded as they are opened.
  *
  * error-report (0.5.0): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
- * so on every first page (2.7, its scrubbing's patterns most of it; 2.0 minified in a first load).
+ * so on every first page (2.8 at 0.5.0, its scrubbing's patterns most of it; 2.1 minified in a first load).
  */
 const LIMITS = {
     [CORE]: 15,

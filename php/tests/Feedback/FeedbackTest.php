@@ -7,6 +7,7 @@ namespace Anotoki\Lib\Tests\Feedback;
 use Anotoki\Lib\Admin\AdminContext;
 use Anotoki\Lib\Admin\Schema;
 use Anotoki\Lib\Audit\AuditLog;
+use Anotoki\Lib\ErrorLog\ErrorLog;
 use Anotoki\Lib\Feedback\Feedback;
 use Anotoki\Lib\Feedback\Http\FeedbackRoutes;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
@@ -167,6 +168,12 @@ final class FeedbackTest extends DatabaseTestCase
         $this->post($app, ['kind' => 'idea', 'message' => 'mine'], person: ['id' => 42]);
         self::assertSame([hash_hmac('sha256', 'account:42', self::KEY)], array_keys($this->limits()['accounts']));
 
+        // A message "without my name" is counted as a visitor's, by its address: nothing in the count - a keyed hash
+        // and a time - ties it to the account.
+        $this->post($app, ['kind' => 'idea', 'message' => 'secretly', 'anonymous' => true], person: ['id' => 7], address: '198.51.100.6');
+        self::assertSame([hash_hmac('sha256', 'account:42', self::KEY)], array_keys($this->limits()['accounts']), 'no hash of account 7');
+        self::assertContains(hash_hmac('sha256', '198.51.100.6', self::KEY), array_keys($this->limits()['visitors']));
+
         // A day later the times are gone with the next message: the count holds that message's alone.
         $this->ageLimits(86401);
         $this->post($app, ['kind' => 'idea', 'message' => 'three'], address: '198.51.100.5');
@@ -174,27 +181,44 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame([], $this->limits()['accounts']);
     }
 
-    public function testSignedInSendersNeverSpendTheVisitorsBudget(): void
+    public function testSignedInSendersNeverSpendTheVisitorsBudgetAndHaveADayOfTheirOwn(): void
     {
-        $app = $this->app(['limits' => ['perHour' => 3, 'perDay' => 10, 'allPerDay' => 2]]);
+        $app = $this->app(['limits' => ['perHour' => 2, 'perDay' => 10, 'allPerDay' => 3]]);
 
         // A few networks spend the visitors' budget for the day.
-        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'a'], address: '2001:db8:1::1')->getStatusCode());
-        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'b'], address: '2001:db8:2::1')->getStatusCode());
-        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'c'], address: '2001:db8:3::1')->getStatusCode(), 'the visitors\' budget is spent');
+        foreach (['2001:db8:1::1', '2001:db8:2::1', '2001:db8:3::1'] as $network) {
+            self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => $network], address: $network)->getStatusCode());
+        }
+        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'one more'], address: '2001:db8:4::1')->getStatusCode(), 'the visitors\' budget is spent');
+        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'anonymously', 'anonymous' => true], person: ['id' => 42], address: '2001:db8:5::1')->getStatusCode(), '"without my name" is a visitor\'s message, counted with theirs');
 
-        // People with an account are counted by it, never against the visitors' budget - signed in "without my name" too.
-        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'd'], person: ['id' => 42], address: '2001:db8:3::1')->getStatusCode());
-        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'e', 'anonymous' => true], person: ['id' => 42])->getStatusCode());
-        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'f'], person: ['id' => 7])->getStatusCode());
-        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'g'], person: ['id' => 42])->getStatusCode());
-        $own = $this->post($app, ['kind' => 'idea', 'message' => 'h'], person: ['id' => 42]);
-        self::assertSame([429, 'too_many'], [$own->getStatusCode(), $this->json($own)['code']], 'their own limit, three an hour here');
-        self::assertSame([null, null], $this->pdo->query("SELECT user_id, contact_email FROM anotoki_feedback WHERE message = 'e'")->fetch(PDO::FETCH_NUM), 'counted by the account, kept without it');
+        // People with an account are counted by it, in a day of their own that the visitors' spent budget leaves be.
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'd'], person: ['id' => 42], address: '2001:db8:4::1')->getStatusCode());
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'e'], person: ['id' => 42])->getStatusCode());
+        $own = $this->post($app, ['kind' => 'idea', 'message' => 'f'], person: ['id' => 42]);
+        self::assertSame([429, 'too_many'], [$own->getStatusCode(), $this->json($own)['code']], 'their own limit, two an hour here');
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'g'], person: ['id' => 7])->getStatusCode());
+        $together = $this->post($app, ['kind' => 'idea', 'message' => 'h'], person: ['id' => 9]);
+        self::assertSame(429, $together->getStatusCode(), 'the people signed in have a day\'s budget together too: many accounts are not many days');
+        self::assertStringContainsString('tomorrow', $this->json($together)['message']);
+        self::assertSame(['d', 'e', 'g'], $this->pdo->query('SELECT message FROM anotoki_feedback WHERE user_id IS NOT NULL ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
 
         // A count 0.4.1 wrote (`sent`) is read as the visitors'.
-        file_put_contents($this->path('storage/' . Feedback::LIMITS_FILE), (string) json_encode(['v' => 1, 'sent' => [hash_hmac('sha256', '198.51.100.20', self::KEY) => [time() - 60, time() - 30]]]));
-        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'i'], address: '198.51.100.21')->getStatusCode(), 'two visitors already today');
+        file_put_contents($this->path('storage/' . Feedback::LIMITS_FILE), (string) json_encode(['v' => 1, 'sent' => [hash_hmac('sha256', '198.51.100.20', self::KEY) => [time() - 90, time() - 60, time() - 30]]]));
+        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'i'], address: '198.51.100.21')->getStatusCode(), 'three visitors already today');
+    }
+
+    public function testACountThatCannotBeKeptIsAFailureTheErrorLogWrites(): void
+    {
+        $app = $this->app();
+        // Something in the limits file's place: it cannot be opened, so nothing can be counted.
+        mkdir($this->path('storage/' . Feedback::LIMITS_FILE), 0700, true);
+
+        $refused = $this->post($app, ['kind' => 'idea', 'message' => 'x']);
+
+        self::assertSame([503, 'storage_unavailable'], [$refused->getStatusCode(), $this->json($refused)['code']]);
+        self::assertNotContains('storage_unavailable', ErrorLog::EXPECTED_CODES, 'a failure the error log writes - feature_unavailable, a state, it leaves out');
+        self::assertSame(0, (int) $this->value('SELECT count(*) FROM anotoki_feedback'));
     }
 
     public function testFeedbackNeedsTheStorageFolderToCountIn(): void

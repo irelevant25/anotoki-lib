@@ -1767,10 +1767,11 @@ Where a request comes from is one rule wherever the library reads it
 `REMOTE_ADDR`, or - only on a connection from one of `trustedProxies` - the
 address its `clientHeader` names (Cloudflare's `CF-Connecting-IP`;
 `ClientAddress::CLOUDFLARE` holds Cloudflare's published ranges). A header from
-anybody else is never believed, and `X-Forwarded-For` never read. The limits
-count an IPv4 address whole and an IPv6 address by its /64, and what is kept
-of it is a keyed HMAC (the error log's `client`, the feedback's limits), never
-the address. Without `trustedProxies` the visitors behind Cloudflare share the
+anybody else is never believed, and `X-Forwarded-For` never read. An IPv4
+address written as IPv6 (`::ffff:203.0.113.9`, from a server listening on `[::]`
+for both) is read as the IPv4 address it is. The limits count an IPv4 address
+whole and an IPv6 address by its /64, and what is kept of it is a keyed HMAC
+(the error log's `client`, the feedback's limits), never the address. Without `trustedProxies` the visitors behind Cloudflare share the
 edge's bucket: stricter, never looser. `names` gives the people's names by id -
 a backup's maker (`created_by_name`), the audit log's and the feedback's people
 where their routes get no lookup of their own; an id it does not know has none,
@@ -1901,9 +1902,9 @@ AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): 
   every map. While the table is missing (or `ready` says not yet) entries wait
   in the pending file and go in, with their own times, at `flushPending()` -
   after every Apply - or with the next entry written outside a transaction. A
-  flush sets the file aside under its lock before it inserts, and never inserts
-  an entry that is in already: one killed after its commit puts nothing in
-  twice.
+  flush reads and empties the file under the lock its writers take too (an
+  entry written meanwhile waits, and lands in it after), and never inserts an
+  entry that is in already: one killed after its commit puts nothing in twice.
 - `AuditContextMiddleware::fromRequest($audit, fn ($request) => ['actor' => ..., 'session' => ...])`
   (inside the site's sign-in check) or `begin()`/`end()` hold who acts, so deep
   code records with `recordHere()`; `withScope('characters', 42, fn () => ...)`
@@ -1954,10 +1955,15 @@ FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, 
   one (the owner's decision). The limits count apart, in
   `storage/cache/anotoki-feedback-limits.json` (`0600`) under its lock: a
   signed-in sender by their account, a visitor by their address bucket - a
-  keyed HMAC of each, and when - `perHour` and `perDay` for each; `allPerDay`
-  is the visitors' alone, so a few IPv6 /64s cannot use up the messages of the
-  people signed in (0.5.0). Never in the database, so never in a backup, each
-  time gone a day later.
+  keyed HMAC of each, and when - `perHour` and `perDay` for each, and
+  `allPerDay` for the visitors together and, apart, for the people signed in
+  together: a few IPv6 /64s cannot use up the messages of the people signed in,
+  nor many accounts a day's worth each (0.5.0). A message "without my name" is
+  counted as a visitor's, by its address bucket: nothing in the count ties it
+  to the account. Never in the database, so never in a backup, each time gone a
+  day later. A count that cannot be kept answers `503 storage_unavailable` - a
+  failure the error log writes, where `feature_unavailable` (no table yet) is a
+  state it leaves out.
 - The admin side: `GET $base` (`kind`, `status`, `section`, `search`, `page`),
   `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
   `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited; a delete with
@@ -2026,8 +2032,13 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   `storage/anotoki-lib.key`. A file dropped into the folder, or changed since,
   is listed (`sealed: false`) and refused (`422 archive_invalid`): it is
   restored offline (`--extract`). A plain backup made before 0.5.0 has no seal:
-  offline too. Every file of the backups is written `0600`, every folder
-  `0700`, as every folder the tools guard.
+  offline too. Every file of the backups is written `0600` before a byte is in
+  it, every folder `0700`, as every folder the tools guard and the
+  installation's key. Where PHP runs as the web server's own user (not the FTP
+  account's, as under PHP-FPM or suEXEC), those modes keep the FTP account out
+  of `storage/backups` too: to take a backup off the server for a restore
+  offline, download it from the Backups page, or have the host's panel (or
+  `chmod` from PHP's own user) open the folder first.
 - Kinds and keeping: `daily` (14), `before-migration` (5, once per list of
   pending files; a backup that fails stops the Apply), `before-restore` (5),
   `manual` (until deleted; `stale` after 90 days). Only files of these names
@@ -2252,14 +2263,17 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   console as Angular's own has it, and is reported to `ErrorLogRoutes::client()`
   through the app's `HttpClient` - the site's interceptors add what its writes
   carry (the IAM's `X-IAM-Request`), never a way around them. The request
-  carries `ANOTOKI_ERROR_REPORT` in its context, for an interceptor that should
-  leave it be (no sign-in redirect for a report).
+  carries `ANOTOKI_ERROR_REPORT` in its context: an interceptor skips its error
+  handling for it (no sign-in redirect for a report) - never its headers, which
+  are what let the report in.
 - Scrubbed before it leaves the page (`describeError()`, `scrubText()`): the
   page's path alone, a segment that looks like an address or a code replaced;
   never a query or a fragment (a frame keeps its line and column); no value the
   page keeps in localStorage, sessionStorage or a cookie (`storedValues()`); no
   token, `password=`-like secret or address. A value thrown that is no Error is
-  named by its kind, never written out. The server redacts it all again.
+  named by its kind, never written out. A message, a frame and the path are cut
+  to what a report keeps before they are scrubbed, so a megabyte of them costs
+  no more than a line. The server redacts it all again.
 - At most `perPage` reports a page load, each error once; never an HTTP failure
   (the server writes its own, and a visitor's network is not the site's), never
   an error raised while a report is made, never the report's own failure; a

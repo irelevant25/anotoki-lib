@@ -105,8 +105,7 @@ final class AuditLogTest extends DatabaseTestCase
         self::assertSame([5, null], array_column($rows, 'actor_id'));
         self::assertSame(['count' => 3], json_decode((string) $rows[0]['details'], true));
         self::assertTrue($rows[0]['earlier'], 'with the time it was recorded');
-        self::assertFileDoesNotExist($pending, 'set aside, put in, gone');
-        self::assertFileDoesNotExist($pending . '.flushing');
+        self::assertSame('', file_get_contents($pending), 'put in, and the file emptied');
         self::assertSame([], $this->errors);
     }
 
@@ -119,21 +118,42 @@ final class AuditLogTest extends DatabaseTestCase
             ['created_at' => '2026-10-07T10:00:00.123456Z', 'actor_id' => 3, 'action' => 'first.entry', 'target_type' => 'user', 'target_id' => '9', 'details' => null],
             ['created_at' => '2026-10-07T10:00:01.000001Z', 'actor_id' => null, 'action' => 'second.entry', 'details' => '{"n":2}'],
         ];
-        // A flush set the file aside, put both in and committed - and its process was killed before the file went.
-        file_put_contents($pending . '.flushing', implode("\n", array_map('json_encode', $lines)) . "\n");
+        // A flush put both in and committed - and its process was killed before it emptied the file.
+        file_put_contents($pending, implode("\n", array_map('json_encode', $lines)) . "\n");
         $audit = $this->audit(['pendingFile' => $pending]);
         foreach ($lines as $line) {
             $this->pdo->prepare('INSERT INTO anotoki_audit_log (created_at, actor_id, action, target_type, target_id, details) VALUES (CAST(? AS timestamptz), ?, ?, ?, ?, CAST(? AS jsonb))')
                 ->execute([$line['created_at'], $line['actor_id'], $line['action'], $line['target_type'] ?? null, $line['target_id'] ?? null, $line['details']]);
         }
-        // Meanwhile a new entry waits in a new file.
-        file_put_contents($pending, json_encode(['created_at' => '2026-10-07T10:05:00.000000Z', 'actor_id' => 4, 'action' => 'third.entry', 'details' => null]) . "\n");
+        // Meanwhile a new entry waits after them.
+        file_put_contents($pending, json_encode(['created_at' => '2026-10-07T10:05:00.000000Z', 'actor_id' => 4, 'action' => 'third.entry', 'details' => null]) . "\n", FILE_APPEND);
 
-        self::assertSame(0, $audit->flushPending(), 'the file set aside: both in already, none twice');
-        self::assertFileDoesNotExist($pending . '.flushing');
-        self::assertSame(1, $audit->flushPending(), 'and then the new file');
+        self::assertSame(1, $audit->flushPending(), 'the two in already go in no second time; the new one goes in');
         self::assertSame(['first.entry', 'second.entry', 'third.entry'], $this->pdo->query('SELECT action FROM anotoki_audit_log ORDER BY created_at')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertFileDoesNotExist($pending);
+        self::assertSame('', file_get_contents($pending));
+        self::assertSame(0, $audit->flushPending());
+    }
+
+    public function testAnEntryWrittenWhileAFlushRunsIsNeverLost(): void
+    {
+        $this->applyAdminSet();
+        $pending = $this->path('logs/audit-pending.jsonl');
+        mkdir(dirname($pending), 0777, true);
+        file_put_contents($pending, json_encode(['created_at' => '2026-10-07T10:00:00.000000Z', 'actor_id' => 3, 'action' => 'first.entry', 'details' => null]) . "\n");
+        $audit = $this->audit(['pendingFile' => $pending]);
+
+        // A request opened the file to append to it just before the flush took its lock (keepPending: open, lock,
+        // write) - it waits, and writes once the flush is done.
+        $writer = fopen($pending, 'ab');
+        self::assertIsResource($writer);
+        self::assertSame(1, $audit->flushPending());
+        flock($writer, LOCK_EX);
+        fwrite($writer, json_encode(['created_at' => '2026-10-07T10:00:05.000000Z', 'actor_id' => 4, 'action' => 'late.entry', 'details' => null]) . "\n");
+        flock($writer, LOCK_UN);
+        fclose($writer);
+
+        self::assertSame(1, $audit->flushPending(), 'written into the file the flush keeps - never into one set aside and gone');
+        self::assertSame(['first.entry', 'late.entry'], $this->pdo->query('SELECT action FROM anotoki_audit_log ORDER BY created_at')->fetchAll(PDO::FETCH_COLUMN));
     }
 
     public function testAnEntryThatCameLateGoesInWithTheNextOneOutsideATransaction(): void
@@ -147,7 +167,7 @@ final class AuditLogTest extends DatabaseTestCase
         $audit->record(null, 4, 'next.entry');
 
         self::assertSame(['late.entry', 'next.entry'], $this->pdo->query('SELECT action FROM anotoki_audit_log ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertFileDoesNotExist($pending);
+        self::assertSame('', file_get_contents($pending));
     }
 
     public function testTheSiteMayKeepEntriesWaitingWhileItsOwnMoveIsPending(): void

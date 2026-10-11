@@ -72,6 +72,8 @@ final class Keys
                 // 'x': made by exactly one process; the others find it there and read it.
                 $handle = @fopen($file, 'x');
                 if ($handle !== false) {
+                    // The site's own user's alone before the key is in it: never readable under the umask's 0644.
+                    @chmod($file, 0600);
                     $made = bin2hex(random_bytes(32)) . "\n";
                     $locked = flock($handle, LOCK_EX);
                     $written = fwrite($handle, $made) === strlen($made);
@@ -80,7 +82,6 @@ final class Keys
                         flock($handle, LOCK_UN);
                     }
                     fclose($handle);
-                    @chmod($file, 0600);
                     if (!$written) {
                         @unlink($file);
                         break;

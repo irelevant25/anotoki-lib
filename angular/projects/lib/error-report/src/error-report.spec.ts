@@ -140,6 +140,24 @@ describe("provideAnotokiErrorReport(): the browser's errors in the site's error 
     expect(new TextEncoder().encode(JSON.stringify(report)).length).toBeLessThanOrEqual(7 * 1024);
   });
 
+  it('reads a huge message, stack or path no further than a report keeps: never slow, never the tab frozen', () => {
+    // Runs a rule could take time on that grows with the square of their length: dots between letters, no "://".
+    const run = 'a.'.repeat(500_000);
+    const huge = new Error(`Failed ${run}`);
+    huge.stack = `Error: ${huge.message}\n    at f (https://site.example/main.js?${'b.'.repeat(500_000)}:1:2)\n    at g (https://site.example/main.js:3:4)`;
+
+    const started = performance.now();
+    const report = describeError(huge, ['stored-value-1'], `/${run}`);
+    const scrubbed = scrubText(run);
+    const took = performance.now() - started;
+
+    expect(took).toBeLessThan(500);
+    expect(report.stack).toEqual(['at f (https://site.example/main.js', 'at g (https://site.example/main.js:3:4)']);
+    expect(Array.from(report.message).length).toBeLessThanOrEqual(1000);
+    expect(report.page.length).toBeLessThanOrEqual(200);
+    expect(scrubbed.length).toBe(4096);
+  });
+
   it('scrubs as the server does: secrets by name, a Bearer credential, a long token, a query - the line and column kept', () => {
     expect(scrubText('password=hunter2&next=/ token: "s3cr3t" cookie=a1b2')).toBe('password={…}&next=/ token: {…} cookie={…}');
     expect(scrubText('sent Bearer abcdefghijklmnop')).toBe('sent Bearer {…}');

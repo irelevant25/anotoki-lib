@@ -25,7 +25,8 @@ export const ANOTOKI_ERROR_REPORT_CONFIG = new InjectionToken<AnotokiErrorReport
 
 /**
  * Set on the reporter's own request, for a site's interceptors: a report is no request to retry, to sign in again
- * for, or to show a failure of - `if (request.context.get(ANOTOKI_ERROR_REPORT)) return next(request);`.
+ * for, or to show a failure of. Skip your error handling for it - never your headers: the CSRF header (the IAM's
+ * X-IAM-Request) is what lets the report in. `request.context.get(ANOTOKI_ERROR_REPORT)` says which it is.
  */
 export const ANOTOKI_ERROR_REPORT = /* @__PURE__ */ new HttpContextToken<boolean>(() => false);
 
@@ -39,6 +40,8 @@ const FRAMES = 12;
 const BODY_LIMIT = 7168;
 /** A stored value shorter than this is a word ("dark", "en"), not something to take out of a message. */
 const STORED_MIN = 8;
+/** The most of a text scrubText() reads (the server's Redactor::TEXT_LIMIT). */
+const TEXT_LIMIT = 4096;
 
 /**
  * The browser's errors, reported: every error goes to the console as Angular's own ErrorHandler has it, and is
@@ -150,18 +153,20 @@ export function describeError(error: unknown, stored: readonly string[] = [], pa
   }
 
   // A frame as the browsers write one - "at f (url:1:2)", "f@url:1:2", "global code@url:1:2" - never the stack's
-  // first line, which repeats the message (and a message's later lines with it).
-  const frames = stack
-    .split('\n')
-    .map((line) => line.trim())
+  // first line, which repeats the message (and a message's later lines with it). Everything is cut to what a report
+  // keeps (or a little more) BEFORE it is scrubbed: a rule run over a megabyte would freeze the page.
+  const header = message === '' ? type : `${type}: ${message}`;
+  const frames = (stack.startsWith(header) ? stack.slice(header.length) : stack)
+    .split('\n', 100)
+    .map((line) => line.slice(0, FRAME_LIMIT * 2).trim())
     .filter((line) => /^at\s|^[^@]*@\S*:\d+(?::\d+)?$/.test(line))
     .slice(0, FRAMES)
     .map((line) => cut(scrubText(line, stored), FRAME_LIMIT));
 
   const report: ErrorReport = {
     type,
-    message: cut(scrubText(cut(message, MESSAGE_LIMIT * 4), stored), MESSAGE_LIMIT) || '(no message)',
-    page: scrubPath(path, stored),
+    message: cut(scrubText(message.slice(0, MESSAGE_LIMIT * 2), stored), MESSAGE_LIMIT) || '(no message)',
+    page: scrubPath(path.slice(0, FRAME_LIMIT * 4), stored),
     stack: frames,
   };
   const size = (each: ErrorReport): number => new TextEncoder().encode(JSON.stringify(each)).length;
@@ -178,9 +183,11 @@ export function describeError(error: unknown, stored: readonly string[] = [], pa
  * A text with what could be somebody's or a secret taken out, as the server's Redactor does (it does so again):
  * every value the page keeps in its storage and its cookies, a URL's query and fragment (its line and column
  * kept), a token (a JWT, a Bearer credential, a long run of letters and digits), name=value secrets, an address.
+ * At most its first 4,096 characters are read, as the server's: some rules take time that grows with the square
+ * of what they read.
  */
 export function scrubText(text: string, stored: readonly string[] = []): string {
-  let out = text;
+  let out = text.slice(0, TEXT_LIMIT);
   for (const value of stored) {
     out = out.split(value).join('{stored}');
   }

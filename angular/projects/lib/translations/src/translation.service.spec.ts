@@ -2,7 +2,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { LIBRARY_WORDS } from '@anotoki/lib/ui';
+import { LIBRARY_WORDS } from '@anotoki/lib/words';
 import { ANOTOKI_TRANSLATION_BUNDLE, DEFAULT_WAITS, provideAnotokiTranslations } from './config';
 import { addressLanguage, bundleFrom, fillPlaceholders, isAdminArea, languageCandidates, pickLanguage } from './language';
 import { TranslationBundle } from './models';

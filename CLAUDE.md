@@ -7,7 +7,8 @@ package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
-`auth`, `auth/testing`; the Sass module `styles/`). `README.md` says how a site
+`auth`, `auth/testing`, and the generated `words`, `words/<namespace>`; the Sass
+module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
 
@@ -27,8 +28,9 @@ bun run build           # ng build lib -> angular/dist/lib, then scripts/check-p
                         # floors, first loads - through Angular's own linker and esbuild)
 bun run test            # ng test lib --watch=false (Vitest + jsdom)
 bun run showcase        # projects/showcase on :4320 - every piece, from the source; never published
-bun run words           # ui/config/src/library-words.ts from php/resources/library-words.json (--check, in CI;
-                        # a spec fails when stale)
+bun run words           # the library's words from php/resources/library-words.json, a namespace at a time:
+                        # ui/config/src/library-words.ts (the kit's), words/<namespace>/, words/ (--check, in CI;
+                        # a spec and LibraryWordsTest fail when stale)
 ```
 
 ## Conventions
@@ -44,12 +46,15 @@ bun run words           # ui/config/src/library-words.ts from php/resources/libr
   in for `en` and `sk` (Slovak informal, "ty") and overridable per language. The
   library's words (`anotoki.*`) have one source, `php/resources/library-words.json`:
   the SQL of `anotoki_translations` is held to it by a test, and the Angular half's
-  `ui/config/src/library-words.ts` is generated from it (`bun run words`; prettier
-  leaves it alone) - the kit's words (`ui/config/src/words.ts`, read through
-  `AnotokiWords`), the status page's and the sign-in page's (`auth/src/words.ts`)
-  come from there; a new one is a JSON entry and a new library migration
-  (`anotoki_translations/003` brought `anotoki.signIn.*`; released files are never
-  edited). Names (a site's sections, brand area) are never kit words.
+  built-in words are generated from it a namespace at a time (`bun run words`;
+  prettier leaves them alone): the kit's namespaces into `ui/config/src/library-words.ts`
+  (read through `AnotokiWords`), every other module's into `@anotoki/lib/words/<namespace>`
+  - imported by that module alone (the status page's, the sign-in page's) - and
+  `@anotoki/lib/words` gathers them for the translations module. A new one is a
+  JSON entry and a new library migration (`anotoki_translations/003` brought
+  `anotoki.signIn.*`; released files are never edited); a module's new words are a
+  namespace of its own, never the kit's - no first load of the kit carries them.
+  Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says
@@ -81,8 +86,10 @@ bun run words           # ui/config/src/library-words.ts from php/resources/libr
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
   limits, every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces
-  and `migrations`) and to an empty floor, and the first loads of the gate, the
-  bar, the words, a button and the sign-in to theirs.
+  and `migrations`; a `words/<namespace>` is imported by its module and `words`
+  alone) and to an empty floor, and the first loads of the gate, the bar, the
+  words, a button and the sign-in to their limits and to the namespaces of words
+  their pages say.
 - No composer.lock (a library); nothing sensitive in a file; never print a
   database password.
 - **Signing in** (auth): the IAM's rules do not loosen here - RS256 and `typ`

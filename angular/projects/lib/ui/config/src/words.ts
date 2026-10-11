@@ -1,4 +1,4 @@
-import { LIBRARY_WORDS, LibraryKey } from './library-words';
+import { KIT_LIBRARY_WORDS, KitLibraryKey } from './library-words';
 
 /**
  * Every word the kit itself says (the toast region's name, "optional", the bar's
@@ -9,8 +9,9 @@ import { LIBRARY_WORDS, LibraryKey } from './library-words';
  *
  * They are the library's words under the kit's namespaces - `anotoki.ui.*`,
  * `anotoki.topbar.*`, `anotoki.language.*`, `anotoki.theme.*` - read from the
- * one table generated from php/resources/library-words.json (library-words.ts),
- * never copied by hand.
+ * kit's table generated from php/resources/library-words.json (library-words.ts:
+ * the kit's namespaces alone - every other module's words are in an entry point
+ * of their own, so no first load of the kit carries them), never copied by hand.
  *
  * Names are never kit words: a site's sections, brand area and "Back to ..."
  * are the site's own, passed in as they read.
@@ -20,16 +21,11 @@ import { LIBRARY_WORDS, LibraryKey } from './library-words';
  * the one AnotokiWords.t().
  */
 
-/** The namespaces of the library's words that are the kit's own; the others belong to other modules (siteStatus: the migrations module's status page). */
-const KIT_NAMESPACES = ['ui', 'topbar', 'language', 'theme'] as const;
-
-type KitNamespace = (typeof KIT_NAMESPACES)[number];
-
-/** A library key's kit word, or nothing: `anotoki.ui.close` -> `ui.close`. */
-type KitWord<Key> = Key extends `anotoki.${infer Word}` ? (Word extends `${KitNamespace}.${string}` ? Word : never) : never;
+/** A library key of the kit's, as the kit names it: `anotoki.ui.close` -> `ui.close`. */
+type KitWord<Key> = Key extends `anotoki.${infer Word}` ? Word : never;
 
 /** A word the kit says. */
-export type AnotokiWordKey = KitWord<LibraryKey>;
+export type AnotokiWordKey = KitWord<KitLibraryKey>;
 
 /** Words for some of the keys, in one language. */
 export type AnotokiWordTable = Readonly<Partial<Record<AnotokiWordKey, string>>>;
@@ -39,11 +35,8 @@ const PREFIX = 'anotoki.';
 /** The kit's words of one language, by the kit's own names. */
 function kitWords(language: 'en' | 'sk'): Readonly<Record<AnotokiWordKey, string>> {
   const words: Record<string, string> = {};
-  for (const [key, word] of Object.entries(LIBRARY_WORDS[language])) {
-    const name = key.slice(PREFIX.length);
-    if ((KIT_NAMESPACES as readonly string[]).includes(name.split('.')[0])) {
-      words[name] = word;
-    }
+  for (const [key, word] of Object.entries(KIT_LIBRARY_WORDS[language])) {
+    words[key.slice(PREFIX.length)] = word;
   }
   return words as Record<AnotokiWordKey, string>;
 }

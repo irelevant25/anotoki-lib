@@ -195,7 +195,7 @@ uses is in the first load again.
 | --- | --- | --- |
 | `@anotoki/lib/styles` | Sass: the tokens (one palette, light and dark), Manrope, the base, utilities, tables | the site's `styles.scss` |
 | `@anotoki/lib/ui` | re-exports the core's pieces below, nothing of its own | - |
-| `@anotoki/lib/ui/config` | `provideAnotokiUi`, `AnotokiWords`, the kit's words and the library's (`LIBRARY_WORDS`) | yes |
+| `@anotoki/lib/ui/config` | `provideAnotokiUi`, `AnotokiWords`, the kit's words (`KIT_LIBRARY_WORDS`), every library key's name (`LibraryKey`) | yes |
 | `@anotoki/lib/ui/icon`, `/dom` | `<anotoki-icon>`, `AnotokiIcons` and the kit's own icons; `uniqueId`, `keepOnScreen`, `mediaQuery`, `tabbable`, `isShown` | yes (the bar) |
 | `@anotoki/lib/ui/button`, `/spinner` | the button, the spinner | yes (the status page) |
 | `@anotoki/lib/ui/badge`, `/alert`, `/card`, `/empty-state`, `/error-state`, `/page-header`, `/avatar`, `/segmented`, `/autofocus` | one piece each | where a first page uses it |
@@ -213,6 +213,8 @@ uses is in the first load again.
 | `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
 | `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page ("Auth" below) | yes (every page of a site that signs in) |
 | `@anotoki/lib/auth/testing` (0.4.0) | `provideTestAnotokiAuth()`, `FakeAuthClient`: the module without an IAM, for a site's specs | a site's specs |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's) | with its module, which alone imports it |
+| `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | with the translations module |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
 `--anotoki-*` custom properties, each read with the family's own value as its
@@ -370,7 +372,8 @@ The keys: `ui.close`, `ui.dismiss`, `ui.notifications`, `ui.cancel`,
 `theme.autoHint`, `theme.notSaved` - the library's words under the namespaces
 `anotoki.ui|topbar|language|theme.*`, English and Slovak generated from
 `php/resources/library-words.json` ("The library's own words" below;
-`LIBRARY_WORDS` has every one). A site words its own menu items with them too:
+`KIT_LIBRARY_WORDS` has them by their library keys, `@anotoki/lib/words`'
+`LIBRARY_WORDS` every module's). A site words its own menu items with them too:
 `words.t('topbar.account')` is "Tvoj anotoki účet" in Slovak.
 
 **Icons** - `<anotoki-icon name="..." [size] [strokeWidth] [filled] [label]>`
@@ -632,8 +635,9 @@ of the Migrations page; everything else is new.
    building: `@anotoki/lib/ui` re-exports every piece. For the smaller first
    load a site imports each piece from its own entry point - in every file its
    first page loads, best everywhere: `provideAnotokiUi`, `AnotokiWords`,
-   `ANOTOKI_UI_CONFIG`, `ANOTOKI_ICONS`, `LIBRARY_WORDS`, `BUILT_IN_WORDS`,
-   `fillWords` and the words' types from `@anotoki/lib/ui/config`;
+   `ANOTOKI_UI_CONFIG`, `ANOTOKI_ICONS`, `LIBRARY_WORDS` (0.4.0:
+   `@anotoki/lib/words`'), `BUILT_IN_WORDS`, `fillWords` and the words' types
+   from `@anotoki/lib/ui/config`;
    `IconComponent`, `AnotokiIcons`, `KIT_ICONS`, `circle`, `rect` from
    `@anotoki/lib/ui/icon`; `uniqueId`, `keepOnScreen`, `mediaQuery`,
    `tabbable`, `isShown` from `@anotoki/lib/ui/dom`; each component from its own
@@ -662,6 +666,19 @@ of the Migrations page; everything else is new.
    the mark's light outline in dark are back (0.2.0 wrote them as `(…,)`, which
    no property takes) - by themselves; the IAM's account pages give their frame
    its 88rem: `<anotoki-shell maxWidth="88rem">`.
+
+## Upgrading from 0.3.x (0.4.0, unreleased)
+
+1. **The library's words, a namespace at a time.** `LIBRARY_WORDS` (every
+   library word) is `@anotoki/lib/words`' now, no longer `@anotoki/lib/ui/config`'s
+   or `@anotoki/lib/ui`'s: a site that imports it changes the import (none is
+   known to). `LibraryKey` stays in `@anotoki/lib/ui/config`, every key's name as
+   before (the build analyzer's `WordKey` reads it); the kit's own share is
+   `KIT_LIBRARY_WORDS` there. The kit's first loads no longer carry the status
+   page's words, nor any other module's ("The library's own words").
+2. A site on the translations module applies `anotoki_translations/003` (the
+   sign-in page's words) as any migration; the modules 0.4.0 brings are taken
+   when the site adopts them ("Auth", "People", "Admin tools").
 
 ## Translations (0.3.0)
 
@@ -815,18 +832,31 @@ library's migrations write on a new database to it. A new library string is an
 entry there and a new library migration; a rewording of a released one is a
 migration that changes it only where it still has the earlier words. The
 Angular half reads the same file and keeps no copy by hand: `bun run words`
-(`angular/scripts/library-words.mjs`) generates its built-in words,
-`angular/projects/lib/ui/config/src/library-words.ts` (committed; `LIBRARY_WORDS`
-of `@anotoki/lib/ui/config`) - the kit reads its own from there, the status page
-its `siteStatus.*`, the sign-in page its `signIn.*`, the translations module
-every one - and a spec (`library-words.spec.ts`), CI (`bun run words --check`)
-and the PHP half's `LibraryWordsTest` fail when that file is stale (prettier
-leaves it alone: `bun run format` would rewrite what `--check` holds byte for
-byte). So a page has the library's words while the database cannot be reached,
-and never shows a library key as a key. They are in a site's first load once,
-in `ui/config` - every module's words, one table: each word a module adds
-weighs on every first load that holds the kit (the sign-in page's eight, 0.3 kB
-gzipped).
+(`angular/scripts/library-words.mjs`) generates its built-in words a namespace
+at a time (`anotoki.<namespace>.<word>`; committed), each where only its readers
+import it:
+
+- the kit's namespaces (`language`, `ui`, `topbar`, `theme`) in
+  `angular/projects/lib/ui/config/src/library-words.ts` - `KIT_LIBRARY_WORDS`
+  and `LibraryKey` (every key's name, a type) of `@anotoki/lib/ui/config`, which
+  the kit reads (`AnotokiWords`);
+- every other namespace in an entry point of its own,
+  `angular/projects/lib/words/<namespace>/` - `@anotoki/lib/words/site-status`
+  (the status page's), `@anotoki/lib/words/sign-in` (the sign-in page's) - which
+  its module alone imports;
+- `@anotoki/lib/words` (`angular/projects/lib/words/`): `LIBRARY_WORDS`, every
+  namespace's, for the translations module.
+
+A spec (`library-words.spec.ts`), CI (`bun run words --check`, which also finds a
+namespace's folder the JSON no longer has) and the PHP half's `LibraryWordsTest`
+fail when a file is stale; prettier leaves them alone (`bun run format` would
+rewrite what `--check` holds byte for byte). So a page has the library's words
+while the database cannot be reached, and never shows a library key as a key -
+and a first load carries the words its page says: the kit's (a button, the bar),
+the status page's beside them (the gate), every module's in the translations
+module. A module that brings words brings a namespace, and so an entry point of
+its own: `scripts/check-package.mjs` derives its boundaries, and holds every
+first load to the namespaces its page says (the kit's never carry a module's).
 
 ### The Angular half: `@anotoki/lib/translations`
 
@@ -1206,8 +1236,9 @@ show.
   classes `anotoki-auth-callback__panel`, `__message`, `__actions`; the buttons
   `[data-retry]`, `[data-back]`). Its words are the library's
   `anotoki.signIn.*` (`php/resources/library-words.json`, every site's database
-  through `anotoki_translations/003`): an owner's rewording through `translate`,
-  then the site's `words`, then the built-in English and informal Slovak.
+  through `anotoki_translations/003`, built in from `@anotoki/lib/words/sign-in`):
+  an owner's rewording through `translate`, then the site's `words`, then the
+  built-in English and informal Slovak.
 - `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth({user, roles,
   loginRequired, visitors, cookie})` and `FakeAuthClient` for a site's specs
   (then `await TestBed.inject(AnotokiAuth).init()`).

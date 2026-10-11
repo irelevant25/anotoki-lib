@@ -1,4 +1,4 @@
-import { LIBRARY_WORDS } from '@anotoki/lib/ui/config';
+import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 import { SiteStatusWords } from './config';
 
 /** The status page's words, each the library's word `anotoki.siteStatus.<name>`. */
@@ -15,14 +15,15 @@ const NAMES = [
 ] as const satisfies readonly (keyof SiteStatusWords)[];
 
 function builtIn(language: 'en' | 'sk'): SiteStatusWords {
-  return Object.fromEntries(NAMES.map((name) => [name, LIBRARY_WORDS[language][`anotoki.siteStatus.${name}`]])) as unknown as SiteStatusWords;
+  return Object.fromEntries(NAMES.map((name) => [name, SITE_STATUS_LIBRARY_WORDS[language][`anotoki.siteStatus.${name}`]])) as unknown as SiteStatusWords;
 }
 
 /**
  * The visitors' words, built in: the library's words `anotoki.siteStatus.*`
- * (generated from php/resources/library-words.json - every site's database
- * holds them too, where its owner may reword them). The administrators' words
- * are English only, in the templates.
+ * (@anotoki/lib/words/site-status, generated from
+ * php/resources/library-words.json - every site's database holds them too,
+ * where its owner may reword them). The administrators' words are English
+ * only, in the templates.
  *
  * The calls are marked pure: a site's build keeps a top-level call it is not
  * told is pure, and with it the library's every word, status page or not.

@@ -1,4 +1,4 @@
-import { LIBRARY_WORDS } from '@anotoki/lib/ui/config';
+import { LIBRARY_WORDS } from '@anotoki/lib/words';
 import { BUILT_IN_WORDS, SIGN_IN_WORD_NAMES, failureText, signInKey, signInWords } from './words';
 
 describe('the words of signing in', () => {

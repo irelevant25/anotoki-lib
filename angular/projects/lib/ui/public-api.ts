@@ -2,8 +2,8 @@
  * @anotoki/lib/ui - the core of the anotoki family's UI kit: configuration and
  * words, icons, buttons, spinner, badge, alert, card, empty and error states,
  * page header, avatar, segmented choice, autofocus, and the DOM helpers - and
- * the library's own words (every `anotoki.*` key, English and Slovak), which
- * the kit, the migrations module and the translations module read.
+ * the library's words of the kit's namespaces (`anotoki.language|ui|topbar|
+ * theme.*`, English and Slovak). Every module's words are @anotoki/lib/words.
  *
  * Re-exports only: each piece is an entry point of its own (@anotoki/lib/ui/button,
  * /spinner, /config, ...), because a site's build places whole files - a whole
@@ -18,8 +18,8 @@
  * /tooltip, /copy, /qr, /icons.
  */
 
-export type { AnotokiUiConfig, AnotokiWordKey, AnotokiWordTable, IconPaths, IconSet, LibraryKey, WordParams } from '@anotoki/lib/ui/config';
-export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, ANOTOKI_WORD_KEYS, AnotokiWords, BUILT_IN_WORDS, LIBRARY_WORDS, fillWords, provideAnotokiUi } from '@anotoki/lib/ui/config';
+export type { AnotokiUiConfig, AnotokiWordKey, AnotokiWordTable, IconPaths, IconSet, KitLibraryKey, LibraryKey, WordParams } from '@anotoki/lib/ui/config';
+export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, ANOTOKI_WORD_KEYS, AnotokiWords, BUILT_IN_WORDS, KIT_LIBRARY_WORDS, fillWords, provideAnotokiUi } from '@anotoki/lib/ui/config';
 export type { KitIconName } from '@anotoki/lib/ui/icon';
 export { AnotokiIcons, IconComponent, KIT_ICONS, circle, rect } from '@anotoki/lib/ui/icon';
 export { isShown, keepOnScreen, mediaQuery, tabbable, uniqueId } from '@anotoki/lib/ui/dom';

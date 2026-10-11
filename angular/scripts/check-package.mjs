@@ -11,6 +11,10 @@
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
 //   Languages pages into the translations module's. The auth module imports the core's pieces and the migrations
 //   module (whether the site is blocked), and nothing imports it but its testing helper.
+// - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
+//   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
+//   alone - and by @anotoki/lib/words, which gathers them all for the translations module. Every first load carries
+//   the words of the namespaces its page says, and no others: a module that brings words never weighs on the kit's.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Floors: an entry point nothing is used of leaves nothing in a site's bundle. A site's build keeps a top-level call
@@ -41,16 +45,16 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
 /**
  * Gzipped kB each eager entry point may weigh - its code, without the comments, which never reach a site's bundle -
  * the core with all its pieces, and the shell with the core together (the spec's "about 25 kB"; 26.3 at 0.2.0, 27.8
- * at 0.3.0 with the kit's own class names; 28.2 at 0.4.0, the library's words in ui/config 0.3 kB more with the sign-in
- * page's eight - every module's visitors' words are there, one table: raised for that alone). Room to grow a little; a
- * limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
+ * at 0.3.0 with the kit's own class names and every library word in ui/config; 27.4 at 0.4.0, ui/config holding the
+ * kit's words alone - each other module's are an entry point of their own, @anotoki/lib/words/<namespace>). Room to
+ * grow a little; a limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
  *
  * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences and the
  * callback page - 14.9 at 0.4.0. Every site that signs in loads it on its first page, as it loads the SDK and its
  * wrappers today.
  */
 const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16 };
-const UI_AND_SHELL = 28.5;
+const UI_AND_SHELL = 28;
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
@@ -82,28 +86,38 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/copy": [...PIECES, "@anotoki/lib/ui/toast"],
     "@anotoki/lib/ui/qr": PIECES,
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
-    "@anotoki/lib/migrations": PIECES,
+    "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
-    "@anotoki/lib/translations": PIECES,
+    "@anotoki/lib/translations": [...PIECES, "@anotoki/lib/words"],
     "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
-    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations"],
+    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/words/sign-in"],
     "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
+    // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
 
+/** The library's words: the kit's namespaces (ui/config's), and where every other module's are. */
+const WORDS = "@anotoki/lib/words";
+const KIT_WORDS = ["language", "ui", "topbar", "theme"];
+
+/** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
+const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][A-Za-z0-9_-]*)\./g)].map((match) => match[1]));
+
 /**
- * A site's first page, what it imports of the package, and the gzipped kB its first load may take of the package
- * beside lazy pages that use every other entry point. "the gate": genshin's and the build analyzer's whole use (the
- * status page, its buttons, the library's words); "the bar": the family's top bar and its theme; "the words": the
- * translations module; "a button": one piece alone; "the sign-in": the gate and the auth module's every eager part,
- * the callback page routed with the first page (it is in the gate's company on every site that signs in).
+ * A site's first page, what it imports of the package, the gzipped kB its first load may take of the package beside
+ * lazy pages that use every other entry point, and the namespaces of the library's words it may carry (null: every
+ * one). "the gate": genshin's and the build analyzer's whole use (the status page, its buttons, the kit's and the
+ * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, which
+ * has every module's words - so a library key is never shown as a key - and is the one first load a module's words
+ * weigh on; "a button": one piece alone; "the sign-in": the gate and the auth module's every eager part, the callback
+ * page routed with the first page (it is in the gate's company on every site that signs in).
  */
 const FIRST_LOADS = [
-    { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9 },
-    { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5 },
-    { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5 },
-    { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5 },
+    { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
+    { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5, words: KIT_WORDS },
+    { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5, words: null },
+    { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5, words: KIT_WORDS },
     {
         title: "the sign-in",
         imports: {
@@ -111,6 +125,7 @@ const FIRST_LOADS = [
             "@anotoki/lib/auth": ["AnotokiAuth", "anotokiAuthInterceptor", "provideAnotokiAuth", "personOrVisitorGuard", "staffGuard", "AccountPreferences", "AuthCallbackComponent"],
         },
         limit: 19.5,
+        words: [...KIT_WORDS, "siteStatus", "signIn"],
     },
 ];
 
@@ -126,6 +141,14 @@ const entries = Object.entries(manifest.exports)
     .filter(([key, value]) => key.startsWith(".") && typeof value === "object" && value?.default?.endsWith(".mjs"))
     .map(([key, value]) => ({ name: "@anotoki/lib" + key.slice(1), file: join(dist, value.default) }));
 const fileOf = new Map(entries.map((entry) => [entry.name, entry.file]));
+
+// A module's own words import nothing; @anotoki/lib/words gathers the kit's (ui/config) and every module's. Known from
+// the package itself, so a namespace the words script adds needs nothing here - only its module's MAY_IMPORT names it.
+const WORD_ENTRIES = entries.map(({ name }) => name).filter((name) => name.startsWith(`${WORDS}/`));
+for (const name of WORD_ENTRIES) {
+    MAY_IMPORT[name] ??= [];
+}
+MAY_IMPORT[WORDS] = ["@anotoki/lib/ui/config", ...WORD_ENTRIES];
 
 const problems = [];
 const rows = [];
@@ -164,6 +187,19 @@ for (const { name, file } of entries) {
 // The core's barrel holds re-exports alone: code of its own would be one more file every first page reaching it takes.
 if (codeOf[CORE].replace(/export\s*\{[^}]*\}\s*from\s*['"][^'"]+['"];?/g, "").trim() !== "") {
     problems.push(`${CORE} holds code of its own: it re-exports the pieces (${CORE}/...), and a piece is an entry point of its own.`);
+}
+
+// The library's words stay with their readers: the kit's file holds the kit's namespaces alone, and each words entry
+// point one namespace - which its module imports, and the kit never does (MAY_IMPORT above).
+const notTheKits = [...namespacesIn(codeOf["@anotoki/lib/ui/config"] ?? "")].filter((namespace) => !KIT_WORDS.includes(namespace));
+if (notTheKits.length) {
+    problems.push(`@anotoki/lib/ui/config holds the words of ${notTheKits.map((namespace) => `anotoki.${namespace}.*`).join(", ")}: the kit's file holds the kit's namespaces alone - a module's words are ${WORDS}/<namespace>'s (bun run words).`);
+}
+for (const name of WORD_ENTRIES) {
+    const held = [...namespacesIn(codeOf[name] ?? "")];
+    if (held.length !== 1) {
+        problems.push(`${name} holds the words of ${held.length ? held.join(", ") : "no namespace"}: a words entry point holds one namespace (bun run words).`);
+    }
 }
 
 // The core whole: its pieces' code in one, as a site that uses every piece takes them.
@@ -323,7 +359,14 @@ function firstLoad(result, page) {
             }
         }
     }
-    return { files, gz: gz(code) / 1024 };
+    return { files, code, gz: gz(code) / 1024 };
+}
+
+/** The namespaces of the library's words in a first load, the kit's as one: "kit, siteStatus". */
+function wordsOf(code) {
+    const namespaces = [...namespacesIn(code)];
+    const others = namespaces.filter((namespace) => !KIT_WORDS.includes(namespace)).sort();
+    return [...(namespaces.length > others.length ? ["kit"] : []), ...others].join(", ") || "-";
 }
 
 const firstLoadRows = [];
@@ -338,7 +381,7 @@ try {
     }
 
     // First loads, beside lazy pages that use every other entry point whole (a testing helper is never in a page).
-    for (const { title, imports, limit } of FIRST_LOADS) {
+    for (const { title, imports, limit, words } of FIRST_LOADS) {
         const names = Object.values(imports).flat();
         const page = Object.entries(imports)
             .map(([entry, used]) => `import { ${used.join(", ")} } from "${entry}";`)
@@ -367,15 +410,20 @@ try {
         if (beside.gz > limit) {
             problems.push(`${title}: the first load takes ${beside.gz.toFixed(1)} kB gzipped of the package, over its ${limit} kB.`);
         }
-        firstLoadRows.push([title, alone.gz.toFixed(1), beside.gz.toFixed(1), String(limit)]);
+        // Its words: the namespaces its page says, and no module's that it does not - beside lazy pages that say them all.
+        const strange = words === null ? [] : [...namespacesIn(beside.code)].filter((namespace) => !words.includes(namespace));
+        if (strange.length) {
+            problems.push(`${title}: the first load carries the words of ${strange.map((namespace) => `anotoki.${namespace}.*`).join(", ")}, which its page does not say - a module's words are ${WORDS}/<namespace>'s, imported by that module alone.`);
+        }
+        firstLoadRows.push([title, alone.gz.toFixed(1), beside.gz.toFixed(1), String(limit), wordsOf(beside.code)]);
     }
 } finally {
     await transformer.close();
 }
 
-const loadWidths = [36, 10, 10, 8];
-const loadLine = (cells) => cells.map((cell, index) => String(cell)[index ? "padStart" : "padEnd"](loadWidths[index])).join(" ");
-console.log("\n" + loadLine(["first load (code gz kB)", "alone", "+ lazy", "limit"]));
+const loadWidths = [36, 10, 10, 8, 0];
+const loadLine = (cells) => cells.map((cell, index) => (index === 4 ? "  " + cell : String(cell)[index ? "padStart" : "padEnd"](loadWidths[index]))).join(" ");
+console.log("\n" + loadLine(["first load (code gz kB)", "alone", "+ lazy", "limit", "words"]));
 for (const row of firstLoadRows) {
     console.log(loadLine(row));
 }

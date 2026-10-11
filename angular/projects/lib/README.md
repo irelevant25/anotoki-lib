@@ -9,7 +9,7 @@ version.
   Manrope, the base, utilities and tables: `@use "@anotoki/lib/styles" as anotoki`.
 - `@anotoki/lib/ui` - the UI kit's core, a piece per entry point, all re-exported
   here (import each from its own, for a small first load): `ui/config`
-  (configuration and words; the library's own words, `LIBRARY_WORDS`), `ui/icon`,
+  (configuration and words; the kit's library words, `KIT_LIBRARY_WORDS`), `ui/icon`,
   `ui/dom`, `ui/button`, `ui/spinner`, `ui/badge`, `ui/alert`, `ui/card`,
   `ui/empty-state`, `ui/error-state`, `ui/page-header`, `ui/avatar`,
   `ui/segmented`, `ui/autofocus`; and the kit's other entry points `ui/icons`,
@@ -37,6 +37,10 @@ version.
   `<anotoki-auth-callback>`, configured with `provideAnotokiAuth(...)`.
 - `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth()` and `FakeAuthClient` for a
   site's specs.
+- `@anotoki/lib/words` - the library's own words, every module's: `LIBRARY_WORDS`
+  (the translations module's); `@anotoki/lib/words/<namespace>` - one module's
+  (`/site-status`, `/sign-in`), imported by that module alone. Generated from
+  `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site
 installs, configures and updates it: the repository's README,

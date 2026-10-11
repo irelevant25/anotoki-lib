@@ -75,17 +75,32 @@ final class LibraryWordsTest extends TestCase
 
     public function testTheAngularHalfsBuiltInWordsAreTheseWordForWord(): void
     {
-        // angular/projects/lib/ui/config/src/library-words.ts, generated from the JSON by angular/scripts/library-words.mjs
-        // (`bun run words`) and read here as text: the kit, the status page and the translations module read it.
-        $source = str_replace("\r\n", "\n", (string) file_get_contents(dirname(__DIR__, 3) . '/angular/projects/lib/ui/config/src/library-words.ts'));
+        // Generated from the JSON a namespace at a time by angular/scripts/library-words.mjs (`bun run words`) and read
+        // here as text: the kit's in angular/projects/lib/ui/config/src/library-words.ts, every other module's in
+        // angular/projects/lib/words/<namespace>/public-api.ts (@anotoki/lib/words/<namespace>), each key in one file.
+        $angular = dirname(__DIR__, 3) . '/angular/projects/lib';
+        $files = [$angular . '/ui/config/src/library-words.ts', ...(glob($angular . '/words/*/public-api.ts') ?: [])];
+        self::assertGreaterThan(1, count($files), 'the kit\'s words, and the other modules\' beside them');
         foreach (['en' => 'EN', 'sk' => 'SK'] as $language => $constant) {
-            self::assertSame(1, preg_match('/^const ' . $constant . '\b[^=]*= \{\n(.*?)\n\}/ms', $source, $block), $language);
-            preg_match_all("/^  '([^']+)': '((?:[^'\\\\]|\\\\.)*)',$/m", $block[1], $entries, PREG_SET_ORDER);
             $generated = [];
-            foreach ($entries as [, $key, $text]) {
-                $generated[$key] = stripslashes($text);
+            foreach ($files as $file) {
+                $source = str_replace("\r\n", "\n", (string) file_get_contents($file));
+                self::assertSame(1, preg_match('/^const ' . $constant . '\b[^=]*= \{\n(.*?)\n\}/ms', $source, $block), "$language: $file");
+                preg_match_all("/^  '([^']+)': '((?:[^'\\\\]|\\\\.)*)',$/m", $block[1], $entries, PREG_SET_ORDER);
+                $namespaces = [];
+                foreach ($entries as [, $key, $text]) {
+                    self::assertArrayNotHasKey($key, $generated, "$key: in one file alone");
+                    $generated[$key] = stripslashes($text);
+                    $namespaces[explode('.', $key)[1]] = true;
+                }
+                if (!str_ends_with($file, '/library-words.ts')) {
+                    self::assertCount(1, $namespaces, "$file: a module's words entry point holds its one namespace");
+                }
             }
-            self::assertSame(array_map(static fn (array $entry): string => $entry[$language], LibraryWords::all()), $generated, "$language: run `bun run words` in angular/");
+            $expected = array_map(static fn (array $entry): string => $entry[$language], LibraryWords::all());
+            ksort($expected, SORT_STRING);
+            ksort($generated, SORT_STRING);
+            self::assertSame($expected, $generated, "$language: run `bun run words` in angular/");
         }
     }
 

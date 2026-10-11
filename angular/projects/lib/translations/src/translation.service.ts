@@ -1,6 +1,7 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { DOCUMENT, Injectable, Injector, computed, effect, inject, signal, untracked } from '@angular/core';
-import { AnotokiUiConfig, LIBRARY_WORDS } from '@anotoki/lib/ui/config';
+import { AnotokiUiConfig } from '@anotoki/lib/ui/config';
+import { LIBRARY_WORDS } from '@anotoki/lib/words';
 import { firstValueFrom, isObservable } from 'rxjs';
 import { ANOTOKI_TRANSLATIONS_CONFIG, ANOTOKI_TRANSLATION_BUNDLE, TranslationSettings, translationSettings } from './config';
 import { FALLBACK_LANGUAGE, LanguageCandidate, TranslationParams, addressLanguage, bundleFrom, fillPlaceholders, languageCandidates, languageCode, pickLanguage } from './language';
@@ -35,7 +36,7 @@ export interface ShellLanguages {
   clearNotSaved: () => void;
 }
 
-/** The library's words, by language, as plain tables. */
+/** The library's words, every module's (@anotoki/lib/words), by language, as plain tables. */
 const BUILT_IN: Readonly<Record<string, Readonly<Record<string, string>>>> = LIBRARY_WORDS;
 
 /** What every library key starts with: the library's namespace. */

@@ -1,28 +1,51 @@
 import source from '../../../../../../php/resources/library-words.json';
+import { LIBRARY_WORDS } from '@anotoki/lib/words';
+import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
+import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 import { BUILT_IN_WORDS as STATUS_WORDS } from '../../../migrations/src/words';
-import { LIBRARY_WORDS, LibraryKey } from './library-words';
+import { KIT_LIBRARY_WORDS, LibraryKey } from './library-words';
 import { ANOTOKI_WORD_KEYS, BUILT_IN_WORDS } from './words';
 
 /** php/resources/library-words.json: the one source of the library's words. */
 const JSON_WORDS = source.keys as Readonly<Record<string, { description: string; en: string; sk: string }>>;
 
-describe('the library’s own words (library-words.ts, generated from php/resources/library-words.json)', () => {
+/** The JSON's words of one language whose keys `belongs` takes. */
+function json(language: 'en' | 'sk', belongs: (key: string) => boolean): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(JSON_WORDS)
+      .filter(([key]) => belongs(key))
+      .map(([key, entry]) => [key, entry[language]]),
+  );
+}
+
+describe('the library’s own words (generated a namespace at a time from php/resources/library-words.json)', () => {
   it('are the JSON’s, key for key and word for word, in English and Slovak - when not, run `bun run words`', () => {
-    expect(Object.keys(LIBRARY_WORDS.en)).toEqual(Object.keys(JSON_WORDS));
+    expect(Object.keys(LIBRARY_WORDS.en).sort()).toEqual(Object.keys(JSON_WORDS).sort());
     for (const language of ['en', 'sk'] as const) {
-      expect(LIBRARY_WORDS[language], language).toEqual(Object.fromEntries(Object.entries(JSON_WORDS).map(([key, entry]) => [key, entry[language]])));
+      expect(LIBRARY_WORDS[language], language).toEqual(json(language, () => true));
     }
+  });
+
+  it('live with their readers: the kit’s namespaces in ui/config alone, each other module’s in its own entry point', () => {
+    for (const language of ['en', 'sk'] as const) {
+      expect(KIT_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => /^anotoki\.(language|ui|topbar|theme)\./.test(key)));
+      expect(SITE_STATUS_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.siteStatus.')));
+      expect(SIGN_IN_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.signIn.')));
+    }
+    // LibraryKey names every key, every module's - a type only: the kit's file holds no other module's words.
+    const signIn: LibraryKey = 'anotoki.signIn.retry';
+    expect(Object.keys(KIT_LIBRARY_WORDS.en)).not.toContain(signIn);
   });
 
   it('are all under the library’s namespace, and have the same placeholders in both languages', () => {
     const placeholders = (text: string) => [...text.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)\}/g)].map((match) => match[1]);
     for (const key of Object.keys(LIBRARY_WORDS.en) as LibraryKey[]) {
-      expect(key).toMatch(/^anotoki(\.[A-Za-z0-9][A-Za-z0-9_-]*)+$/);
+      expect(key).toMatch(/^anotoki(\.[A-Za-z0-9][A-Za-z0-9_-]*){2,}$/);
       expect(placeholders(LIBRARY_WORDS.sk[key]), key).toEqual(placeholders(LIBRARY_WORDS.en[key]));
     }
   });
 
-  it('give the kit its words: every key under its namespaces, by the kit’s own names', () => {
+  it('give the kit its words: every key under its namespaces, by the kit’s own names, in the JSON’s order', () => {
     const kit = Object.keys(JSON_WORDS)
       .filter((key) => /^anotoki\.(ui|topbar|language|theme)\./.test(key))
       .map((key) => key.slice('anotoki.'.length));

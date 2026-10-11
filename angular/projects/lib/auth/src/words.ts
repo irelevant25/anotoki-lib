@@ -1,4 +1,4 @@
-import { LIBRARY_WORDS } from '@anotoki/lib/ui/config';
+import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
 
 /**
  * The visitors' words of signing in - the callback's "Signing you in…" and what
@@ -29,13 +29,13 @@ export interface SignInWords {
 export const SIGN_IN_WORD_NAMES = ['signingIn', 'notCompleted', 'expired', 'storageUnavailable', 'unavailable', 'failed', 'retry', 'back'] as const satisfies readonly (keyof SignInWords)[];
 
 function builtIn(language: 'en' | 'sk'): SignInWords {
-  return Object.fromEntries(SIGN_IN_WORD_NAMES.map((name) => [name, LIBRARY_WORDS[language][`anotoki.signIn.${name}`]])) as unknown as SignInWords;
+  return Object.fromEntries(SIGN_IN_WORD_NAMES.map((name) => [name, SIGN_IN_LIBRARY_WORDS[language][`anotoki.signIn.${name}`]])) as unknown as SignInWords;
 }
 
 /**
- * The built-in words: the library's words `anotoki.signIn.*`, generated from
- * php/resources/library-words.json (ui/config's LIBRARY_WORDS) - never a copy
- * by hand.
+ * The built-in words: the library's words `anotoki.signIn.*`
+ * (@anotoki/lib/words/sign-in, generated from php/resources/library-words.json)
+ * - never a copy by hand, and in no first load of the kit.
  *
  * The calls are marked pure: a site's build keeps a top-level call it is not
  * told is pure, and with it the library's every word, signing in or not.

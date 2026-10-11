@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpEvent, HttpHeaders, HttpInterceptorFn, HttpRequest, HttpResponse } from '@angular/common/http';
 import { AdminLanguage, TranslationGroup } from '@anotoki/lib/translations';
-import { LIBRARY_WORDS } from '@anotoki/lib/ui';
+import { LIBRARY_WORDS } from '@anotoki/lib/words';
 import { Observable, delay, of, throwError } from 'rxjs';
 import libraryWords from '../../../../../php/resources/library-words.json';
 

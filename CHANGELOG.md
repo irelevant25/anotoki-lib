@@ -164,15 +164,19 @@ Angular, the kit's fixes the sites found:
   `refused` holds only while there is an account.
 - `ui/alert`: the heading breaks a word longer than its line (a migration file's name with its set at
   390 px).
-- `migrations/page`: the Pending card heads each set by its name (`iam`, `anotoki_translations`), never
-  `migrations/<set>/` - a site's folder is not its set's name. A spec reading the heading changes.
+- `migrations/page`: every file is named as its set's records name it, the same in Pending, Applied,
+  Missing and what an Apply did - the site's one set's by the file's name alone, every other with its set
+  (`anotoki_translations/003_sign_in_words.sql`; genshin's `users/041_news.sql`). Pending is one list in
+  the order the files run, with no heading for a set (it read `migrations/<set>/` over bare names while
+  Applied read `<set>/<file>`). A name breaks after its slash or between its words (`<wbr>`, nothing added
+  to its text), never inside a word as it did at 390 px. A spec reading Pending's headings or names changes.
 - `translations/admin`: no `beforeunload` question once nobody is signed in - on the way to the IAM's
   sign-in, the drafts wait in the tab for the same person, as the pages' route guard already let the page go.
 - `scripts/check-package.mjs`: no bundle may name innerHTML, outerHTML, insertAdjacentHTML or
   bypassSecurityTrust, in any spelling, comments too - the IAM's deploy check's rule, refused before a
   release can reach it.
 
-Translations, found by the survey moving onto 0.3.0:
+Translations, found by the sites moving onto 0.3.0 (the survey's first):
 - `admin.allows` gains `importStrings`, `addLanguages` and `deleteLanguages`, each as its page's permission
   unless the site says otherwise; a control for what the site does not allow is not drawn (the survey's
   EDITORs see no Delete on the Languages page, which its server refuses them).
@@ -180,6 +184,15 @@ Translations, found by the survey moving onto 0.3.0:
   before it (the survey's does).
 - PHP: `invalid_placeholder` on a key with no placeholders is worded for it - "a brace belongs only around
   a placeholder, so take it out" - instead of "like {count}", a placeholder the key does not have.
+- The Languages page takes the width the site's panel gives it, as the Translations page does (it stopped
+  at 60rem), and the code's hint says what the check takes: "Two small letters, a region after a dash if
+  needed: cs, de, pt-br" (it said "Two small letters" over its own `pt-br`).
+- PHP: the module's refusals end with a full stop, as the family's others do - `StringCheck`'s,
+  `Translations`' and `RequiredPlaceholders`'. A test comparing a whole message adds it.
+- PHP: a key that is a number is a key the site does not have - an import of a JSON list or of
+  `{"0": "…"}` (Piano Academy's), a save of `{"0": {…}}`, the command line's import of either file - refused
+  `unknown_key` naming them, not `invalid_value` (PHP makes a list of an object whose keys are numbers); an
+  empty list, or a body that is no object, stays `invalid_value`.
 
 Angular, the library's words a namespace at a time, each module's with the module - so that a module's
 words weigh neither on the kit's first loads nor on the translations module's:
@@ -234,9 +247,9 @@ its API glue; one that wants the sign-in failure in its frame routes `SignInFail
 What a site may do - the kit's fixes (README.md, "Upgrading from 0.3.x", 4): give `danger-text` where its
 own red fill is too dark for words; pass `shortBrandMax` below `phoneMax` where its bar folds wide; mark
 fields `invalid`; give the translations admin pages' per-action permissions (the survey:
-`deleteLanguages: () => auth.isAdmin()`). A spec that reads the Migrations page's set heading
-(`migrations/<set>/`) or the PHP half's `invalid_placeholder` sentence for a key with no placeholders
-changes.
+`deleteLanguages: () => auth.isAdmin()`). A spec that reads the Migrations page's Pending headings or
+names, a translations refusal's whole sentence (its full stop; `invalid_placeholder` for a key with no
+placeholders) or `invalid_value` for keys that are numbers changes.
 
 What a site must do - the admin tools: nothing until it takes them. Taking them:
 `Admin\Schema::migrationSet()` **first** in every place that builds its Migrator (the site, its

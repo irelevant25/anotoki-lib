@@ -1624,25 +1624,27 @@ $backups = new Backups($connect, $directory, [
   its id and the time it was sent (an entry of before 0.5.0 names no time and is
   passed over). A `person.data_deleted` written inside its delete's transaction
   names that transaction (`_txid`), and its time is when the transaction began
-  - before the backup's snapshot, it may have committed after it: such an entry
-  is done again when its transaction is not in the backup's snapshot
-  (`txid_visible_in_snapshot()`, the manifest's `txid_snapshot`), and, whatever
-  its id says, from the snapshot's time on (an id is one PostgreSQL cluster's: a
-  database moved by `pg_dump` counts anew); entries and backups of before go by
-  the time alone. No check of the IAM's deleted accounts may run across a
-  restore - one begun before it would keep its own place in the IAM's list over
-  the restored one: the restore takes the check's lock until it commits, and is
-  refused while a check holds it ("restore again in a minute"). Whatever fails
-  rolls the restore back whole, as does - with something to do again - a backup
-  that says no time, one whose snapshot cannot be read, or a database without
-  the audit log.
+  - just before the backup's snapshot, it may have committed after it: such an
+  entry, dated within the hour before the backup's time, is done again when its
+  transaction is not in the backup's snapshot (`txid_visible_in_snapshot()`, the
+  manifest's `txid_snapshot`); every entry from the snapshot's time on is done
+  again, as before. Further back the id is not asked: an id is one PostgreSQL
+  cluster's, and after a move by `pg_dump` every older entry would seem unseen -
+  its delete done again on whatever the person kept here since. Entries and
+  backups of before go by the time alone. No check of the IAM's deleted
+  accounts may run across a restore - one begun before it would keep its own
+  place in the IAM's list over the restored one: the restore takes the check's
+  lock until it commits, and is refused while a check holds it ("restore again
+  in a minute"). Whatever fails rolls the restore back whole, as does - with
+  something to do again - a backup that says no time, one whose snapshot cannot
+  be read, or a database without the audit log.
 - `People::afterRestore(defer:, then:)` - for Backups' `afterRestore`, once the
   restore committed: the scrub of the IAM's deleted accounts at once (the
   restore brought back the scrub's place of that day). One that does not go
   through - the IAM out of reach, a failure of any kind - is thrown, with the
   site's own failure, in one sentence: the restore's `after_restore_error`
-  (the first failure that threw chained, its class, file, line and trace kept
-  for the site's `onError`); the upkeep's hourly stamp then goes after the
+  (the first failure that threw chained: the error log's line shows it as
+  `Caused by …` with its frames); the upkeep's hourly stamp then goes after the
   answer (`defer`, the site's runner), so the next request scrubs again.
   `then:` is the site's own work after a restore (Piano Academy's new
   generations), run whatever the scrub did. The survey's, Piano Academy's and
@@ -1863,7 +1865,12 @@ ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the 
   client), `level`, `status`, `type`, `code`, `message` (redacted, 500 at
   most), `file` (relative), `line`, `method`, `route`, `path` (redacted),
   `user_id`, `client` (12 hex of an HMAC of the address bucket - never an
-  address), `trace` (12 frames, never a call's arguments), `fingerprint`. Never
+  address), `trace` (12 lines at most: frames, never a call's arguments - and
+  for an exception thrown for another, the chain: each cause's own line,
+  `Caused by Type (file:line): message`, redacted and 500 characters at most,
+  with its frames the one it caused does not show; at most 11 causes, each
+  keeping its line, the frames shared out in turn), `fingerprint` (the
+  exception's own, never its causes'). Never
   a query string, a header, a cookie, a body (an answer gives only its `code`
   and its sentence), a token or the session. Every file a line names is
   relative - an anonymous class's and a closure's too, whose names PHP makes of

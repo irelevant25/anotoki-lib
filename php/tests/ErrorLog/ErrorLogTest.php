@@ -12,7 +12,9 @@ use Anotoki\Lib\ErrorLog\ErrorLog;
 use Anotoki\Lib\ErrorLog\ErrorLogMiddleware;
 use Anotoki\Lib\ErrorLog\Http\ErrorLogRoutes;
 use Anotoki\Lib\Support\ClientAddress;
+use Anotoki\Lib\Support\Utf8;
 use Anotoki\Lib\Tests\Support\TemporaryFolder;
+use PDOException;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -89,6 +91,59 @@ final class ErrorLogTest extends TestCase
         self::assertArrayNotHasKey('ip', $line);
         self::assertArrayNotHasKey('session_id', $line);
         self::assertFileExists($this->logs . '/.htaccess');
+    }
+
+    public function testAnExceptionThrownForAnotherKeepsItsCauseScrubbedAndItsOwnFingerprint(): void
+    {
+        $options = ['root' => dirname(__DIR__, 3), 'key' => str_repeat('k', 32)];
+        $cause = self::scrubFailure("SQLSTATE[P0001]: Raise exception: 7 ERROR:  the scrub's table is read-only for ana@example.com, token=s3cr3t-value\nDETAIL:  Key (email)=(bo@example.com) exists.");
+
+        (new ErrorLog($this->logs, $options))->record(self::thrownFor($cause));
+        (new ErrorLog($this->storage . '/alone', $options))->record(self::thrownFor(null));
+
+        $line = $this->lines()[0];
+        $alone = json_decode((string) file_get_contents((string) (glob($this->storage . '/alone/errors-*.jsonl')[0] ?? '')), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame($alone['fingerprint'], $line['fingerprint'], 'the exception\'s own: never its causes\'');
+        self::assertSame(['RuntimeException', 'The accounts the IAM deleted were not checked again.'], [$line['type'], $line['message']]);
+        self::assertLessThanOrEqual(12, count($line['trace']));
+        self::assertStringEndsWith('ErrorLogTest::thrownFor()', $line['trace'][0], 'its own frames first');
+        $at = array_search(true, array_map(static fn (string $frame): bool => str_starts_with($frame, 'Caused by '), $line['trace']), true);
+        self::assertIsInt($at, 'the cause is in the line');
+        self::assertMatchesRegularExpression(
+            '~^Caused by PDOException \(php/tests/ErrorLog/ErrorLogTest\.php:\d+\): SQLSTATE\[P0001\]: Raise exception: 7 ERROR:  the scrub\'s table is read-only for \{email\}, token=\{…\}$~D',
+            $line['trace'][$at],
+            'its class, its file relative, its message redacted',
+        );
+        self::assertMatchesRegularExpression('~^php/tests/ErrorLog/ErrorLogTest\.php:\d+ Anotoki\\\\Lib\\\\Tests\\\\ErrorLog\\\\ErrorLogTest::scrubFailure\(\)$~D', $line['trace'][$at + 1], 'and its own frame: the calls it shares with the one it caused are not said twice');
+        self::assertCount($at + 2, $line['trace']);
+        foreach (['ana@example.com', 's3cr3t', 'bo@example.com', 'DETAIL'] as $secret) {
+            self::assertStringNotContainsString($secret, $this->rawLog());
+        }
+        self::assertSame([], array_filter($alone['trace'], static fn (string $frame): bool => str_starts_with($frame, 'Caused by ')), 'none without a cause');
+    }
+
+    public function testALongChainStaysWithinTheLinesCaps(): void
+    {
+        $chain = null;
+        for ($level = 0; $level < 30; $level++) {
+            $chain = new RuntimeException("Level $level failed for ana@example.com " . str_repeat('word ', 400), 0, $chain);
+        }
+
+        (new ErrorLog($this->logs, ['root' => dirname(__DIR__, 3), 'key' => str_repeat('k', 32)]))->record($chain);
+
+        $line = $this->lines()[0];
+        self::assertCount(12, $line['trace'], 'the trace\'s 12 lines, whatever the chain');
+        $causes = array_values(array_filter($line['trace'], static fn (string $frame): bool => str_starts_with($frame, 'Caused by ')));
+        self::assertCount(11, $causes, 'at most 11 causes, each its own line - the exception\'s first frame kept');
+        self::assertStringStartsWith('Caused by RuntimeException (php/tests/ErrorLog/ErrorLogTest.php:', $causes[0]);
+        self::assertStringContainsString('): Level 28 failed for {email} word word', $causes[0], 'the nearest cause first');
+        self::assertStringContainsString('): Level 18 failed for {email}', $causes[10]);
+        foreach ($causes as $cause) {
+            self::assertLessThanOrEqual(500, Utf8::length(substr($cause, (int) strpos($cause, '): ') + 3)), 'a cause\'s message no longer than the entry\'s own');
+        }
+        self::assertSame(500, Utf8::length($line['message']));
+        self::assertStringNotContainsString('ana@example.com', $this->rawLog());
+        self::assertLessThan(16384, strlen($this->rawLog()), 'one line stays a line');
     }
 
     public function testAnAnswerIsWrittenWithItsCodeAndSentenceOnly(): void
@@ -610,6 +665,18 @@ final class ErrorLogTest extends TestCase
     private static function changePassword(string $password): void
     {
         throw new RuntimeException('No account ana@example.com for that password; ask 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b');
+    }
+
+    /** A failure deep inside the work: a wrapper's cause. */
+    private static function scrubFailure(string $message): PDOException
+    {
+        return new PDOException($message);
+    }
+
+    /** A wrapper's sentence, made on one line whatever its cause - so one fingerprint, with a cause or without. */
+    private static function thrownFor(?\Throwable $cause): RuntimeException
+    {
+        return new RuntimeException('The accounts the IAM deleted were not checked again.', 0, $cause);
     }
 
     /** @return list<array<string, mixed>> */

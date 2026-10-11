@@ -47,8 +47,10 @@ use Throwable;
  * most 500 characters), file (relative to the site's root), line, method,
  * route (the route's pattern: /api/admin/users/{id}), path (redacted, at most
  * 200), user_id, client (12 hex: an HMAC of the address bucket - never the
- * address), trace (at most 12 frames, "file:line Class->function()" - never a
- * call's arguments), fingerprint}. Never written: a query string, a header, a
+ * address), trace (at most 12 lines: frames, "file:line Class->function()" -
+ * never a call's arguments - and for an exception thrown for another, each
+ * cause's "Caused by Type (file:line): message", redacted, with its own
+ * frames), fingerprint}. Never written: a query string, a header, a
  * cookie, a request's or an answer's body (an answer gives only its code and
  * its sentence, redacted), a token, the session.
  *
@@ -75,6 +77,9 @@ final class ErrorLog
 
     /** The answered statuses written by default, beside every 5xx. */
     public const DEFAULT_STATUSES = [404, 405, 413, 415, 429];
+
+    /** The most lines a line's trace holds: an exception's frames - and, with a chain, its causes' lines and frames. */
+    private const TRACE_LINES = 12;
 
     private const FATAL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
     private const WARNING = E_WARNING | E_USER_WARNING | E_CORE_WARNING | E_COMPILE_WARNING;
@@ -279,7 +284,8 @@ final class ErrorLog
      * An exception, answered with $status (the site's answer's code with it, where
      * it is known). Not written when the status is not one the log keeps, the
      * request is to the log's own routes, or the exception is one the site calls
-     * an answer (ignoreExceptions).
+     * an answer (ignoreExceptions). An exception thrown for another keeps the
+     * chain in its trace (traceWithCauses()); its fingerprint is its own alone.
      */
     public function record(Throwable $exception, ?ServerRequestInterface $request = null, int $status = 500, ?string $code = null): void
     {
@@ -301,7 +307,7 @@ final class ErrorLog
                 'message' => Redactor::text($exception->getMessage()),
                 'file' => $this->relative($exception->getFile()),
                 'line' => $exception->getLine(),
-                'trace' => $this->trace($exception->getTrace()),
+                'trace' => $this->traceWithCauses($exception),
             ], $request);
             $this->markHandled($request);
         });
@@ -910,6 +916,91 @@ final class ErrorLog
     }
 
     /**
+     * An exception's trace with the chain it was thrown for (getPrevious(): a wrapper's cause - the scrub's failure
+     * under People::afterRestore()'s sentence - is the failure itself). Each cause is a line of its own, "Caused by
+     * Type (file:line): message" - its class short, its file relative, its message redacted and at most 500
+     * characters, as the entry's own - followed by its frames that the exception it caused does not show already
+     * (their shared end left out, as Java does). Within the entry's trace of 12 lines in all, whatever the chain:
+     * at most 11 causes, each part keeping its first line while there is room (the frame the exception was thrown
+     * from; a cause's own line), then one more line each in turn. An exception thrown for none keeps its 12 frames.
+     *
+     * @return list<string>
+     */
+    private function traceWithCauses(Throwable $exception): array
+    {
+        $parts = [$this->trace($exception->getTrace())];
+        $enclosing = $exception->getTrace();
+        $seen = [spl_object_id($exception) => true];
+        for ($cause = $exception->getPrevious(); $cause !== null && count($parts) < self::TRACE_LINES; $cause = $cause->getPrevious()) {
+            if (isset($seen[spl_object_id($cause)])) {
+                break;
+            }
+            $seen[spl_object_id($cause)] = true;
+            $frames = $cause->getTrace();
+            $message = (string) preg_replace('/\s*\R\s*/u', ' ', Redactor::text($cause->getMessage()));
+            $parts[] = [
+                'Caused by ' . $this->className($cause::class) . ' (' . $this->relative($cause->getFile()) . ':' . $cause->getLine() . '): ' . Utf8::cut($message, 500),
+                ...$this->trace(self::framesNotShared($frames, $enclosing)),
+            ];
+            $enclosing = $frames;
+        }
+
+        return self::fit($parts, self::TRACE_LINES);
+    }
+
+    /**
+     * A cause's frames without the end it shares with the frames of the exception it caused - the same calls below
+     * where the two were made, which that exception's own frames show already.
+     *
+     * @param list<array<string, mixed>> $frames
+     * @param list<array<string, mixed>> $enclosing
+     * @return list<array<string, mixed>>
+     */
+    private static function framesNotShared(array $frames, array $enclosing): array
+    {
+        $key = static fn (array $frame): string => ($frame['file'] ?? '') . ':' . ($frame['line'] ?? '') . ' ' . ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? '');
+        $own = count($frames);
+        for ($shared = count($enclosing); $own > 0 && $shared > 0 && $key($frames[$own - 1]) === $key($enclosing[$shared - 1]); $own--, $shared--) {
+            // Back from the bottom of both stacks while they are the same.
+        }
+
+        return array_slice($frames, 0, $own);
+    }
+
+    /**
+     * A trace's parts - the exception's frames, then each cause's line and frames - cut to $lines in all: every part
+     * keeps its first line while there is room, then one more line each in turn, the order of the parts kept.
+     *
+     * @param list<list<string>> $parts
+     * @return list<string>
+     */
+    private static function fit(array $parts, int $lines): array
+    {
+        $kept = array_fill(0, count($parts), 0);
+        for ($round = 0; $lines > 0; $round++) {
+            $more = false;
+            foreach ($parts as $index => $part) {
+                if ($lines > 0 && $round < count($part)) {
+                    $kept[$index]++;
+                    $lines--;
+                    $more = true;
+                }
+            }
+            if (!$more) {
+                break;
+            }
+        }
+        $out = [];
+        foreach ($parts as $index => $part) {
+            foreach (array_slice($part, 0, $kept[$index]) as $line) {
+                $out[] = $line;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * A trace without a single call's arguments: "file:line Class->function()",
      * at most 12 frames, files relative to the root - the ones PHP writes into a
      * name too: an anonymous class is "class@anonymous" and the file and line it
@@ -921,7 +1012,7 @@ final class ErrorLog
     private function trace(array $frames): array
     {
         $lines = [];
-        foreach (array_slice($frames, 0, 12) as $frame) {
+        foreach (array_slice($frames, 0, self::TRACE_LINES) as $frame) {
             $where = isset($frame['file']) ? $this->relative((string) $frame['file']) . ':' . (int) ($frame['line'] ?? 0) : '[internal]';
             $class = isset($frame['class']) ? $this->className((string) $frame['class'], short: false) . ($frame['type'] ?? '->') : '';
             $lines[] = $where . ' ' . $class . $this->functionName((string) ($frame['function'] ?? '?')) . '()';

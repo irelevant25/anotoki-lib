@@ -20,7 +20,10 @@ export interface ErrorLogEntry {
   user_id: number | string | null;
   /** 12 hex of a keyed hash of the address - never the address. */
   client: string | null;
-  /** At most 12 frames, never a call's arguments. */
+  /**
+   * At most 12 lines: frames, never a call's arguments - and for an exception thrown for another, each cause's own
+   * line ("Caused by Type (file:line): message", redacted) with its frames.
+   */
   trace: string[] | null;
   fingerprint: string;
   /** genshin's own lines only: the address they were written with. */

@@ -309,6 +309,30 @@ final class PeopleRestoreTest extends DatabaseTestCase
         self::assertSame(2, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'person.data_deleted'"), 'a replay writes no entry of its own');
     }
 
+    public function testAnEntrysTransactionIsAskedOnlyWithinTheHourBeforeTheBackup(): void
+    {
+        // A database moved to another cluster by pg_dump counts its transactions anew: an entry of before the move
+        // names an id no later snapshot sees. Its transaction is asked only within the hour before the backup - the
+        // race it is for: a delete begun before the snapshot, committed after it.
+        $entry = $this->pdo->prepare(
+            "INSERT INTO anotoki_audit_log (created_at, actor_id, action, target_type, target_id, details)
+             VALUES (CAST(? AS timestamptz), 1, 'person.data_deleted', 'user', ?, CAST(? AS jsonb))"
+        );
+        // Hours before the backup, under an id its snapshot does not see: alice came back since, and keeps what she has.
+        $entry->execute(['2026-10-11T07:00:00Z', '7', '{"deleted": {"Progress": 1}, "_txid": "5000000"}']);
+        // Minutes before it, not seen: begun before the snapshot, committed after it.
+        $entry->execute(['2026-10-11T09:55:00Z', '8', '{"deleted": {"Progress": 1}, "_txid": "5000000"}']);
+        // Minutes before it, seen: in the backup already.
+        $entry->execute(['2026-10-11T09:58:00Z', '9', '{"deleted": {"Progress": 1}, "_txid": "50"}']);
+        $replay = $this->people->replay(delete: $this->hook());
+
+        $this->connection->beginTransaction();
+        $replay(['snapshot_at' => '2026-10-11T10:00:00.000000Z', 'txid_snapshot' => '100:100:'], $this->connection);
+        $this->connection->rollBack();
+
+        self::assertSame([8], $this->deleted, 'bob\'s alone: alice\'s entry is hours before the backup - in it by its time, whatever its id - and the third one\'s transaction is in the snapshot');
+    }
+
     public function testWhatAfterRestoreThrowsKeepsItsFirstFailure(): void
     {
         $this->pdo->exec(<<<'SQL'

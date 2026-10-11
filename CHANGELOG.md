@@ -34,9 +34,11 @@ People, auth and the kit:
   site's `AuditLog`, its `person.data_deleted` is written inside that transaction (`AuditLog::recordInside()`): a
   delete is never made without the entry a restore does it again by - one that cannot be written undoes it, and
   while the audit log's table waits the route answers `503 feature_unavailable`. The entry names its transaction
-  (`_txid`), and its time is when that transaction began: a restore does it again when its transaction is not in
-  the backup's snapshot (`txid_visible_in_snapshot()`, the manifest's new `txid_snapshot`) and, as before, from the
-  snapshot's time on; entries and backups of before go by the time alone.
+  (`_txid`), and its time is when that transaction began: a restore does it again, as before, from the snapshot's
+  time on - and, for an entry dated within the hour before it, when its transaction is not in the backup's snapshot
+  (`txid_visible_in_snapshot()`, the manifest's new `txid_snapshot`). Never further back: a cluster's ids are its
+  own, and after a move by `pg_dump` every older entry would seem unseen, its delete done again on what the person
+  kept since. Entries and backups of before go by the time alone.
 - Auth: the client's token requests (`@anotoki/lib/auth/session`) and the two screens (`@anotoki/lib/auth/screens`;
   the routes of before load them as they open) left the first load, the shared part `@anotoki/lib/auth/core`. The
   sign-in's first load: 18.9 -> 17.1 kB gzipped, 63.1 -> 54.7 kB raw (auth 34.4 -> 26.1); the gate's unchanged. A
@@ -70,7 +72,9 @@ deletes audited before 0.5.0 name no time and are not done again.
   IAM: in place of editing messages by reflection); the pages' reports count a signed-in person by account,
   apart from the visitors' day. `Redactor::text()` drops the run of characters its 4,096-character cut went
   through (half a JWT, an address or a token is one no rule knows) and takes a quoted secret the text ends inside
-  to its end.
+  to its end. An exception thrown for another keeps the chain in its line's `trace` - each cause's
+  `Caused by Type (file:line): message`, redacted, and its own frames, within the trace's 12 lines - so a
+  wrapper's sentence (`after_restore_error`) comes with its real failure; the fingerprint is the exception's own.
 - `@anotoki/lib/error-report` (new): `provideAnotokiErrorReport()` sends the browser's errors to
   `ErrorLogRoutes::client()` through the app's HttpClient (the site's interceptors, its CSRF header) - scrubbed,
   at most 5 a page load, each once, never recursing, nothing read past what a report keeps, and nothing kept of

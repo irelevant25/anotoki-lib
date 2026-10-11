@@ -49,6 +49,12 @@ final class People
 
     private const HOOK_ENDED = 'People: the delete hook ended the library\'s transaction - it begins, commits or rolls back none of its own (a savepoint is fine).';
 
+    /**
+     * How long before a backup's time an entry may be dated and still be matched to the backup by its transaction
+     * (peopleDeletedSince()): far longer than any delete's transaction, far shorter than the life of a cluster.
+     */
+    private const TXID_WINDOW = '1 hour';
+
     /** @var list<Closure(PDO, int, ?array<string, mixed>): void> */
     public readonly array $hooks;
 
@@ -184,11 +190,13 @@ final class People
      *   - every person.data_deleted: the People page's delete again (delete(): the site's $delete, its request
      *     null, and the person's feedback forgotten), in the order they were done. Its entry is written inside
      *     the delete's transaction (0.5.0, `_txid` its transaction's id), so its time is when that transaction
-     *     began: one begun before the snapshot may have committed after it. Such an entry is done again when its
-     *     transaction is not in the backup's snapshot (txid_visible_in_snapshot(), the manifest's txid_snapshot)
-     *     - and, whatever its id says, from the snapshot's time on: an id is one PostgreSQL cluster's, and a
-     *     database moved to another by pg_dump counts anew. An entry of before, or a backup without a snapshot:
-     *     the time alone;
+     *     began: one begun just before the snapshot may have committed after it. Such an entry is done again
+     *     from the snapshot's time on, and - dated within the hour before it (TXID_WINDOW) - when its
+     *     transaction is not in the backup's snapshot (txid_visible_in_snapshot(), the manifest's txid_snapshot).
+     *     Never further back: an id is one PostgreSQL cluster's, and a database moved to another by pg_dump counts
+     *     anew - against a snapshot of after the move, every entry of before it would seem unseen, and its delete
+     *     done again on whatever the person kept here since. An entry of before 0.5.0, or a backup without a
+     *     snapshot: the time alone;
      *   - every feedback.deleted: the message deleted again where it is the same one - its id and the time it
      *     was sent both (an entry of before 0.5.0 names no time, and is passed over).
      * No check of the IAM's deleted accounts may run across a restore: one begun before it would keep its own
@@ -398,23 +406,30 @@ final class People
 
     /**
      * The people whose data was deleted since the backup - from $since on (an entry of that very moment counts),
-     * or, for an entry that names its transaction (`_txid`), in a transaction the backup's $snapshot does not see
-     * (see replay()) - each once, in the order first done. Ids only: a target that is no id is passed over.
+     * or, for an entry that names its transaction (`_txid`) and is dated within TXID_WINDOW before $since, in a
+     * transaction the backup's $snapshot does not see (see replay()) - each once, in the order first done. Ids
+     * only: a target that is no id is passed over.
      *
      * @return list<string>
      */
     private static function peopleDeletedSince(PDO $pdo, string $since, ?string $snapshot): array
     {
+        // The transaction's id is asked only of an entry dated just before the backup: the one race it is for - a
+        // delete begun before the snapshot, committed after it - lasts as long as a delete's transaction, never an
+        // hour. Further back, a cluster's ids may not be this backup's at all (a database moved by pg_dump counts
+        // anew): an entry of before the move would seem unseen by every later snapshot, and be done again on
+        // whatever the person kept here since. The time alone says it is in the backup.
         $statement = $pdo->prepare(
             'SELECT target_id FROM ' . AdminSchema::AUDIT_TABLE . '
               WHERE action = \'person.data_deleted\' AND target_type = \'user\' AND target_id IS NOT NULL
                 AND (created_at >= CAST(? AS timestamptz)
-                     OR CASE WHEN CAST(? AS text) IS NOT NULL AND details->>\'_txid\' ~ \'^[0-9]{1,18}$\'
+                     OR CASE WHEN CAST(? AS text) IS NOT NULL AND created_at >= CAST(? AS timestamptz) - CAST(? AS interval)
+                                  AND details->>\'_txid\' ~ \'^[0-9]{1,18}$\'
                              THEN NOT txid_visible_in_snapshot(CAST(details->>\'_txid\' AS bigint), CAST(? AS txid_snapshot))
                              ELSE false END)
               GROUP BY target_id ORDER BY min(created_at), min(id)'
         );
-        $statement->execute([$since, $snapshot, $snapshot]);
+        $statement->execute([$since, $snapshot, $since, self::TXID_WINDOW, $snapshot]);
 
         return array_values(array_filter(
             array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)),

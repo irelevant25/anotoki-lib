@@ -1,0 +1,459 @@
+@if (!tools.isAdmin()) {
+    <p class="anotoki-admin__notice">The files are for the administrators of {{ tools.siteName }}.</p>
+} @else {
+    <div class="anotoki-admin__page">
+        <anotoki-page-header heading="Files" lead="The site's folders, as they are on the disk. A file deleted goes to the trash, from where it can be put back." [headingId]="id + '-title'">
+            @if (root()?.snapshot && status(); as scan) {
+                <p pageMeta class="anotoki-admin__counts" data-scan>
+                    @if (scan.scanned_at) {
+                        <span>Scanned {{ tools.date(scan.scanned_at) }}</span>
+                        <span>
+                            <strong>{{ formatCount(scan.total) }}</strong>
+                            {{ scan.total === 1 ? "file" : "files" }}
+                        </span>
+                    } @else {
+                        <span>Not scanned yet</span>
+                    }
+                </p>
+            }
+            @if (root()?.snapshot) {
+                <button anotokiButton data-rescan [loading]="rescanning()" (click)="rescan()">
+                    <anotoki-icon name="refresh" [size]="16" />
+                    Rescan
+                </button>
+            }
+            @if (root()?.write) {
+                <button anotokiButton data-open-trash (click)="trashOpen.set(true)">
+                    <anotoki-icon name="trash" [size]="16" />
+                    Trash
+                </button>
+            }
+        </anotoki-page-header>
+
+        @if (rootsError(); as message) {
+            <anotoki-error-state heading="The folders could not be read" retryLabel="Try again" [message]="message" (retry)="loadRoots()" />
+        } @else if (roots(); as all) {
+            @if (all.length === 0) {
+                <anotoki-empty-state data-no-roots icon="folder" heading="No folder is shown here" text="The site names the folders its administrators may see; it names none." />
+            } @else {
+                @if (all.length > 1) {
+                    <anotoki-tabs label="Folders" data-roots [tabs]="tabs()" [active]="active()" (activeChange)="setRoot($event)" />
+                }
+                <section
+                    class="anotoki-files-page__explorer"
+                    [class.anotoki-files-page__explorer--dragging]="dragging()"
+                    [attr.role]="all.length > 1 ? 'tabpanel' : null"
+                    [attr.id]="all.length > 1 ? (rootTabs()?.panelId(active()) ?? null) : null"
+                    [attr.aria-labelledby]="all.length > 1 ? (rootTabs()?.tabId(active()) ?? null) : null"
+                    [attr.aria-label]="all.length > 1 ? null : root()?.label"
+                    (dragover)="onDragOver($event)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event)">
+                    <div class="anotoki-files-page__toolbar">
+                        @if (mode() === "new") {
+                            <nav class="anotoki-files-page__crumbs" aria-label="Where you are">
+                                <button type="button" class="anotoki-files-page__crumb" data-back (click)="goTo('')">
+                                    <anotoki-icon name="arrowLeft" [size]="15" />
+                                    All of {{ root()?.label }}
+                                </button>
+                                <span class="anotoki-files-page__crumb anotoki-files-page__crumb--current" aria-current="page">New since the last scan</span>
+                            </nav>
+                        } @else {
+                            <nav class="anotoki-files-page__crumbs" aria-label="Where you are" data-crumbs>
+                                @if (crumbs().length === 0) {
+                                    <span class="anotoki-files-page__crumb anotoki-files-page__crumb--current" aria-current="page">
+                                        <anotoki-icon name="folder" [size]="15" />
+                                        {{ root()?.label }}
+                                    </span>
+                                } @else {
+                                    <button type="button" class="anotoki-files-page__crumb" (click)="goTo('')">
+                                        <anotoki-icon name="folder" [size]="15" />
+                                        {{ root()?.label }}
+                                    </button>
+                                }
+                                @for (crumb of crumbs(); track crumb.path; let last = $last) {
+                                    <anotoki-icon class="anotoki-files-page__crumb-separator" name="chevronRight" [size]="14" />
+                                    @if (last) {
+                                        <span class="anotoki-files-page__crumb anotoki-files-page__crumb--current" aria-current="page">{{ crumb.name }}</span>
+                                    } @else {
+                                        <button type="button" class="anotoki-files-page__crumb" (click)="goTo(crumb.path)">{{ crumb.name }}</button>
+                                    }
+                                }
+                            </nav>
+                        }
+
+                        <form
+                            class="anotoki-files-page__search"
+                            role="search"
+                            [attr.aria-label]="'Search the names in ' + (root()?.label ?? 'the folder')"
+                            (submit)="$event.preventDefault(); applySearch()">
+                            <anotoki-text-field
+                                data-search
+                                type="search"
+                                label="Search the names"
+                                [hideLabel]="true"
+                                placeholder="Search the names"
+                                autocomplete="off"
+                                [maxlength]="200"
+                                [value]="searchText()"
+                                (valueChange)="searchText.set($event)" />
+                            <button anotokiButton type="submit" iconOnly aria-label="Search" data-search-button>
+                                <anotoki-icon name="search" [size]="17" />
+                            </button>
+                        </form>
+
+                        <anotoki-segmented
+                            class="anotoki-files-page__views"
+                            label="View"
+                            data-view
+                            size="sm"
+                            [iconsOnly]="true"
+                            [options]="views"
+                            [value]="view()"
+                            (valueChange)="view.set($any($event))" />
+                    </div>
+
+                    @if (writable() && root(); as current) {
+                        <div class="anotoki-files-page__writing">
+                            <input
+                                #fileInput
+                                class="anotoki-visually-hidden"
+                                type="file"
+                                multiple
+                                tabindex="-1"
+                                aria-hidden="true"
+                                data-file-input
+                                [attr.accept]="'.' + current.extensions.join(',.')"
+                                (change)="onChosen($event)" />
+                            <button anotokiButton variant="primary" data-upload [loading]="uploading() !== null" (click)="chooseFiles()">
+                                <anotoki-icon name="upload" [size]="16" />
+                                Upload files
+                            </button>
+                            <button anotokiButton data-new-folder (click)="askForFolder()">
+                                <anotoki-icon name="folderPlus" [size]="16" />
+                                New folder
+                            </button>
+                            <anotoki-checkbox data-replace [checked]="replace()" (checkedChange)="replace.set($event)">Replace files of the same name</anotoki-checkbox>
+                            <p class="anotoki-files-page__takes">Takes {{ current.extensions.join(", ") }} - {{ formatBytes(current.max_bytes) }} at most. Files can be dropped here too.</p>
+                        </div>
+                    } @else if (root() && !root()!.write) {
+                        <p class="anotoki-admin__notice anotoki-files-page__read-only" data-read-only>
+                            <anotoki-icon name="lock" [size]="15" />
+                            Read only: nothing is written into this folder from here.
+                        </p>
+                    }
+
+                    @if (uploading() !== null) {
+                        <div class="anotoki-files-page__progress" data-progress>
+                            <span>Uploading {{ uploadCount() === 1 ? "1 file" : uploadCount() + " files" }}… {{ uploading() }}%</span>
+                            <div class="anotoki-files-page__bar" role="progressbar" aria-label="Uploading" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="uploading()">
+                                <span [style.width.%]="uploading()"></span>
+                            </div>
+                        </div>
+                    }
+
+                    @if (uploadResult(); as result) {
+                        <anotoki-alert
+                            data-upload-result
+                            [tone]="result.refused.length ? 'warning' : 'success'"
+                            [heading]="result.kept.length + ' uploaded' + (result.refused.length ? ', ' + result.refused.length + ' refused' : '')"
+                            [announce]="result.refused.length ? true : 'polite'">
+                            @if (result.kept.length) {
+                                <ul class="anotoki-files-page__results">
+                                    @for (file of result.kept; track $index) {
+                                        <li>
+                                            <code>{{ file.path }}</code>
+                                            @if (file.status === "replaced") {
+                                                (replaced)
+                                            } @else if (file.stored_as && file.stored_as !== file.name) {
+                                                (stored as {{ file.stored_as }})
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @if (result.refused.length) {
+                                <ul class="anotoki-files-page__results anotoki-files-page__results--refused" data-refused>
+                                    @for (file of result.refused; track $index) {
+                                        <li>
+                                            <strong>{{ file.name }}</strong>
+                                            - {{ file.message || "It was not taken." }}
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <div alertActions>
+                                <button anotokiButton size="sm" variant="ghost" (click)="uploadResult.set(null)">Dismiss</button>
+                            </div>
+                        </anotoki-alert>
+                    }
+
+                    <p class="anotoki-admin__happened" data-happened role="status">
+                        @if (happened()) {
+                            <span>{{ happened() }}</span>
+                            @if (undo()) {
+                                <button anotokiButton size="sm" variant="link" data-undo (click)="undoDelete()">Undo</button>
+                            }
+                        }
+                    </p>
+                    @if (actionError(); as message) {
+                        <p class="anotoki-admin__field-error" role="alert" data-action-error>
+                            <anotoki-icon name="alert" [size]="15" />
+                            <span>{{ message }}</span>
+                        </p>
+                    }
+
+                    @if (mode() === "folder" && !searching() && (status()?.new_count ?? 0) > 0) {
+                        <button anotokiButton size="sm" variant="ghost" class="anotoki-files-page__new" data-show-new (click)="showNew()">
+                            <anotoki-icon name="sparkle" [size]="15" />
+                            {{ formatCount(status()!.new_count) }} new since the last scan
+                        </button>
+                    }
+
+                    @if (loadError(); as message) {
+                        <anotoki-error-state heading="The folder could not be read" retryLabel="Try again" [message]="message" (retry)="load()" />
+                        @if (path()) {
+                            <button anotokiButton size="sm" variant="ghost" (click)="goTo('')">Back to {{ root()?.label }}</button>
+                        }
+                    } @else if (listing(); as shown) {
+                        @if (searching()) {
+                            <p class="anotoki-files-page__meta" data-search-meta>
+                                {{ formatCount(shown.total) }} {{ shown.total === 1 ? "name" : "names" }} with "{{ search() }}"
+                                <button anotokiButton size="sm" variant="link" (click)="clearSearch()">Show the folder</button>
+                            </p>
+                        }
+                        @if (folders().length === 0 && files().length === 0) {
+                            <anotoki-empty-state
+                                data-empty-folder
+                                [icon]="searching() ? 'search' : 'folder'"
+                                [heading]="
+                                    searching()
+                                        ? 'No name has that in it'
+                                        : mode() === 'new'
+                                          ? 'Nothing new'
+                                          : root()?.snapshot && !shown.status.scanned_at
+                                            ? 'Not scanned yet'
+                                            : 'This folder is empty'
+                                "
+                                [text]="root()?.snapshot && !shown.status.scanned_at ? 'Rescan reads the folder from the disk.' : writable() ? 'Upload files, or drop them here.' : null" />
+                        } @else if (view() === "grid") {
+                            <ul class="anotoki-files-page__grid" data-grid [attr.aria-busy]="loading() ? 'true' : null">
+                                @for (folder of folders(); track folder.path) {
+                                    <li class="anotoki-files-page__tile" [attr.data-folder]="folder.path">
+                                        <button type="button" class="anotoki-files-page__open" data-open-folder (click)="openFolder(folder)">
+                                            <span class="anotoki-files-page__thumb anotoki-files-page__thumb--folder"><anotoki-icon name="folder" [size]="40" /></span>
+                                            <span class="anotoki-files-page__name">{{ folder.name }}</span>
+                                            <span class="anotoki-files-page__sub">{{ folder.files === 1 ? "1 file" : formatCount(folder.files) + " files" }}</span>
+                                        </button>
+                                        @if (writable()) {
+                                            <button
+                                                anotokiButton
+                                                class="anotoki-files-page__more"
+                                                size="sm"
+                                                variant="ghost"
+                                                iconOnly
+                                                [attr.aria-label]="'What to do with the folder ' + folder.name"
+                                                [anotokiMenuTrigger]="folderMenu">
+                                                <anotoki-icon name="moreHorizontal" [size]="16" />
+                                            </button>
+                                            <anotoki-menu #folderMenu [label]="folder.name">
+                                                <button anotokiMenuItem data-rename (click)="askToRename(folder, true)">Rename or move</button>
+                                                <button anotokiMenuItem data-delete (click)="askToDelete(folder, true)">Delete</button>
+                                            </anotoki-menu>
+                                        }
+                                    </li>
+                                }
+                                @for (file of files(); track file.path) {
+                                    <li class="anotoki-files-page__tile" [attr.data-file]="file.path">
+                                        <button type="button" class="anotoki-files-page__open" data-open-file [attr.aria-label]="'Show ' + file.name" (click)="show(file)">
+                                            <span class="anotoki-files-page__thumb">
+                                                @if (file.preview === "image" && link(file); as src) {
+                                                    <img [src]="src" alt="" loading="lazy" decoding="async" />
+                                                } @else {
+                                                    <anotoki-icon [name]="iconOf(file)" [size]="36" />
+                                                }
+                                            </span>
+                                            <span class="anotoki-files-page__name">{{ file.name }}</span>
+                                            <span class="anotoki-files-page__sub">
+                                                {{ formatBytes(file.size) }}
+                                                @if (mode() === "new" || searching()) {
+                                                    · {{ file.folder || root()?.label }}
+                                                }
+                                            </span>
+                                        </button>
+                                        <button
+                                            anotokiButton
+                                            class="anotoki-files-page__more"
+                                            size="sm"
+                                            variant="ghost"
+                                            iconOnly
+                                            [attr.aria-label]="'What to do with ' + file.name"
+                                            [anotokiMenuTrigger]="fileMenu">
+                                            <anotoki-icon name="moreHorizontal" [size]="16" />
+                                        </button>
+                                        <anotoki-menu #fileMenu [label]="file.name">
+                                            <button anotokiMenuItem data-show (click)="show(file)">Show</button>
+                                            <a anotokiMenuItem data-download [attr.href]="link(file)" download>Download</a>
+                                            @if (root()?.write) {
+                                                <button anotokiMenuItem data-rename (click)="askToRename(file, false)">Rename or move</button>
+                                                <button anotokiMenuItem data-delete (click)="askToDelete(file, false)">Move to the trash</button>
+                                            }
+                                        </anotoki-menu>
+                                    </li>
+                                }
+                            </ul>
+                        } @else {
+                            <div class="anotoki-admin__table-wrap">
+                                <table class="anotoki-admin__table anotoki-files-page__table" data-list>
+                                    <caption class="anotoki-visually-hidden">{{ path() || root()?.label }}</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Kind</th>
+                                            <th scope="col">Changed</th>
+                                            <th scope="col" class="anotoki-admin__num">Size</th>
+                                            <th scope="col"><span class="anotoki-visually-hidden">What to do</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (folder of folders(); track folder.path) {
+                                            <tr [attr.data-folder]="folder.path">
+                                                <td data-label="Name">
+                                                    <button type="button" class="anotoki-files-page__row-open" data-open-folder (click)="openFolder(folder)">
+                                                        <anotoki-icon name="folder" [size]="17" />
+                                                        {{ folder.name }}
+                                                    </button>
+                                                </td>
+                                                <td data-label="Kind">Folder</td>
+                                                <td data-label="Changed"><span class="anotoki-admin__muted">-</span></td>
+                                                <td class="anotoki-admin__num" data-label="Size">{{ folder.files === 1 ? "1 file" : formatCount(folder.files) + " files" }}</td>
+                                                <td class="anotoki-admin__cell--whole anotoki-files-page__row-actions">
+                                                    @if (writable()) {
+                                                        <button
+                                                            anotokiButton
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            iconOnly
+                                                            [attr.aria-label]="'What to do with the folder ' + folder.name"
+                                                            [anotokiMenuTrigger]="folderRowMenu">
+                                                            <anotoki-icon name="moreHorizontal" [size]="16" />
+                                                        </button>
+                                                        <anotoki-menu #folderRowMenu [label]="folder.name">
+                                                            <button anotokiMenuItem data-rename (click)="askToRename(folder, true)">Rename or move</button>
+                                                            <button anotokiMenuItem data-delete (click)="askToDelete(folder, true)">Delete</button>
+                                                        </anotoki-menu>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                        @for (file of files(); track file.path) {
+                                            <tr [attr.data-file]="file.path">
+                                                <td data-label="Name">
+                                                    <button type="button" class="anotoki-files-page__row-open" data-open-file (click)="show(file)">
+                                                        <anotoki-icon [name]="iconOf(file)" [size]="17" />
+                                                        {{ file.name }}
+                                                    </button>
+                                                    @if (mode() === "new" || searching()) {
+                                                        <span class="anotoki-files-page__row-folder">{{ file.folder || root()?.label }}</span>
+                                                    }
+                                                </td>
+                                                <td data-label="Kind">{{ file.extension ? file.extension.toUpperCase() : "File" }}</td>
+                                                <td class="anotoki-admin__nowrap" data-label="Changed">{{ file.modified ? tools.date(file.modified) : "-" }}</td>
+                                                <td class="anotoki-admin__num" data-label="Size">{{ formatBytes(file.size) }}</td>
+                                                <td class="anotoki-admin__cell--whole anotoki-files-page__row-actions">
+                                                    <button anotokiButton size="sm" variant="ghost" iconOnly [attr.aria-label]="'What to do with ' + file.name" [anotokiMenuTrigger]="fileRowMenu">
+                                                        <anotoki-icon name="moreHorizontal" [size]="16" />
+                                                    </button>
+                                                    <anotoki-menu #fileRowMenu [label]="file.name">
+                                                        <button anotokiMenuItem data-show (click)="show(file)">Show</button>
+                                                        <a anotokiMenuItem data-download [attr.href]="link(file)" download>Download</a>
+                                                        @if (root()?.write) {
+                                                            <button anotokiMenuItem data-rename (click)="askToRename(file, false)">Rename or move</button>
+                                                            <button anotokiMenuItem data-delete (click)="askToDelete(file, false)">Move to the trash</button>
+                                                        }
+                                                    </anotoki-menu>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+
+                        @if (shown.total > shown.pageSize) {
+                            <anotoki-pagination [page]="shown.page" [pageSize]="shown.pageSize" [total]="shown.total" [busy]="loading()" (pageChange)="setPage($event)" />
+                        }
+                    } @else {
+                        <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the folder" [showLabel]="true" /></div>
+                    }
+                </section>
+            }
+        } @else {
+            <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the folders" [showLabel]="true" /></div>
+        }
+    </div>
+
+    @if (previewing(); as file) {
+        <anotoki-file-preview [file]="file" (dismissed)="previewing.set(null)" />
+    }
+
+    @if (renaming(); as open) {
+        <anotoki-dialog data-rename-dialog size="sm" [heading]="'Rename or move ' + open.name" [busy]="renameBusy()" (dismiss)="closeRename()">
+            <form class="anotoki-files-page__form" (submit)="$event.preventDefault(); rename()">
+                <anotoki-text-field
+                    data-rename-name
+                    label="Name"
+                    autocomplete="off"
+                    [hint]="open.isFolder ? null : 'Its extension stays one the folder takes: ' + (root()?.extensions ?? []).join(', ')"
+                    [maxlength]="255"
+                    [required]="true"
+                    [autofocus]="true"
+                    [error]="renameError()"
+                    [value]="renameName()"
+                    (valueChange)="renameName.set($event); renameError.set(null)" />
+                <anotoki-text-field
+                    data-rename-folder
+                    label="In the folder"
+                    autocomplete="off"
+                    [placeholder]="root()?.label ?? ''"
+                    hint="Empty for the top folder; a/b for a folder in a folder."
+                    [maxlength]="1024"
+                    [value]="renameFolder()"
+                    (valueChange)="renameFolder.set($event); renameError.set(null)" />
+                <button type="submit" hidden tabindex="-1"></button>
+            </form>
+            <div dialogFooter>
+                <button anotokiButton data-rename-cancel [disabled]="renameBusy()" (click)="closeRename()">Cancel</button>
+                <button anotokiButton variant="primary" data-rename-save [disabled]="renameName().trim() === ''" [loading]="renameBusy()" (click)="rename()">Save</button>
+            </div>
+        </anotoki-dialog>
+    }
+
+    @if (makingFolder()) {
+        <anotoki-dialog data-folder-dialog size="sm" heading="New folder" [description]="'In ' + (path() || root()?.label)" [busy]="folderBusy()" (dismiss)="closeFolder()">
+            <form class="anotoki-files-page__form" (submit)="$event.preventDefault(); makeFolder()">
+                <anotoki-text-field
+                    data-folder-name
+                    label="Name"
+                    autocomplete="off"
+                    [maxlength]="255"
+                    [required]="true"
+                    [autofocus]="true"
+                    [error]="folderError()"
+                    [value]="folderName()"
+                    (valueChange)="folderName.set($event); folderError.set(null)" />
+                <button type="submit" hidden tabindex="-1"></button>
+            </form>
+            <div dialogFooter>
+                <button anotokiButton data-folder-cancel [disabled]="folderBusy()" (click)="closeFolder()">Cancel</button>
+                <button anotokiButton variant="primary" data-folder-make [disabled]="folderName().trim() === ''" [loading]="folderBusy()" (click)="makeFolder()">Make it</button>
+            </div>
+        </anotoki-dialog>
+    }
+
+    @if (trashOpen() && root(); as open) {
+        <anotoki-file-trash [root]="open" [base]="trashBase()" (restored)="onRestored($event)" (dismissed)="trashOpen.set(false)" />
+    }
+
+    <anotoki-admin-question [questions]="questions" />
+}

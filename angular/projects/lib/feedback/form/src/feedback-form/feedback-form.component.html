@@ -1,0 +1,138 @@
+@if (title(); as text) {
+    @if (headingLevel() === 3) {
+        <h3 class="anotoki-feedback-form__title" [id]="id + '-title'">{{ text }}</h3>
+    } @else {
+        <h2 class="anotoki-feedback-form__title" [id]="id + '-title'">{{ text }}</h2>
+    }
+}
+
+@if (done()) {
+    <div class="anotoki-feedback-form__thanks" data-thanks role="status" tabindex="-1">
+        <anotoki-icon class="anotoki-feedback-form__thanks-icon" name="checkCircle" [size]="30" />
+        <p class="anotoki-feedback-form__thanks-title">{{ w().thanks }}</p>
+        <p class="anotoki-feedback-form__text">{{ w().thanksText }}</p>
+        <div class="anotoki-feedback-form__actions">
+            <button anotokiButton data-another (click)="another()">{{ w().another }}</button>
+            @if (closable()) {
+                <button anotokiButton variant="primary" data-close [attr.lang]="kit.foreignLang()" (click)="closed.emit()">{{ kit.t("ui.close") }}</button>
+            }
+        </div>
+    </div>
+} @else {
+    <p class="anotoki-feedback-form__text anotoki-feedback-form__lead">{{ w().lead }}</p>
+
+    <form
+        class="anotoki-feedback-form__form"
+        novalidate
+        [attr.aria-labelledby]="title() ? id + '-title' : null"
+        [attr.aria-busy]="sending() ? 'true' : null"
+        (submit)="$event.preventDefault(); submit()">
+        <anotoki-radio-group data-kind [label]="w().kind" [options]="kindOptions()" [value]="chosenKind()" [disabled]="sending()" (valueChange)="setKind($event)" />
+
+        @if (sectionOptions().length) {
+            <anotoki-select
+                data-section
+                [label]="w().section"
+                [placeholder]="w().sectionNone"
+                [options]="sectionOptions()"
+                [disabled]="sending()"
+                [error]="errorOf('section')"
+                [value]="section()"
+                (valueChange)="setSection($event)" />
+        }
+
+        <anotoki-text-field
+            data-subject
+            autocomplete="off"
+            [label]="w().subject"
+            [optional]="!subjectRequired()"
+            [required]="subjectRequired()"
+            [maxlength]="subjectMax"
+            [disabled]="sending()"
+            [error]="errorOf('subject')"
+            [value]="subject()"
+            (valueChange)="setSubject($event)" />
+
+        <anotoki-textarea
+            data-message
+            [label]="w().message"
+            [hint]="w().messageHint"
+            [required]="true"
+            [rows]="5"
+            [maxlength]="messageMax"
+            [disabled]="sending()"
+            [error]="errorOf('message')"
+            [value]="message()"
+            (valueChange)="setMessage($event)" />
+
+        @for (field of fields(); track field.name) {
+            @if ((field.rows ?? 3) > 1) {
+                <anotoki-textarea
+                    [attr.data-field]="field.name"
+                    [label]="field.label"
+                    [hint]="field.hint ?? null"
+                    [optional]="true"
+                    [rows]="field.rows ?? 3"
+                    [maxlength]="field.max"
+                    [disabled]="sending()"
+                    [error]="errorOf('details.' + field.name)"
+                    [value]="detail(field.name)"
+                    (valueChange)="setDetail(field.name, $event)" />
+            } @else {
+                <anotoki-text-field
+                    [attr.data-field]="field.name"
+                    autocomplete="off"
+                    [label]="field.label"
+                    [hint]="field.hint ?? null"
+                    [optional]="true"
+                    [maxlength]="field.max"
+                    [disabled]="sending()"
+                    [error]="errorOf('details.' + field.name)"
+                    [value]="detail(field.name)"
+                    (valueChange)="setDetail(field.name, $event)" />
+            }
+        }
+
+        @if (signedIn()) {
+            <anotoki-checkbox data-anonymous [hint]="w().anonymousHint" [disabled]="sending()" [checked]="anonymous()" (checkedChange)="setAnonymous($event)">{{ w().anonymous }}</anotoki-checkbox>
+        }
+        @if (!anonymous()) {
+            <anotoki-text-field
+                data-email
+                type="email"
+                autocomplete="email"
+                inputmode="email"
+                [label]="w().email"
+                [hint]="w().emailHint"
+                [optional]="true"
+                [maxlength]="emailMax"
+                [disabled]="sending()"
+                [error]="errorOf('email')"
+                [value]="email()"
+                (valueChange)="setEmail($event)" />
+        }
+
+        @if (honeypot) {
+            <!-- For robots alone: off the screen, out of the tab order, hidden from screen readers. Filled in, the server keeps nothing. -->
+            <div class="anotoki-feedback-form__trap" aria-hidden="true">
+                <label>
+                    {{ w().honeypot }}
+                    <input type="text" data-trap tabindex="-1" autocomplete="off" [name]="honeypot" [value]="trap()" (input)="trap.set($any($event.target).value)" />
+                </label>
+            </div>
+        }
+
+        @if (failure(); as text) {
+            <anotoki-alert data-failure tone="warning" [announce]="true">
+                <p class="anotoki-feedback-form__text">{{ text }}</p>
+            </anotoki-alert>
+        }
+
+        <div class="anotoki-feedback-form__actions">
+            @if (closable()) {
+                <button anotokiButton type="button" data-cancel [disabled]="sending()" [attr.lang]="kit.foreignLang()" (click)="closed.emit()">{{ kit.t("ui.cancel") }}</button>
+            }
+            <button anotokiButton type="submit" variant="primary" data-send [loading]="sending()">{{ sending() ? w().sending : w().send }}</button>
+        </div>
+    </form>
+}

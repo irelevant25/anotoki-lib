@@ -11,13 +11,15 @@ import type { LibraryKey } from '@anotoki/lib/ui/config';
 import { KIT_LIBRARY_WORDS } from '@anotoki/lib/ui/config';
 import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
+import { FEEDBACK_LIBRARY_WORDS } from '@anotoki/lib/words/feedback';
 
 export type { KitLibraryKey, LibraryKey } from '@anotoki/lib/ui/config';
 export type { SiteStatusLibraryKey } from '@anotoki/lib/words/site-status';
 export type { SignInLibraryKey } from '@anotoki/lib/words/sign-in';
+export type { FeedbackLibraryKey } from '@anotoki/lib/words/feedback';
 
 function gather(language: 'en' | 'sk'): Readonly<Record<LibraryKey, string>> {
-  return { ...KIT_LIBRARY_WORDS[language], ...SITE_STATUS_LIBRARY_WORDS[language], ...SIGN_IN_LIBRARY_WORDS[language] };
+  return { ...KIT_LIBRARY_WORDS[language], ...SITE_STATUS_LIBRARY_WORDS[language], ...SIGN_IN_LIBRARY_WORDS[language], ...FEEDBACK_LIBRARY_WORDS[language] };
 }
 
 /**

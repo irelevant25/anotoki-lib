@@ -1,0 +1,245 @@
+@if (!tools.isAdmin()) {
+    <p class="anotoki-admin__notice">The audit log is for the administrators of {{ tools.siteName }}.</p>
+} @else {
+    <div class="anotoki-admin__page">
+        <anotoki-page-header heading="Audit log" lead="Who did what, and when - every change made from the admin panel, and the ones that matter for security. Read only." [headingId]="id + '-title'">
+            @if (result(); as page) {
+                <p pageMeta class="anotoki-admin__counts" data-counts>
+                    <span>
+                        <strong>{{ formatCount(page.total) }}</strong>
+                        {{ page.total === 1 ? "entry" : "entries" }}{{ filtered() ? " found" : "" }}
+                    </span>
+                </p>
+            }
+            <button anotokiButton data-reload [loading]="loading()" (click)="reload()">
+                <anotoki-icon name="refresh" [size]="16" />
+                Read again
+            </button>
+        </anotoki-page-header>
+
+        @if (unavailable()) {
+            <anotoki-alert data-unavailable tone="warning" heading="Apply the pending database update first">
+                <p class="anotoki-admin__text">The audit log's table comes with an update that is uploaded and not applied yet. Entries made meanwhile wait, and go in once it is.</p>
+                <div alertActions>
+                    @if (tools.migrationsRoute; as route) {
+                        <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="route">
+                            <anotoki-icon name="database" [size]="15" />
+                            Open Migrations
+                        </a>
+                    }
+                    <button anotokiButton size="sm" (click)="reload()">
+                        <anotoki-icon name="refresh" [size]="15" />
+                        Look again
+                    </button>
+                </div>
+            </anotoki-alert>
+        } @else {
+            <form class="anotoki-admin__filters" role="search" aria-label="Filter the audit log" (submit)="$event.preventDefault(); setFilter('target_id', targetIdText())">
+                <anotoki-select label="Who" data-actor placeholder="Anybody" [options]="actorOptions()" [value]="filter().actor" (valueChange)="setFilter('actor', $event)" />
+                <anotoki-select label="Action" data-action placeholder="Any action" [options]="actionOptions()" [value]="filter().action" (valueChange)="setFilter('action', $event)" />
+                <anotoki-select label="About" data-target-type placeholder="Anything" [options]="targetOptions()" [value]="filter().target_type" (valueChange)="setFilter('target_type', $event)" />
+                <anotoki-text-field
+                    label="Its id"
+                    data-target-id
+                    autocomplete="off"
+                    placeholder="Exactly"
+                    [maxlength]="100"
+                    [value]="targetIdText()"
+                    (valueChange)="targetIdText.set($event)"
+                    (blurred)="setFilter('target_id', targetIdText())" />
+                <anotoki-text-field label="From" data-from type="date" [value]="filter().from" (valueChange)="setDate('from', $event)" />
+                <anotoki-text-field label="To" data-to type="date" [value]="filter().to" (valueChange)="setDate('to', $event)" />
+                @if (filtered()) {
+                    <div class="anotoki-admin__filter-actions">
+                        <button anotokiButton variant="ghost" data-clear-filters (click)="clearFilters()">Show all</button>
+                    </div>
+                }
+            </form>
+
+            @if (filter().scope_type && filter().scope_id) {
+                <p class="anotoki-audit-log-page__scope" data-scope>
+                    <span>
+                        Everything filed under
+                        <strong>{{ filter().scope_type }} {{ filter().scope_id }}</strong>
+                    </span>
+                    <button anotokiButton size="sm" variant="ghost" data-clear-scope (click)="clearScope()">
+                        <anotoki-icon name="x" [size]="14" />
+                        Not only these
+                    </button>
+                </p>
+            }
+
+            @if (loadError(); as message) {
+                <anotoki-error-state heading="The audit log could not be read" retryLabel="Try again" [message]="message" (retry)="reload()" />
+            } @else if (result(); as page) {
+                @if (entries().length === 0) {
+                    @if (filtered()) {
+                        <anotoki-empty-state data-nothing icon="search" heading="No entry matches" text="Nothing was recorded of that kind.">
+                            <button anotokiButton (click)="clearFilters()">Show all</button>
+                        </anotoki-empty-state>
+                    } @else {
+                        <anotoki-empty-state data-empty icon="clock" heading="Nothing recorded yet" text="An entry is written for every change an administrator makes." />
+                    }
+                } @else {
+                    <div class="anotoki-admin__table-wrap">
+                        <table class="anotoki-admin__table anotoki-audit-log-page__table" data-entries>
+                            <caption class="anotoki-visually-hidden">The audit log, the newest first</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">When</th>
+                                    <th scope="col">Who</th>
+                                    <th scope="col">Action</th>
+                                    <th scope="col">About</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (entry of entries(); track entry.id) {
+                                    <tr class="anotoki-audit-log-page__row" [class.anotoki-audit-log-page__row--open]="open() === entry.id" [attr.data-entry]="entry.id">
+                                        <td class="anotoki-admin__nowrap" data-label="When">
+                                            <time [attr.datetime]="entry.created_at">{{ tools.date(entry.created_at) }}</time>
+                                        </td>
+                                        <td data-label="Who">
+                                            @if (tools.personLink(entry.actor_id); as link) {
+                                                <a [routerLink]="link">{{ actorName(entry) }}</a>
+                                            } @else {
+                                                <span [class.anotoki-admin__muted]="entry.actor_id === null">{{ actorName(entry) }}</span>
+                                            }
+                                        </td>
+                                        <td data-label="Action">
+                                            <code class="anotoki-audit-log-page__action">{{ entry.action }}</code>
+                                        </td>
+                                        <td data-label="About">
+                                            @if (entry.target_type) {
+                                                @if (entry.target_id) {
+                                                    <button
+                                                        type="button"
+                                                        class="anotoki-audit-log-page__link"
+                                                        data-about
+                                                        [attr.aria-label]="'Everything about ' + entry.target_type + ' ' + entry.target_id"
+                                                        (click)="about(entry)">
+                                                        {{ entry.target_type }} {{ entry.target_id }}
+                                                    </button>
+                                                } @else {
+                                                    {{ entry.target_type }}
+                                                }
+                                            } @else {
+                                                <span class="anotoki-admin__muted">-</span>
+                                            }
+                                            @if (entry.scope_type && entry.scope_id) {
+                                                <button
+                                                    type="button"
+                                                    class="anotoki-audit-log-page__link anotoki-audit-log-page__within"
+                                                    data-within
+                                                    [attr.aria-label]="'Everything filed under ' + entry.scope_type + ' ' + entry.scope_id"
+                                                    (click)="within(entry)">
+                                                    in {{ entry.scope_type }} {{ entry.scope_id }}
+                                                </button>
+                                            }
+                                        </td>
+                                        <td data-label="Details">
+                                            @if (hasDetails(entry) || entry.ip || entry.actor_session) {
+                                                <button
+                                                    type="button"
+                                                    class="anotoki-audit-log-page__toggle"
+                                                    data-toggle
+                                                    [attr.aria-expanded]="open() === entry.id"
+                                                    [attr.aria-controls]="id + '-detail-' + entry.id"
+                                                    (click)="toggle(entry)">
+                                                    <anotoki-icon class="anotoki-audit-log-page__chevron" name="chevronRight" [size]="15" />
+                                                    <span class="anotoki-audit-log-page__summary">{{ summary(entry.details) || "Open" }}</span>
+                                                </button>
+                                            } @else {
+                                                <span class="anotoki-admin__muted">-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    @if (open() === entry.id) {
+                                        <tr class="anotoki-audit-log-page__detail-row">
+                                            <td colspan="5" class="anotoki-admin__cell--whole">
+                                                <div class="anotoki-audit-log-page__detail" data-detail [id]="id + '-detail-' + entry.id">
+                                                    @if (details(entry); as read) {
+                                                        @if (read.changes.length) {
+                                                            <div class="anotoki-audit-log-page__block">
+                                                                <h3 class="anotoki-admin__section-title">What changed</h3>
+                                                                <table class="anotoki-audit-log-page__changes" data-changes>
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th scope="col">Field</th>
+                                                                            <th scope="col">Before</th>
+                                                                            <th scope="col">After</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @for (change of read.changes; track change.field) {
+                                                                            <tr [class.anotoki-audit-log-page__same]="!change.changed">
+                                                                                <th scope="row">{{ change.field }}</th>
+                                                                                <td class="anotoki-audit-log-page__before">{{ change.before }}</td>
+                                                                                <td class="anotoki-audit-log-page__after">{{ change.after }}</td>
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        }
+                                                        <dl class="anotoki-admin__facts" data-facts>
+                                                            <div>
+                                                                <dt>Recorded</dt>
+                                                                <dd>{{ tools.date(entry.created_at, true) }}</dd>
+                                                            </div>
+                                                            @for (fact of read.facts; track fact.name) {
+                                                                <div>
+                                                                    <dt>{{ fact.name }}</dt>
+                                                                    <dd>{{ fact.value }}</dd>
+                                                                </div>
+                                                            }
+                                                            @if (entry.actor_session) {
+                                                                <div>
+                                                                    <dt>Session</dt>
+                                                                    <dd>
+                                                                        <code>{{ entry.actor_session }}</code>
+                                                                    </dd>
+                                                                </div>
+                                                            }
+                                                            @if (entry.ip) {
+                                                                <div>
+                                                                    <dt>Address</dt>
+                                                                    <dd>{{ entry.ip }}</dd>
+                                                                </div>
+                                                            }
+                                                            <div>
+                                                                <dt>Entry</dt>
+                                                                <dd>{{ entry.id }}</dd>
+                                                            </div>
+                                                        </dl>
+                                                        @if (hasDetails(entry)) {
+                                                            <div class="anotoki-audit-log-page__block">
+                                                                <div class="anotoki-audit-log-page__block-head">
+                                                                    <h3 class="anotoki-admin__section-title">As recorded</h3>
+                                                                    <anotoki-copy-button label="Copy" [text]="pretty(entry.details)" />
+                                                                </div>
+                                                                <pre class="anotoki-admin__code" data-json tabindex="0" role="region" [attr.aria-label]="'The details of entry ' + entry.id">{{
+                                                                    pretty(entry.details)
+                                                                }}</pre>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (page.total > page.pageSize) {
+                        <anotoki-pagination [page]="page.page" [pageSize]="page.pageSize" [total]="page.total" [busy]="loading()" (pageChange)="setPage($event)" />
+                    }
+                }
+            } @else {
+                <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the audit log" [showLabel]="true" /></div>
+            }
+        }
+    </div>
+}

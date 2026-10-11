@@ -1,0 +1,220 @@
+@if (!tools.isAdmin()) {
+    <p class="anotoki-admin__notice">Feedback is for the administrators of {{ tools.siteName }}.</p>
+} @else {
+    <div class="anotoki-admin__page">
+        <anotoki-page-header heading="Feedback" lead="What visitors sent through the site's feedback form. The words are theirs: only a message's status changes here." [headingId]="id + '-title'">
+            @if (facets()) {
+                <p pageMeta class="anotoki-admin__counts" data-counts>
+                    @if (newCount()) {
+                        <anotoki-badge tone="primary" [dot]="true">{{ formatCount(newCount()) }} new</anotoki-badge>
+                    } @else {
+                        <span>Nothing new</span>
+                    }
+                </p>
+            }
+            <button anotokiButton data-reload [loading]="loading()" (click)="load()">
+                <anotoki-icon name="refresh" [size]="16" />
+                Read again
+            </button>
+        </anotoki-page-header>
+
+        <p class="anotoki-admin__happened" data-happened role="status">{{ happened() }}</p>
+
+        @if (unavailable()) {
+            <anotoki-alert data-unavailable tone="warning" heading="Apply the pending database update first">
+                <p class="anotoki-admin__text">Feedback's table comes with an update that is uploaded and not applied yet. Until it is, the form says it cannot take a message.</p>
+                <div alertActions>
+                    @if (tools.migrationsRoute; as route) {
+                        <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="route">
+                            <anotoki-icon name="database" [size]="15" />
+                            Open Migrations
+                        </a>
+                    }
+                    <button anotokiButton size="sm" (click)="load()">
+                        <anotoki-icon name="refresh" [size]="15" />
+                        Look again
+                    </button>
+                </div>
+            </anotoki-alert>
+        } @else {
+            <div class="anotoki-feedback-page__status">
+                <anotoki-segmented label="Status" data-status [options]="statusOptions()" [value]="filter().status" (valueChange)="setStatusFilter($event)" />
+            </div>
+
+            <form class="anotoki-admin__filters" role="search" aria-label="Filter the feedback" (submit)="$event.preventDefault(); applySearch()">
+                <anotoki-select label="Kind" data-kind placeholder="Any kind" [options]="kindOptions()" [value]="filter().kind" (valueChange)="setKind($event)" />
+                @if (sectionOptions().length) {
+                    <anotoki-select label="Section" data-section placeholder="Any section" [options]="sectionOptions()" [value]="filter().section" (valueChange)="setSection($event)" />
+                }
+                <anotoki-text-field
+                    class="anotoki-admin__filter--wide"
+                    data-search
+                    type="search"
+                    label="Search"
+                    placeholder="Subject, words, address"
+                    autocomplete="off"
+                    [maxlength]="200"
+                    [value]="searchText()"
+                    (valueChange)="searchText.set($event)" />
+                <div class="anotoki-admin__filter-actions">
+                    <button anotokiButton type="submit" data-search-button>
+                        <anotoki-icon name="search" [size]="16" />
+                        Search
+                    </button>
+                    @if (filtered()) {
+                        <button anotokiButton variant="ghost" data-reset (click)="reset()">Show all</button>
+                    }
+                </div>
+            </form>
+
+            @if (loadError(); as message) {
+                <anotoki-error-state heading="The feedback could not be read" retryLabel="Try again" [message]="message" (retry)="load()" />
+            } @else if (list(); as shown) {
+                @if (items().length === 0) {
+                    @if (filtered()) {
+                        <anotoki-empty-state data-nothing icon="search" heading="No message matches" text="Nothing of that kind came.">
+                            <button anotokiButton (click)="reset()">Show all</button>
+                        </anotoki-empty-state>
+                    } @else {
+                        <anotoki-empty-state data-empty icon="mail" heading="No feedback yet" text="What visitors send through the site's feedback form comes here." />
+                    }
+                } @else {
+                    <ul class="anotoki-feedback-page__list" data-messages [attr.aria-busy]="loading() ? 'true' : null">
+                        @for (message of items(); track message.id) {
+                            <li>
+                                <button
+                                    type="button"
+                                    class="anotoki-feedback-page__item"
+                                    [class.anotoki-feedback-page__item--new]="message.status === 'new'"
+                                    data-message
+                                    [attr.data-id]="message.id"
+                                    aria-haspopup="dialog"
+                                    (click)="view(message)">
+                                    <span class="anotoki-feedback-page__item-head">
+                                        <anotoki-badge [tone]="statusTones[message.status]" [dot]="message.status === 'new'" [attr.data-status]="message.status">
+                                            {{ wordOf(message.status) }}
+                                        </anotoki-badge>
+                                        <anotoki-badge>{{ wordOf(message.kind) }}</anotoki-badge>
+                                        @if (message.section) {
+                                            <span class="anotoki-feedback-page__section">{{ message.section }}</span>
+                                        }
+                                        <time class="anotoki-feedback-page__when" [attr.datetime]="message.created_at">{{ tools.date(message.created_at) }}</time>
+                                    </span>
+                                    <span class="anotoki-feedback-page__title">{{ titleOf(message) }}</span>
+                                    @if (message.subject) {
+                                        <span class="anotoki-feedback-page__excerpt">{{ excerptOf(message) }}</span>
+                                    }
+                                    <span class="anotoki-feedback-page__from">
+                                        From {{ senderOf(message) }}
+                                        @if (message.page) {
+                                            · on
+                                            <code>{{ message.page }}</code>
+                                        }
+                                    </span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+
+                    @if (shown.total > shown.pageSize) {
+                        <anotoki-pagination [page]="page()" [pageSize]="shown.pageSize" [total]="shown.total" [busy]="loading()" (pageChange)="setPage($event)" />
+                    }
+                }
+            } @else {
+                <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the feedback" [showLabel]="true" /></div>
+            }
+        }
+    </div>
+
+    @if (viewing(); as message) {
+        <anotoki-dialog data-viewer size="lg" [heading]="titleOf(message)" [description]="'Received ' + tools.date(message.created_at)" [busy]="deleting()" (dismiss)="closeView()">
+            <div class="anotoki-feedback-page__viewer">
+                <p class="anotoki-feedback-page__badges">
+                    <anotoki-badge>{{ wordOf(message.kind) }}</anotoki-badge>
+                    @if (message.section) {
+                        <anotoki-badge tone="info">{{ message.section }}</anotoki-badge>
+                    }
+                    @if (viewLoading()) {
+                        <anotoki-spinner size="sm" label="Opening the message" [inline]="true" />
+                    }
+                </p>
+
+                <div class="anotoki-feedback-page__words" data-words>{{ message.message }}</div>
+
+                @for (field of viewingFields(); track field.name) {
+                    <div class="anotoki-feedback-page__field" [attr.data-field]="field.name">
+                        <h3 class="anotoki-admin__section-title">{{ field.label }}</h3>
+                        <div class="anotoki-feedback-page__words">{{ field.value }}</div>
+                    </div>
+                }
+
+                <dl class="anotoki-admin__facts" data-facts>
+                    <div>
+                        <dt>From</dt>
+                        <dd>
+                            @if (tools.personLink(message.user_id); as link) {
+                                <a [routerLink]="link">{{ senderOf(message) }}</a>
+                            } @else {
+                                {{ message.user_id === null && !message.contact_email ? "Anonymous" : senderOf(message) }}
+                            }
+                        </dd>
+                    </div>
+                    @if (message.contact_email) {
+                        <div>
+                            <dt>Answer at</dt>
+                            <dd>
+                                <a [href]="'mailto:' + message.contact_email">{{ message.contact_email }}</a>
+                            </dd>
+                        </div>
+                    }
+                    @if (message.page) {
+                        <div>
+                            <dt>Page</dt>
+                            <dd>
+                                <code>{{ message.page }}</code>
+                            </dd>
+                        </div>
+                    }
+                    @if (message.language) {
+                        <div>
+                            <dt>Language</dt>
+                            <dd>{{ message.language }}</dd>
+                        </div>
+                    }
+                    @if (message.user_agent) {
+                        <div class="anotoki-feedback-page__agent">
+                            <dt>Browser</dt>
+                            <dd>{{ message.user_agent }}</dd>
+                        </div>
+                    }
+                    @if (message.handled_at) {
+                        <div>
+                            <dt>Last marked</dt>
+                            <dd>{{ tools.date(message.handled_at) }}{{ message.handled_by_name ? " by " + message.handled_by_name : "" }}</dd>
+                        </div>
+                    }
+                </dl>
+
+                @if (viewError(); as text) {
+                    <p class="anotoki-admin__field-error" role="alert" data-view-error>
+                        <anotoki-icon name="alert" [size]="15" />
+                        <span>{{ text }}</span>
+                    </p>
+                }
+            </div>
+            <div dialogFooter>
+                <div class="anotoki-feedback-page__mark">
+                    <span class="anotoki-feedback-page__mark-label" aria-hidden="true">Mark as</span>
+                    <anotoki-segmented label="Mark as" data-mark size="sm" [options]="markOptions" [value]="message.status" [busy]="savingStatus()" (valueChange)="setStatus($event)" />
+                </div>
+                <button anotokiButton variant="ghost" data-delete [loading]="deleting()" (click)="remove()">
+                    <anotoki-icon name="trash" [size]="15" />
+                    Delete
+                </button>
+                <button anotokiButton autofocus data-close [disabled]="deleting()" (click)="closeView()">Close</button>
+            </div>
+        </anotoki-dialog>
+    }
+
+    <anotoki-admin-question [questions]="questions" />
+}

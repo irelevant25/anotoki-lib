@@ -3,15 +3,18 @@
 //
 // - Sizes: every entry point's FESM, raw and gzipped. A site's build places whole files in its chunks, and an entry
 //   point is one file, so the eager ones (the ui core, ui/menu, shell, migrations, translations, auth: every page of a
-//   site) have limits; the rest are printed. The ui core is a file per piece (@anotoki/lib/ui/button, /spinner, ...):
-//   its limit holds the pieces together.
+//   site; the admin tools' and the feedback form's configuration, which a site may provide with them) have limits; the
+//   rest are printed. The ui core is a file per piece (@anotoki/lib/ui/button, /spinner, ...): its limit holds the
+//   pieces together.
 // - Boundaries: what each entry point may import. The library imports the core's pieces from their own entry points,
 //   never through @anotoki/lib/ui, which holds re-exports and nothing else: a build that reaches it from a first page
 //   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
 //   Languages pages into the translations module's. The auth module imports the core's pieces and the migrations
 //   module (whether the site is blocked), and nothing imports it but its testing helper. The People page imports the
-//   kit and its configuration's small entry point, which imports nothing.
+//   kit and its configuration's small entry point, which imports nothing. The admin tools' pages import their
+//   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
+//   the feedback form imports its configuration and the kit's fields.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -62,9 +65,27 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  *
  * people: the People page's configuration and the shape of its API, in a site's app.config - a token and a function
  * (the page itself is people/page, on a lazy admin route).
+ *
+ * admin, feedback (0.4.0): what a site may provide with the rest of its app - the admin tools' configuration and the
+ * unread feedback count beside its admin navigation (0.9); the feedback form's configuration, which registers its
+ * words (0.9, its words an entry point of their own, 1.4). The admin pages and the form are entry points of their own,
+ * on lazy routes or loaded as they are opened.
  */
-const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16, "@anotoki/lib/people": 0.5 };
+const LIMITS = {
+    [CORE]: 15,
+    "@anotoki/lib/ui/menu": 6,
+    "@anotoki/lib/shell": 14,
+    "@anotoki/lib/migrations": 7,
+    "@anotoki/lib/translations": 8,
+    "@anotoki/lib/auth": 16,
+    "@anotoki/lib/people": 0.5,
+    "@anotoki/lib/admin": 1.5,
+    "@anotoki/lib/feedback": 1.5,
+};
 const UI_AND_SHELL = 28;
+
+/** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
+const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs"];
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
@@ -107,6 +128,18 @@ const MAY_IMPORT = {
     // reads it is the site's to say, `me`) and is never pulled back into it.
     "@anotoki/lib/people": [],
     "@anotoki/lib/people/page": ["@anotoki/lib/people", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons", "@anotoki/lib/ui/pagination"],
+    // The admin tools: their configuration (and the unread feedback count, beside a site's admin navigation) imports
+    // nothing of the package; their shared parts and their five pages, each on a lazy route, the kit's pieces.
+    "@anotoki/lib/admin": [],
+    "@anotoki/lib/admin/parts": ["@anotoki/lib/admin", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/icons"],
+    "@anotoki/lib/admin/errors": ADMIN_PAGE,
+    "@anotoki/lib/admin/audit": ADMIN_PAGE,
+    "@anotoki/lib/admin/feedback": ADMIN_PAGE,
+    "@anotoki/lib/admin/backups": ADMIN_PAGE,
+    "@anotoki/lib/admin/files": [...ADMIN_PAGE, "@anotoki/lib/ui/menu"],
+    // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
+    "@anotoki/lib/feedback": ["@anotoki/lib/ui/config", "@anotoki/lib/words/feedback"],
+    "@anotoki/lib/feedback/form": ["@anotoki/lib/feedback", ...PIECES, "@anotoki/lib/ui/forms"],
     // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
@@ -125,7 +158,11 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, with the
  * kit's words alone - a module's arrive with the module, by its registration; "a button": one piece alone; "the
  * sign-in": the gate and the auth module's every eager part, the callback page and the failure's screen routed with
- * the first page (they are in the gate's company on every site that signs in).
+ * the first page (they are in the gate's company on every site that signs in); "the badge": the admin tools'
+ * configuration and the unread feedback count of a site's admin navigation - no words; "the words + feedback": a
+ * site's translations with the feedback form's configuration, which registers the form's words - the form itself
+ * (@anotoki/lib/feedback/form, the kit's fields) is loaded as it is opened: in a first load it would share ui/forms
+ * with the lazy pages.
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
@@ -140,6 +177,16 @@ const FIRST_LOADS = [
         },
         limit: 19.5,
         words: [...KIT_WORDS, "siteStatus", "signIn"],
+    },
+    { title: "the badge", imports: { "@anotoki/lib/admin": ["provideAnotokiAdmin", "FeedbackUnread"] }, limit: 1, words: [] },
+    {
+        title: "the words + feedback",
+        imports: {
+            "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"],
+            "@anotoki/lib/feedback": ["provideAnotokiFeedback"],
+        },
+        limit: 9,
+        words: [...KIT_WORDS, "feedback"],
     },
 ];
 
@@ -184,7 +231,9 @@ for (const { name, file } of entries) {
         problems.push(`${name}: an entry point check-package.mjs does not know - add it to MAY_IMPORT (and LIMITS if it is eager).`);
         continue;
     }
-    const imported = new Set([...code.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*['"]([^'"]+)['"]/g)].map((match) => match[1]));
+    // A module's name holds no white space: so the words 'from' and 'to' in a page's own code (the audit log's date
+    // filters) are never read as an import of what follows them.
+    const imported = new Set([...code.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*['"]([^'"\s]+)['"]/g)].map((match) => match[1]));
     for (const specifier of imported) {
         if (OTHERS.test(specifier)) {
             continue;

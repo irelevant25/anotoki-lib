@@ -1,0 +1,70 @@
+<anotoki-dialog
+    data-trash
+    size="lg"
+    [heading]="'The trash of ' + root().label"
+    description="What was deleted here, the last first: put a file back where it was, or delete it for good."
+    [busy]="busy() !== null"
+    (dismiss)="dismissed.emit()">
+    <p class="anotoki-file-trash__happened" role="status" data-trash-happened>{{ happened() }}</p>
+    @if (error(); as message) {
+        <p class="anotoki-file-trash__error" role="alert" data-trash-error>
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ message }}</span>
+        </p>
+    }
+    @if (items(); as list) {
+        @if (list.length === 0) {
+            <anotoki-empty-state data-trash-empty icon="trash" heading="The trash is empty" />
+        } @else {
+            <ul class="anotoki-file-trash__list" data-trash-items>
+                @for (item of list; track item.trashed) {
+                    <li class="anotoki-file-trash__item" [attr.data-trashed]="item.trashed">
+                        <span class="anotoki-file-trash__what">
+                            <span class="anotoki-file-trash__name">{{ item.name }}</span>
+                            <span class="anotoki-file-trash__where">
+                                {{ item.folder || "the top folder" }} · {{ formatBytes(item.size) }}
+                                @if (item.deleted_at) {
+                                    · deleted {{ tools.date(item.deleted_at) }}
+                                }
+                            </span>
+                        </span>
+                        <span class="anotoki-file-trash__actions">
+                            <button
+                                anotokiButton
+                                size="sm"
+                                data-put-back
+                                [loading]="busy() === item.trashed"
+                                [disabled]="busy() !== null"
+                                [attr.aria-label]="'Put ' + item.name + ' back'"
+                                (click)="putBack(item)">
+                                <anotoki-icon name="rotateCcw" [size]="15" />
+                                Put back
+                            </button>
+                            <button
+                                anotokiButton
+                                size="sm"
+                                variant="ghost"
+                                data-delete-for-good
+                                [disabled]="busy() !== null"
+                                [attr.aria-label]="'Delete ' + item.name + ' for good'"
+                                (click)="deleteForGood(item)">
+                                <anotoki-icon name="trash" [size]="15" />
+                                Delete for good
+                            </button>
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    } @else if (!error()) {
+        <div class="anotoki-file-trash__loading"><anotoki-spinner label="Reading the trash" [showLabel]="true" /></div>
+    }
+    <div dialogFooter>
+        @if (items()?.length) {
+            <button anotokiButton variant="danger" data-empty-trash [loading]="busy() === '*'" [disabled]="busy() !== null" (click)="empty()">Empty the trash</button>
+        }
+        <button anotokiButton autofocus data-trash-close [disabled]="busy() !== null" (click)="dismissed.emit()">Close</button>
+    </div>
+</anotoki-dialog>
+
+<anotoki-admin-question [questions]="questions" />

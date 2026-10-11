@@ -27,6 +27,10 @@
     "translations/**/testing.ts",
     "auth/**/*.spec.ts",
     "auth/**/testing.ts",
-    "people/**/*.spec.ts"
+    "people/**/*.spec.ts",
+    "admin/**/*.spec.ts",
+    "admin/**/testing.ts",
+    "feedback/**/*.spec.ts",
+    "feedback/**/testing.ts"
   ]
 }

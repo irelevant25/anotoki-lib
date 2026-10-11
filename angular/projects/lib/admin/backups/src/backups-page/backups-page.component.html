@@ -1,0 +1,293 @@
+@if (!tools.isAdmin()) {
+    <p class="anotoki-admin__notice">Backups are for the administrators of {{ tools.siteName }}.</p>
+} @else {
+    <div class="anotoki-admin__page">
+        <anotoki-page-header
+            heading="Backups"
+            lead="The whole database, table by table, with the migrations that made it: one a day by itself, one before every update and every restore, and one whenever you make it."
+            [headingId]="id + '-title'">
+            @if (status(); as info) {
+                <p pageMeta class="anotoki-admin__counts" data-counts>
+                    <span>
+                        <strong>{{ formatCount(info.count) }}</strong>
+                        {{ info.count === 1 ? "backup" : "backups" }}
+                    </span>
+                    <span>
+                        <strong>{{ formatBytes(info.total_bytes) }}</strong>
+                        on disk
+                    </span>
+                </p>
+            }
+            <button anotokiButton variant="primary" data-create [disabled]="!status() || cannotMake()" [loading]="busy() === 'create'" (click)="askToCreate()">
+                <anotoki-icon name="database" [size]="16" />
+                Back up now
+            </button>
+            <button anotokiButton data-reload [loading]="loading()" (click)="load()">
+                <anotoki-icon name="refresh" [size]="16" />
+                Read again
+            </button>
+        </anotoki-page-header>
+
+        @if (outcome(); as result) {
+            <anotoki-alert data-outcome [tone]="result.tone" [heading]="result.heading" [announce]="result.tone === 'danger' || result.tone === 'warning' ? true : 'polite'">
+                <p class="anotoki-admin__text">{{ result.text }}</p>
+                @if (result.note) {
+                    <p class="anotoki-admin__text anotoki-backups-page__note">{{ result.note }}</p>
+                }
+                <div alertActions>
+                    <button anotokiButton size="sm" variant="ghost" data-outcome-dismiss (click)="outcome.set(null)">Dismiss</button>
+                </div>
+            </anotoki-alert>
+        }
+
+        @if (loadError(); as message) {
+            <anotoki-error-state heading="The backups could not be read" retryLabel="Try again" [message]="message" (retry)="load()" />
+        } @else if (status(); as info) {
+            @if (!info.directory_writable) {
+                <anotoki-alert data-not-writable tone="danger" heading="The backups folder cannot be written">
+                    <p class="anotoki-admin__text">No backup can be made until PHP may write into the site's storage folder.</p>
+                </anotoki-alert>
+            }
+            @if (!info.copy_available) {
+                <anotoki-alert data-no-copy tone="warning" heading="This server's PHP cannot copy a table">
+                    <p class="anotoki-admin__text">A backup is made by PostgreSQL's COPY through PHP's pdo_pgsql, which this server does not offer - so none can be made here.</p>
+                </anotoki-alert>
+            }
+            @if (!info.restore_enabled) {
+                <anotoki-alert data-restore-off tone="info" heading="Restoring is switched off on {{ tools.siteName }}">
+                    <p class="anotoki-admin__text">
+                        Backups are made, kept and downloaded here; one is restored offline, with the library's command line, where it can be checked first.
+                        @if (restoreOffText) {
+                            {{ restoreOffText }}
+                        }
+                    </p>
+                </anotoki-alert>
+            } @else if (info.problems.length) {
+                <anotoki-alert data-problems tone="warning" heading="A restore cannot run here now">
+                    <ul class="anotoki-backups-page__problems">
+                        @for (problem of info.problems; track problem) {
+                            <li>{{ problem }}</li>
+                        }
+                    </ul>
+                </anotoki-alert>
+            }
+
+            <dl class="anotoki-backups-page__stats" data-status>
+                <div class="anotoki-backups-page__stat">
+                    <dt>The last daily one</dt>
+                    <dd>{{ info.last_daily ? tools.date(info.last_daily) : "None yet" }}</dd>
+                </div>
+                <div class="anotoki-backups-page__stat">
+                    <dt>Free on the disk</dt>
+                    <dd>{{ info.free_bytes === null ? "Not known" : formatBytes(info.free_bytes) }}</dd>
+                </div>
+                <div class="anotoki-backups-page__stat">
+                    <dt>The database</dt>
+                    <dd>{{ info.database_bytes === null ? "Not known" : formatBytes(info.database_bytes) }}</dd>
+                </div>
+                <div class="anotoki-backups-page__stat">
+                    <dt>Encryption</dt>
+                    <dd>
+                        @if (info.encrypted) {
+                            <anotoki-icon name="lock" [size]="15" />
+                            Encrypted, AES-256-GCM
+                        } @else {
+                            Not encrypted
+                        }
+                    </dd>
+                </div>
+                <div class="anotoki-backups-page__stat">
+                    <dt>Restoring here</dt>
+                    <dd>{{ !info.restore_enabled ? "Switched off" : info.restorable ? "Possible" : "Not possible now" }}</dd>
+                </div>
+            </dl>
+
+            @if (backups().length === 0) {
+                <anotoki-empty-state data-empty icon="archive" heading="No backups yet" text="The first daily one comes with the first visit of a day; Back up now makes one at once." />
+            } @else {
+                <div class="anotoki-admin__table-wrap">
+                    <table class="anotoki-admin__table anotoki-backups-page__table" data-backups>
+                        <caption class="anotoki-visually-hidden">The backups, the newest first</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Made</th>
+                                <th scope="col">Kind</th>
+                                <th scope="col">Description</th>
+                                <th scope="col" class="anotoki-admin__num">Size</th>
+                                <th scope="col" class="anotoki-admin__num">Tables</th>
+                                <th scope="col">By</th>
+                                <th scope="col"><span class="anotoki-visually-hidden">What to do</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (backup of backups(); track backup.id) {
+                                <tr [attr.data-backup]="backup.id">
+                                    <td class="anotoki-admin__nowrap" data-label="Made">
+                                        <time [attr.datetime]="backup.created_at">{{ tools.date(backup.created_at) }}</time>
+                                        <code class="anotoki-backups-page__id" [attr.title]="backup.id">…{{ backup.id.slice(-6) }}</code>
+                                    </td>
+                                    <td data-label="Kind">
+                                        <span class="anotoki-backups-page__kind">
+                                            <anotoki-badge [tone]="kindTones[backup.kind] ?? 'neutral'" [attr.data-kind]="backup.kind">{{ kindWords[backup.kind] ?? backup.kind }}</anotoki-badge>
+                                            @if (backup.stale) {
+                                                <anotoki-badge tone="warning" data-stale>Over 90 days</anotoki-badge>
+                                            }
+                                            @if (backup.encrypted) {
+                                                <anotoki-icon name="lock" label="Encrypted" [size]="15" />
+                                            }
+                                        </span>
+                                    </td>
+                                    <td data-label="Description">
+                                        <span [class.anotoki-admin__muted]="!backup.description">{{ backup.description || "-" }}</span>
+                                    </td>
+                                    <td class="anotoki-admin__num" data-label="Size">{{ formatBytes(backup.size) }}</td>
+                                    <td class="anotoki-admin__num" data-label="Tables">
+                                        @if (backup.table_count !== undefined) {
+                                            <button
+                                                type="button"
+                                                class="anotoki-backups-page__tables-button"
+                                                data-tables
+                                                [attr.aria-expanded]="opened() === backup.id"
+                                                [attr.aria-controls]="id + '-tables-' + backup.id"
+                                                (click)="toggleTables(backup)">
+                                                {{ formatCount(backup.table_count) }}
+                                                @if (backup.rows !== undefined) {
+                                                    <span class="anotoki-backups-page__rows">{{ formatCount(backup.rows) }} rows</span>
+                                                }
+                                            </button>
+                                        } @else {
+                                            <span class="anotoki-admin__muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="anotoki-admin__nowrap" data-label="By">
+                                        @if (tools.personLink(backup.created_by); as link) {
+                                            <a [routerLink]="link">{{ madeBy(backup) }}</a>
+                                        } @else {
+                                            <span [class.anotoki-admin__muted]="backup.created_by === null">{{ madeBy(backup) }}</span>
+                                        }
+                                    </td>
+                                    <td class="anotoki-admin__cell--whole">
+                                        <div class="anotoki-backups-page__actions">
+                                            <button
+                                                anotokiButton
+                                                size="sm"
+                                                data-download
+                                                [loading]="isBusy('download', backup)"
+                                                [disabled]="busy() !== null"
+                                                [attr.aria-label]="'Download the backup of ' + tools.date(backup.created_at)"
+                                                (click)="download(backup)">
+                                                <anotoki-icon name="download" [size]="15" />
+                                                Download
+                                            </button>
+                                            @if (info.restore_enabled) {
+                                                <button
+                                                    anotokiButton
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    data-restore
+                                                    [attr.aria-label]="'Restore the backup of ' + tools.date(backup.created_at)"
+                                                    [attr.title]="backup.restorable ? null : 'The schema has changed since: it is restored offline'"
+                                                    [disabled]="!backup.restorable || busy() !== null"
+                                                    (click)="askToRestore(backup)">
+                                                    <anotoki-icon name="rotateCcw" [size]="15" />
+                                                    Restore
+                                                </button>
+                                            }
+                                            <button
+                                                anotokiButton
+                                                size="sm"
+                                                variant="ghost"
+                                                data-delete
+                                                [loading]="isBusy('delete', backup)"
+                                                [disabled]="busy() !== null"
+                                                [attr.aria-label]="'Delete the backup of ' + tools.date(backup.created_at)"
+                                                (click)="askToDelete(backup)">
+                                                <anotoki-icon name="trash" [size]="15" />
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @if (opened() === backup.id) {
+                                    <tr class="anotoki-backups-page__detail-row">
+                                        <td colspan="7" class="anotoki-admin__cell--whole">
+                                            <div [id]="id + '-tables-' + backup.id" data-table-list>
+                                                @if (tables()[backup.id]; as list) {
+                                                    <ul class="anotoki-backups-page__table-list">
+                                                        @for (table of list; track table.name) {
+                                                            <li>
+                                                                <code>{{ table.name }}</code>
+                                                                <span>{{ formatCount(table.rows) }} {{ table.rows === 1 ? "row" : "rows" }}, {{ formatBytes(table.bytes) }}</span>
+                                                            </li>
+                                                        }
+                                                    </ul>
+                                                } @else {
+                                                    <anotoki-spinner size="sm" label="Reading its tables" [showLabel]="true" />
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        } @else {
+            <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the backups" [showLabel]="true" /></div>
+        }
+    </div>
+
+    @if (guarded(); as open) {
+        <anotoki-dialog data-guarded [attr.data-action]="open.action" size="sm" [heading]="guardedTitle(open)" [description]="guardedText(open)" [busy]="busy() !== null" (dismiss)="closeGuarded()">
+            <form class="anotoki-backups-page__guarded" (submit)="$event.preventDefault(); confirmGuarded()">
+                @if (open.action === "create") {
+                    <anotoki-text-field
+                        data-description
+                        label="Description"
+                        autocomplete="off"
+                        hint="What it is before, for whoever looks for it later."
+                        placeholder="Before the price changes"
+                        [optional]="true"
+                        [disabled]="busy() !== null"
+                        [error]="descriptionError()"
+                        [value]="description()"
+                        (valueChange)="description.set($event)" />
+                }
+                <anotoki-backup-proof
+                    [kind]="proofKind()"
+                    [signInNeeded]="signInNeeded()"
+                    [disabled]="busy() !== null"
+                    [error]="passwordError()"
+                    [password]="password()"
+                    (passwordChange)="setPassword($event)" />
+                @if (guardError(); as message) {
+                    <p class="anotoki-admin__field-error" role="alert" data-guard-error>
+                        <anotoki-icon name="alert" [size]="15" />
+                        <span>{{ message }}</span>
+                    </p>
+                }
+                <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
+            </form>
+            <div dialogFooter>
+                @if (busy() === "create") {
+                    <span class="anotoki-backups-page__elapsed" role="timer" data-elapsed>Backing up… {{ elapsed() }} s</span>
+                }
+                <button anotokiButton autofocus data-guarded-cancel [disabled]="busy() !== null" (click)="closeGuarded()">Cancel</button>
+                <button
+                    anotokiButton
+                    data-guarded-confirm
+                    [variant]="open.action === 'delete' ? 'danger' : 'primary'"
+                    [disabled]="!canConfirm()"
+                    [loading]="busy() !== null"
+                    (click)="confirmGuarded()">
+                    {{ open.action === "create" ? "Back up now" : open.action === "delete" ? "Delete" : "Download" }}
+                </button>
+            </div>
+        </anotoki-dialog>
+    }
+
+    @if (restoring(); as backup) {
+        <anotoki-backup-restore-dialog [backup]="backup" [base]="base" [proofKind]="proofKind()" (restored)="restored($event)" (lost)="lost($event)" (dismissed)="closeRestore()" />
+    }
+}

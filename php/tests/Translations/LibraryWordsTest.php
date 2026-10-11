@@ -58,6 +58,16 @@ final class LibraryWordsTest extends TestCase
             'anotoki.signIn.signingIn', 'anotoki.signIn.failedTitle', 'anotoki.signIn.notCompleted', 'anotoki.signIn.expired',
             'anotoki.signIn.storageUnavailable', 'anotoki.signIn.unavailable', 'anotoki.signIn.failed', 'anotoki.signIn.retry',
             'anotoki.signIn.back',
+            // The visitors' feedback form (angular/projects/lib/feedback: <anotoki-feedback-form>), from 004.
+            'anotoki.feedback.title', 'anotoki.feedback.lead', 'anotoki.feedback.kind', 'anotoki.feedback.kindBug',
+            'anotoki.feedback.kindIdea', 'anotoki.feedback.kindOther', 'anotoki.feedback.section', 'anotoki.feedback.sectionNone',
+            'anotoki.feedback.subject', 'anotoki.feedback.message', 'anotoki.feedback.messageHint', 'anotoki.feedback.email',
+            'anotoki.feedback.emailHint', 'anotoki.feedback.anonymous', 'anotoki.feedback.anonymousHint', 'anotoki.feedback.send',
+            'anotoki.feedback.sending', 'anotoki.feedback.thanks', 'anotoki.feedback.thanksText', 'anotoki.feedback.another',
+            'anotoki.feedback.messageRequired', 'anotoki.feedback.subjectRequired', 'anotoki.feedback.tooLong',
+            'anotoki.feedback.emailInvalid', 'anotoki.feedback.tooManyHour', 'anotoki.feedback.tooManyDay',
+            'anotoki.feedback.unavailable', 'anotoki.feedback.signInRequired', 'anotoki.feedback.failed', 'anotoki.feedback.network',
+            'anotoki.feedback.honeypot',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -68,6 +78,7 @@ final class LibraryWordsTest extends TestCase
         self::assertSame('Language: {name} ({code})', LibraryWords::english('anotoki.language.button'));
         self::assertSame(['name', 'code'], LibraryWords::placeholders('anotoki.language.button'));
         self::assertSame(['code'], LibraryWords::placeholders('anotoki.signIn.failed'));
+        self::assertSame(['max'], LibraryWords::placeholders('anotoki.feedback.tooLong'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

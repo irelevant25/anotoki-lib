@@ -1,0 +1,1 @@
+The showcase imagines its server: a real backup is the site's own .anotoki-backup file, downloaded once by its single-use link.

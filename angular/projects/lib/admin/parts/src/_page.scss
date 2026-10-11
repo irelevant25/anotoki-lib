@@ -1,0 +1,324 @@
+////
+/// What the admin tools' pages share: the page's frame, its notices and
+/// counts, a filter bar, the tables (stacked in a narrow page), a block of
+/// code, a list of facts. Each page's own stylesheet includes it; the classes
+/// are the pages' common block, `anotoki-admin__*`.
+////
+
+@use "../../../sass/kit";
+
+@mixin styles {
+  // The page answers to the width it is given, not the window's: a site's frame may have a side navigation.
+  :host {
+    display: block;
+    container-type: inline-size;
+    color: kit.token(text);
+  }
+
+  // A word for screen readers alone (a chart's day, a table's caption): the kit's own class, styled here as every
+  // component that puts it in a page styles it.
+  .anotoki-visually-hidden {
+    @include kit.visually-hidden;
+  }
+
+  .anotoki-admin__page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .anotoki-admin__notice {
+    margin: 0;
+    color: kit.token(muted);
+    line-height: 1.5;
+  }
+
+  .anotoki-admin__loading {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 0;
+  }
+
+  // What became of an action that is not about one row: one line, read out as it changes.
+  .anotoki-admin__happened {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    color: kit.token(success-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.45;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  .anotoki-admin__counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin: 0;
+    color: kit.token(muted);
+    font-size: 0.875rem;
+
+    strong {
+      color: kit.token(text);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .anotoki-admin__text {
+    margin: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .anotoki-admin__muted {
+    color: kit.token(muted);
+  }
+
+  // The filters above a list: fields side by side, wrapping; each at its own width.
+  .anotoki-admin__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    min-width: 0;
+
+    > * {
+      flex: 1 1 11rem;
+      min-width: 0;
+    }
+  }
+
+  .anotoki-admin__filter--wide {
+    flex: 2 1 16rem;
+  }
+
+  .anotoki-admin__filter-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  // A refusal, beside what it is about.
+  .anotoki-admin__field-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0;
+    color: kit.token(danger);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+
+    anotoki-icon {
+      flex: none;
+      margin-top: 0.1rem;
+    }
+  }
+
+  // ── Tables ───────────────────────────────────────────────────────────────
+  // A real table in a wide page; in a narrow one each row a block of its cells, each cell saying its column
+  // (data-label), so nothing scrolls sideways at 390 px. Each table styles its own head, rows and cells alone (`>`):
+  // a table inside a row's details (an error's occurrences, a change's fields) keeps its own.
+
+  .anotoki-admin__table-wrap {
+    min-width: 0;
+    overflow-x: auto;
+    border: 1px solid kit.token(border);
+    border-radius: kit.token(radius-lg);
+    background: kit.token(surface);
+  }
+
+  .anotoki-admin__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+
+    > thead > tr > th,
+    > tbody > tr > td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid kit.token(border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    > thead > tr > th {
+      color: kit.token(muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    > tbody > tr:last-child > td {
+      border-bottom: 0;
+    }
+
+    > thead > tr > th.anotoki-admin__num,
+    > tbody > tr > td.anotoki-admin__num {
+      text-align: right;
+      white-space: nowrap;
+    }
+  }
+
+  .anotoki-admin__nowrap {
+    white-space: nowrap;
+  }
+
+  @container (max-width: 640px) {
+    .anotoki-admin__table-wrap {
+      overflow-x: visible;
+      border: 0;
+      background: none;
+    }
+
+    .anotoki-admin__table {
+      > thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      > tbody,
+      > tbody > tr,
+      > tbody > tr > td {
+        display: block;
+      }
+
+      > tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      > tbody > tr {
+        border: 1px solid kit.token(border);
+        border-radius: kit.token(radius-lg);
+        background: kit.token(surface);
+      }
+
+      // The column's name in the cell's own left margin, the content beside it as it flows - however many
+      // elements it holds.
+      > tbody > tr > td {
+        position: relative;
+        min-height: 1.6rem;
+        padding: 0.45rem 0.75rem 0.45rem calc(34% + 0.5rem);
+        border-bottom: 1px solid kit.token(border);
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+
+        &::before {
+          content: attr(data-label);
+          position: absolute;
+          top: 0.55rem;
+          left: 0.75rem;
+          width: calc(34% - 1rem);
+          color: kit.token(muted);
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          line-height: 1.3;
+          text-transform: uppercase;
+        }
+
+        &:last-child {
+          border-bottom: 0;
+        }
+      }
+
+      // A number reads from the left here, beside its column's name.
+      > tbody > tr > td.anotoki-admin__num {
+        text-align: left;
+      }
+
+      // A cell that is the whole row's (a row's details, its buttons): no column name before it.
+      > tbody > tr > td.anotoki-admin__cell--whole {
+        padding-left: 0.75rem;
+
+        &::before {
+          content: none;
+        }
+      }
+    }
+  }
+
+  @include details;
+}
+
+/// A block of code, a list of facts, a section's title, code and links in the text: the pages' and their dialogs'.
+@mixin details {
+  .anotoki-admin__code {
+    box-sizing: border-box;
+    max-height: 22rem;
+    margin: 0;
+    padding: 0.75rem;
+    overflow: auto;
+    border: 1px solid kit.token(border);
+    border-radius: kit.token(radius);
+    background: kit.token(bg);
+    color: kit.token(text);
+    font-family: kit.token(font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 4;
+
+    @include kit.focus-ring;
+  }
+
+  .anotoki-admin__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+    gap: 0.6rem 1.25rem;
+    margin: 0;
+
+    > div {
+      min-width: 0;
+    }
+
+    dt {
+      color: kit.token(muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    dd {
+      margin: 0.15rem 0 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .anotoki-admin__section-title {
+    margin: 0 0 0.5rem;
+    color: kit.token(text);
+    font-size: 0.9375rem;
+    font-weight: 700;
+  }
+
+  code {
+    font-family: kit.token(font-mono);
+    font-size: 0.875em;
+    overflow-wrap: anywhere;
+  }
+
+  a {
+    color: kit.token(link);
+  }
+}

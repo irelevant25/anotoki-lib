@@ -196,6 +196,45 @@ final class ErrorLogTest extends TestCase
         self::assertSame(0, $this->json($this->send($app, 'GET', '/api/admin/errors'))['total']);
     }
 
+    public function testClearingOlderDaysKeepsTheNewestAndIsAudited(): void
+    {
+        [$app, $log] = $this->app();
+        $audit = new class () implements \Anotoki\Lib\Audit\AuditRecorder {
+            /** @var list<array<mixed>> */
+            public array $recorded = [];
+
+            public function record(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType = null, int|string|null $targetId = null, array $details = [], ?array $scope = null, ?string $session = null): void
+            {
+                $this->recorded[] = [$actorId, $action, $details];
+            }
+        };
+        ErrorLogRoutes::admin($app, '/api/admin/errors', $log, $this->context(), $audit)->add($this->adminCheck());
+        mkdir($this->logs, 0777, true);
+        $today = gmdate('Y-m-d');
+        $yesterday = gmdate('Y-m-d', time() - 86400);
+        $lastWeek = gmdate('Y-m-d', time() - 8 * 86400);
+        foreach ([$lastWeek, "$yesterday.2", $yesterday, $today] as $day) {
+            file_put_contents($this->logs . "/errors-$day.jsonl", "{}\n");
+        }
+        file_put_contents($this->logs . '/errors-dropped.json', (string) json_encode([$lastWeek => 3, $today => 2]));
+
+        self::assertSame(422, $this->send($app, 'DELETE', '/api/admin/errors?before=yesterday')->getStatusCode(), 'a date, or nothing');
+        self::assertSame(422, $this->send($app, 'DELETE', '/api/admin/errors?before=2026-02-30')->getStatusCode(), 'a real one');
+        self::assertCount(4, glob($this->logs . '/errors-*.jsonl') ?: [], 'a refusal deletes nothing');
+        self::assertSame([], $audit->recorded);
+
+        self::assertSame(403, $this->send($app, 'DELETE', "/api/admin/errors?before=$today", admin: false)->getStatusCode());
+        self::assertSame(['deleted' => 3], $this->json($this->send($app, 'DELETE', "/api/admin/errors?before=$today")));
+        self::assertSame([$this->logs . "/errors-$today.jsonl"], glob($this->logs . '/errors-*.jsonl'), 'today\'s file stays, every part of the days before goes');
+        self::assertSame([$today => 2], $log->reader()->dropped(), 'the counts of the days kept stay');
+        self::assertSame([7, 'errors.cleared', ['files' => 3, 'before' => $today]], $audit->recorded[0]);
+
+        self::assertSame(['deleted' => 1], $this->json($this->send($app, 'DELETE', '/api/admin/errors')));
+        self::assertSame([], glob($this->logs . '/errors-*.jsonl'));
+        self::assertSame([], $log->reader()->dropped());
+        self::assertSame([7, 'errors.cleared', ['files' => 1]], $audit->recorded[1]);
+    }
+
     public function testDaysArePartedPrunedAndCapped(): void
     {
         $log = new ErrorLog($this->logs, ['key' => str_repeat('k', 32), 'maxBytes' => 1024, 'totalBytes' => 4096]);

@@ -1,0 +1,8 @@
+@if (questions().pending(); as question) {
+    <anotoki-dialog data-question size="sm" [heading]="question.title" [description]="question.message ?? null" (dismiss)="questions().answer(false)">
+        <div dialogFooter>
+            <button anotokiButton autofocus data-question-no (click)="questions().answer(false)">{{ question.cancelLabel ?? "Cancel" }}</button>
+            <button anotokiButton data-question-yes [variant]="question.tone === 'danger' ? 'danger' : 'primary'" (click)="questions().answer(true)">{{ question.confirmLabel }}</button>
+        </div>
+    </anotoki-dialog>
+}

@@ -8,6 +8,7 @@ use Anotoki\Lib\Admin\AdminContext;
 use Anotoki\Lib\Admin\Http\Routes;
 use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\ErrorLog\ErrorLog;
+use Anotoki\Lib\ErrorLog\ErrorLogReader;
 use Anotoki\Lib\Support\JsonBody;
 use Anotoki\Lib\Support\JsonResponse;
 use Anotoki\Lib\Support\Refusal;
@@ -24,7 +25,8 @@ use Slim\Interfaces\RouteInterface;
  * admin() - for the site's ADMIN alone (the site's check on the returned group):
  *   GET    $base?days=&level=&status=&search=   ErrorLogReader::report()
  *   GET    $base/{fingerprint}?days=&...        every occurrence of one ([] -> 404 not_found)
- *   DELETE $base                                {deleted: files} - audited errors.cleared
+ *   DELETE $base?before=                        {deleted: files} - every file, or (before, a UTC date) the days
+ *                                               before it; audited errors.cleared
  * Open while an update waits (they need no table): openPaths($base) in the site's gate.
  *
  * client() - the pages' own errors (the owner's decision of 2026-10-07): public,
@@ -62,8 +64,12 @@ final class ErrorLogRoutes
             }));
 
             Routes::plain($group->delete('', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader, $context, $audit): ResponseInterface {
-                $deleted = $reader->clear();
-                $audit?->record($request, $context->actorId($request), 'errors.cleared', 'error_log', null, ['files' => $deleted]);
+                $before = Routes::text($request->getQueryParams()['before'] ?? null, 10);
+                if ($before !== '' && !ErrorLogReader::isDay($before)) {
+                    return $context->refuse($response, Refusal::invalid('date_invalid', 'Say the first day to keep as a date: 2026-10-11.'));
+                }
+                $deleted = $reader->clear($before === '' ? null : $before);
+                $audit?->record($request, $context->actorId($request), 'errors.cleared', 'error_log', null, ['files' => $deleted] + ($before === '' ? [] : ['before' => $before]));
 
                 return JsonResponse::write($response, 200, ['deleted' => $deleted]);
             }));

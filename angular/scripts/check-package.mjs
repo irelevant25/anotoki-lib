@@ -63,7 +63,7 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  *
  * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences - 14.9
  * at 0.4.0 before the screen, 15.3 with it. Every site that signs in loads it on its first page, with its shared part
- * (auth/core: the client's types and helpers, the configuration, the built-in words, the screens' port). Since 0.4.2
+ * (auth/core: the client's types and helpers, the configuration, the built-in words, the screens' port). Since 0.5.0
  * what runs only at a moment is loaded then: the client's token requests (auth/session, by import()) and the callback
  * page and the failure's screen (auth/screens, on lazy routes) - 34.4 kB raw of a site's first load at 0.4.1.
  *
@@ -75,7 +75,7 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * words (0.9, its words an entry point of their own, 1.4). The admin pages and the form are entry points of their own,
  * on lazy routes or loaded as they are opened.
  *
- * error-report (0.4.2): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
+ * error-report (0.5.0): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
  * so on every first page (2.7, its scrubbing's patterns most of it; 2.0 minified in a first load).
  */
 const LIMITS = {
@@ -177,7 +177,7 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, with the
  * kit's words alone - a module's arrive with the module, by its registration; "a button": one piece alone; "the
  * sign-in": the gate and the auth module's every eager part, its callback page and failure's screen routed with the
- * first page - since 0.4.2 each route loads its screen as it is shown (auth/screens), and the client its token
+ * first page - since 0.5.0 each route loads its screen as it is shown (auth/screens), and the client its token
  * requests as they are made (auth/session); "the badge": the admin tools'
  * configuration and the unread feedback count of a site's admin navigation - no words; "the words + feedback": a
  * site's translations with the feedback form's configuration, which registers the form's words - the form itself

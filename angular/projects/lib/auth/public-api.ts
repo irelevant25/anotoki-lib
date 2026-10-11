@@ -11,7 +11,7 @@
  * migrations module (whether the site is blocked), never @anotoki/lib/ui; a
  * spec's stand-in is @anotoki/lib/auth/testing.
  *
- * What runs only at a moment is loaded then (0.4.2): the client's token
+ * What runs only at a moment is loaded then (0.5.0): the client's token
  * requests - a callback's code exchanged, a refresh, a preferences save - are
  * @anotoki/lib/auth/session, which the client loads the first time it needs
  * them; the callback page and the failure's screen are

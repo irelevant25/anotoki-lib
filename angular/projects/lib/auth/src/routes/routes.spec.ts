@@ -13,7 +13,7 @@ class PageComponent {}
 /**
  * The routes of before - `component: AuthCallbackComponent` and `SignInFailureComponent` from @anotoki/lib/auth -
  * keep working: each is a route of its own that loads its screen from @anotoki/lib/auth/screens as it is shown,
- * so neither screen's code is in a site's first load (0.4.2).
+ * so neither screen's code is in a site's first load (0.5.0).
  */
 describe('the screens as a route of before names them: loaded as the route is shown', () => {
   async function start(failure: string | null) {

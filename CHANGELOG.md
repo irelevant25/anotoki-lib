@@ -5,24 +5,38 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## 0.4.2 - unreleased
+## 0.5.0 - unreleased
+
+A minor version, not 0.4.2: it changes what a site's hooks are given and may do (the People delete, the
+restore's hooks, sealed backups, `AdminContext`'s addresses), and `^0.4.1` would take a patch by itself. README.md,
+"Upgrading from 0.4.x (0.5.0)", says what each site changes.
 
 People, auth and the kit:
-- A restore no longer brings back what was deleted for a person: `People::afterRestore(delete:, defer:, then:)`, a
-  site's Backups `afterRestore`, does again every `person.data_deleted` and `feedback.deleted` the audit log holds
-  from the backup's time on, then the scrub of the IAM's deleted accounts - not done is `after_restore_error`, and
-  the next request scrubs again (the survey's, Piano Academy's and genshin's hand-written versions go).
+- A restore no longer brings back what was deleted for a person. Inside its transaction, before anybody sees the
+  rows - its locks held, so a request that dies after the commit leaves nothing undone and no backup is made of the
+  rows without it - `People::replay()` (Backups' new `beforeCommit`) does again every `person.data_deleted` and
+  `feedback.deleted` (by the message's id and the time it was sent) the audit log holds from the backup's
+  `snapshot_at` on: the database's clock, now in the manifest. Whatever fails rolls the restore back whole; so does
+  a check of the IAM's list running across it ("restore again in a minute"), and - with something to do again - a
+  backup with no time or a database with no audit log. Once it committed, `People::afterRestore()` runs the scrub
+  of the IAM's deleted accounts, and the site's own work whatever the scrub did: not done is `after_restore_error`,
+  and the next request scrubs again. `People::restoreHooks()` gives both; the survey's, Piano Academy's and
+  genshin's hand-written versions go. A scrub a restore overtook keeps the restored place in the IAM's list.
 - The People page's delete forgets the person's feedback itself (`People::delete()`, `Feedback::forgetPeopleOn()`),
-  in a transaction of the library's around the site's hook.
+  in a transaction of the library's around the site's hook - behind a savepoint, so a hook that ends the
+  transaction it was given is found, and inside a restore's a failing hook takes back its own work alone.
 - Auth: the client's token requests (`@anotoki/lib/auth/session`) and the two screens (`@anotoki/lib/auth/screens`;
   the routes of before load them as they open) left the first load, the shared part `@anotoki/lib/auth/core`. The
-  sign-in's first load: 18.9 -> 17.1 kB gzipped, 63.1 -> 54.7 kB raw (auth 34.4 -> 26.1); the gate's unchanged.
+  sign-in's first load: 18.9 -> 17.1 kB gzipped, 63.1 -> 54.7 kB raw (auth 34.4 -> 26.1); the gate's unchanged. A
+  callback whose part does not load keeps the hint's silent hop silent, and goes back where it came from.
 - The kit: Edge's own reveal button hidden in the password field; the folded bar's menu button marked when a link in
   it has a badge, its name saying which; the lazy pages' icons their own, out of the first load of a site that loads
   `@anotoki/lib/ui/icons` (~0.7 kB).
 
-What a site must do: its People delete hook begins no transaction of its own (genshin's, the build analyzer's) and
-takes a null request; then `afterRestore: $people->afterRestore(delete: ..., defer: ...)` replaces its own.
+What a site must do: its People delete hook begins, commits or rolls back no transaction of its own (genshin's, the
+build analyzer's begin one) and takes a null request - in a replay, the database's part alone (no copy first, as
+Japanese Academy keeps); then `...$people->restoreHooks(delete: ..., defer: ..., then: ...)` among its Backups'
+options replaces its own. Feedback deletes audited before 0.5.0 name no time and are not done again.
 
 **Admin tools** - what the sites and their reviews found after 0.4.1 (README.md, "Admin tools"):
 - Addresses (the owner's rule of 2026-10-11): `Support\ClientAddress` is the one reading wherever the library
@@ -41,7 +55,7 @@ takes a null request; then `afterRestore: $people->afterRestore(delete: ..., def
   `ErrorLogRoutes::client()` through the app's HttpClient (the site's interceptors, its CSRF header) - scrubbed,
   at most 5 a page load, each once, never recursing.
 - Backups: a plain backup is sealed under the installation's key, and only a sealed or encrypted one is restored
-  here (a plain one made before 0.4.2: offline, `--extract`); a restore never moves a sequence back;
+  here (a plain one made before 0.5.0: offline, `--extract`); a restore never moves a sequence back;
   `--inspect` reads the manifest alone; a HEAD never spends a download ticket; files `0600`, folders `0700`
   (every guarded folder too).
 - Audit log: a flush sets the pending file aside first and never inserts an entry twice; the 64 KB cut keeps

@@ -16,8 +16,9 @@ final class AtomicFile
     /**
      * Writes $content to $path. With $exclusive, a file already at $path is
      * left as it is (and false answered). With $mode (0600 for what is the
-     * site's alone), the file has it before it is in its place. Never throws,
-     * never warns.
+     * site's alone), the file has it before a byte of it is written - never
+     * readable by anybody else for a moment under the umask's 0644. Never
+     * throws, never warns.
      */
     public static function write(string $path, string $content, bool $exclusive = false, ?int $mode = null): bool
     {
@@ -30,13 +31,20 @@ final class AtomicFile
         } catch (\Throwable) {
             return false;
         }
-        if (@file_put_contents($temporary, $content) !== strlen($content)) {
-            @unlink($temporary);
-
+        // Made new and empty ('x'), its mode set, then written.
+        $handle = @fopen($temporary, 'xb');
+        if ($handle === false) {
             return false;
         }
         if ($mode !== null) {
             @chmod($temporary, $mode);
+        }
+        $written = @fwrite($handle, $content);
+        $closed = @fclose($handle);
+        if ($written !== strlen($content) || !$closed) {
+            @unlink($temporary);
+
+            return false;
         }
 
         for ($attempt = 0; $attempt < 8; $attempt++) {

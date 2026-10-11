@@ -223,7 +223,7 @@ uses is in the first load again.
 | `@anotoki/lib/admin/parts` (0.4.0) | what those pages share - their requests, failures, dates, question dialog and styles; the library's own, a site imports nothing of it | with the first of them |
 | `@anotoki/lib/feedback` (0.4.0) | the visitors' feedback form's configuration (`provideAnotokiFeedback`, which registers its words) and its words | yes, beside the translations module |
 | `@anotoki/lib/feedback/form` (0.4.0) | `<anotoki-feedback-form>`, on the kit's fields | loaded when the person opens it |
-| `@anotoki/lib/error-report` (0.4.2) | `provideAnotokiErrorReport()`: the browser's errors in the site's error log ("Admin tools" below) | yes (every page) |
+| `@anotoki/lib/error-report` (0.5.0) | `provideAnotokiErrorReport()`: the browser's errors in the site's error log ("Admin tools" below) | yes (every page) |
 | `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's) | with its module, which alone imports it and registers it with the translations module |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
@@ -1627,8 +1627,8 @@ $context = new AdminContext(
     proof: AdminContext::recentSignIn(fn ($request) => $request->getAttribute('claims')['auth_time'] ?? null),  // the sites: 10 minutes
     // the IAM: proof: fn ($request, array $body) => accountProof($pdo, $request, $user, $session, $body['password'] ?? null, 'backup'),
     //          proofKind: 'password' (or a closure: 'recent_sign_in' where the account has no password)
-    trustedProxies: ClientAddress::CLOUDFLARE,                                // whose CF-Connecting-IP is believed (0.4.2)
-    names: fn (array $ids): array => usernamesOf($ids),                       // people's names by id, for the pages (0.4.2)
+    trustedProxies: ClientAddress::CLOUDFLARE,                                // whose CF-Connecting-IP is believed (0.5.0)
+    names: fn (array $ids): array => usernamesOf($ids),                       // people's names by id, for the pages (0.5.0)
     // clientHeader: 'CF-Connecting-IP', clientKey: fn ($request) => ...,     a site's own reading of the address instead
     error: fn ($response, Refusal $refusal) => ...,                            // optional: the site's error body
 );
@@ -1645,10 +1645,11 @@ Where a request comes from is one rule wherever the library reads it
 `REMOTE_ADDR`, or - only on a connection from one of `trustedProxies` - the
 address its `clientHeader` names (Cloudflare's `CF-Connecting-IP`;
 `ClientAddress::CLOUDFLARE` holds Cloudflare's published ranges). A header from
-anybody else is never believed, and `X-Forwarded-For` never read. The limits
-count an IPv4 address whole and an IPv6 address by its /64, and what is kept
-of it is a keyed HMAC (the error log's `client`, the feedback's limits), never
-the address. Without `trustedProxies` the visitors behind Cloudflare share the
+anybody else is never believed, and `X-Forwarded-For` never read. An IPv4
+address written as IPv6 (`::ffff:203.0.113.9`, from a server listening on `[::]`
+for both) is read as the IPv4 address it is. The limits count an IPv4 address
+whole and an IPv6 address by its /64, and what is kept of it is a keyed HMAC
+(the error log's `client`, the feedback's limits), never the address. Without `trustedProxies` the visitors behind Cloudflare share the
 edge's bucket: stricter, never looser. `names` gives the people's names by id -
 a backup's maker (`created_by_name`), the audit log's and the feedback's people
 where their routes get no lookup of their own; an id it does not know has none,
@@ -1692,10 +1693,10 @@ $errorLog = new ErrorLog(storageDir() . '/logs', [
     'app' => $app,                     // the route's pattern in each line
     // 'key' => Keys::derive(appSecret(), 'error-log'),   default: the installation's key (storage/anotoki-lib.key)
     // 'responses' => fn (int $status) => $status >= 400, default: every 5xx and 404, 405, 413, 415, 429
-    // 'expected' => [],                                  default: update_pending, feature_unavailable, not_set_up (0.4.2)
+    // 'expected' => [],                                  default: update_pending, feature_unavailable, not_set_up (0.5.0)
     // 'ignoreExceptions' => [ApiRefusal::class],         a site's decided answers: logged as their answer
 ]);
-Redactor::addSecretNames('totp_secret', 'recovery_code');               // a site's own names of a secret, once (0.4.2)
+Redactor::addSecretNames('totp_secret', 'recovery_code');               // a site's own names of a secret, once (0.5.0)
 $errorLog->installPhpHandlers();                                        // fatals (shutdown) and warnings (chained)
 $errors = $app->addErrorMiddleware(false, true, true);
 $errors->setDefaultErrorHandler($errorLog->wrapHandler($siteHandler));  // or ErrorLogMiddleware::inner() inside a site's own
@@ -1779,9 +1780,9 @@ AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): 
   every map. While the table is missing (or `ready` says not yet) entries wait
   in the pending file and go in, with their own times, at `flushPending()` -
   after every Apply - or with the next entry written outside a transaction. A
-  flush sets the file aside under its lock before it inserts, and never inserts
-  an entry that is in already: one killed after its commit puts nothing in
-  twice.
+  flush reads and empties the file under the lock its writers take too (an
+  entry written meanwhile waits, and lands in it after), and never inserts an
+  entry that is in already: one killed after its commit puts nothing in twice.
 - `AuditContextMiddleware::fromRequest($audit, fn ($request) => ['actor' => ..., 'session' => ...])`
   (inside the site's sign-in check) or `begin()`/`end()` hold who acts, so deep
   code records with `recordHere()`; `withScope('characters', 42, fn () => ...)`
@@ -1832,10 +1833,15 @@ FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, 
   one (the owner's decision). The limits count apart, in
   `storage/cache/anotoki-feedback-limits.json` (`0600`) under its lock: a
   signed-in sender by their account, a visitor by their address bucket - a
-  keyed HMAC of each, and when - `perHour` and `perDay` for each; `allPerDay`
-  is the visitors' alone, so a few IPv6 /64s cannot use up the messages of the
-  people signed in (0.4.2). Never in the database, so never in a backup, each
-  time gone a day later.
+  keyed HMAC of each, and when - `perHour` and `perDay` for each, and
+  `allPerDay` for the visitors together and, apart, for the people signed in
+  together: a few IPv6 /64s cannot use up the messages of the people signed in,
+  nor many accounts a day's worth each (0.5.0). A message "without my name" is
+  counted as a visitor's, by its address bucket: nothing in the count ties it
+  to the account. Never in the database, so never in a backup, each time gone a
+  day later. A count that cannot be kept answers `503 storage_unavailable` - a
+  failure the error log writes, where `feature_unavailable` (no table yet) is a
+  state it leaves out.
 - The admin side: `GET $base` (`kind`, `status`, `section`, `search`, `page`),
   `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
   `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited).
@@ -1895,14 +1901,19 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   flag (another key, a changed byte, swapped chunks, a cut tail: refused). A
   sidecar `<id>.anotoki-backup.json` feeds the list; a file without one is
   listed from its header.
-- Only a backup made here is restored here (0.4.2): an encrypted one, under the
+- Only a backup made here is restored here (0.5.0): an encrypted one, under the
   site's key, or a plain one whose sidecar carries this installation's seal - an
   HMAC of its id and SHA-256 under a key of its own derived from
   `storage/anotoki-lib.key`. A file dropped into the folder, or changed since,
   is listed (`sealed: false`) and refused (`422 archive_invalid`): it is
-  restored offline (`--extract`). A plain backup made before 0.4.2 has no seal:
-  offline too. Every file of the backups is written `0600`, every folder
-  `0700`, as every folder the tools guard.
+  restored offline (`--extract`). A plain backup made before 0.5.0 has no seal:
+  offline too. Every file of the backups is written `0600` before a byte is in
+  it, every folder `0700`, as every folder the tools guard and the
+  installation's key. Where PHP runs as the web server's own user (not the FTP
+  account's, as under PHP-FPM or suEXEC), those modes keep the FTP account out
+  of `storage/backups` too: to take a backup off the server for a restore
+  offline, download it from the Backups page, or have the host's panel (or
+  `chmod` from PHP's own user) open the folder first.
 - Kinds and keeping: `daily` (14), `before-migration` (5, once per list of
   pending files; a backup that fails stops the Apply), `before-restore` (5),
   `manual` (until deleted; `stale` after 90 days). Only files of these names
@@ -2100,7 +2111,7 @@ const { FeedbackFormComponent } = await import('@anotoki/lib/feedback/form');
   then the built-in English and informal Slovak (`feedbackWords()`); a language
   with none of them reads English, and the form says `lang="en"`.
 
-### The browser's errors (Angular, 0.4.2)
+### The browser's errors (Angular, 0.5.0)
 
 The owner's decision of 2026-10-11: every site's error log holds its pages'
 errors too.
@@ -2116,14 +2127,17 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   console as Angular's own has it, and is reported to `ErrorLogRoutes::client()`
   through the app's `HttpClient` - the site's interceptors add what its writes
   carry (the IAM's `X-IAM-Request`), never a way around them. The request
-  carries `ANOTOKI_ERROR_REPORT` in its context, for an interceptor that should
-  leave it be (no sign-in redirect for a report).
+  carries `ANOTOKI_ERROR_REPORT` in its context: an interceptor skips its error
+  handling for it (no sign-in redirect for a report) - never its headers, which
+  are what let the report in.
 - Scrubbed before it leaves the page (`describeError()`, `scrubText()`): the
   page's path alone, a segment that looks like an address or a code replaced;
   never a query or a fragment (a frame keeps its line and column); no value the
   page keeps in localStorage, sessionStorage or a cookie (`storedValues()`); no
   token, `password=`-like secret or address. A value thrown that is no Error is
-  named by its kind, never written out. The server redacts it all again.
+  named by its kind, never written out. A message, a frame and the path are cut
+  to what a report keeps before they are scrubbed, so a megabyte of them costs
+  no more than a line. The server redacts it all again.
 - At most `perPage` reports a page load, each error once; never an HTTP failure
   (the server writes its own, and a visitor's network is not the site's), never
   an error raised while a report is made, never the report's own failure; a

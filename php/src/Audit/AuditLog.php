@@ -236,20 +236,22 @@ final class AuditLog implements AuditRecorder
      * Call it after every Apply (MigrationsRoutes' afterApply) and from the site's
      * command line.
      *
-     * The file is first renamed aside (<file>.flushing) under its lock - the next
-     * entries wait in a new one - and deleted once its entries are in; each goes
-     * in only where no entry of its time, action, actor and target is there yet.
-     * So a process killed anywhere between - after the commit, before the file
-     * went - leaves a file the next flush puts in again without a second copy of
-     * anything. One flush at a time (a lock file of its own).
+     * The file is read, its entries put in and the file emptied under its own
+     * lock, which keepPending() takes too: an entry written meanwhile waits for
+     * the lock and lands in the same file after it was emptied - never in a file
+     * set aside and gone (a rename would let a writer that opened the file first
+     * append to that one). Each entry goes in only where no entry of its time,
+     * action, actor and target is there yet, so a process killed after the
+     * commit and before the file was emptied leaves entries the next flush puts
+     * in without a second copy of any. The file stays, empty.
      */
     public function flushPending(): int
     {
         if ($this->pendingFile === null) {
             return 0;
         }
-        $flushing = $this->pendingFile . '.flushing';
-        if (!is_file($this->pendingFile) && !is_file($flushing)) {
+        clearstatcache(true, $this->pendingFile);
+        if (!is_file($this->pendingFile) || @filesize($this->pendingFile) === 0) {
             return 0;
         }
         try {
@@ -257,73 +259,27 @@ final class AuditLog implements AuditRecorder
             if ($pdo->inTransaction() || !$this->tableReady($pdo)) {
                 return 0;
             }
-            $lock = @fopen($this->pendingFile . '.lock', 'c');
-            if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            $handle = @fopen($this->pendingFile, 'c+');
+            if ($handle === false) {
                 return 0;
             }
             try {
-                if (!is_file($flushing) && !$this->setAside($flushing)) {
+                if (!flock($handle, LOCK_EX)) {
                     return 0;
                 }
-                $flushed = 0;
-                // An entry written into the file just as it was set aside lands in it: read until it holds no more.
-                for ($round = 0, $read = 0; $round < 3; $round++) {
-                    $handle = @fopen($flushing, 'rb');
-                    if ($handle === false) {
-                        break;
-                    }
-                    try {
-                        flock($handle, LOCK_SH);
-                        fseek($handle, $read);
-                        $more = (string) stream_get_contents($handle);
-                    } finally {
-                        flock($handle, LOCK_UN);
-                        fclose($handle);
-                    }
-                    if ($more === '') {
-                        break;
-                    }
-                    $read += strlen($more);
-                    $flushed += $this->insertWaiting($pdo, $more);
-                }
-                @unlink($flushing);
+                $flushed = $this->insertWaiting($pdo, (string) stream_get_contents($handle));
+                ftruncate($handle, 0);
+                fflush($handle);
 
                 return $flushed;
             } finally {
-                flock($lock, LOCK_UN);
-                fclose($lock);
+                flock($handle, LOCK_UN);
+                fclose($handle);
             }
         } catch (Throwable $e) {
             ($this->onError)('[audit] the waiting entries could not be written (' . self::failureCode($e) . '); they wait on.');
 
             return 0;
-        }
-    }
-
-    /** The pending file renamed to $flushing under its own lock, so new entries wait in a new file. */
-    private function setAside(string $flushing): bool
-    {
-        $handle = @fopen((string) $this->pendingFile, 'c+');
-        if ($handle === false) {
-            return false;
-        }
-        if (!flock($handle, LOCK_EX)) {
-            fclose($handle);
-
-            return false;
-        }
-        // Windows renames no file a process holds open: let it go first, the rename right after.
-        if (PHP_OS_FAMILY === 'Windows') {
-            flock($handle, LOCK_UN);
-            fclose($handle);
-
-            return @rename((string) $this->pendingFile, $flushing);
-        }
-        try {
-            return @rename((string) $this->pendingFile, $flushing);
-        } finally {
-            flock($handle, LOCK_UN);
-            fclose($handle);
         }
     }
 

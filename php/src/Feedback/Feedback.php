@@ -35,12 +35,14 @@ use Throwable;
  *   apart: 5 an hour and 20 a day from one sender - a signed-in person by their
  *   account, a visitor by their address bucket (ClientAddress: the trusted
  *   proxy's header from a trusted proxy alone, an IPv6 address as its /64) -
- *   and 300 a day from all visitors together; people signed in never count
- *   against the visitors' budget, so a few networks that spend it keep nobody
- *   with an account out. A keyed hash of the sender and the time, in a file of
- *   the site's storage (never the database, so never a backup), each time gone
- *   once a day old. A message is kept under that file's lock, so two at once
- *   never both slip under a limit;
+ *   and 300 a day from the visitors together, as many from the people signed
+ *   in together: each its own budget, so a few networks that spend the
+ *   visitors' keep nobody with an account out. A message "without my name" is
+ *   counted as a visitor's, by its address bucket: the count never ties it to
+ *   the account. A keyed hash of the sender and the time, in a file of the
+ *   site's storage (never the database, so never a backup), each time gone once
+ *   a day old. A message is kept under that file's lock, so two at once never
+ *   both slip under a limit;
  * - a honeypot field that a person never sees - filled, the answer is a kept
  *   message's, word for word, and nothing is kept; a body of at most 64 KB; the
  *   page as a path, never its query; an address with nothing in it a mail
@@ -108,7 +110,7 @@ final class Feedback
      *   - kinds: what a message can be (default bug, idea, other); sections: the site's places it can be about
      *     (none: no section kept); fields: the site's extra fields, name => most characters (into `details`)
      *   - limits: perHour 5, perDay 20 from one sender (an account, or a visitor's address bucket); allPerDay
-     *     300 from all visitors together (people signed in are not counted in it)
+     *     300 from the visitors together, and as many from the people signed in together (each its own budget)
      *   - honeypot: the hidden field's name ('website'; null: none)
      *   - key: the HMAC key of the buckets (a site's secret through Keys::derive()); default the installation's
      *     key from `storage`
@@ -186,7 +188,8 @@ final class Feedback
      *               which keeps nothing
      *   401 sign_in_required (signedInOnly), 422 kind_unknown | message_required | subject_required |
      *   subject_too_long | section_unknown | email_invalid | too_long (+ field), 429 too_many (+ retry_after),
-     *   503 feature_unavailable (no table yet, or the limits cannot be counted)
+     *   503 feature_unavailable (no table yet), 503 storage_unavailable (the limits cannot be counted: a
+     *   failure, which the error log writes - feature_unavailable is a state it leaves out)
      *
      * @param array<string, mixed> $body  the form's fields: kind, section?, subject?, message, email?, page?,
      *                                    language?, anonymous?, details?: {the site's fields}, the honeypot
@@ -212,9 +215,10 @@ final class Feedback
             return $row;
         }
         $row['user_agent'] = self::nullable(Utf8::prefix(trim($request->getHeaderLine('User-Agent')), 300));
-        // A signed-in sender is counted by their account (their message "without my name" too): never against the
-        // visitors' budget, which a few networks could spend.
-        $account = self::id($person['id'] ?? null);
+        // A signed-in sender is counted by their account, in the budget of the people signed in - never in the
+        // visitors', which a few networks could spend. A message "without my name" has no account (validate()
+        // dropped it): it is counted as a visitor's, so nothing in the count ties it to the account.
+        $account = self::id($row['user_id'] ?? null);
 
         $id = $this->withinLimits($account !== null ? 'account:' . $account : null, $clientKey, function () use ($row): int {
             $statement = ($this->pdo)()->prepare(
@@ -534,16 +538,17 @@ final class Feedback
 
     /**
      * $keep run under the limits (see the class) - its answer, or 429 too_many with the seconds until one
-     * more fits, or 503 when the count cannot be kept. Counted in a file of the site's storage under its
-     * lock: a keyed hash of each sender of the last day, and when, nothing else - the accounts' apart from
-     * the visitors', whose budget together is the visitors' alone.
+     * more fits, or 503 storage_unavailable when the count cannot be kept. Counted in a file of the site's
+     * storage under its lock: a keyed hash of each sender of the last day, and when, nothing else - the
+     * accounts' apart from the visitors', each with its own budget together.
      *
      * @param ?string $account  a signed-in sender ('account:<id>'), null for a visitor
      * @param Closure(): int $keep
      */
     private function withinLimits(?string $account, string $clientKey, Closure $keep): int|Refusal
     {
-        $unavailable = new Refusal(503, 'feature_unavailable', 'Feedback cannot be taken right now. Try again in a few minutes.');
+        // A failure, not a state: its own code, which the error log writes (it leaves feature_unavailable out).
+        $unavailable = new Refusal(503, 'storage_unavailable', 'Feedback cannot be taken right now. Try again in a few minutes.');
         if (!GuardedDirectory::ensure(dirname($this->storage . '/' . self::LIMITS_FILE))) {
             return $unavailable;
         }
@@ -572,11 +577,11 @@ final class Feedback
             if (count($mine) >= $this->limits['perDay']) {
                 return self::tooMany(min($mine) + 86400 - $now, 'That is a lot of messages in one day. Try again tomorrow.');
             }
-            if ($account === null) {
-                $everybody = $visitors === [] ? [] : array_merge(...array_values($visitors));
-                if (count($everybody) >= $this->limits['allPerDay']) {
-                    return self::tooMany(min($everybody) + 86400 - $now, 'The site has had a lot of messages today. Try again tomorrow.');
-                }
+            // The day's budget of the sender's own kind: the visitors together, or the people signed in together.
+            $pool = $account !== null ? $accounts : $visitors;
+            $everybody = $pool === [] ? [] : array_merge(...array_values($pool));
+            if (count($everybody) >= $this->limits['allPerDay']) {
+                return self::tooMany(min($everybody) + 86400 - $now, 'The site has had a lot of messages today. Try again tomorrow.');
             }
 
             $id = $keep();

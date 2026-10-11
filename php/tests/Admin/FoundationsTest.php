@@ -107,6 +107,9 @@ final class FoundationsTest extends TestCase
         self::assertSame($key, Keys::installation($storage), 'read back, never made again');
         self::assertSame($key, Keys::installation($storage . '/'));
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}\n$/D', (string) file_get_contents($storage . '/anotoki-lib.key'));
+        if (PHP_OS_FAMILY !== 'Windows') {
+            self::assertSame('600', substr(sprintf('%o', fileperms($storage . '/anotoki-lib.key')), -3), 'the site\'s own user\'s alone');
+        }
         self::assertFileExists($storage . '/.htaccess', 'a storage folder it made is guarded');
 
         $other = $this->temporaryFolder();
@@ -358,7 +361,18 @@ final class FoundationsTest extends TestCase
         self::assertFalse(ClientAddress::within('11.1.2.3', '10.0.0.0/8'));
         self::assertTrue(ClientAddress::within('192.0.2.10', '192.0.2.10'));
         self::assertFalse(ClientAddress::within('192.0.2.10', '192.0.2.10/33'), 'no such range');
-        self::assertFalse(ClientAddress::within('::ffff:173.245.48.1', '173.245.48.0/20'), 'an IPv6 address is never in an IPv4 range');
+        self::assertFalse(ClientAddress::within('2001:db8::1', '173.245.48.0/20'), 'an IPv6 address is never in an IPv4 range');
+
+        // An IPv4 address written as IPv6 (a server listening on [::] for both: nginx without ipv6only, php -S) is
+        // the IPv4 address it is: trusted by Cloudflare's IPv4 ranges, and counted whole - never all in ::/64.
+        self::assertTrue(ClientAddress::within('::ffff:173.245.48.1', '173.245.48.0/20'));
+        self::assertSame('198.51.100.7', ClientAddress::of($request('::ffff:173.245.48.1', ['CF-Connecting-IP' => '198.51.100.7']), ClientAddress::CLOUDFLARE), 'Cloudflare\'s, over IPv6');
+        self::assertSame('203.0.113.9', ClientAddress::of($request('::ffff:203.0.113.9', ['CF-Connecting-IP' => '198.51.100.7']), ClientAddress::CLOUDFLARE), 'a stranger\'s header, over IPv6: not believed');
+        self::assertSame('198.51.100.7', ClientAddress::of($request('::ffff:173.245.48.1', ['CF-Connecting-IP' => '::ffff:198.51.100.7']), ClientAddress::CLOUDFLARE));
+        self::assertSame(['203.0.113.9', '198.51.100.1'], [ClientAddress::bucket('::ffff:203.0.113.9'), ClientAddress::bucket('::FFFF:198.51.100.1')]);
+        self::assertSame('203.0.113.9', ClientAddress::plain('0:0:0:0:0:ffff:cb00:7109'));
+        self::assertSame(['::1', '2001:db8::ffff:1.2.3.4'], [ClientAddress::plain('::1'), ClientAddress::plain('2001:db8::ffff:1.2.3.4')], 'only ::ffff:0:0/96 is IPv4');
+        self::assertSame('203.0.113.9', (new AdminContext(static fn (): int => 1))->clientKey($request('::ffff:203.0.113.9')));
     }
 
     public function testTheContextCountsByTheTrustedProxyRuleAndNamesPeople(): void

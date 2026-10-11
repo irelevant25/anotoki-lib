@@ -71,8 +71,8 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * words (0.9, its words an entry point of their own, 1.4). The admin pages and the form are entry points of their own,
  * on lazy routes or loaded as they are opened.
  *
- * error-report (0.4.2): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
- * so on every first page (2.7, its scrubbing's patterns most of it; 2.0 minified in a first load).
+ * error-report (0.5.0): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
+ * so on every first page (2.8 at 0.5.0, its scrubbing's patterns most of it; 2.1 minified in a first load).
  */
 const LIMITS = {
     [CORE]: 15,

@@ -5,7 +5,7 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## 0.4.0 - unreleased
+## 0.4.0 - 2026-10-11
 
 Two modules, both halves: **auth** - signing in through the anotoki IAM, the IAM's SDKs moved into the
 library, the sign-in hint (the owner's decisions of 2026-10-07) and the screen of a sign-in that failed -
@@ -355,7 +355,7 @@ nobody, 403 for anybody else), the site's own middleware still first - and the d
 and previews' links and the error log's own routes hold under a site's groups and base path. COPY goes
 through spools (a stream wrapper): sealed under a key held in memory where backups are encrypted, so no
 row is in the clear on the disk; working folders and uploads a kill left behind go after an hour.
-Feedback keeps nothing of where a message came from (002, unreleased, lost `client_hash`; the limits
+Feedback keeps nothing of where a message came from (002 has no `client_hash`; the limits
 count a day in `storage/cache/anotoki-feedback-limits.json`; `storage` required; `keep.client_hash`
 and `lock` gone; the honeypot answers 201) and refuses `? & = % #` or a space in an address (the page
 encodes its mail link). Uploads: no markup at a file's start or early in text, an ISO box's own size,

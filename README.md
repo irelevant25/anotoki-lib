@@ -9,7 +9,7 @@ version:
 | PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/`, `php/testing/` |
 | Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
 
-Version 0.3.0 holds:
+Version 0.4.0 holds:
 
 - **migrations** - the engine that brings a site's database up to date, with
   the library's own migration sets beside a site's, and one behaviour for every
@@ -19,15 +19,15 @@ Version 0.3.0 holds:
   points, the core a file per piece) and its top bar and frame
   (`@anotoki/lib/shell`);
 - **translations** (both halves) - a site's words, its languages and their admin
-  pages, one implementation for every site (the section "Translations" below).
-
-Unreleased (0.4.0, CHANGELOG.md): **auth** - signing in through the anotoki IAM,
-both halves, with the sign-in hint and the screen of a sign-in that failed - and
-**people** - each site's record of the accounts that use it, the scrub of the
-accounts the IAM deleted and the administrators' People page (the sections
-"Auth" and "People"); and the **admin tools**, both halves - the error log, the
-audit log, feedback, backups and the file explorer, each an admin page, and the
-visitors' feedback form in their language (the section "Admin tools").
+  pages, one implementation for every site (the section "Translations" below);
+- **auth** (both halves) - signing in through the anotoki IAM, with the sign-in
+  hint and the screen of a sign-in that failed (the section "Auth");
+- **people** (both halves) - each site's record of the accounts that use it, the
+  scrub of the accounts the IAM deleted and the administrators' People page (the
+  section "People");
+- **the admin tools** (both halves) - the error log, the audit log, feedback,
+  backups and the file explorer, each an admin page, and the visitors' feedback
+  form in their language (the section "Admin tools").
 
 ## The behaviour
 
@@ -696,7 +696,7 @@ of the Migrations page; everything else is new.
    no property takes) - by themselves; the IAM's account pages give their frame
    its 88rem: `<anotoki-shell maxWidth="88rem">`.
 
-## Upgrading from 0.3.x (0.4.0, unreleased)
+## Upgrading from 0.3.x (0.4.0)
 
 1. **The library's words, a namespace at a time.** `LIBRARY_WORDS` (every
    library word) is `@anotoki/lib/words`' now, no longer `@anotoki/lib/ui/config`'s
@@ -1140,7 +1140,7 @@ upload. Per site:
   pipe name stays (the library's pipe has it); the library's pages replace
   `sites/admin/localization`.
 
-## Auth (unreleased, 0.4.0)
+## Auth (0.4.0)
 
 Every anotoki site signs in through the anotoki IAM, the same way: the browser
 goes to the IAM (authorization code with PKCE), brings tokens back, and sends
@@ -1395,7 +1395,7 @@ signed in at the IAM in this browser, never who. A site never writes it.
   keeps them off the callback: its `robots.txt` says `Disallow: /auth/`, and
   `<anotoki-auth-callback>` and `<anotoki-sign-in-failure>` set `noindex`.
 
-## People (unreleased, 0.4.0)
+## People (0.4.0)
 
 Each site keeps its own record of the accounts that use it - its `users`
 table, keyed by the IAM's `sub` (every foreign key, every visitor and two
@@ -1572,7 +1572,7 @@ survive: the storage keys are the same.
 | build analyzer | `name`, `created_at`, no last-seen (or `last_seen_at`: its CHECK allows it), `updatedAt: 'updated_at'`, `nameFallback: "user $sub"` | `sync_runs.log`: "by {former}" → "by a deleted person" | `src/Support/Iam/*`, `SignInPolicy`, `IamSignInPolicy`, `UserProvisioner`, `core/iam/*`, its fake IAM | `/api/meta` carries `AuthRoutes::configBody()`; a bad token now answers `invalid_token`; the hint acts here; `robots.txt` `Disallow: /auth/` |
 | genshin | `username`, `created_at`, no last-seen, `nameFallback: "user$sub"` | `feedback`: `username` → `deleted-{sub}`, `email`, `ip`, `user_agent` → NULL (the words stay) | `api/anotoki_iam.php`, `shared/local-lib/iam/*` | its migration is `users/050_people.sql`; `users.email` and `feedback.email` go once nothing reads them; `SignInGate` with its open prefixes; the library's routes in `SKIP_PREFIXES`; the hint acts here; `robots.txt` `Disallow: /auth/` |
 
-## Admin tools (unreleased, 0.4.0)
+## Admin tools (0.4.0)
 
 Five tools every site's admin panel shares, for the site's **ADMIN alone**
 (EDITORs see none of them - the owner's decision of 2026-10-07). The library

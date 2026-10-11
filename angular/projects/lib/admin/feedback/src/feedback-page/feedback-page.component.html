@@ -139,9 +139,6 @@
                     }
                 </p>
 
-                @if (message.subject) {
-                    <h3 class="anotoki-admin__section-title anotoki-feedback-page__subject">{{ message.subject }}</h3>
-                }
                 <div class="anotoki-feedback-page__words" data-words>{{ message.message }}</div>
 
                 @for (field of viewingFields(); track field.name) {

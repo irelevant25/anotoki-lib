@@ -256,7 +256,13 @@ export class AuditLogPageComponent {
   }
 }
 
-/** The value chosen stays a choice, whatever the lists say (an address that names one no entry has yet). */
+/**
+ * The value chosen stays a choice, whatever the lists say (an address that names one no entry has yet) - an
+ * action's family named as one: `account.` is "account.* (every one)".
+ */
 function withChosen(options: SelectOption[], chosen: string): SelectOption[] {
-  return chosen !== '' && !options.some((option) => option.value === chosen) ? [{ value: chosen, label: chosen }, ...options] : options;
+  if (chosen === '' || options.some((option) => option.value === chosen)) {
+    return options;
+  }
+  return [{ value: chosen, label: chosen.endsWith('.') ? `${chosen}* (every one)` : chosen }, ...options];
 }

@@ -48,7 +48,7 @@
                     (valueChange)="targetIdText.set($event)"
                     (blurred)="setFilter('target_id', targetIdText())" />
                 <anotoki-text-field label="From" data-from type="date" [value]="filter().from" (valueChange)="setDate('from', $event)" />
-                <anotoki-text-field label="To" data-to type="date" hint="The whole day" [value]="filter().to" (valueChange)="setDate('to', $event)" />
+                <anotoki-text-field label="To" data-to type="date" [value]="filter().to" (valueChange)="setDate('to', $event)" />
                 @if (filtered()) {
                     <div class="anotoki-admin__filter-actions">
                         <button anotokiButton variant="ghost" data-clear-filters (click)="clearFilters()">Show all</button>

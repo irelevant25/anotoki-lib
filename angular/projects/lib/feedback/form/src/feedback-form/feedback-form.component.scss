@@ -71,6 +71,11 @@
   }
 }
 
+// Under the title, a little room: the lead is gone with the form.
+.anotoki-feedback-form__title + .anotoki-feedback-form__thanks {
+  margin-top: 0.75rem;
+}
+
 .anotoki-feedback-form__thanks-icon {
   color: kit.token(success);
 }

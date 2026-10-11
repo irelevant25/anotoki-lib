@@ -117,9 +117,12 @@
   }
 }
 
+// A table's name as it is: no chip of a site's code {} stretched across the row.
 .anotoki-backup-restore-dialog__table {
   flex: 1 1 10rem;
   min-width: 0;
+  padding: 0;
+  background: none;
   font-family: kit.token(font-mono);
   overflow-wrap: anywhere;
 }

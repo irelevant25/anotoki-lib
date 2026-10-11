@@ -159,7 +159,7 @@
                                             <span class="anotoki-admin__muted">-</span>
                                         }
                                     </td>
-                                    <td data-label="By">
+                                    <td class="anotoki-admin__nowrap" data-label="By">
                                         @if (tools.personLink(backup.created_by); as link) {
                                             <a [routerLink]="link">{{ madeBy(backup) }}</a>
                                         } @else {

@@ -6,6 +6,7 @@ namespace Anotoki\Lib\Feedback;
 
 use Anotoki\Lib\Admin\Schema;
 use Anotoki\Lib\Audit\AuditLog;
+use Anotoki\Lib\Support\GuardedDirectory;
 use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Log;
 use Anotoki\Lib\Support\Redactor;
@@ -23,24 +24,30 @@ use Throwable;
  * 002): the public form's submissions, and the admin page's list.
  *
  * The form is open to everybody, so what it keeps and what it lets through are
- * the point (the owner's decisions of 2026-10-07):
+ * the point. The owner's decisions (genshin's, 2026-10-07): who comes only from
+ * the token; no network address and no submitter hash is kept with a message;
+ * no mail is sent. So:
  * - who: only from the token (the site's $person), never from the body; "send
  *   without my name" drops the id and the address; a signed-in sender who
  *   gives no address is answered at the account's;
- * - never the sender's network address: the limits count a keyed hash of the
- *   address bucket the site counts (its trusted proxy's header - never
- *   X-Forwarded-For from anybody), cleared after 30 days;
- * - the limits: 5 an hour and 20 a day from one bucket, 300 a day from
- *   everybody (past it, everybody is asked to try tomorrow); a honeypot field
- *   that a person never sees - filled, the answer is the same and nothing is
- *   kept; a body of at most 64 KB; the page as a path, never its query;
+ * - a message row holds nothing of where it came from. The limits - 5 an hour
+ *   and 20 a day from one address bucket (the site's trusted proxy's header,
+ *   never X-Forwarded-For from anybody), 300 a day from everybody - are counted
+ *   apart: a keyed hash of the bucket and the time, in a file of the site's
+ *   storage (never the database, so never a backup), each time gone once a day
+ *   old - the limits look back a day at most. A message is kept under that
+ *   file's lock, so two at once never both slip under a limit;
+ * - a honeypot field that a person never sees - filled, the answer is a kept
+ *   message's, word for word, and nothing is kept; a body of at most 64 KB; the
+ *   page as a path, never its query; an address with nothing in it a mail
+ *   link would read as more than an address (? & = % #, a space);
  * - no id handed back, no mail: the admin panel counts what is new
  *   (unreadCount()). A site that wants a mail passes `notify` (run after the
  *   answer).
  *
  * While the table is missing (a build before its migrations), everything
- * answers 503 feature_unavailable. Kept: spam 30 days, resolved 365 days, the
- * hash 30 days (prune(), daily, after an answer).
+ * answers 503 feature_unavailable. Kept: spam 30 days, resolved 365 days
+ * (prune(), daily, after an answer).
  */
 final class Feedback
 {
@@ -51,12 +58,12 @@ final class Feedback
 
     public const PAGE_SIZE = 25;
 
-    /** The advisory lock every submission takes, so two at once never both pass a limit. */
-    public const DEFAULT_LOCK = 4_271_029_018;
+    /** The limits' count, under the site's storage: a day of keyed hashes and times, nothing else. */
+    public const LIMITS_FILE = 'cache/anotoki-feedback-limits.json';
 
     private const OPTIONS = [
         'kinds', 'sections', 'fields', 'limits', 'honeypot', 'signedInOnly', 'subjectRequiredFor', 'key', 'storage',
-        'keep', 'notify', 'defer', 'lock',
+        'keep', 'notify', 'defer',
     ];
 
     /** @var list<string> */
@@ -72,12 +79,11 @@ final class Feedback
     /** @var list<string> */
     private readonly array $subjectRequiredFor;
     private ?string $key;
-    private readonly ?string $storage;
-    /** @var array{spam: int, resolved: int, client_hash: int} */
+    private readonly string $storage;
+    /** @var array{spam: int, resolved: int} */
     private readonly array $keep;
     private readonly ?Closure $notify;
     private readonly ?Closure $defer;
-    private readonly int $lock;
 
     /**
      * @param Closure(): PDO $pdo  the site's connection
@@ -90,11 +96,10 @@ final class Feedback
      *   signedInOnly?: bool,
      *   subjectRequiredFor?: list<string>,
      *   key?: string,
-     *   storage?: string,
-     *   keep?: array{spam?: int, resolved?: int, client_hash?: int},
+     *   storage: string,
+     *   keep?: array{spam?: int, resolved?: int},
      *   notify?: Closure(array<string, mixed>): void,
      *   defer?: Closure(callable): void,
-     *   lock?: int,
      * } $options
      *   - kinds: what a message can be (default bug, idea, other); sections: the site's places it can be about
      *     (none: no section kept); fields: the site's extra fields, name => most characters (into `details`)
@@ -102,8 +107,8 @@ final class Feedback
      *   - honeypot: the hidden field's name ('website'; null: none)
      *   - key: the HMAC key of the buckets (a site's secret through Keys::derive()); default the installation's
      *     key from `storage`
-     *   - storage: the site's storage folder (the installation key, the daily prune's stamp)
-     *   - keep: days kept - spam 30, resolved 365, the bucket's hash 30
+     *   - storage: the site's storage folder (the limits' count, the installation key, the daily prune's stamp)
+     *   - keep: days kept - spam 30, resolved 365
      *   - notify: told of every message kept, after the answer (through `defer`)
      */
     public function __construct(private readonly Closure $pdo, array $options = [])
@@ -147,19 +152,17 @@ final class Feedback
         }
         $this->key = $key;
         $storage = $options['storage'] ?? null;
-        $this->storage = is_string($storage) && $storage !== '' ? rtrim($storage, '/\\') : null;
-        if ($this->key === null && $this->storage === null) {
-            throw new InvalidArgumentException('Feedback needs a key, or the storage folder to keep the installation key in.');
+        if (!is_string($storage) || $storage === '') {
+            throw new InvalidArgumentException('Feedback needs the site\'s storage folder: the limits are counted there.');
         }
+        $this->storage = rtrim($storage, '/\\');
         $keep = $options['keep'] ?? [];
         $this->keep = [
             'spam' => max(1, (int) ($keep['spam'] ?? 30)),
             'resolved' => max(1, (int) ($keep['resolved'] ?? 365)),
-            'client_hash' => max(1, (int) ($keep['client_hash'] ?? 30)),
         ];
         $this->notify = $options['notify'] ?? null;
         $this->defer = $options['defer'] ?? null;
-        $this->lock = (int) ($options['lock'] ?? self::DEFAULT_LOCK);
     }
 
     /** Whether the table is there (asked afresh every time). */
@@ -174,11 +177,11 @@ final class Feedback
 
     /**
      * What the public form sends, kept - or why not:
-     *   202 {ok}    the honeypot was filled: the same thanks, nothing kept
-     *   201 {ok}    kept (no id is handed out)
+     *   201 {ok}    kept (no id is handed out) - and, word for word, the answer when the honeypot was filled,
+     *               which keeps nothing
      *   401 sign_in_required (signedInOnly), 422 kind_unknown | message_required | subject_required |
      *   subject_too_long | section_unknown | email_invalid | too_long (+ field), 429 too_many (+ retry_after),
-     *   503 feature_unavailable
+     *   503 feature_unavailable (no table yet, or the limits cannot be counted)
      *
      * @param array<string, mixed> $body  the form's fields: kind, section?, subject?, message, email?, page?,
      *                                    language?, anonymous?, details?: {the site's fields}, the honeypot
@@ -188,11 +191,12 @@ final class Feedback
      */
     public function submit(ServerRequestInterface $request, array $body, ?array $person, string $clientKey): array|Refusal
     {
+        $kept = ['status' => 201, 'body' => ['ok' => true]];
         if (!$this->ready()) {
             return self::unavailable();
         }
         if ($this->honeypot !== null && is_string($body[$this->honeypot] ?? null) && trim($body[$this->honeypot]) !== '') {
-            return ['status' => 202, 'body' => ['ok' => true]];
+            return $kept;
         }
         if ($this->signedInOnly && $person === null) {
             return new Refusal(401, 'sign_in_required', 'Sign in to send feedback.');
@@ -203,35 +207,22 @@ final class Feedback
             return $row;
         }
         $row['user_agent'] = self::nullable(Utf8::prefix(trim($request->getHeaderLine('User-Agent')), 300));
-        $row['client_hash'] = hash_hmac('sha256', $clientKey, $this->key());
 
-        $pdo = ($this->pdo)();
-        $pdo->beginTransaction();
-        try {
-            // One submission at a time, so two at once never both slip under a limit.
-            $pdo->prepare('SELECT pg_advisory_xact_lock(CAST(? AS bigint))')->execute([$this->lock]);
-            $over = $this->overLimit($pdo, $row['client_hash']);
-            if ($over !== null) {
-                $pdo->rollBack();
-
-                return $over;
-            }
-            $statement = $pdo->prepare(
-                'INSERT INTO ' . Schema::FEEDBACK_TABLE . ' (kind, section, subject, message, details, contact_email, user_id, page, language, user_agent, client_hash)
-                 VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?, ?) RETURNING id'
+        $id = $this->withinLimits($clientKey, function () use ($row): int {
+            $statement = ($this->pdo)()->prepare(
+                'INSERT INTO ' . Schema::FEEDBACK_TABLE . ' (kind, section, subject, message, details, contact_email, user_id, page, language, user_agent)
+                 VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?) RETURNING id'
             );
             $statement->execute([
                 $row['kind'], $row['section'], $row['subject'], $row['message'],
                 json_encode($row['details'] === [] ? new \stdClass() : $row['details'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                $row['contact_email'], $row['user_id'], $row['page'], $row['language'], $row['user_agent'], $row['client_hash'],
+                $row['contact_email'], $row['user_id'], $row['page'], $row['language'], $row['user_agent'],
             ]);
-            $id = (int) $statement->fetchColumn();
-            $pdo->commit();
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            throw $e;
+
+            return (int) $statement->fetchColumn();
+        });
+        if ($id instanceof Refusal) {
+            return $id;
         }
 
         if ($this->notify !== null) {
@@ -245,7 +236,7 @@ final class Feedback
         }
         $this->pruneIfDue();
 
-        return ['status' => 201, 'body' => ['ok' => true]];
+        return $kept;
     }
 
     /**
@@ -421,10 +412,10 @@ final class Feedback
 
     /**
      * What is kept no longer: spam after `keep.spam` days, resolved messages
-     * after `keep.resolved` days (from when they were resolved), every bucket's
-     * hash after `keep.client_hash` days. Answers {spam, resolved, client_hash}.
+     * after `keep.resolved` days (from when they were resolved). Answers
+     * {spam, resolved}.
      *
-     * @return array{spam: int, resolved: int, client_hash: int}
+     * @return array{spam: int, resolved: int}
      */
     public function prune(): array
     {
@@ -433,18 +424,13 @@ final class Feedback
         $spam->execute([$this->keep['spam'] . ' days']);
         $resolved = $pdo->prepare("DELETE FROM " . Schema::FEEDBACK_TABLE . " WHERE status = 'resolved' AND COALESCE(handled_at, updated_at) < now() - CAST(? AS interval)");
         $resolved->execute([$this->keep['resolved'] . ' days']);
-        $hashes = $pdo->prepare('UPDATE ' . Schema::FEEDBACK_TABLE . ' SET client_hash = NULL WHERE client_hash IS NOT NULL AND created_at < now() - CAST(? AS interval)');
-        $hashes->execute([$this->keep['client_hash'] . ' days']);
 
-        return ['spam' => $spam->rowCount(), 'resolved' => $resolved->rowCount(), 'client_hash' => $hashes->rowCount()];
+        return ['spam' => $spam->rowCount(), 'resolved' => $resolved->rowCount()];
     }
 
-    /** prune(), at most once a day, after the answer (through `defer`); needs `storage` for its stamp. */
+    /** prune(), at most once a day, after the answer (through `defer`). */
     public function pruneIfDue(): void
     {
-        if ($this->storage === null) {
-            return;
-        }
         try {
             if (!Throttle::due($this->storage . '/cache/anotoki-feedback-prune.stamp', 86400)) {
                 return;
@@ -498,10 +484,10 @@ final class Feedback
 
         $anonymous = ($body['anonymous'] ?? false) === true;
         $email = is_string($body['email'] ?? null) ? trim($body['email']) : '';
-        if ($email !== '' && (strlen($email) > 254 || filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+        if ($email !== '' && !self::plainAddress($email)) {
             return Refusal::invalid('email_invalid', 'That does not look like an e-mail address.', ['field' => 'email']);
         }
-        if ($email === '' && !$anonymous && is_string($person['email'] ?? null) && filter_var($person['email'], FILTER_VALIDATE_EMAIL) !== false) {
+        if ($email === '' && !$anonymous && is_string($person['email'] ?? null) && self::plainAddress($person['email'])) {
             $email = $person['email'];
         }
 
@@ -537,40 +523,80 @@ final class Feedback
         ];
     }
 
-    /** 429 too_many with the seconds until one more fits, or null when this one may be kept. */
-    private function overLimit(PDO $pdo, string $hash): ?Refusal
+    /**
+     * $keep run under the limits (see the class) - its answer, or 429 too_many with the seconds until one
+     * more fits, or 503 when the count cannot be kept. Counted in a file of the site's storage under its
+     * lock: a keyed hash of each bucket that sent a message in the last day, and when, nothing else.
+     *
+     * @param Closure(): int $keep
+     */
+    private function withinLimits(string $clientKey, Closure $keep): int|Refusal
     {
-        $mine = $pdo->prepare(
-            "SELECT count(*) FILTER (WHERE created_at > now() - interval '1 hour'),
-                    count(*),
-                    EXTRACT(EPOCH FROM (min(created_at) FILTER (WHERE created_at > now() - interval '1 hour') + interval '1 hour' - now())),
-                    EXTRACT(EPOCH FROM (min(created_at) + interval '1 day' - now()))
-               FROM " . Schema::FEEDBACK_TABLE . "
-              WHERE client_hash = ? AND created_at > now() - interval '1 day'"
-        );
-        $mine->execute([$hash]);
-        [$lastHour, $lastDay, $hourWait, $dayWait] = $mine->fetch(PDO::FETCH_NUM);
-        if ((int) $lastHour >= $this->limits['perHour']) {
-            return self::tooMany((float) $hourWait, 'That is a lot of messages in one hour. Try again later.');
+        $unavailable = new Refusal(503, 'feature_unavailable', 'Feedback cannot be taken right now. Try again in a few minutes.');
+        if (!GuardedDirectory::ensure(dirname($this->storage . '/' . self::LIMITS_FILE))) {
+            return $unavailable;
         }
-        if ((int) $lastDay >= $this->limits['perDay']) {
-            return self::tooMany((float) $dayWait, 'That is a lot of messages in one day. Try again tomorrow.');
+        $handle = @fopen($this->storage . '/' . self::LIMITS_FILE, 'c+');
+        if ($handle === false) {
+            return $unavailable;
         }
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                return $unavailable;
+            }
+            $now = time();
+            $state = json_decode((string) stream_get_contents($handle), true);
+            $sent = [];
+            foreach (is_array($state['sent'] ?? null) ? $state['sent'] : [] as $bucket => $times) {
+                // A day old, a time gone; a time to come (a clock set back) is no time at all.
+                $recent = array_values(array_filter(is_array($times) ? $times : [], static fn (mixed $at): bool => is_int($at) && $at > $now - 86400 && $at <= $now));
+                if ($recent !== [] && preg_match('/^[0-9a-f]{64}$/D', (string) $bucket) === 1) {
+                    $sent[(string) $bucket] = $recent;
+                }
+            }
+            $bucket = hash_hmac('sha256', $clientKey, $this->key());
+            $mine = $sent[$bucket] ?? [];
+            $lastHour = array_values(array_filter($mine, static fn (int $at): bool => $at > $now - 3600));
+            if (count($lastHour) >= $this->limits['perHour']) {
+                return self::tooMany(min($lastHour) + 3600 - $now, 'That is a lot of messages in one hour. Try again later.');
+            }
+            if (count($mine) >= $this->limits['perDay']) {
+                return self::tooMany(min($mine) + 86400 - $now, 'That is a lot of messages in one day. Try again tomorrow.');
+            }
+            $everybody = $sent === [] ? [] : array_merge(...array_values($sent));
+            if (count($everybody) >= $this->limits['allPerDay']) {
+                return self::tooMany(min($everybody) + 86400 - $now, 'The site has had a lot of messages today. Try again tomorrow.');
+            }
 
-        $all = $pdo->query(
-            "SELECT count(*), EXTRACT(EPOCH FROM (min(created_at) + interval '1 day' - now()))
-               FROM " . Schema::FEEDBACK_TABLE . " WHERE created_at > now() - interval '1 day'"
-        )->fetch(PDO::FETCH_NUM);
-        if ((int) $all[0] >= $this->limits['allPerDay']) {
-            return self::tooMany((float) $all[1], 'The site has had a lot of messages today. Try again tomorrow.');
-        }
+            $id = $keep();
+            $sent[$bucket][] = $now;
+            ftruncate($handle, 0);
+            rewind($handle);
+            fwrite($handle, (string) json_encode(['v' => 1, 'sent' => $sent]));
+            fflush($handle);
 
-        return null;
+            return $id;
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
-    private static function tooMany(float $seconds, string $message): Refusal
+    private static function tooMany(int $seconds, string $message): Refusal
     {
-        return new Refusal(429, 'too_many', $message, ['retry_after' => max(1, (int) ceil($seconds))]);
+        return new Refusal(429, 'too_many', $message, ['retry_after' => max(1, $seconds)]);
+    }
+
+    /**
+     * An address a mail link takes as an address and nothing more: a valid one, at most 254 characters,
+     * with none of ? & = % # (a mailto: link reads them as its headers - "?bcc=" - or as its end) and no
+     * space or control character.
+     */
+    private static function plainAddress(string $email): bool
+    {
+        return strlen($email) <= 254
+            && preg_match('/[?&=%#\s\x00-\x1F\x7F]/', $email) !== 1
+            && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     private function key(): string
@@ -601,7 +627,7 @@ final class Feedback
     }
 
     /**
-     * A row for the page - never the bucket's hash.
+     * A row for the page.
      *
      * @param array<string, mixed> $row
      * @return array<string, mixed>

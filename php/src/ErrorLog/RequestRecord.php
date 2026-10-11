@@ -19,6 +19,9 @@ final class RequestRecord
 {
     public bool $handled = false;
 
+    /** A request to the log's own routes: nothing of it is written. */
+    public bool $own = false;
+
     /** @var array<string, true> */
     public array $seen = [];
 

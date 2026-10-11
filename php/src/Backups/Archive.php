@@ -39,8 +39,8 @@ final class Archive
      * Writes the archive to $target (which must not exist), and answers its size and SHA-256.
      *
      * @param array<string, mixed> $header
-     * @param list<array{name: string, file?: string, data?: string}> $entries  in order; a file's content
-     *        from `file` (a path) or `data`
+     * @param list<array{name: string, file?: string, size?: int, data?: string}> $entries  in order; a file's
+     *        content from `file` (a path, or a spool's url with its `size`) or `data`
      * @param ?string $siteKey  the site's backup key (32 bytes): encrypted when given
      * @return array{size: int, sha256: string, header: array<string, mixed>}
      */
@@ -167,6 +167,10 @@ final class Archive
         try {
             [$header, $preamble] = self::preamble($handle);
             $encrypted = ($header['encrypted'] ?? false) === true;
+            // A site whose backups are encrypted made none in the clear: one that says it is, somebody put there.
+            if ($siteKey !== null && !$encrypted) {
+                throw new RuntimeException('This site\'s backups are encrypted, and this one is not: it is not read.');
+            }
 
             $inflate = inflate_init(ZLIB_ENCODING_GZIP);
             if ($inflate === false) {
@@ -251,14 +255,14 @@ final class Archive
     /**
      * One file into the tar: its header block, its content, the padding to a whole block.
      *
-     * @param array{name: string, file?: string, data?: string} $entry
+     * @param array{name: string, file?: string, size?: int, data?: string} $entry
      * @param Closure(string): void $tar
      */
     private static function writeEntry(array $entry, Closure $tar): void
     {
         if (isset($entry['file'])) {
-            $size = filesize($entry['file']);
-            if ($size === false) {
+            $size = $entry['size'] ?? @filesize($entry['file']);
+            if (!is_int($size)) {
                 throw new RuntimeException('A part of the backup went missing while it was written.');
             }
         } else {

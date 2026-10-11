@@ -135,6 +135,9 @@ final class FileExplorerTest extends FilesTestCase
         rmdir($this->assets . '/characters/raiden');
         self::assertSame(['path' => 'characters/raiden/Raiden Shogun.png'], $explorer->restore('assets', (string) $folderFile['trashed']));
 
+        // One file at a time: only what the trash put there, never the folder's own index.html.
+        self::assertSame('not_found', $explorer->emptyTrash('assets', 'index.html')->code ?? null);
+        self::assertFileExists($this->storage . '/trash/assets/index.html');
         self::assertSame(['deleted' => 1, 'bytes' => strlen('Plain words.'), 'failed' => 0], $explorer->emptyTrash('assets', (string) $again['trashed']));
         $emptied = $explorer->emptyTrash('assets');
         self::assertSame([2, 0], [$emptied['deleted'], $emptied['failed']]);
@@ -200,11 +203,94 @@ final class FileExplorerTest extends FilesTestCase
         self::assertNull($explorer->raw($traversal['root'], $traversal['path'], $traversal['exp'], $traversal['sig']), 'signed or not, the guard refuses it');
     }
 
+    public function testARootIsTheSitesDataNeverItsCodeItsSecretsOrTheLibrarysStorage(): void
+    {
+        foreach ([
+            'the site itself, with its config/*.local.php' => $this->base,
+            'the config folder' => $this->base . '/config',
+        ] as $why => $path) {
+            try {
+                new FileRoot('site', $path);
+                self::fail("$why taken as a root");
+            } catch (\InvalidArgumentException $e) {
+                self::assertStringContainsString('the site\'s own files', $e->getMessage(), $why);
+            }
+        }
+        mkdir($this->base . '/backend/vendor/slim', 0777, true);
+        mkdir($this->base . '/keys', 0777, true);
+        file_put_contents($this->base . '/keys/anotoki-lib.key', str_repeat('0', 64) . "\n");
+        foreach (['its vendor folder' => $this->base . '/backend', 'the library\'s key' => $this->base . '/keys'] as $why => $path) {
+            try {
+                new FileRoot('site', $path);
+                self::fail("$why taken as a root");
+            } catch (\InvalidArgumentException) {
+                self::assertTrue(true, $why);
+            }
+        }
+
+        foreach (['the storage folder' => $this->storage, 'inside it' => $this->storage . '/trash', 'around it' => $this->base . '/around'] as $why => $path) {
+            if ($why === 'around it') {
+                mkdir($path . '/storage', 0777, true);
+                $storage = $path . '/storage';
+            } else {
+                @mkdir($path, 0777, true);
+                $storage = $this->storage;
+            }
+            try {
+                new \Anotoki\Lib\Files\FileExplorer([new FileRoot('data', $path)], ['storage' => $storage, 'key' => str_repeat('k', 32)]);
+                self::fail("a root $why taken");
+            } catch (\InvalidArgumentException $e) {
+                self::assertStringContainsString('storage folder', $e->getMessage(), $why);
+            }
+        }
+        self::assertSame(['assets', 'public'], array_column($this->explorer()->roots(), 'name'), 'a site\'s data folders are taken as before');
+    }
+
+    public function testAnUploadLeftOnItsWayInGoesAnHourLater(): void
+    {
+        $incoming = $this->storage . '/cache/uploads';
+        mkdir($incoming, 0777, true);
+        file_put_contents($old = $incoming . '/' . str_repeat('a', 24) . '.part', 'left by a timeout');
+        touch($old, time() - 3700);
+        file_put_contents($fresh = $incoming . '/' . str_repeat('b', 24) . '.part', 'on its way in now');
+        file_put_contents($other = $incoming . '/notes.txt', 'not the explorer\'s');
+        touch($other, time() - 3700);
+
+        $this->explorer()->upload('assets', 'characters', [$this->upload('Fresh.png', (string) base64_decode(self::PNG))]);
+
+        self::assertFileDoesNotExist($old);
+        self::assertFileExists($fresh, 'one younger than an hour may be another upload\'s');
+        self::assertFileExists($other, 'only the explorer\'s own names');
+    }
+
+    public function testMountedInsideGroupsUnderABasePathThePreviewLinkNamesTheRawRouteWhereItIs(): void
+    {
+        $explorer = $this->explorer();
+        $context = $this->context();
+        $app = AppFactory::create();
+        $app->setBasePath('/site');
+        $app->group('/api/admin', function ($admin) use ($explorer, $context): void {
+            FilesRoutes::admin($admin, '/files', $explorer, $context);
+        });
+        $app->group('/api/media', function ($media) use ($explorer, $context): void {
+            FilesRoutes::raw($media, '/raw', $explorer, $context);
+        });
+
+        $url = $this->json($this->send($app, 'GET', '/site/api/admin/files/assets?path=characters%2Fraiden'))['files'][0]['url'];
+        self::assertStringStartsWith('/site/api/media/raw?', $url, 'the groups\' prefixes and the base path, all');
+        self::assertSame((string) base64_decode(self::PNG), (string) $this->send($app, 'GET', $url, admin: false)->getBody());
+    }
+
     public function testTheRoutesForTheAdminAndTheSignedPreview(): void
     {
         $app = $this->app();
 
-        self::assertSame(403, $this->send($app, 'GET', '/api/admin/files/roots', admin: false)->getStatusCode());
+        // Nothing of the site's on the group: its own check refuses a bare request, and anybody but the ADMIN.
+        $bare = $this->send($app, 'GET', '/api/admin/files/roots', admin: false);
+        self::assertSame([401, 'sign_in_required'], [$bare->getStatusCode(), $this->json($bare)['code']]);
+        $other = $this->send($app, 'DELETE', '/api/admin/files/assets?path=characters%2Freadme.txt', admin: false, headers: ['X-Test-Admin' => 'no']);
+        self::assertSame([403, 'forbidden'], [$other->getStatusCode(), $this->json($other)['code']]);
+        self::assertFileExists($this->assets . '/characters/readme.txt');
         self::assertSame(['assets', 'public'], array_column($this->json($this->send($app, 'GET', '/api/admin/files/roots'))['roots'], 'name'));
         self::assertSame(404, $this->send($app, 'GET', '/api/admin/files/assets?path=%2e%2e%2Fassets-old')->getStatusCode(), '%2e%2e arrives as ..');
         self::assertSame(['characters'], array_column($this->json($this->send($app, 'GET', '/api/admin/files/assets'))['folders'], 'name'));
@@ -250,10 +336,19 @@ final class FileExplorerTest extends FilesTestCase
     /** @var list<array{string, ?string, ?string}> */
     private array $audited = [];
 
+    /** X-Test-Admin: yes is the site's ADMIN (7); any other value somebody else (9); none, nobody. */
+    private function context(): AdminContext
+    {
+        return new AdminContext(
+            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? ($request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : 9) : null,
+            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+        );
+    }
+
     private function app(): App
     {
         $explorer = $this->explorer();
-        $context = new AdminContext(static fn (): int => 7);
+        $context = $this->context();
         $app = AppFactory::create();
         $audit = new class ($this) implements \Anotoki\Lib\Audit\AuditRecorder {
             public function __construct(private readonly FileExplorerTest $test)
@@ -265,10 +360,7 @@ final class FileExplorerTest extends FilesTestCase
                 $this->test->audit($action, $targetType, $targetId === null ? null : (string) $targetId);
             }
         };
-        FilesRoutes::admin($app, '/api/admin/files', $explorer, $context, $audit)
-            ->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $request->getHeaderLine('X-Test-Admin') === 'yes'
-                ? $handler->handle($request)
-                : (new ResponseFactory())->createResponse(403));
+        FilesRoutes::admin($app, '/api/admin/files', $explorer, $context, $audit);
         FilesRoutes::raw($app, '/api/admin/files/raw', $explorer, $context);
 
         return $app;

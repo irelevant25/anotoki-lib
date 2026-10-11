@@ -99,8 +99,30 @@ final class ChunkCipher
      */
     public static function open($stream, string $key, string $aad, \Closure $out): void
     {
+        $next = self::reader($stream, $key, $aad);
+        while (($plain = $next()) !== null) {
+            $out($plain);
+        }
+    }
+
+    /**
+     * The same reading, a chunk at a time as it is asked for: each call answers
+     * the next chunk's plaintext, null once the last one was given. Every chunk
+     * is checked as it is read (see open()).
+     *
+     * @param resource $stream
+     * @return \Closure(): ?string
+     * @throws RuntimeException from the closure, as open() throws
+     */
+    public static function reader($stream, string $key, string $aad): \Closure
+    {
         $index = 0;
-        while (true) {
+        $done = false;
+
+        return static function () use ($stream, $key, $aad, &$index, &$done): ?string {
+            if ($done) {
+                return null;
+            }
             $head = self::readExactly($stream, 4);
             if ($head === '') {
                 throw new RuntimeException('The encrypted backup ends before its last chunk: it was cut short.');
@@ -122,16 +144,16 @@ final class ChunkCipher
             if ($plain === null) {
                 throw new RuntimeException('A chunk of the encrypted backup does not open: it was changed, or it was made with another key.');
             }
-            $out($plain);
             $index++;
             if ($last) {
                 if (self::readExactly($stream, 1) !== '') {
                     throw new RuntimeException('The encrypted backup goes on after its last chunk: it was changed.');
                 }
-
-                return;
+                $done = true;
             }
-        }
+
+            return $plain;
+        };
     }
 
     private function emit(string $plain, bool $last): void

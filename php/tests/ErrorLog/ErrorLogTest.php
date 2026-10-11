@@ -145,13 +145,58 @@ final class ErrorLogTest extends TestCase
 
     public function testTheLogsOwnRoutesAreNeverWrittenDown(): void
     {
-        [$app, $log] = $this->app();
+        // A site that keeps every 4xx (genshin's): the log's own refusals would be lines, were they not its own.
+        [$app, $log] = $this->app(['responses' => static fn (int $status): bool => $status >= 400]);
         ErrorLogRoutes::admin($app, '/api/admin/errors', $log, $this->context())->add($this->adminCheck());
 
         self::assertSame(404, $this->send($app, 'GET', '/api/admin/errors/zzzzzzzzzzzz')->getStatusCode());
         self::assertSame(405, $this->send($app, 'PUT', '/api/admin/errors')->getStatusCode());
         self::assertSame(403, $this->send($app, 'GET', '/api/admin/errors', admin: false)->getStatusCode());
         self::assertFileDoesNotExist($this->logs . '/errors-' . gmdate('Y-m-d') . '.jsonl');
+    }
+
+    public function testABareRequestIsRefusedByTheGroupItself(): void
+    {
+        [$app, $log] = $this->app();
+        // Nothing of the site's on the group: the library's own check.
+        ErrorLogRoutes::admin($app, '/api/admin/errors', $log, $this->context());
+        $app->get('/api/fail', static function (): ResponseInterface {
+            throw new RuntimeException('A failure an outsider must not read');
+        });
+        $this->send($app, 'GET', '/api/fail');
+
+        foreach ([['GET', '/api/admin/errors'], ['DELETE', '/api/admin/errors'], ['GET', '/api/admin/errors/0123456789ab']] as [$method, $path]) {
+            $bare = $this->send($app, $method, $path, admin: false);
+            self::assertSame([401, 'sign_in_required'], [$bare->getStatusCode(), $this->json($bare)['code']], "a bare $method $path");
+            $other = $this->send($app, $method, $path, headers: ['X-Test-Admin' => 'no'], admin: false);
+            self::assertSame([403, 'forbidden'], [$other->getStatusCode(), $this->json($other)['code']], "somebody else's $method $path");
+            self::assertStringNotContainsString('outsider', (string) $other->getBody());
+        }
+        self::assertCount(1, $this->lines(), 'nothing cleared');
+    }
+
+    public function testMountedInsideAGroupUnderABasePathTheLogsRoutesAreStillItsOwn(): void
+    {
+        [$app, $log] = $this->app(['responses' => static fn (int $status): bool => $status >= 400]);
+        $app->setBasePath('/site');
+        $app->group('/api', function ($api) use ($log): void {
+            ErrorLogRoutes::client($api, '/client-errors', $log, $this->context());
+            $api->group('/admin', function ($admin) use ($log): void {
+                ErrorLogRoutes::admin($admin, '/errors', $log, $this->context());
+            });
+        });
+
+        self::assertSame(401, $this->send($app, 'GET', '/site/api/admin/errors', admin: false)->getStatusCode());
+        self::assertSame(403, $this->send($app, 'GET', '/site/api/admin/errors', headers: ['X-Test-Admin' => 'no'], admin: false)->getStatusCode());
+        self::assertSame(200, $this->send($app, 'GET', '/site/api/admin/errors')->getStatusCode());
+        self::assertSame(404, $this->send($app, 'GET', '/site/api/admin/errors/zzzz')->getStatusCode(), 'under them, though no route of them answers');
+        self::assertSame(422, $this->send($app, 'POST', '/site/api/client-errors', '{"type":"Error"}')->getStatusCode());
+        self::assertSame(204, $this->send($app, 'POST', '/site/api/client-errors', '{"message":"A page failed"}')->getStatusCode());
+        self::assertSame(404, $this->send($app, 'GET', '/site/api/elsewhere')->getStatusCode());
+
+        $lines = $this->lines();
+        self::assertSame([['client', 'A page failed'], ['server', 'Not found.']], array_map(static fn (array $line): array => [$line['source'], $line['message']], $lines), 'the page\'s own error and the site\'s 404 - none of the log\'s routes\' answers');
+        self::assertSame('/site/api/elsewhere', $lines[1]['path']);
     }
 
     public function testTheRoutesReadGroupAndClearForTheAdminAlone(): void
@@ -235,31 +280,80 @@ final class ErrorLogTest extends TestCase
         self::assertSame([7, 'errors.cleared', ['files' => 1]], $audit->recorded[1]);
     }
 
-    public function testDaysArePartedPrunedAndCapped(): void
+    public function testDaysArePartedAndPruned(): void
     {
-        $log = new ErrorLog($this->logs, ['key' => str_repeat('k', 32), 'maxBytes' => 1024, 'totalBytes' => 4096]);
+        $log = new ErrorLog($this->logs, ['key' => str_repeat('k', 32), 'maxBytes' => 1024]);
         mkdir($this->logs, 0777, true);
         $old = gmdate('Y-m-d', time() - 31 * 86400);
         file_put_contents($this->logs . "/errors-$old.jsonl", "{}\n");
         file_put_contents($this->logs . '/errors-' . gmdate('Y-m-d', time() - 29 * 86400) . '.jsonl', "{}\n");
 
-        for ($i = 0; $i < 60; $i++) {
+        for ($i = 0; $i < 12; $i++) {
             $log->record(new RuntimeException('Distinct failure number ' . str_repeat('x', $i % 26) . chr(65 + $i % 26) . $i), null);
         }
 
         self::assertFileDoesNotExist($this->logs . "/errors-$old.jsonl", 'a day past 30 is gone');
         self::assertFileExists($this->logs . '/errors-' . gmdate('Y-m-d', time() - 29 * 86400) . '.jsonl', 'one within 30 stays');
+        self::assertFileExists($this->logs . '/errors-' . gmdate('Y-m-d') . '.2.jsonl', 'a day goes on in parts');
+        foreach (glob($this->logs . '/errors-*.jsonl') ?: [] as $file) {
+            self::assertLessThan(1024 + 1024, filesize($file));
+        }
+        self::assertSame([], $log->reader()->dropped());
+    }
+
+    public function testOverItsSizeTheOldestDaysGoAndTodayIsNeverKeptOutByThem(): void
+    {
+        $log = new ErrorLog($this->logs, ['key' => str_repeat('k', 32), 'maxBytes' => 1024, 'totalBytes' => 4096]);
+        mkdir($this->logs, 0777, true);
+        // A scanner's 404s filled the whole log on three days before today.
+        $days = [gmdate('Y-m-d', time() - 3 * 86400), gmdate('Y-m-d', time() - 2 * 86400), gmdate('Y-m-d', time() - 86400)];
+        foreach ($days as $day) {
+            file_put_contents($this->logs . "/errors-$day.jsonl", str_repeat("{}\n", 500));
+        }
+
+        $log->record(new RuntimeException('Today\'s first failure'), null);
+        self::assertFileDoesNotExist($this->logs . "/errors-$days[0].jsonl", 'the oldest day went to make room');
+        self::assertFileExists($this->logs . "/errors-$days[2].jsonl", 'only as many as it took');
+        self::assertSame(['Today\'s first failure'], array_column($this->linesOf(gmdate('Y-m-d')), 'message'), 'today is written');
+
+        // Today alone past the size: every day before goes, and only then are today's lines counted, not written.
+        for ($i = 0; $i < 60; $i++) {
+            $log->record(new RuntimeException('Distinct failure number ' . str_repeat('x', $i % 26) . chr(65 + $i % 26) . $i), null);
+        }
         $today = gmdate('Y-m-d');
-        self::assertFileExists($this->logs . "/errors-$today.2.jsonl", 'a day goes on in parts');
+        self::assertSame([], array_values(array_filter(glob($this->logs . '/errors-*.jsonl') ?: [], static fn (string $file): bool => !str_contains($file, $today))), 'every day before today went first');
         $total = 0;
         foreach (glob($this->logs . '/errors-*.jsonl') ?: [] as $file) {
             $total += filesize($file);
-            self::assertLessThan(1024 + 1024, filesize($file));
         }
-        self::assertLessThan(4096 + 1024, $total, 'the whole log stays within its cap and a part');
+        self::assertLessThan(4096 + 1024, $total, 'the whole log stays within its size and a part');
         $dropped = $log->reader()->dropped();
-        self::assertGreaterThan(0, $dropped[$today] ?? 0, 'the lines that did not fit are counted');
+        self::assertGreaterThan(0, $dropped[$today] ?? 0, 'what today alone does not fit is counted');
         self::assertSame($dropped, $log->reader()->report(['days' => 1])['dropped']);
+    }
+
+    public function testOneKindWritesAtMostItsLinesADayAndTheRestAreCounted(): void
+    {
+        [$app, $log] = $this->app(['perFingerprintDay' => 3]);
+        $app->get('/api/fail', static function (): ResponseInterface {
+            throw new RuntimeException('The same failure');
+        });
+        for ($i = 0; $i < 5; $i++) {
+            $this->send($app, 'GET', '/api/fail');
+            $this->send($app, 'GET', '/api/nowhere-' . $i);
+        }
+        $this->send($app, 'GET', '/api/another', admin: false);
+
+        $lines = $this->lines();
+        self::assertSame(3, count(array_filter($lines, static fn (array $line): bool => $line['type'] === 'RuntimeException')), 'three of one failure');
+        self::assertSame(3, count(array_filter($lines, static fn (array $line): bool => $line['status'] === 404)), 'three of a scanner\'s 404s, however many paths');
+        self::assertSame([gmdate('Y-m-d') => 5], $log->reader()->dropped(), 'the rest counted');
+
+        // Clearing the day clears its count too: the kinds start again.
+        self::assertGreaterThan(0, $log->reader()->clear());
+        self::assertSame([], glob($this->logs . '/errors-*.counts.json') ?: []);
+        $this->send($app, 'GET', '/api/fail');
+        self::assertCount(1, $this->lines());
     }
 
     public function testGenshinsLinesAreReadAsTheyWere(): void
@@ -343,9 +437,13 @@ final class ErrorLogTest extends TestCase
         return [$app, $log];
     }
 
+    /** Who acts: 7 for a request with X-Test-Admin, nobody without; the site's ADMIN with X-Test-Admin: yes. */
     private function context(): AdminContext
     {
-        return new AdminContext(static fn (): int => 7);
+        return new AdminContext(
+            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? 7 : null,
+            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+        );
     }
 
     private function adminCheck(): \Closure
@@ -379,6 +477,19 @@ final class ErrorLogTest extends TestCase
     {
         $lines = [];
         foreach (glob($this->logs . '/errors-*.jsonl') ?: [] as $file) {
+            foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+                $lines[] = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+            }
+        }
+
+        return $lines;
+    }
+
+    /** @return list<array<string, mixed>> one day's lines */
+    private function linesOf(string $day): array
+    {
+        $lines = [];
+        foreach (glob($this->logs . "/errors-$day*.jsonl") ?: [] as $file) {
             foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
                 $lines[] = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
             }

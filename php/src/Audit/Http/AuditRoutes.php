@@ -18,8 +18,9 @@ use Slim\Interfaces\RouteGroupInterface;
 use Throwable;
 
 /**
- * The audit log's routes, for the site's ADMIN alone (the site's check on the
- * returned group) - read only:
+ * The audit log's routes, for the site's ADMIN alone - the group asks the
+ * context's isAdmin() before anything else (401, 403), and the site adds its
+ * own middleware to it as to any group - read only:
  *
  *   GET $base?actor=&action=&target_type=&target_id=&scope_type=&scope_id=&from=&to=&page=
  *       {total, page, pageSize: 50, items} - the IAM's answer (AuditEntry), each item with
@@ -43,7 +44,7 @@ final class AuditRoutes
         AdminContext $context,
         ?Closure $actorNames = null,
     ): RouteGroupInterface {
-        return $app->group($base, function (RouteCollectorProxyInterface $group) use ($audit, $context, $actorNames): void {
+        return Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($audit, $context, $actorNames): void {
             Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($audit, $context, $actorNames): ResponseInterface {
                 if (!$audit->ready()) {
                     return $context->refuse($response, self::unavailable());

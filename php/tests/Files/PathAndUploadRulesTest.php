@@ -41,6 +41,15 @@ final class PathAndUploadRulesTest extends FilesTestCase
         yield 'too long a part' => [str_repeat('a', 256)];
         yield 'too long in all' => [implode('/', array_fill(0, 206, 'abcd'))];
         yield 'no UTF-8' => ["caf\xE9"];
+        // The names Windows keeps for its devices, whatever their extension: no file there.
+        yield 'CON' => ['CON'];
+        yield 'nul.png' => ['characters/nul.png'];
+        yield 'a port with an extension' => ['COM1.txt'];
+        yield 'a printer, small' => ['lpt9'];
+        yield 'two extensions' => ['aux.tar.gz'];
+        yield 'a space before the dot' => ['con .png'];
+        yield 'a superscript port' => ["COM\u{B9}.png"];
+        yield 'the console\'s input' => ['CONIN$'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('refusedPaths')]
@@ -54,6 +63,8 @@ final class PathAndUploadRulesTest extends FilesTestCase
         self::assertSame('', PathGuard::relative(''));
         self::assertSame('characters/raiden/Raiden Shogun.png', PathGuard::relative('characters/raiden/Raiden Shogun.png'));
         self::assertSame('php.png', PathGuard::relative('php.png'));
+        self::assertSame('console.png', PathGuard::relative('console.png'), 'a name that only begins like a device\'s');
+        self::assertSame('COMA/lpt.png', PathGuard::relative('COMA/lpt.png'));
         self::assertSame(implode('/', array_fill(0, 205, 'abcd')), PathGuard::relative(implode('/', array_fill(0, 205, 'abcd'))), '1024 bytes in all');
         if (class_exists(\Normalizer::class)) {
             self::assertSame("\u{17E}", PathGuard::relative("z\u{30C}"), 'one way of writing a name');
@@ -167,6 +178,41 @@ final class PathAndUploadRulesTest extends FilesTestCase
         self::assertSame('content_mismatch', $check('', 'png'));
     }
 
+    public function testNoFileBeginsAsAPageAndNoTextCarriesMarkupEarly(): void
+    {
+        $base = $this->base;
+        $check = static function (string $content, string $extension) use ($base): ?string {
+            $file = $base . '/probe-' . bin2hex(random_bytes(4));
+            file_put_contents($file, $content);
+
+            return UploadPolicy::contentRefusal($file, $extension)?->code;
+        };
+        $png = (string) base64_decode(self::PNG);
+        // Put together here: a page that runs a script the moment it is read as one.
+        $page = '<' . 'img src=x on' . 'error=alert(1)>';
+        $chunk = static fn (string $type, string $data): string => pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
+
+        // An ISO box whose size is a comment's opening: ftyp at 4 is not enough.
+        self::assertSame('content_mismatch', $check('<!--' . 'ftypavif' . str_repeat(' ', 8) . '-->' . $page, 'avif'), 'an AVIF that is a page');
+        self::assertSame('content_mismatch', $check('<!--' . 'ftypM4A ' . str_repeat(' ', 8) . '-->' . $page, 'm4a'));
+        self::assertSame('content_mismatch', $check('<!--' . 'ftypisom' . str_repeat(' ', 8) . '-->' . $page, 'mp4'));
+        self::assertNull($check(pack('N', 24) . 'ftypisom' . str_repeat("\0", 4) . 'isommp41' . str_repeat("\0", 40), 'mp4'), 'a real ftyp box');
+        self::assertNull($check(pack('N', 28) . 'ftypM4A ' . str_repeat("\0", 4) . 'M4A mp42isom' . str_repeat("\0", 40), 'm4a'));
+
+        // Text: no markup at all in its first kilobyte, nor at its start after a byte order mark and white space.
+        self::assertSame('content_mismatch', $check("Notes\n\n" . $page . "\n", 'md'));
+        self::assertSame('content_mismatch', $check("\xEF\xBB\xBF  \n<!" . "DOCTYPE html>", 'txt'));
+        self::assertSame('content_mismatch', $check('{"x": "<' . 'script>"}', 'json'));
+        self::assertSame('content_mismatch', $check('a,b' . "\n" . '<!-- x -->', 'csv'));
+        self::assertNull($check("a < b, 3 <5, x<=y: no tag\n", 'txt'), 'a less-than sign is no markup');
+        self::assertNull($check(str_repeat('x', 1100) . $page, 'log'), 'past the first kilobyte, a log may quote what it saw');
+
+        // A picture's own metadata (XMP) is no page; a page's tags early in a picture are.
+        $xmp = $chunk('iTXt', "XML:com.adobe.xmp\0\0\0\0\0" . '<' . '?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>');
+        self::assertNull($check(substr($png, 0, 33) . $xmp . substr($png, 33), 'png'), 'a PNG with XMP in it, as Photoshop writes one');
+        self::assertSame('content_mismatch', $check(substr($png, 0, 33) . $chunk('tEXt', "Comment\0" . $page) . substr($png, 33), 'png'), 'a PNG that carries a page');
+    }
+
     public function testTheGuardHoldsOnlyRulesThatCannotTakeTheFolderDown(): void
     {
         $folder = $this->base . '/uploads';
@@ -180,7 +226,19 @@ final class PathAndUploadRulesTest extends FilesTestCase
         self::assertSame([
             'RemoveHandler .php .phtml .phar .pht .php3 .php4 .php5 .php6 .php7 .php8 .phps .cgi .pl .py .sh .asp .aspx .jsp .shtml',
             'RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php6 .php7 .php8 .phps .cgi .pl .py .sh .asp .aspx .jsp .shtml',
-        ], $rules, 'genshin\'s rules word for word: never php_flag, Options or Require');
+        ], array_slice($rules, 0, 2), 'genshin\'s rules word for word');
+        self::assertSame(['<IfModule mod_headers.c>', '    Header set X-Content-Type-Options nosniff', '</IfModule>'], array_slice($rules, -3), 'nosniff, where Apache has mod_headers');
+        $typed = [];
+        foreach (array_slice($rules, 2, -3) as $line) {
+            self::assertMatchesRegularExpression('~^AddType [a-z]+/[a-z0-9.+-]+( \.[a-z0-9]+)+$~D', $line, 'nothing but a type for the extensions: never php_flag, Options or Require');
+            [, $type, $extensions] = explode(' ', $line, 3);
+            foreach (explode(' ', $extensions) as $extension) {
+                $typed[substr($extension, 1)] = $type;
+            }
+        }
+        self::assertEqualsCanonicalizing(array_keys(UploadPolicy::TYPES), array_keys($typed), 'every extension the explorer takes has its type');
+        self::assertSame(['text/plain', 'text/plain', 'text/plain', 'text/plain', 'application/json'], [$typed['txt'], $typed['csv'], $typed['md'], $typed['log'], $typed['json']], 'text as plain text');
+        self::assertSame('image/avif', $typed['avif'], 'the type an old Apache does not know');
 
         file_put_contents($folder . '/.htaccess', "# the site's own\n");
         self::assertTrue(UploadPolicy::ensureGuard($folder));

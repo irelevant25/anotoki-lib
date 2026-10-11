@@ -32,8 +32,12 @@ use Throwable;
  * One JSON line per event in {directory}/errors-YYYY-MM-DD.jsonl (the UTC
  * date), a new part (errors-…-DD.2.jsonl, .3, ...) once a file passes 4 MB,
  * days older than 30 deleted when a day's first line is written, and no more
- * than 64 MB in all: past it a day's new lines are dropped and counted
- * (errors-dropped.json), and the page says so.
+ * than 64 MB in all: past it the oldest days go first - today is never kept
+ * out by the days before it - and only what today alone does not fit is
+ * dropped and counted (errors-dropped.json). So is a line of a kind that has
+ * 100 lines today already (`perFingerprintDay`): a flood of one failure - a
+ * scanner's 404s - writes a hundred lines a day, not the whole budget. The
+ * page says how many were dropped.
  *
  * A line (v 1): {v, at (ISO 8601 UTC, milliseconds), source (server, php or
  * client), level (error, warning or notice), status, type (the exception's
@@ -75,7 +79,7 @@ final class ErrorLog
 
     private const OPTIONS = [
         'root', 'context', 'clientKey', 'actorId', 'days', 'responses', 'key', 'storage', 'maxBytes', 'totalBytes',
-        'ignore', 'ignoreExceptions', 'app', 'clientLimits',
+        'ignore', 'ignoreExceptions', 'app', 'clientLimits', 'perFingerprintDay',
     ];
 
     private readonly string $directory;
@@ -88,6 +92,7 @@ final class ErrorLog
     private readonly string $storage;
     private readonly int $maxBytes;
     private readonly int $totalBytes;
+    private readonly int $perFingerprintDay;
 
     /** @var list<string> paths never written down (the log's own routes): exact, or everything under them */
     private array $ignored;
@@ -128,6 +133,7 @@ final class ErrorLog
      *   ignoreExceptions?: list<class-string>,
      *   app?: App,
      *   clientLimits?: array{perHour?: int, perDay?: int},
+     *   perFingerprintDay?: int,
      * } $options
      *   - root: the site's folder, cut from every file's path (backend/)
      *   - context / clientKey / actorId: who asked (an id) and from where (a keyed hash of the address bucket)
@@ -142,6 +148,7 @@ final class ErrorLog
      *   - ignoreExceptions: classes that are a decided answer (genshin's ApiRefusal): their answer's line is written
      *   - app: the Slim app, to name a request's route pattern
      *   - clientLimits: the pages' own errors, per address bucket an hour (20) and in all a day (500)
+     *   - perFingerprintDay: the most lines of one kind (one fingerprint) a day, 100; past it they are counted
      */
     public function __construct(string $directory, array $options = [])
     {
@@ -180,6 +187,7 @@ final class ErrorLog
         $this->storage = rtrim((string) ($options['storage'] ?? dirname($this->directory)), '/\\');
         $this->maxBytes = max(1024, (int) ($options['maxBytes'] ?? 4 * 1024 * 1024));
         $this->totalBytes = max($this->maxBytes, (int) ($options['totalBytes'] ?? 64 * 1024 * 1024));
+        $this->perFingerprintDay = max(1, (int) ($options['perFingerprintDay'] ?? 100));
         $this->ignored = array_values(array_map('strval', $options['ignore'] ?? []));
         $this->ignoreExceptions = array_values($options['ignoreExceptions'] ?? []);
         $app = $options['app'] ?? null;
@@ -210,10 +218,28 @@ final class ErrorLog
         return new ErrorLogReader($this->directory, $this->days);
     }
 
-    /** Never writes down a request to $path, or under it (the log's own routes). */
+    /** Never writes down a request to $path, or under it (the log's own routes): the path as requested, base path and all. */
     public function ignorePath(string $path): void
     {
         $this->ignored[] = rtrim($path, '/');
+    }
+
+    /**
+     * @internal ErrorLogMiddleware::own(), on the log's own routes: nothing of this request is written,
+     * wherever the routes are mounted. Answers the request to hand on (with a record of its own where the
+     * outer middleware gave it none).
+     */
+    public function markOwn(ServerRequestInterface $request): ServerRequestInterface
+    {
+        $record = $this->recordOf($request);
+        if ($record === null) {
+            $record = new RequestRecord($request);
+            $request = $request->withAttribute(self::ATTRIBUTE, $record);
+            $record->request = $request;
+        }
+        $record->own = true;
+
+        return $request;
     }
 
     /** Whether an answer with this status is written down. */
@@ -584,7 +610,7 @@ final class ErrorLog
             return;
         }
         $file = $this->fileForToday();
-        if ($file === null) {
+        if ($file === null || !$this->takeTurn($entry['fingerprint'])) {
             $this->countDropped();
 
             return;
@@ -593,9 +619,10 @@ final class ErrorLog
     }
 
     /**
-     * The file today's next line goes into, or null when the log is over its
-     * total size (the line is dropped and counted). A day's first file prunes
-     * the days past keeping first.
+     * The file today's next line goes into, or null when today's own lines fill
+     * the whole budget (the line is dropped and counted). A day's first file
+     * prunes the days past keeping first; a new file over the budget makes room
+     * by deleting the oldest days - never today's.
      */
     private function fileForToday(): ?string
     {
@@ -611,7 +638,7 @@ final class ErrorLog
                     $this->prune();
                 }
 
-                return $this->totalSize() >= $this->totalBytes ? null : $file;
+                return $this->makeRoom() ? $file : null;
             }
             if ((int) @filesize($file) < $this->maxBytes) {
                 return $file;
@@ -621,7 +648,71 @@ final class ErrorLog
         return null;
     }
 
-    /** Deletes the days past keeping (and their dropped counts). */
+    /**
+     * Under the total budget, the oldest days deleted to get there - a day's
+     * files and its count, oldest first, never today's. Whether there is room.
+     */
+    private function makeRoom(): bool
+    {
+        $files = [];
+        $total = 0;
+        foreach (glob($this->directory . '/errors-*.jsonl') ?: [] as $file) {
+            $size = (int) @filesize($file);
+            $total += $size;
+            if (preg_match('/^errors-(\d{4}-\d{2}-\d{2})[.]/', basename($file), $match) === 1) {
+                $files[] = [$match[1], $file, $size];
+            }
+        }
+        if ($total < $this->totalBytes) {
+            return true;
+        }
+        sort($files);
+        $today = gmdate('Y-m-d');
+        foreach ($files as [$day, $file, $size]) {
+            if ($total < $this->totalBytes || $day >= $today) {
+                break;
+            }
+            if (@unlink($file)) {
+                $total -= $size;
+            }
+        }
+
+        return $total < $this->totalBytes;
+    }
+
+    /**
+     * Whether one more line of this kind may be written today: at most
+     * perFingerprintDay a day, counted in a small file of the day's. A count
+     * that cannot be kept never keeps a line out.
+     */
+    private function takeTurn(string $fingerprint): bool
+    {
+        $handle = @fopen($this->directory . '/errors-' . gmdate('Y-m-d') . '.counts.json', 'c+');
+        if ($handle === false) {
+            return true;
+        }
+        try {
+            flock($handle, LOCK_EX);
+            $counts = json_decode((string) stream_get_contents($handle), true);
+            $counts = is_array($counts) ? $counts : [];
+            $written = (int) ($counts[$fingerprint] ?? 0);
+            if ($written >= $this->perFingerprintDay) {
+                return false;
+            }
+            $counts[$fingerprint] = $written + 1;
+            ftruncate($handle, 0);
+            rewind($handle);
+            fwrite($handle, (string) json_encode($counts));
+            fflush($handle);
+
+            return true;
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
+    /** Deletes the days past keeping, and the counts of every day before today. */
     private function prune(): void
     {
         $cutoff = gmdate('Y-m-d', time() - $this->days * 86400);
@@ -630,19 +721,15 @@ final class ErrorLog
                 @unlink($file);
             }
         }
-    }
-
-    private function totalSize(): int
-    {
-        $total = 0;
-        foreach (glob($this->directory . '/errors-*.jsonl') ?: [] as $file) {
-            $total += (int) @filesize($file);
+        $today = gmdate('Y-m-d');
+        foreach (glob($this->directory . '/errors-*.counts.json') ?: [] as $file) {
+            if (preg_match('/^errors-(\d{4}-\d{2}-\d{2})\.counts\.json$/D', basename($file), $match) === 1 && $match[1] < $today) {
+                @unlink($file);
+            }
         }
-
-        return $total;
     }
 
-    /** One more line dropped today (the log was full). */
+    /** One more line dropped today (the log was full, or the kind had its lines for the day). */
     private function countDropped(): void
     {
         $file = $this->directory . '/errors-dropped.json';
@@ -698,8 +785,12 @@ final class ErrorLog
         return $this->current;
     }
 
+    /** A request to the log's own routes - marked by them as they ran, or known by the path they are mounted at. */
     private function ignoresPath(ServerRequestInterface $request): bool
     {
+        if ($this->recordOf($request)?->own === true) {
+            return true;
+        }
         $path = rtrim(rawurldecode($request->getUri()->getPath()), '/');
         foreach ($this->ignored as $ignored) {
             if ($path === $ignored || str_starts_with($path, $ignored . '/')) {

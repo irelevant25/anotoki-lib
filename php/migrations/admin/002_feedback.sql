@@ -7,14 +7,14 @@
 -- What it keeps of the sender, and no more: the address they chose to give (none when they send it
 -- without their name), their account's id while they are signed in (the IAM's sub - a name is looked up
 -- when the page shows it, so an anonymized account shows nobody), the page as a path (never its query),
--- the language and the browser's name. Never the sender's network address: client_hash is a keyed hash of
--- the address bucket the site's limits count (its trusted proxy's header), kept for the limits alone and
--- cleared after 30 days.
+-- the language and the browser's name. Never where it came from: no network address and no submitter
+-- hash (the owner's decision) - the limits count a keyed hash of the address bucket apart, in a file of
+-- the site's storage that keeps a day of them (Feedback::submit()), never here.
 --
 -- Kept (the owner's numbers of 2026-10-07, each site may change them): spam 30 days, resolved 365 days;
 -- the rest until somebody deletes it (Feedback::prune()). A site's extra fields go into details.
 --
--- Released with anotoki-lib 0.5.0, and never edited once released: a change is a new file.
+-- Released with anotoki-lib 0.4.0, and never edited once released: a change is a new file.
 
 CREATE TABLE IF NOT EXISTS anotoki_feedback (
     id             BIGSERIAL     NOT NULL,
@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS anotoki_feedback (
     page           VARCHAR(300),                           -- the page it was sent from: a path, never a query
     language       VARCHAR(10),
     user_agent     VARCHAR(300),
-    client_hash    CHAR(64),                               -- HMAC of the sender's address bucket, for the limits; NULL after 30 days
     handled_by     BIGINT,                                 -- the administrator who last changed its status
     handled_at     TIMESTAMPTZ,
     CONSTRAINT anotoki_feedback_pkey PRIMARY KEY (id),
@@ -55,7 +54,7 @@ BEGIN
             ('kind', 'character varying'), ('status', 'character varying'), ('section', 'character varying'),
             ('subject', 'character varying'), ('message', 'text'), ('details', 'jsonb'),
             ('contact_email', 'character varying'), ('user_id', 'bigint'), ('page', 'character varying'),
-            ('language', 'character varying'), ('user_agent', 'character varying'), ('client_hash', 'character'),
+            ('language', 'character varying'), ('user_agent', 'character varying'),
             ('handled_by', 'bigint'), ('handled_at', 'timestamp with time zone')
         ) AS w(column_name, type_name)
     LOOP
@@ -74,9 +73,8 @@ BEGIN
     END IF;
 END $$;
 
--- The page lists by status and newest first; the limits count one bucket's last hour and day.
+-- The page lists by status and newest first.
 CREATE INDEX IF NOT EXISTS anotoki_feedback_status_idx ON anotoki_feedback (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS anotoki_feedback_created_idx ON anotoki_feedback (created_at DESC);
-CREATE INDEX IF NOT EXISTS anotoki_feedback_client_idx ON anotoki_feedback (client_hash, created_at DESC) WHERE client_hash IS NOT NULL;
 
 -- end of 002

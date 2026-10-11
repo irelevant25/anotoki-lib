@@ -74,8 +74,7 @@ final class AuditLogTest extends DatabaseTestCase
 
         self::assertSame([1, 2], array_map('intval', $this->pdo->query('SELECT id FROM things ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)));
         self::assertSame(['thing.created'], $this->pdo->query('SELECT action FROM anotoki_audit_log')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertCount(1, $this->errors);
-        self::assertStringContainsString('could not record thing.refused', $this->errors[0]);
+        self::assertSame(['[audit] an entry could not be written (SQLSTATE 23514).'], $this->errors, 'a fixed sentence and a code: never the entry, nor the database\'s words');
 
         $audit->record(null, 1, 'Not An Action');
         self::assertStringContainsString('no action name', $this->errors[1]);
@@ -262,10 +261,11 @@ final class AuditLogTest extends DatabaseTestCase
     {
         $audit = $this->audit();
         $app = AppFactory::create();
-        AuditRoutes::admin($app, '/api/admin/audit', $audit, new AdminContext(static fn (): int => 1), static fn (array $ids): array => array_intersect_key([1 => 'ana', 2 => 'bo'], array_flip($ids)))
-            ->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $request->getHeaderLine('X-Test-Admin') === 'yes'
-                ? $handler->handle($request)
-                : (new ResponseFactory())->createResponse(403));
+        // No middleware of the site's at all: the group's own check keeps everybody but the ADMIN out.
+        AuditRoutes::admin($app, '/api/admin/audit', $audit, new AdminContext(
+            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? 1 : null,
+            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+        ), static fn (array $ids): array => array_intersect_key([1 => 'ana', 2 => 'bo'], array_flip($ids)));
 
         $missing = $this->get($app, '/api/admin/audit');
         self::assertSame([503, 'feature_unavailable', '60'], [$missing->getStatusCode(), $this->json($missing)['code'], $missing->getHeaderLine('Retry-After')]);
@@ -273,8 +273,13 @@ final class AuditLogTest extends DatabaseTestCase
         $this->applyAdminSet();
         $audit->record(null, 1, 'user.created', 'user', 9, ['username' => 'cid']);
         $audit->record(null, 3, 'user.updated', 'user', 9);
-        self::assertSame(403, $this->get($app, '/api/admin/audit', false)->getStatusCode());
-        self::assertSame(403, $this->get($app, '/api/admin/audit/facets', false)->getStatusCode());
+        foreach (['/api/admin/audit', '/api/admin/audit/facets'] as $path) {
+            $bare = $this->get($app, $path, false);
+            self::assertSame([401, 'sign_in_required'], [$bare->getStatusCode(), $this->json($bare)['code']], "a bare request to $path");
+            $other = $app->handle((new ServerRequestFactory())->createServerRequest('GET', 'https://site.example' . $path)->withHeader('X-Test-Admin', 'no'));
+            self::assertSame([403, 'forbidden'], [$other->getStatusCode(), $this->json($other)['code']], "somebody else at $path");
+            self::assertStringNotContainsString('user.', (string) $other->getBody());
+        }
 
         $page = $this->json($this->get($app, '/api/admin/audit?action=user.&page=1&actor[]=x'));
         self::assertSame(2, $page['total']);

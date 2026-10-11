@@ -15,9 +15,11 @@ use RuntimeException;
  * writes the file to disk instead of holding it in memory.
  *
  * A ticket is 32 random bytes (base64url), good for one download of one backup
- * within 60 seconds. Only its SHA-256 is kept (a file in a denied folder), so
- * a copy of the folder opens nothing; it is gone the moment it is used - by
- * the first request that brings it, for the backup named or any other.
+ * within 60 seconds (the site's ticketSeconds). Only its SHA-256 is kept (a
+ * file in a denied folder), so a copy of the folder opens nothing; it is gone
+ * the moment it is used - by the first request that brings it, for the backup
+ * named or any other. It keeps who it was issued to (`by`): a download route
+ * that knows who asks may hold the ticket to that person.
  *
  * @internal
  */
@@ -45,9 +47,13 @@ final class Tickets
 
     /**
      * Uses the ticket up: true when it was good for the backup $id - issued for
-     * it, not used before, not expired. Whatever the answer, it is good no more.
+     * it, not used before, not expired, and (with $by: [the person asking])
+     * issued to that person - nobody is never anybody. Whatever the answer, it
+     * is good no more.
+     *
+     * @param ?array{0: int|string|null} $by
      */
-    public function redeem(string $ticket, string $id): bool
+    public function redeem(string $ticket, string $id, ?array $by = null): bool
     {
         if (preg_match('/^[A-Za-z0-9_-]{43}$/D', $ticket) !== 1) {
             return false;
@@ -59,6 +65,13 @@ final class Tickets
             return false;
         }
         $data = json_decode($record, true);
+        if ($by !== null) {
+            $asking = $by[0] ?? null;
+            $issuedTo = is_array($data) ? ($data['by'] ?? null) : null;
+            if (!is_scalar($asking) || !is_scalar($issuedTo) || (string) $asking !== (string) $issuedTo) {
+                return false;
+            }
+        }
 
         return is_array($data)
             && is_string($data['backup'] ?? null)

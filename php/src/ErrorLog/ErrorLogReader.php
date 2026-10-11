@@ -121,6 +121,12 @@ final class ErrorLogReader
                 $gone++;
             }
         }
+        // A day's count of lines of each kind (ErrorLog's perFingerprintDay) goes with the day.
+        foreach (glob($this->directory . '/errors-*.counts.json') ?: [] as $file) {
+            if ($before === null || (preg_match('/^errors-(\d{4}-\d{2}-\d{2})\./', basename($file), $match) === 1 && $match[1] < $before)) {
+                @unlink($file);
+            }
+        }
 
         $dropped = $this->directory . '/errors-dropped.json';
         if ($before === null) {
@@ -143,7 +149,7 @@ final class ErrorLogReader
         return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $day, $parts) === 1 && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
     }
 
-    /** @return array<string, int> lines dropped because the log was full, by UTC date */
+    /** @return array<string, int> lines not written - the log was full, or their kind had its lines for the day - by UTC date */
     public function dropped(): array
     {
         $counts = json_decode((string) @file_get_contents($this->directory . '/errors-dropped.json'), true);

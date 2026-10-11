@@ -55,7 +55,10 @@ final class AdminSchemaTest extends DatabaseTestCase
         self::assertContains("anotoki_audit_log_action_check CHECK (((action)::text ~ '^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$'::text))", $audit['constraints']);
         $feedback = $this->shapeOf('anotoki_feedback');
         self::assertContains("status character varying(16) NOT NULL DEFAULT 'new'::character varying", $feedback['columns']);
-        self::assertContains('client_hash character(64)', $feedback['columns']);
+        self::assertSame([], array_values(array_filter($feedback['columns'], static fn (string $column): bool => str_starts_with($column, 'client_hash'))), 'nothing of where a message came from: no address, no hash of one (the owner\'s decision)');
+        foreach (glob(Schema::directory() . '/*.sql') ?: [] as $file) {
+            self::assertStringContainsString('Released with anotoki-lib 0.4.0,', (string) file_get_contents($file), basename($file));
+        }
     }
 
     public function testAGenshinShapedTableRecordsTheSetUnderItsFolder(): void

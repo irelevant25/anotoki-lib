@@ -19,6 +19,11 @@ use Throwable;
  * - actorId(request): who is acting - the person's id from the session (the
  *   IAM) or the token (the sites: the IAM's sub), never from a body; null for
  *   nobody;
+ * - isAdmin(request): whether that person is the site's ADMIN - the IAM's
+ *   ADMIN of its own entry, a site's ADMIN from the token. Every admin() route
+ *   group of the library asks it before anything else (adminRefusal(): 401
+ *   for nobody, 403 for anybody else), so a group mounted without the site's
+ *   own check still opens to nobody; a context without it cannot mount one;
  * - proof(request, body): the proof a dangerous action asks for - a backup
  *   downloaded, made, deleted or restored. Null when it is given; otherwise the
  *   refusal ({status, code, error}, a Refusal, or false). The IAM:
@@ -34,8 +39,8 @@ use Throwable;
  * - error(response, refusal): the site's error body. Default: the library's
  *   {code, message, ...extra}.
  *
- * The admin checks themselves - ADMIN, the IAM's session and CSRF header - are
- * the site's middleware on each route group the library returns.
+ * The site's own middleware still runs on each group the library returns - its
+ * session, the IAM's CSRF header on every write - before the library's check.
  */
 final class AdminContext
 {
@@ -49,6 +54,7 @@ final class AdminContext
      * @param string|Closure(ServerRequestInterface): string $proofKind  'password' or 'recent_sign_in'
      * @param null|Closure(ServerRequestInterface): string $clientKey
      * @param null|Closure(ResponseInterface, Refusal): ResponseInterface $error
+     * @param null|Closure(ServerRequestInterface): bool $isAdmin  the site's ADMIN check; every admin() group needs it
      */
     public function __construct(
         private readonly Closure $actorId,
@@ -56,10 +62,39 @@ final class AdminContext
         private readonly string|Closure $proofKind = self::PROOF_RECENT_SIGN_IN,
         private readonly ?Closure $clientKey = null,
         private readonly ?Closure $error = null,
+        private readonly ?Closure $isAdmin = null,
     ) {
         if (is_string($proofKind) && !in_array($proofKind, [self::PROOF_PASSWORD, self::PROOF_RECENT_SIGN_IN], true)) {
             throw new InvalidArgumentException("The proof is 'password' or 'recent_sign_in', not \"$proofKind\".");
         }
+    }
+
+    /** Whether this context can guard an admin() group: it says who the site's ADMIN is. */
+    public function knowsAdmins(): bool
+    {
+        return $this->isAdmin !== null;
+    }
+
+    /**
+     * Null when the request is the site's ADMIN's; otherwise 401 sign_in_required
+     * (nobody is acting) or 403 forbidden (somebody else, or a check that failed
+     * or answered anything but true) - every admin() group's first word.
+     */
+    public function adminRefusal(ServerRequestInterface $request): ?Refusal
+    {
+        if ($this->actorId($request) === null) {
+            return new Refusal(401, 'sign_in_required', 'Please sign in.');
+        }
+        $admin = false;
+        if ($this->isAdmin !== null) {
+            try {
+                $admin = ($this->isAdmin)($request) === true;
+            } catch (Throwable) {
+                $admin = false;
+            }
+        }
+
+        return $admin ? null : new Refusal(403, 'forbidden', 'Only an administrator of this site may do this.');
     }
 
     /**

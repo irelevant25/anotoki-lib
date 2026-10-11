@@ -16,7 +16,7 @@
 -- their old rows in here (the IAM's audit_log, genshin's audit_logs). Nothing but the library makes a table
 -- named anotoki_*, so this file never meets one of a site's.
 --
--- Released with anotoki-lib 0.5.0, and never edited once released: a change is a new file.
+-- Released with anotoki-lib 0.4.0, and never edited once released: a change is a new file.
 
 CREATE TABLE IF NOT EXISTS anotoki_audit_log (
     id             BIGSERIAL     NOT NULL,

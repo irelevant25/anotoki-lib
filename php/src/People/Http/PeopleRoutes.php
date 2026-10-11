@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Anotoki\Lib\People\Http;
 
+use Anotoki\Lib\Admin\AdminContext;
+use Anotoki\Lib\Audit\AuditRecorder;
+use Anotoki\Lib\Auth\Http\Identify;
+use Anotoki\Lib\Auth\Http\RequireRole;
 use Anotoki\Lib\People\People;
 use Anotoki\Lib\People\PeopleColumn;
 use Anotoki\Lib\People\PeopleTable;
@@ -21,10 +25,14 @@ use Slim\Interfaces\RouteGroupInterface;
 use Slim\Interfaces\RouteInterface;
 
 /**
- * The People page's API, on the site's Slim app - one for every site, the
- * page itself built on the library's UI kit later. The library decides
- * nobody's permissions: the site adds its check to the group (its ADMIN, from
- * the token: RequireRole::admin()).
+ * The People page's API, on the site's Slim app - one for every site.
+ *
+ * The group guards itself: the site's ADMIN alone, from the token
+ * (RequireRole::admin(), behind the site's Identify) - whatever the site adds
+ * around it and wherever it is mounted, inside a group that lets EDITORs in
+ * too. A site's own check on the returned group still runs first, so its
+ * refusal (Japanese Academy's admin_only) is the one answered; it only can no
+ * longer be forgotten, as the list and the delete hook are an ADMIN's alone.
  *
  *   GET    $base?q=&page=   the people, newest seen first, 50 a page:
  *                           {people: [{sub, name, first_seen_at, last_seen_at, anonymized_at, iam_url,
@@ -32,9 +40,12 @@ use Slim\Interfaces\RouteInterface;
  *                            columns: [{key, label, kind}], total, page, page_size,
  *                            visitors: {count, ...} | null, sync: {since, checked_at, ok_at, error, scrubbed} | null,
  *                            ready, problems}
- *                           q finds a name (any case, anywhere in it) or an id (all of its digits).
+ *                           q finds a name (any case, anywhere in it) or an id (all of its digits); a q that is
+ *                           no text (not UTF-8, or holding a NUL) or longer than any name: 422 invalid_query.
  *   DELETE $base/{sub}      the site's delete hook: 200 {deleted: {label: n}, note?} | 404 not_found
- *   POST   $base/sync       the scrub, now: {run, sync}
+ *                           - audited person.data_deleted (target user {sub}, details {deleted: counts})
+ *   POST   $base/sync       the scrub, now: {run, sync} - audited people.synced (details: the run's state,
+ *                           handled, scrubbed)
  *
  * - sub is a decimal string, as the tokens carry it (an id can outgrow a
  *   JavaScript number); iam_url is the account's page in the IAM's admin
@@ -44,8 +55,11 @@ use Slim\Interfaces\RouteInterface;
  * - $delete: fn(PDO $pdo, int $sub, ServerRequestInterface $request): ?array - deletes what the site keeps of
  *   the person (Piano Academy's progress, a backup copy first at Japanese Academy, the build analyzer's
  *   game accounts) and answers what went, by label, or null when there is nobody with that id. Without
- *   it, no DELETE route.
+ *   it, no DELETE route. It asks for no proof of a recent sign-in, unlike a backup's restore: the page's
+ *   question is all it asks (the owner's decision of 2026-10-11).
  * - $error: fn(ResponseInterface, Refusal): ResponseInterface - the site's error body; by default {code, message}.
+ * - $audit: where a delete and an asked-for scrub are recorded - the site's AuditLog; without one, nowhere.
+ * - $context: who acts in those entries (AdminContext::actorId()); without one, the token's sub.
  *
  * Every handler is called as ($request, $response) whatever the app's invocation strategy, and every
  * answer is no-store JSON.
@@ -71,6 +85,8 @@ final class PeopleRoutes
         ?Closure $visitors = null,
         ?Closure $delete = null,
         ?Closure $error = null,
+        ?AuditRecorder $audit = null,
+        ?AdminContext $context = null,
     ): RouteGroupInterface {
         $keys = [];
         foreach ($columns as $column) {
@@ -83,11 +99,19 @@ final class PeopleRoutes
             $keys[$column->key] = true;
         }
 
-        return $app->group($base, function (RouteCollectorProxyInterface $group) use ($people, $columns, $visitors, $delete, $error): void {
+        $record = static function (ServerRequestInterface $request, string $action, ?string $targetType, ?string $targetId, array $details) use ($audit, $context): void {
+            $audit?->record($request, $context !== null ? $context->actorId($request) : Identify::person($request)?->sub, $action, $targetType, $targetId, $details);
+        };
+
+        $group = $app->group($base, function (RouteCollectorProxyInterface $group) use ($people, $columns, $visitors, $delete, $error, $record): void {
             self::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $columns, $visitors, $error): ResponseInterface {
                 $query = $request->getQueryParams();
                 $search = is_string($query['q'] ?? null) ? trim($query['q']) : '';
                 $page = is_string($query['page'] ?? null) && ctype_digit($query['page']) && (int) $query['page'] >= 1 && strlen($query['page']) < 7 ? (int) $query['page'] : 1;
+                // PostgreSQL refuses a string that is not UTF-8, or holds a NUL, with an error: said here instead, as what it is.
+                if (!mb_check_encoding($search, 'UTF-8') || str_contains($search, "\0")) {
+                    return self::refuse($response, Refusal::invalid('invalid_query', 'That search is not text a name could hold.'), $error);
+                }
                 if (mb_strlen($search, 'UTF-8') > self::QUERY_MAX) {
                     return self::refuse($response, Refusal::invalid('invalid_query', 'That search is longer than any name.'), $error);
                 }
@@ -101,24 +125,31 @@ final class PeopleRoutes
             }));
 
             if ($delete !== null) {
-                self::plain($group->delete('/{sub}', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $delete, $error): ResponseInterface {
+                self::plain($group->delete('/{sub}', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $delete, $error, $record): ResponseInterface {
                     $sub = (string) $request->getAttribute('sub');
                     $deleted = preg_match('/^[1-9][0-9]{0,17}$/D', $sub) === 1 ? $delete($people->pdo(), (int) $sub, $request) : null;
                     if ($deleted === null) {
                         return self::refuse($response, new Refusal(404, 'not_found', 'There is nobody with that id here.'), $error);
                     }
+                    $answer = array_key_exists('deleted', $deleted) ? $deleted : ['deleted' => $deleted];
+                    $record($request, 'person.data_deleted', 'user', $sub, ['deleted' => $answer['deleted']]);
 
-                    return JsonResponse::write($response, 200, array_key_exists('deleted', $deleted) ? $deleted : ['deleted' => $deleted]);
+                    return JsonResponse::write($response, 200, $answer);
                 }));
             }
 
-            self::plain($group->post('/sync', function (ServerRequestInterface $request, ResponseInterface $response) use ($people): ResponseInterface {
+            self::plain($group->post('/sync', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $record): ResponseInterface {
                 $pdo = $people->pdo();
                 $run = $people->scrubber($pdo)->run();
+                $record($request, 'people.synced', null, null, ['state' => $run['state'], 'handled' => $run['handled'], 'scrubbed' => $run['scrubbed']]);
 
                 return JsonResponse::write($response, 200, ['run' => $run, 'sync' => Scrubber::status($pdo)]);
             }));
         });
+
+        // Added last of the library's, so it runs inside whatever the site adds to the group: the site's
+        // own check answers first, and this one holds where the site has none (or one that lets EDITORs in).
+        return $group->add(RequireRole::admin());
     }
 
     /**

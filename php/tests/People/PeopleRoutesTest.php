@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Anotoki\Lib\Tests\People;
 
+use Anotoki\Lib\Admin\AdminContext;
+use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\Auth\AccessTokens;
 use Anotoki\Lib\Auth\Http\Identify;
 use Anotoki\Lib\Auth\Http\RequireRole;
@@ -15,6 +17,7 @@ use Anotoki\Lib\People\Http\RecordPerson;
 use Anotoki\Lib\People\People;
 use Anotoki\Lib\People\PeopleColumn;
 use Anotoki\Lib\People\Schema;
+use Anotoki\Lib\People\Scrubber;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\Refusal;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
@@ -25,6 +28,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
 use Slim\Factory\AppFactory;
+use Slim\Interfaces\RouteCollectorProxyInterface;
 use Slim\Psr7\Factory\ServerRequestFactory;
 
 /** The People API on a real Slim app (Piano Academy's shape), recording on the site's routes, and the upkeep after the answer. */
@@ -137,6 +141,85 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertSame([], $this->deleted);
     }
 
+    public function testTheGroupGuardsItselfWhereTheSiteForgotItsCheckOrLetsEditorsIn(): void
+    {
+        $this->person(7, 'alice', '1 hour');
+        $this->iam->anonymized(['7' => '2026-11-06T10:00:00Z']);
+        $routes = [['GET', self::BASE], ['DELETE', self::BASE . '/7'], ['POST', self::BASE . '/sync']];
+
+        foreach (['no check of the site\'s' => $this->app(siteCheck: null), 'inside a group for ADMIN and EDITOR' => $this->app(siteCheck: null, inStaffGroup: true)] as $case => $app) {
+            foreach ($routes as [$method, $path]) {
+                $nobody = $this->sendTo($app, $method, $path);
+                self::assertSame(401, $nobody->getStatusCode(), "$case: $method $path, no token");
+                self::assertSame('sign_in_required', $this->json($nobody)['code'], "$case: $method $path");
+                foreach (['a MEMBER' => ['MEMBER'], 'an EDITOR' => ['MEMBER', 'EDITOR']] as $who => $roles) {
+                    $refused = $this->sendTo($app, $method, $path, $this->iam->token(9, $roles));
+                    self::assertSame(403, $refused->getStatusCode(), "$case: $method $path, $who");
+                    self::assertSame('forbidden', $this->json($refused)['code'], "$case: $method $path, $who");
+                }
+                // The EDITOR the site's group let in is refused by the group's own check.
+                self::assertSame(
+                    ['code' => 'forbidden', 'message' => 'Only an administrator of this site may do this.'],
+                    $this->json($this->sendTo($app, $method, $path, $this->iam->token(9, ['MEMBER', 'EDITOR']))),
+                    "$case: $method $path",
+                );
+            }
+            self::assertSame([], $this->deleted, "$case: the delete hook is never asked");
+            self::assertSame('alice', $this->value('SELECT preferred_username FROM users WHERE id = 7'), "$case: nobody else's scrub runs");
+            self::assertNull(Scrubber::status($this->pdo)['checked_at'], $case);
+
+            self::assertSame(200, $this->sendTo($app, 'GET', self::BASE, $this->admin())->getStatusCode(), "$case: the ADMIN");
+        }
+
+        // A site's own check still answers first, in its own words.
+        $own = $this->app(siteCheck: RequireRole::admin()->refusing('admin_only', 'For administrators.'));
+        self::assertSame(['code' => 'admin_only', 'message' => 'For administrators.'], $this->json($this->sendTo($own, 'DELETE', self::BASE . '/7', $this->iam->token(9, ['MEMBER', 'EDITOR']))));
+        self::assertSame([], $this->deleted);
+    }
+
+    public function testADeleteAndAnAskedForScrubAreAudited(): void
+    {
+        $this->person(7, 'alice', '1 hour');
+        $this->iam->anonymized(['7' => '2026-11-06T10:00:00Z']);
+        $audit = new class () implements AuditRecorder {
+            /** @var list<array{int|string|null, string, ?string, int|string|null, array<string, mixed>}> */
+            public array $entries = [];
+
+            public function record(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType = null, int|string|null $targetId = null, array $details = [], ?array $scope = null, ?string $session = null): void
+            {
+                $this->entries[] = [$actorId, $action, $targetType, $targetId, $details];
+            }
+        };
+
+        $app = $this->app(audit: $audit);
+        self::assertSame(404, $this->sendTo($app, 'DELETE', self::BASE . '/8', $this->admin())->getStatusCode());
+        self::assertSame(200, $this->sendTo($app, 'DELETE', self::BASE . '/7', $this->admin())->getStatusCode());
+        self::assertSame(200, $this->sendTo($app, 'POST', self::BASE . '/sync', $this->admin())->getStatusCode());
+        self::assertSame([
+            [1, 'person.data_deleted', 'user', '7', ['deleted' => ['Progress' => 0]]],
+            [1, 'people.synced', null, null, ['state' => 'done', 'handled' => 1, 'scrubbed' => 1]],
+        ], $audit->entries, 'who acted - the token\'s sub - and what went; nobody found is nothing done');
+
+        // The site's AdminContext names who acts, where it gives one.
+        $audit->entries = [];
+        $withContext = $this->app(audit: $audit, context: new AdminContext(static fn (): string => 'admin-1'));
+        $this->sendTo($withContext, 'POST', self::BASE . '/sync', $this->admin());
+        self::assertSame('admin-1', $audit->entries[0][0]);
+        self::assertSame('people.synced', $audit->entries[0][1]);
+    }
+
+    public function testASearchThatIsNoTextIsRefusedNotAnError(): void
+    {
+        $this->person(7, 'alice', '1 hour');
+
+        foreach (['not UTF-8' => "\xC3\x28", 'cut in a character' => "Ľ\xC5", 'a NUL inside' => "ali\0ce"] as $case => $search) {
+            $response = $this->send('GET', self::BASE . '?q=' . rawurlencode($search), $this->admin());
+            self::assertSame(422, $response->getStatusCode(), $case);
+            self::assertSame(['code' => 'invalid_query', 'message' => 'That search is not text a name could hold.'], $this->json($response), $case);
+        }
+        self::assertSame(['7'], array_column($this->json($this->send('GET', self::BASE . '?q=' . rawurlencode("\0ALI "), $this->admin()))['people'], 'sub'), 'a NUL at an end is trimmed, as a space is');
+    }
+
     public function testWithoutTheTableOrTheColumn(): void
     {
         $this->pdo->exec('ALTER TABLE users DROP COLUMN anonymized_at');
@@ -190,6 +273,12 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertTrue($upkeep->soon(), 'an hour later');
         AfterResponse::shared()->clear();
 
+        // A stamp later than now - a clock set back - holds nothing off.
+        touch($stamp, time() + 7200);
+        self::assertTrue($upkeep->soon(), 'a stamp from the future is none');
+        self::assertFalse($upkeep->soon(), 'and the hour is claimed anew');
+        AfterResponse::shared()->clear();
+
         $app = $this->app(upkeep: $upkeep);
         touch($stamp, time() - 3601);
         self::assertSame(200, $this->sendTo($app, 'GET', '/api/progress', $this->iam->token(8))->getStatusCode());
@@ -235,8 +324,13 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertSame(['[anotoki] after the answer: RuntimeException: no answer for {email} from {ip}'], LogLines::take());
     }
 
-    /** The site: Identify, its routes recording the person, the Migrations route not, the People API for its ADMIN. */
-    private function app(?PeopleUpkeep $upkeep = null): App
+    /**
+     * The site: Identify, its routes recording the person, the Migrations route not, the People API for its ADMIN.
+     *
+     * @param ?RequireRole $siteCheck  the site's own check on the group (none: the group's own alone)
+     * @param bool $inStaffGroup  mounted inside the site's admin group, which lets EDITORs in
+     */
+    private function app(?PeopleUpkeep $upkeep = null, ?RequireRole $siteCheck = new RequireRole(['ADMIN']), bool $inStaffGroup = false, ?AuditRecorder $audit = null, ?AdminContext $context = null): App
     {
         $app = AppFactory::create();
         $client = $this->iam->client();
@@ -249,30 +343,44 @@ final class PeopleRoutesTest extends DatabaseTestCase
             $group->get('/progress', $echo);
         })->add(new RecordPerson($this->people));
         $app->get('/api/admin/migrations', $echo)->add(RequireRole::admin());
-        PeopleRoutes::admin(
-            $app,
-            self::BASE,
-            $this->people,
-            columns: [new PeopleColumn('notes', 'Notes', 'count', static fn (PDO $pdo, array $subs): array => $pdo->query(
-                'SELECT user_id, (SELECT count(*) FROM jsonb_object_keys(notes)) FROM progress WHERE user_id IN (' . implode(',', array_map('intval', $subs)) . ')'
-            )->fetchAll(PDO::FETCH_KEY_PAIR))],
-            visitors: static fn (PDO $pdo): array => ['count' => (int) $pdo->query('SELECT count(*) FROM users WHERE id < 0')->fetchColumn()],
-            delete: function (PDO $pdo, int $sub): ?array {
-                $this->deleted[] = $sub;
-                $known = (bool) $pdo->query("SELECT count(*) FROM users WHERE id = $sub")->fetchColumn();
-                if (!$known) {
-                    return null;
-                }
-                $progress = $pdo->exec("DELETE FROM progress WHERE user_id = $sub");
+        $mount = function (RouteCollectorProxyInterface $where, string $base) use ($siteCheck, $audit, $context): void {
+            $group = PeopleRoutes::admin(
+                $where,
+                $base,
+                $this->people,
+                columns: [new PeopleColumn('notes', 'Notes', 'count', static fn (PDO $pdo, array $subs): array => $pdo->query(
+                    'SELECT user_id, (SELECT count(*) FROM jsonb_object_keys(notes)) FROM progress WHERE user_id IN (' . implode(',', array_map('intval', $subs)) . ')'
+                )->fetchAll(PDO::FETCH_KEY_PAIR))],
+                visitors: static fn (PDO $pdo): array => ['count' => (int) $pdo->query('SELECT count(*) FROM users WHERE id < 0')->fetchColumn()],
+                delete: function (PDO $pdo, int $sub): ?array {
+                    $this->deleted[] = $sub;
+                    $known = (bool) $pdo->query("SELECT count(*) FROM users WHERE id = $sub")->fetchColumn();
+                    if (!$known) {
+                        return null;
+                    }
+                    $progress = $pdo->exec("DELETE FROM progress WHERE user_id = $sub");
 
-                return ['deleted' => ['Progress' => $progress], 'note' => 'Their row stays: the IAM keeps the person.'];
-            },
-            error: static function (ResponseInterface $response, Refusal $refusal): ResponseInterface {
-                $response->getBody()->write((string) json_encode($refusal->body()));
+                    return ['deleted' => ['Progress' => $progress], 'note' => 'Their row stays: the IAM keeps the person.'];
+                },
+                error: static function (ResponseInterface $response, Refusal $refusal): ResponseInterface {
+                    $response->getBody()->write((string) json_encode($refusal->body()));
 
-                return $response->withHeader('Content-Type', 'application/json');
-            },
-        )->add(RequireRole::admin());
+                    return $response->withHeader('Content-Type', 'application/json');
+                },
+                audit: $audit,
+                context: $context,
+            );
+            if ($siteCheck !== null) {
+                $group->add($siteCheck);
+            }
+        };
+        if ($inStaffGroup) {
+            $app->group('/api/admin', function (RouteCollectorProxyInterface $admin) use ($mount): void {
+                $mount($admin, substr(self::BASE, strlen('/api/admin')));
+            })->add(RequireRole::any('ADMIN', 'EDITOR'));
+        } else {
+            $mount($app, self::BASE);
+        }
         if ($upkeep !== null) {
             $app->add($upkeep);
         }

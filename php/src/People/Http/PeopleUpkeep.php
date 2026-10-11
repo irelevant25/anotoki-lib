@@ -63,7 +63,8 @@ final class PeopleUpkeep implements MiddlewareInterface
         $stamp = $directory . '/' . self::STAMP;
         clearstatcache(true, $stamp);
         $last = @filemtime($stamp);
-        if ($last !== false && $last > time() - self::EVERY) {
+        // A stamp later than now is none: a clock set back would otherwise hold the scrub off until it caught up.
+        if ($last !== false && $last <= time() && $last > time() - self::EVERY) {
             return false;
         }
         if (!($this->ready)()) {

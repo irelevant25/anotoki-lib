@@ -104,6 +104,33 @@ final class ScrubberTest extends DatabaseTestCase
         self::assertSame(['deleted-12', 'deleted-30'], $this->column('SELECT preferred_username FROM users ORDER BY id'));
     }
 
+    public function testANameSomebodyTookIsNoReasonToStop(): void
+    {
+        // A site whose name column is UNIQUE (genshin's username, any case): somebody calls themselves deleted-12.
+        SiteShapes::create($this->pdo, 'genshin');
+        $this->pdo->exec('CREATE UNIQUE INDEX users_username_unique ON users (lower(username))');
+        $this->applyPeopleSet();
+        $this->people('genshin', 12, 'alice');
+        $this->people('genshin', 13, 'DELETED-12');
+        $this->people('genshin', 30, 'bob');
+        $this->iam->anonymized(['12' => '2026-11-06T10:00:00Z', '30' => '2026-11-06T11:00:00Z']);
+        $hooks = [$this->hook(...)];
+
+        $result = $this->scrubber('genshin', $hooks)->run();
+
+        self::assertSame(['state' => 'done', 'handled' => 2, 'scrubbed' => 2, 'error' => null, 'problems' => []], $result, 'the run goes on, past the name taken');
+        [$twelve, $thirteen, $thirty] = $this->column('SELECT username FROM users WHERE id > 0 ORDER BY id');
+        self::assertMatchesRegularExpression('/^deleted-12-[0-9a-f]{8}$/D', $twelve, 'the IAM\'s free form of the placeholder');
+        self::assertSame(['DELETED-12', 'deleted-30'], [$thirteen, $thirty], 'the one who chose the name keeps it; the next account is as ever');
+        self::assertNotNull($this->value('SELECT anonymized_at FROM users WHERE id = 12'));
+        self::assertSame([12, 30], array_column($this->hooked, 0), 'the hooks ran once for each account');
+        self::assertSame('2026-11-06T11:00:00Z', Scrubber::status($this->pdo)['since']);
+
+        // Done once: the next run finds it scrubbed, and renames nothing again.
+        self::assertSame(0, $this->scrubber('genshin', $hooks)->run()['scrubbed']);
+        self::assertSame($twelve, $this->value('SELECT username FROM users WHERE id = 12'));
+    }
+
     public function testAHookThatFailsRollsItsAccountBackAndStopsTheRun(): void
     {
         SiteShapes::create($this->pdo, 'genshin');

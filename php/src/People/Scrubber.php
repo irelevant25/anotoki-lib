@@ -10,6 +10,7 @@ use Closure;
 use InvalidArgumentException;
 use LogicException;
 use PDO;
+use PDOException;
 use Throwable;
 
 /**
@@ -27,7 +28,11 @@ use Throwable;
  *      anotoki_people_anonymized (whether the site knew the person or not), its
  *      row is held FOR UPDATE, its name becomes the IAM's own placeholder
  *      `deleted-{sub}` and anonymized_at the IAM's time - only where it was not
- *      scrubbed yet - and the site's hooks run for the copies elsewhere
+ *      scrubbed yet. Where the name column is UNIQUE and somebody already goes
+ *      by that placeholder, the name is the IAM's free form instead,
+ *      `deleted-{sub}-{eight hex digits}` (its account_deletion.php): a name
+ *      somebody chose never stops the scrub of another. Then the site's hooks
+ *      run for the copies elsewhere
  *      (fn(PDO $pdo, int $sub, ?array $former): void, $former the row's
  *      ['name' => …, 'anonymized_at' => …] before, null when the site never
  *      knew the person). A hook that throws rolls that account back; the run
@@ -56,6 +61,12 @@ final class Scrubber
 
     /** How long a run may go on, in seconds: it runs after the answer, and nobody waits for it - but a process does. */
     public const BUDGET = 8.0;
+
+    /** PostgreSQL's unique_violation. */
+    private const UNIQUE_VIOLATION = '23505';
+
+    /** The placeholder, then two free names: a third taken one is no accident, and stops the run as any failure does. */
+    private const NAME_TRIES = 3;
 
     /** @var list<Closure(PDO, int, ?array<string, mixed>): void> */
     private readonly array $hooks;
@@ -212,13 +223,15 @@ final class Scrubber
             $this->pdo->prepare('INSERT INTO anotoki_people_anonymized (sub, anonymized_at, had_row) VALUES (CAST(? AS bigint), CAST(? AS timestamptz), ?) ON CONFLICT (sub) DO NOTHING')
                 ->execute([$sub, $anonymizedAt, $former === null ? 'false' : 'true']);
 
-            $set = ["$name = 'deleted-' || $table.$id::text", "$anonymized = CAST(? AS timestamptz)"];
+            $set = ["$name = ?", "$anonymized = CAST(? AS timestamptz)"];
             if ($t->updatedAt !== null && isset($t->columns($this->pdo)[$t->updatedAt])) {
                 $set[] = PeopleTable::quote($t->updatedAt) . ' = ' . $t->nowFor($this->pdo, $t->updatedAt);
             }
-            $update = $this->pdo->prepare("UPDATE $table SET " . implode(', ', $set) . " WHERE $id = CAST(? AS bigint) AND $id > 0 AND $anonymized IS NULL");
-            $update->execute([$anonymizedAt, $sub]);
-            $scrubbed = $update->rowCount() > 0;
+            $scrubbed = $this->rename(
+                "UPDATE $table SET " . implode(', ', $set) . " WHERE $id = CAST(? AS bigint) AND $id > 0 AND $anonymized IS NULL",
+                $sub,
+                $anonymizedAt,
+            );
 
             foreach ($this->hooks as $hook) {
                 $hook($this->pdo, $sub, $former);
@@ -232,6 +245,33 @@ final class Scrubber
                 $this->pdo->rollBack();
             }
             throw $e;
+        }
+    }
+
+    /**
+     * The row's UPDATE ($sql: the name, anonymized_at, the id): under the IAM's placeholder, or - when a UNIQUE
+     * name column has it taken already (somebody called themselves deleted-{sub}) - under a free one, as the IAM
+     * names such an account. Each try behind a savepoint, so a refused one leaves the account's transaction
+     * whole. Whether a row was scrubbed.
+     */
+    private function rename(string $sql, int $sub, string $anonymizedAt): bool
+    {
+        $name = 'deleted-' . $sub;
+        for ($try = 1; ; $try++) {
+            $this->pdo->exec('SAVEPOINT anotoki_people_name');
+            try {
+                $update = $this->pdo->prepare($sql);
+                $update->execute([$name, $anonymizedAt, $sub]);
+                $this->pdo->exec('RELEASE SAVEPOINT anotoki_people_name');
+
+                return $update->rowCount() > 0;
+            } catch (PDOException $e) {
+                if ($e->getCode() !== self::UNIQUE_VIOLATION || $try >= self::NAME_TRIES) {
+                    throw $e;
+                }
+                $this->pdo->exec('ROLLBACK TO SAVEPOINT anotoki_people_name');
+                $name = 'deleted-' . $sub . '-' . bin2hex(random_bytes(4));
+            }
         }
     }
 

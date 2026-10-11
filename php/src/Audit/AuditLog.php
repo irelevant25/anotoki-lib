@@ -15,8 +15,10 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use InvalidArgumentException;
+use LogicException;
 use PDO;
 use Psr\Http\Message\ServerRequestInterface;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -33,6 +35,11 @@ use Throwable;
  * (pendingFile, appended whole) and goes into the table with its own time when
  * the table comes: flushPending(), which the site calls after every Apply, and
  * which the next entry recorded outside a transaction calls too.
+ *
+ * recordInside() is the other way round, for a change that must not be made
+ * without its entry (the People page's delete, which a restore does again by
+ * it): inside the change's own transaction, thrown when it cannot be written,
+ * never left to wait in the file.
  *
  * The request's actor, session and address can be held for the request
  * (AuditContextMiddleware, begin()), so deep code records with recordHere();
@@ -138,20 +145,7 @@ final class AuditLog implements AuditRecorder
 
                 return;
             }
-            $context = $this->contextOf($request);
-            $scope ??= $this->currentScope();
-            $entry = [
-                'created_at' => null,
-                'actor_id' => self::actor($actorId),
-                'actor_session' => self::short($session ?? $context?->session, 64),
-                'action' => $action,
-                'target_type' => self::short($targetType, 64),
-                'target_id' => self::short($targetId === null ? null : (string) $targetId, 100),
-                'scope_type' => self::short(isset($scope[0]) ? (string) $scope[0] : null, 64),
-                'scope_id' => self::short(isset($scope[1]) ? (string) $scope[1] : null, 100),
-                'details' => $details === [] ? null : self::detailsJson($details),
-                'ip' => $this->recordAddress && $request !== null ? $this->addressOf($request) : null,
-            ];
+            $entry = $this->entry($request, $actorId, $action, $targetType, $targetId, $details, $scope, $session);
 
             $pdo = ($this->pdo)();
             if (!$this->tableReady($pdo)) {
@@ -166,6 +160,47 @@ final class AuditLog implements AuditRecorder
         } catch (Throwable $e) {
             ($this->onError)('[audit] an entry could not be written (' . self::failureCode($e) . ').');
         }
+    }
+
+    /**
+     * One entry that must be there: written on $pdo inside the transaction it is in - so it commits, or rolls
+     * back, with the change it records - and THROWN when it cannot be written, never kept in the pending file: a
+     * change that must not be made without its entry fails with it (the People page's delete, which a restore
+     * does again by its entry - People::delete()). Its details name its transaction (`_txid`: txid_current()),
+     * whatever their cut: its created_at is when that transaction began, not when it committed, and a backup
+     * holds the change exactly when its snapshot sees that transaction.
+     *
+     * @param array<string, mixed> $details
+     * @throws LogicException when $pdo is in no transaction
+     * @throws InvalidArgumentException for an action that is no action name
+     * @throws RuntimeException while the table is not there (or `ready` says not yet); the insert's failure as it is
+     */
+    public function recordInside(
+        PDO $pdo,
+        ?ServerRequestInterface $request,
+        int|string|null $actorId,
+        string $action,
+        ?string $targetType = null,
+        int|string|null $targetId = null,
+        array $details = [],
+    ): void {
+        if (!$pdo->inTransaction()) {
+            throw new LogicException('AuditLog::recordInside() writes inside the transaction of the change it records: the connection is in none.');
+        }
+        if (preg_match(self::ACTION_PATTERN, $action) !== 1 || strlen($action) > 64) {
+            throw new InvalidArgumentException("AuditLog: \"$action\" is no action name (area.verb, small letters).");
+        }
+        if (!$this->tableReady($pdo)) {
+            throw new RuntimeException('The audit log is not there yet (a database update waits): what must be recorded in it is not done without it.');
+        }
+        $entry = $this->entry($request, $actorId, $action, $targetType, $targetId, $details, null, null);
+        $pdo->prepare(
+            'INSERT INTO ' . Schema::AUDIT_TABLE . ' (created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details, ip)
+             VALUES (now(), ?, ?, ?, ?, ?, ?, ?, COALESCE(CAST(? AS jsonb), CAST(\'{}\' AS jsonb)) || jsonb_build_object(\'_txid\', CAST(txid_current() AS text)), ?)'
+        )->execute([
+            $entry['actor_id'], $entry['actor_session'], $entry['action'], $entry['target_type'], $entry['target_id'],
+            $entry['scope_type'], $entry['scope_id'], $entry['details'], $entry['ip'],
+        ]);
     }
 
     /**
@@ -461,6 +496,33 @@ final class AuditLog implements AuditRecorder
     }
 
     // ─── Inside ──────────────────────────────────────────────────────────────
+
+    /**
+     * An entry's row, its time to come (the table's now(), or the time it waited with): who - the request's held
+     * session unless $session says - did $action to what, filed under $scope or the current withScope().
+     *
+     * @param array<string, mixed> $details
+     * @param ?array{0: string, 1: int|string} $scope
+     * @return array<string, mixed>
+     */
+    private function entry(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType, int|string|null $targetId, array $details, ?array $scope, ?string $session): array
+    {
+        $context = $this->contextOf($request);
+        $scope ??= $this->currentScope();
+
+        return [
+            'created_at' => null,
+            'actor_id' => self::actor($actorId),
+            'actor_session' => self::short($session ?? $context?->session, 64),
+            'action' => $action,
+            'target_type' => self::short($targetType, 64),
+            'target_id' => self::short($targetId === null ? null : (string) $targetId, 100),
+            'scope_type' => self::short(isset($scope[0]) ? (string) $scope[0] : null, 64),
+            'scope_id' => self::short(isset($scope[1]) ? (string) $scope[1] : null, 100),
+            'details' => $details === [] ? null : self::detailsJson($details),
+            'ip' => $this->recordAddress && $request !== null ? $this->addressOf($request) : null,
+        ];
+    }
 
     /** @param array<string, mixed> $entry */
     private function insert(PDO $pdo, array $entry, bool $savepoint = true): void

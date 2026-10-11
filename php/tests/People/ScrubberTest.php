@@ -13,6 +13,7 @@ use Anotoki\Lib\People\Scrubber;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
 use Anotoki\Lib\Tests\Support\LogLines;
 use Anotoki\Lib\Tests\Support\SiteShapes;
+use Anotoki\Lib\Tests\Support\TestDatabase;
 use PDO;
 use RuntimeException;
 
@@ -328,6 +329,51 @@ final class ScrubberTest extends DatabaseTestCase
         self::assertSame('done', $this->scrubber('survey')->run()['state']);
         self::assertSame('2026-11-06T10:00:00Z', Scrubber::status($this->pdo)['since']);
         self::assertNotNull(Scrubber::status($this->pdo)['ok_at']);
+    }
+
+    public function testARunReadsItsPlaceOnceSoARestoreRightAfterIsNeverPassedOver(): void
+    {
+        SiteShapes::create($this->pdo, 'survey');
+        $this->applyPeopleSet();
+        $this->people('survey', 12, 'alice');
+        $this->pdo->exec("UPDATE anotoki_people_sync SET since = '2026-11-01T00:00:00.5Z' WHERE id = 1");
+        $this->iam->anonymized(['12' => '2026-11-06T10:00:00Z']);
+        // Right after the run read its place, a restore puts the backup's back - on its own connection. Read twice,
+        // the second read would be the restored place, and the run would take it for its own and go past it.
+        $other = $this->connect();
+        $restored = false;
+        $restore = static function () use ($other, &$restored): void {
+            if (!$restored) {
+                $restored = true;
+                $other->exec("UPDATE anotoki_people_sync SET since = '2026-10-01T00:00:00.25Z'");
+            }
+        };
+        $settings = TestDatabase::settings();
+        $dsn = sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $this->database);
+        $connection = new class ($dsn, $settings['username'], $settings['password'], $restore) extends PDO {
+            public function __construct(string $dsn, string $username, string $password, private readonly \Closure $afterItsPlaceIsRead)
+            {
+                parent::__construct($dsn, $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            }
+
+            public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): \PDOStatement|false
+            {
+                $statement = parent::query($query, $fetchMode, ...$fetchModeArgs);
+                if (str_contains($query, 'FROM anotoki_people_sync WHERE id = 1')) {
+                    ($this->afterItsPlaceIsRead)();
+                }
+
+                return $statement;
+            }
+        };
+
+        $run = (new People(SiteShapes::table('survey'), static fn (): PDO => $connection, $this->iam->client()))->scrubber()->run();
+
+        self::assertSame('done', $run['state']);
+        self::assertTrue($restored);
+        $sync = Scrubber::status($this->pdo);
+        self::assertSame('2026-10-01T00:00:00Z', $sync['since'], 'the restored place kept: the run holds to the place it asked from');
+        self::assertNull($sync['ok_at']);
     }
 
     public function testNeverInsideACallersTransaction(): void

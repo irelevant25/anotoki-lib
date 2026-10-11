@@ -72,9 +72,21 @@ final class FoundationsTest extends TestCase
         self::assertSame('{"a":2}', file_get_contents($base . '/a.json'));
         self::assertSame(['.', '..', 'a.json'], scandir($base), 'nothing left aside');
         self::assertTrue(AtomicFile::write($base . '/secret.json', '{}', mode: 0600));
+        self::assertTrue(AtomicFile::write($base . '/.htaccess', "Require all denied\n", exclusive: true));
+        self::assertTrue(AtomicFile::write($base . '/empty.html', ''));
+        self::assertSame('', file_get_contents($base . '/empty.html'));
+        self::assertSame(['.', '..', '.htaccess', 'a.json', 'empty.html', 'secret.json'], scandir($base), 'nothing left aside');
         if (PHP_OS_FAMILY !== 'Windows') {
             self::assertSame('600', substr(sprintf('%o', fileperms($base . '/secret.json')), -3));
+            // Written aside the site's own user's alone (tempnam(): 0600 from its creation), then given its mode:
+            // without one, what a new file gets under the umask - a guard the web server must read.
+            self::assertSame(sprintf('%o', 0666 & ~umask()), substr(sprintf('%o', fileperms($base . '/.htaccess')), -3));
         }
+
+        // A folder that is not there is no reason to write into the system's temporary folder instead.
+        self::assertFalse(AtomicFile::write($base . '/missing/a.json', '{}'));
+        self::assertFileDoesNotExist($base . '/missing');
+        self::assertNull(AtomicFile::aside($base . '/missing'));
     }
 
     public function testKeysAreDerivedForOnePurposeEach(): void
@@ -126,6 +138,36 @@ final class FoundationsTest extends TestCase
         file_put_contents($stale . '/anotoki-lib.key', '');
         touch($stale . '/anotoki-lib.key', time() - 60);
         self::assertSame(32, strlen(Keys::installation($stale)));
+    }
+
+    public function testOfProcessesMakingTheKeyAtOneMomentOneKeyIsMadeAndEveryOneReadsIt(): void
+    {
+        $storage = $this->temporaryFolder() . '/storage';
+        // Each waits for the same moment, then asks for the installation's key: one link() makes it, the others read it.
+        $at = microtime(true) + 1.5;
+        $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) . ';'
+            . ' usleep(max(0, (int) round((' . var_export($at, true) . ' - microtime(true)) * 1e6)));'
+            . ' echo bin2hex(Anotoki\Lib\Support\Keys::installation(' . var_export($storage, true) . '));';
+        $running = [];
+        for ($index = 0; $index < 6; $index++) {
+            $process = proc_open([PHP_BINARY, '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            self::assertIsResource($process);
+            $running[] = [$process, $pipes];
+        }
+        $keys = [];
+        foreach ($running as [$process, $pipes]) {
+            $keys[] = (string) stream_get_contents($pipes[1]);
+            $errors = (string) stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($process);
+            self::assertSame('', $errors);
+        }
+
+        self::assertCount(1, array_unique($keys), 'one key for every process');
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/D', $keys[0]);
+        self::assertSame($keys[0], bin2hex(Keys::installation($storage)));
+        self::assertSame(['.', '..', '.htaccess', 'anotoki-lib.key', 'index.html'], scandir($storage), 'nothing of the others left beside it');
     }
 
     public function testATornKeyIsNeverTakenForAKey(): void
@@ -192,12 +234,16 @@ final class FoundationsTest extends TestCase
 
     public function testAHugeOrHostileMessageIsReadOnlyAsFarAsALineKeepsAndNeverGivenUnredacted(): void
     {
-        $huge = 'Failed for ana@example.com ' . str_repeat('x', 200000) . ' bo@example.com';
+        $huge = 'Failed for ana@example.com ' . str_repeat('word ', 40000) . 'bo@example.com';
         $started = microtime(true);
         $redacted = Redactor::text($huge);
         self::assertLessThan(1.0, microtime(true) - $started);
-        self::assertStringStartsWith('Failed for {email} ', $redacted);
-        self::assertSame(Redactor::TEXT_LIMIT, Utf8::length($redacted) - strlen('{email}') + strlen('ana@example.com'), 'the first 4,096 characters, no more');
+        self::assertStringStartsWith('Failed for {email} word ', $redacted);
+        self::assertStringEndsWith(' word ', $redacted, 'whole words: the one the cut went through goes with what is not read');
+        $read = Utf8::length($redacted) - strlen('{email}') + strlen('ana@example.com');
+        self::assertLessThanOrEqual(Redactor::TEXT_LIMIT, $read, 'the first 4,096 characters, no more');
+        self::assertGreaterThan(Redactor::TEXT_LIMIT - 5, $read, 'and as far as that, but for the cut word');
+        self::assertSame('', Redactor::text(str_repeat('x', 200000)), 'one run the cut went through: nothing of it');
 
         // Quotes doubled without end: a quoted-value rule that backtracks would take its time on them.
         $hostile = 'ERROR: "' . str_repeat('""', 2000) . ' x';
@@ -217,6 +263,22 @@ final class FoundationsTest extends TestCase
         fclose($pipes[2]);
         proc_close($process);
         self::assertSame(Redactor::UNREADABLE, $output, 'a rule that cannot run: nothing of the message, never the message unredacted');
+    }
+
+    public function testHalfASecretTheCutWentThroughIsNeverKept(): void
+    {
+        // Cut before it is redacted: half a JWT, an address or a token is one no rule knows - the run goes whole.
+        $before = str_repeat('a ', 2040);
+        foreach (['a JWT' => 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI0MiJ9.c2lnbmF0dXJl', 'an address' => 'ana.novak@example.com', 'a hex token' => str_repeat('9f86d081', 8)] as $what => $secret) {
+            self::assertSame($before, Redactor::text($before . $secret . ' and more'), $what);
+        }
+        // A quoted secret of several words the cut went into: its words before the cut go too.
+        self::assertStringEndsWith('{"password":{…}', Redactor::text(str_repeat('a ', 2030) . '{"password":"correct horse battery staple", "name": "x"}'));
+        self::assertSame("sent {'pass': {…}", Redactor::text("sent {'pass': 'two words"), 'a quote the text ends inside, to its end');
+        // Read whole when it fits: its last word stays.
+        self::assertSame('ends with a word', Redactor::text('ends with a word'));
+        self::assertSame(str_repeat('a ', 2047) . 'ab', Redactor::text(str_repeat('a ', 2047) . 'ab'), 'exactly 4,096 characters: nothing cut');
+        self::assertSame(str_repeat('ž ', 2040), Redactor::text(str_repeat('ž ', 2040) . 'ž' . str_repeat('ľ', 30)), 'characters, never bytes, and none split');
     }
 
     public function testTextThatIsNoUtf8IsReadAnyway(): void

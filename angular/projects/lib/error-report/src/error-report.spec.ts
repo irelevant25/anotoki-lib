@@ -132,10 +132,11 @@ describe("provideAnotokiErrorReport(): the browser's errors in the site's error 
     named.name = 'not a name!';
     expect(describeError(named).type).toBe('Error');
 
-    const huge = new Error('ž'.repeat(5000));
+    const huge = new Error('ž '.repeat(2500));
     huge.stack = Array.from({ length: 40 }, (_, index) => `    at f${index} (https://site.example/${'ľ'.repeat(300)}.js:1:${index})`).join('\n');
     const report = describeError(huge);
     expect(Array.from(report.message)).toHaveLength(1000);
+    expect(describeError(new Error('ž'.repeat(5000))).message, 'one run the cut went through: none of it').toBe('(no message)');
     expect(report.stack.length).toBeLessThanOrEqual(12);
     expect(new TextEncoder().encode(JSON.stringify(report)).length).toBeLessThanOrEqual(7 * 1024);
   });
@@ -152,10 +153,35 @@ describe("provideAnotokiErrorReport(): the browser's errors in the site's error 
     const took = performance.now() - started;
 
     expect(took).toBeLessThan(500);
-    expect(report.stack).toEqual(['at f (https://site.example/main.js', 'at g (https://site.example/main.js:3:4)']);
-    expect(Array.from(report.message).length).toBeLessThanOrEqual(1000);
-    expect(report.page.length).toBeLessThanOrEqual(200);
-    expect(scrubbed.length).toBe(4096);
+    // Each cut went through a run, which goes whole with what is not read.
+    expect(report.stack).toEqual(['at f', 'at g (https://site.example/main.js:3:4)']);
+    expect(report.message).toBe('Failed ');
+    expect(report.page).toBe('/');
+    expect(scrubbed).toBe('');
+    expect(scrubText('word '.repeat(2000))).toBe('word '.repeat(819));
+  });
+
+  it('never sends half of what a cut went through - the run goes whole, as on the server', () => {
+    const before = 'a '.repeat(2040);
+    for (const secret of [JWT, 'ana.novak@example.com', '9f86d081'.repeat(8), 'kept-in-storage-value-42']) {
+      expect(scrubText(`${before}${secret} and more`, ['kept-in-storage-value-42'])).toBe(before);
+    }
+    // A quoted secret of several words the cut went into: its words before the cut go too.
+    expect(scrubText(`${'a '.repeat(2030)}{"password":"correct horse battery staple", "name": "x"}`).endsWith('{"password":{…}')).toBe(true);
+    expect(scrubText("sent {'pass': 'two words")).toBe("sent {'pass': {…}");
+    expect(scrubText('ends with a word')).toBe('ends with a word');
+
+    // The message, a frame and the page are each cut before they are scrubbed, and kept shorter after: what the scrub
+    // shortens before the cut (tokens, a stored value) would bring the half the cut went through into the report.
+    const stored = 'L'.repeat(380);
+    const error = new Error(`${`${'9f86d081'.repeat(4)} `.repeat(60)}${JWT}`);
+    error.stack = ['Error: x', `    at f ${stored} ${JWT}`].join('\n');
+    const report = describeError(error, [stored], `/${'9f86d0819f86d081/'.repeat(46)}ddddddd/${JWT}`);
+
+    expect(JSON.stringify(report)).not.toContain('eyJ');
+    expect(report.message).toBe('{token} '.repeat(60));
+    expect(report.stack).toEqual(['at f {stored}']);
+    expect(report.page).toBe(`/${'{…}/'.repeat(46)}ddddddd/`);
   });
 
   it('scrubs as the server does: secrets by name, a Bearer credential, a long token, a query - the line and column kept', () => {

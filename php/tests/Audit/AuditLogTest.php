@@ -13,10 +13,13 @@ use Anotoki\Lib\Migrations\Http\MigrationsRoutes;
 use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Tests\Support\DatabaseTestCase;
 use Anotoki\Lib\Tests\Support\LogLines;
+use LogicException;
 use PDO;
+use PDOException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use RuntimeException;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ResponseFactory;
@@ -78,6 +81,74 @@ final class AuditLogTest extends DatabaseTestCase
 
         $audit->record(null, 1, 'Not An Action');
         self::assertStringContainsString('no action name', $this->errors[1]);
+    }
+
+    public function testAnEntryThatMustBeThereIsWrittenInsideItsChangesTransactionOrThrown(): void
+    {
+        $pending = $this->path('storage/logs/audit-pending.jsonl');
+        $audit = $this->audit(['pendingFile' => $pending, 'recordAddress' => true, 'address' => static fn (ServerRequestInterface $request): string => $request->getHeaderLine('CF-Connecting-IP')]);
+
+        try {
+            $audit->recordInside($this->pdo, null, 1, 'person.data_deleted', 'user', 7);
+            self::fail('written outside a transaction');
+        } catch (LogicException $e) {
+            self::assertStringContainsString('inside the transaction of the change it records', $e->getMessage());
+        }
+        // While the table waits it is thrown - never left in the file, its change made without it.
+        $this->pdo->beginTransaction();
+        try {
+            $audit->recordInside($this->pdo, null, 1, 'person.data_deleted', 'user', 7);
+            self::fail('an entry that must be there waited in the file');
+        } catch (RuntimeException $e) {
+            self::assertStringContainsString('The audit log is not there yet', $e->getMessage());
+        } finally {
+            $this->pdo->rollBack();
+        }
+        self::assertFileDoesNotExist($pending);
+
+        $this->applyAdminSet();
+        $this->pdo->exec('CREATE TABLE things (id INT PRIMARY KEY)');
+        $this->pdo->beginTransaction();
+        $this->pdo->exec('INSERT INTO things VALUES (1)');
+        $transaction = (string) $this->value('SELECT txid_current()');
+        $audit->recordInside($this->pdo, $this->request(), 42, 'person.data_deleted', 'user', 7, ['deleted' => ['Progress' => 1]]);
+        self::assertTrue((bool) $this->value('SELECT created_at = now() FROM anotoki_audit_log'), 'its time is its transaction\'s: when it began');
+        $this->pdo->commit();
+        $row = $this->rows('SELECT actor_id, action, target_type, target_id, details, ip FROM anotoki_audit_log')[0];
+        self::assertSame([42, 'person.data_deleted', 'user', '7', '198.51.100.20'], [$row['actor_id'], $row['action'], $row['target_type'], $row['target_id'], $row['ip']]);
+        $details = json_decode((string) $row['details'], true);
+        self::assertSame(['Progress' => 1], $details['deleted']);
+        self::assertSame($transaction, $details['_txid'], 'it names the transaction it was written in');
+
+        // Rolled back with its change: neither is there.
+        $this->pdo->beginTransaction();
+        $this->pdo->exec('INSERT INTO things VALUES (2)');
+        $audit->recordInside($this->pdo, null, 1, 'person.data_deleted', 'user', 8);
+        $this->pdo->rollBack();
+        self::assertSame(1, (int) $this->value('SELECT count(*) FROM anotoki_audit_log'));
+        self::assertSame(1, (int) $this->value('SELECT count(*) FROM things'));
+
+        // An entry the table refuses is thrown as it is: the caller's change fails with it.
+        $this->pdo->exec("ALTER TABLE anotoki_audit_log ADD CONSTRAINT test_refuses CHECK (target_id <> '9')");
+        $this->pdo->beginTransaction();
+        try {
+            $audit->recordInside($this->pdo, null, 1, 'person.data_deleted', 'user', 9);
+            self::fail('a refused entry passed');
+        } catch (PDOException $e) {
+            self::assertSame('23514', (string) $e->getCode());
+        } finally {
+            $this->pdo->rollBack();
+        }
+
+        // Details past their limit are cut - and still name their transaction.
+        $this->pdo->beginTransaction();
+        $audit->recordInside($this->pdo, null, 1, 'person.data_deleted', 'user', 10, ['note' => str_repeat('x', 70000)]);
+        $this->pdo->commit();
+        $details = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE target_id = '10'"), true);
+        self::assertTrue($details['_cut']);
+        self::assertMatchesRegularExpression('/^[0-9]+$/D', $details['_txid']);
+        self::assertSame([], $this->errors, 'nothing said to onError: the caller is told');
+        self::assertFileDoesNotExist($pending);
     }
 
     public function testEntriesWaitWhileTheTableIsMissingAndGoInAfterApply(): void

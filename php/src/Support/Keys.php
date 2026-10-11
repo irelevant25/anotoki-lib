@@ -17,8 +17,12 @@ use RuntimeException;
  * - installation(): for a site without a secret of its own - 32 random bytes
  *   made once in storage/anotoki-lib.key and kept there. It keys the HMACs
  *   that must not be reproducible from outside (the error log's client hashes,
- *   the feedback limits' buckets, signed preview links); it lives on the same
- *   server as what it protects, so it never encrypts anything.
+ *   the feedback limits' buckets, signed preview links, the backups' seal); it
+ *   lives on the same server as what it protects, so it never encrypts
+ *   anything. It is as safe as the storage folder, and no safer: whoever can
+ *   write that folder can delete the key and make one of their own (no read of
+ *   the old one needed) - as they can the IAM's key set kept there, which tokens
+ *   are checked with. It keeps out whoever cannot write the folder.
  */
 final class Keys
 {
@@ -44,8 +48,8 @@ final class Keys
 
     /**
      * This installation's own key, 32 bytes: read from $storageDir/anotoki-lib.key,
-     * made there the first time (one process makes it; every other reads the same).
-     * The folder gets a deny-all guard if it has none (GuardedDirectory).
+     * made there the first time (one process makes it; every other reads the same:
+     * make()). The folder gets a deny-all guard if it has none (GuardedDirectory).
      *
      * @throws RuntimeException when the key can be neither read nor made
      */
@@ -60,7 +64,8 @@ final class Keys
                 return $key;
             }
 
-            // An empty file a process left behind when it died before writing: nobody ever read a key from it.
+            // An empty file a process of 0.4.x left behind when it died before writing (it made the file first,
+            // then wrote it): nobody ever read a key from it.
             clearstatcache(true, $file);
             if (is_file($file) && filesize($file) === 0 && filemtime($file) < time() - 10) {
                 @unlink($file);
@@ -69,31 +74,47 @@ final class Keys
             if (!file_exists($file)) {
                 // The folder that keeps the key is never served: its guard, where it has none (never over the site's).
                 GuardedDirectory::ensure($storageDir);
-                // 'x': made by exactly one process; the others find it there and read it.
-                $handle = @fopen($file, 'x');
-                if ($handle !== false) {
-                    // The site's own user's alone before the key is in it: never readable under the umask's 0644.
-                    @chmod($file, 0600);
-                    $made = bin2hex(random_bytes(32)) . "\n";
-                    $locked = flock($handle, LOCK_EX);
-                    $written = fwrite($handle, $made) === strlen($made);
-                    fflush($handle);
-                    if ($locked) {
-                        flock($handle, LOCK_UN);
-                    }
-                    fclose($handle);
-                    if (!$written) {
-                        @unlink($file);
-                        break;
-                    }
-                    continue;
+                if (!self::make($storageDir, $file)) {
+                    break;
                 }
+                continue;
             }
-            // Being written by another process this moment: read it again shortly.
+            // Being written this moment by a process of 0.4.x: read it again shortly.
             usleep(10_000);
         }
 
         throw new RuntimeException('The installation key ' . self::INSTALLATION_FILE . ' in the storage folder can be neither read nor made.');
+    }
+
+    /**
+     * A new key, written whole into a file of its own - the site's own user's alone from its creation
+     * (AtomicFile::aside(): tempnam(), 0600), so no handle opened before a chmod reads it - then linked into
+     * place: link() makes the key file only where there is none, so of two processes making it at one moment one
+     * key becomes it and the other process reads that one. Where the folder takes no hard link (or link() is
+     * switched off), it is renamed into place where none is yet - two at one moment may each rename theirs, and
+     * both read again the one that stayed. False when it cannot be written here at all.
+     */
+    private static function make(string $storageDir, string $file): bool
+    {
+        $temporary = AtomicFile::aside($storageDir);
+        if ($temporary === null) {
+            return false;
+        }
+        try {
+            $made = bin2hex(random_bytes(32)) . "\n";
+            if (@file_put_contents($temporary, $made) !== strlen($made)) {
+                return false;
+            }
+            if (function_exists('link') && @link($temporary, $file)) {
+                return true;
+            }
+            clearstatcache(true, $file);
+
+            // Another process's came first (it is read), or no hard link here.
+            return file_exists($file) || @rename($temporary, $file);
+        } finally {
+            @unlink($temporary);
+        }
     }
 
     private static function readKey(string $file): ?string

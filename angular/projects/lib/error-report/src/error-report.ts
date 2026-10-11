@@ -154,19 +154,20 @@ export function describeError(error: unknown, stored: readonly string[] = [], pa
 
   // A frame as the browsers write one - "at f (url:1:2)", "f@url:1:2", "global code@url:1:2" - never the stack's
   // first line, which repeats the message (and a message's later lines with it). Everything is cut to what a report
-  // keeps (or a little more) BEFORE it is scrubbed: a rule run over a megabyte would freeze the page.
+  // keeps (or a little more) BEFORE it is scrubbed - a rule run over a megabyte would freeze the page - and loses
+  // the run the cut went through (before()).
   const header = message === '' ? type : `${type}: ${message}`;
   const frames = (stack.startsWith(header) ? stack.slice(header.length) : stack)
     .split('\n', 100)
-    .map((line) => line.slice(0, FRAME_LIMIT * 2).trim())
+    .map((line) => before(line, FRAME_LIMIT * 2).trim())
     .filter((line) => /^at\s|^[^@]*@\S*:\d+(?::\d+)?$/.test(line))
     .slice(0, FRAMES)
     .map((line) => cut(scrubText(line, stored), FRAME_LIMIT));
 
   const report: ErrorReport = {
     type,
-    message: cut(scrubText(message.slice(0, MESSAGE_LIMIT * 2), stored), MESSAGE_LIMIT) || '(no message)',
-    page: scrubPath(path.slice(0, FRAME_LIMIT * 4), stored),
+    message: cut(scrubText(before(message, MESSAGE_LIMIT * 2), stored), MESSAGE_LIMIT) || '(no message)',
+    page: scrubPath(before(path, FRAME_LIMIT * 4, '/'), stored),
     stack: frames,
   };
   const size = (each: ErrorReport): number => new TextEncoder().encode(JSON.stringify(each)).length;
@@ -182,12 +183,13 @@ export function describeError(error: unknown, stored: readonly string[] = [], pa
 /**
  * A text with what could be somebody's or a secret taken out, as the server's Redactor does (it does so again):
  * every value the page keeps in its storage and its cookies, a URL's query and fragment (its line and column
- * kept), a token (a JWT, a Bearer credential, a long run of letters and digits), name=value secrets, an address.
- * At most its first 4,096 characters are read, as the server's: some rules take time that grows with the square
- * of what they read.
+ * kept), a token (a JWT, a Bearer credential, a long run of letters and digits), name=value secrets (a quoted one
+ * the text ends inside, to its end), an address. At most its first 4,096 characters are read, as the server's: some
+ * rules take time that grows with the square of what they read - and the run the cut went through goes with what is
+ * not read (before()).
  */
 export function scrubText(text: string, stored: readonly string[] = []): string {
-  let out = text.slice(0, TEXT_LIMIT);
+  let out = before(text, TEXT_LIMIT);
   for (const value of stored) {
     out = out.split(value).join('{stored}');
   }
@@ -197,7 +199,7 @@ export function scrubText(text: string, stored: readonly string[] = []): string 
     .replace(/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g, '{token}')
     .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 {…}')
     .replace(
-      /\b(pass(?:word|wd)?|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|access[_-]?key|authorization|cookie|session(?:[_-]?id)?|sid|ticket|code_verifier|signature|sig)\b(["']?\s*(?:=>|[=:])\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s&,;"']+)/gi,
+      /\b(pass(?:word|wd)?|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|access[_-]?key|authorization|cookie|session(?:[_-]?id)?|sid|ticket|code_verifier|signature|sig)\b(["']?\s*(?:=>|[=:])\s*)("(?:[^"\\]|\\.)*(?:"|$)|'(?:[^'\\]|\\.)*(?:'|$)|[^\s&,;"']+)/gi,
       '$1$2{…}',
     )
     .replace(/[^\s@<>()[\]{}"',;:/\\]+@[^\s@<>()[\]{}"',;:/\\]+\.[^\s@<>()[\]{}"',;:/\\.]+/g, '{email}')
@@ -271,6 +273,27 @@ function scrubPath(path: string, stored: readonly string[]): string {
     .split('/')
     .map((segment) => (segment !== '{…}' && (scrubText(segment) !== segment || /@|%40/.test(segment) || (/^[A-Za-z0-9_-]{16,}$/.test(segment) && /\d/.test(segment))) ? '{…}' : segment));
   return cut(segments.join('/'), FRAME_LIMIT);
+}
+
+/**
+ * A text's first `limit` characters, taken BEFORE it is scrubbed - without the run of characters the cut went
+ * through, back to the last white space (`/\S*$/`; a path, to its last `/`): half a token, an address or a stored
+ * value is something no rule knows any more, and would be sent as it is. The server does the same
+ * (Redactor::text()). Read back a character at a time: in time that grows with the run alone.
+ */
+function before(text: string, limit: number, separator?: '/'): string {
+  if (text.length <= limit) {
+    return text;
+  }
+  const kept = text.slice(0, limit);
+  if (separator !== undefined) {
+    return kept.slice(0, kept.lastIndexOf(separator) + 1);
+  }
+  let end = kept.length;
+  while (end > 0 && !/\s/.test(kept[end - 1])) {
+    end--;
+  }
+  return kept.slice(0, end);
 }
 
 function cut(text: string, limit: number): string {

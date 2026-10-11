@@ -31,7 +31,10 @@ namespace Anotoki\Lib\Support;
  *   (/api/admin/users/42 stays as it is). At most 200 characters.
  *
  * Text that is not UTF-8 has its stray bytes replaced first, so no rule is
- * skipped because a regular expression could not read it.
+ * skipped because a regular expression could not read it. A text longer than
+ * text() reads loses, with what it does not read, the run of characters its
+ * cut went through - half a secret is one no rule knows - and a quoted secret
+ * the text ends inside is taken out to the end.
  */
 final class Redactor
 {
@@ -80,7 +83,11 @@ final class Redactor
      */
     public static function text(string $text): string
     {
-        $text = Utf8::prefix($text, self::TEXT_LIMIT);
+        $whole = Utf8::scrub($text);
+        $text = Utf8::prefix($whole, self::TEXT_LIMIT);
+        if (strlen($text) < strlen($whole)) {
+            $text = self::withoutTheCutRun($text);
+        }
         $names = self::SECRET_NAMES . implode('', array_map(static fn (string $name): string => '|' . preg_quote($name, '/'), self::$siteNames));
 
         $rules = [
@@ -91,8 +98,9 @@ final class Redactor
             '/(:\s+)"(?:[^"\\\\\n]++|\\\\.|"")*+"(?=[ \t]*(?:$|\R))/mu' => '$1"' . self::MARK . '"',
             '/\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/=-]+/iu' => '$1 ' . self::MARK,
             '/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/u' => '{token}',
-            // name=value, name: value, and the same quoted - JSON's "password":"…", PHP's 'pass' => '…'.
-            '/\b(' . $names . ')\b(["\']?\s*(?:=>|[=:])\s*)("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\'|[^\s&,;"\']+)/iu' => '$1$2' . self::MARK,
+            // name=value, name: value, and the same quoted - JSON's "password":"…", PHP's 'pass' => '…' - a quoted
+            // one the text ends inside (cut) to its end: its words before the cut are the secret's too.
+            '/\b(' . $names . ')\b(["\']?\s*(?:=>|[=:])\s*)("(?:[^"\\\\]|\\\\.)*(?:"|\z)|\'(?:[^\'\\\\]|\\\\.)*(?:\'|\z)|[^\s&,;"\']+)/iu' => '$1$2' . self::MARK,
             '/(\bhttps?:\/\/[^\s?#"\'<>]*)\?[^\s#"\'<>]*/iu' => '$1?' . self::MARK,
             '/\?[A-Za-z0-9_.\[\]-]+=[^\s#"\'<>]*/u' => '?' . self::MARK,
             '/[^\s@<>()\[\]{}"\',;:\/\\\\]+@[^\s@<>()\[\]{}"\',;:\/\\\\]+\.[^\s@<>()\[\]{}"\',;:\/\\\\.]+/u' => '{email}',
@@ -149,6 +157,17 @@ final class Redactor
         }
 
         return Utf8::cut(implode('/', $segments), $limit);
+    }
+
+    /**
+     * A text cut before it was redacted, without the run of non-space characters the cut went through (/\S*$/):
+     * half a token, an address or a JWT is something no rule knows any more, and would stay as it is. Back to the
+     * last white space byte by byte - one is always ASCII, so no character is split - in time that grows with
+     * the run alone.
+     */
+    private static function withoutTheCutRun(string $text): string
+    {
+        return substr($text, 0, strlen($text) - strcspn(strrev($text), " \t\n\v\f\r"));
     }
 
     /** A run of a token's alphabet that mixes letters and digits, or is all hex: random, not a word. */

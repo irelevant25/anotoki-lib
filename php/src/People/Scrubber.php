@@ -163,8 +163,9 @@ final class Scrubber
     private function runLocked(array $result): array
     {
         $started = microtime(true);
-        $since = self::status($this->pdo)['since'] ?? null;
-        $from = $this->exactSince();
+        // Read once: the place asked from and the one keep() holds the run to are the same - a restore that put
+        // the backup's place back between two reads would pass for no change, and the run would go past it.
+        [$since, $from] = $this->since();
         $newest = null;
         $cursor = [$since, null];
 
@@ -205,14 +206,22 @@ final class Scrubber
         return $result;
     }
 
-    /** `since` exactly as kept (to the microsecond, unlike status()'s), or null for none. */
-    private function exactSince(): ?string
+    /**
+     * `since`, read once: as the IAM's list is asked from (to the second, as status() says it) and exactly as kept
+     * (to the microsecond) - nulls for none.
+     *
+     * @return array{?string, ?string}
+     */
+    private function since(): array
     {
-        $value = $this->pdo->query(
-            "SELECT to_char(since AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') FROM anotoki_people_sync WHERE id = 1"
-        )->fetchColumn();
+        $row = $this->pdo->query(
+            'SELECT ' . PeopleTable::epochOf('since') . ", to_char(since AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') FROM anotoki_people_sync WHERE id = 1"
+        )->fetch(PDO::FETCH_NUM);
+        if ($row === false) {
+            return [null, null];
+        }
 
-        return is_string($value) ? $value : null;
+        return [$row[0] === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $row[0]), is_string($row[1]) ? $row[1] : null];
     }
 
     /** One account, in a transaction of its own; whether a row of this site's people was scrubbed. */

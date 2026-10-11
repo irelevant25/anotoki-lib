@@ -362,7 +362,7 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame($backup['id'], $backups->extractTo($backup['id'], $this->path('offline'))['id'], 'offline, its owner may still read it');
     }
 
-    public function testAPlainBackupIsSealedAndAFileDroppedBesideItIsNeverRestored(): void
+    public function testAPlainBackupIsSealedAndAFileDroppedBesideItWithoutTheInstallationsKeyIsNeverRestored(): void
     {
         $this->fill();
         $backups = $this->backupsWith();
@@ -371,7 +371,10 @@ final class BackupsTest extends BackupsTestCase
         self::assertTrue($made['sealed']);
         self::assertArrayNotHasKey('seal', $made, 'the seal itself is never shown');
 
-        // Somebody drops a backup of their own making - a sidecar written to match - into the folder.
+        // Somebody who writes into the backups folder but cannot replace the installation's key (a copy from another
+        // installation, whatever writes there alone) drops a backup of their own making - a sidecar written to match,
+        // sealed under a key that is not this installation's. Whoever can replace storage/anotoki-lib.key itself
+        // seals what they like: the seal is no lock against the whole storage folder (Backups, README).
         $forged = '20261001-000000Z-manual-' . str_repeat('f', 32);
         $bytes = (string) file_get_contents($backups->path($made['id']));
         file_put_contents($backups->path($forged), str_replace($made['id'], $forged, $bytes));
@@ -391,8 +394,8 @@ final class BackupsTest extends BackupsTestCase
     public function testASealedSidecarWhoseStatusWasChangedLetsNoOtherArchiveThrough(): void
     {
         // The review's proof (M1): the seal vouches for the id and the SHA-256 alone. Somebody who can write the
-        // backups folder packs an archive of their own under a real backup's id, keeps the sealed sidecar's seal and
-        // SHA-256, and sets its status to "unlisted" - which once skipped the checksum.
+        // backups folder (not the installation's key) packs an archive of their own under a real backup's id, keeps
+        // the sealed sidecar's seal and SHA-256, and sets its status to "unlisted" - which once skipped the checksum.
         $this->fill();
         $backups = $this->backupsWith();
         $made = $backups->create();

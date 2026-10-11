@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Anotoki\Lib\Tests\People;
 
 use Anotoki\Lib\Admin\AdminContext;
+use Anotoki\Lib\Admin\Schema as AdminSchema;
+use Anotoki\Lib\Audit\AuditLog;
 use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\Auth\AccessTokens;
 use Anotoki\Lib\Auth\Http\Identify;
@@ -24,6 +26,7 @@ use Anotoki\Lib\Tests\Support\DatabaseTestCase;
 use Anotoki\Lib\Tests\Support\LogLines;
 use Anotoki\Lib\Tests\Support\SiteShapes;
 use PDO;
+use PDOException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
@@ -41,6 +44,9 @@ final class PeopleRoutesTest extends DatabaseTestCase
 
     /** @var list<int> whom the site's delete hook was asked to delete */
     private array $deleted = [];
+
+    /** @var list<string> the transaction each delete ran in */
+    private array $transactions = [];
 
     protected function setUp(): void
     {
@@ -208,6 +214,45 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertSame('people.synced', $audit->entries[0][1]);
     }
 
+    public function testWithTheLibrarysAuditLogADeleteIsNeverMadeWithoutItsEntry(): void
+    {
+        $this->person(7, 'alice', '1 hour');
+        $this->person(8, 'bob', '1 hour');
+        foreach ([7, 8] as $sub) {
+            $this->pdo->exec("INSERT INTO progress (user_id, notes) VALUES ($sub, '{}')");
+        }
+        $app = $this->app(audit: new AuditLog(fn (): PDO => $this->pdo));
+
+        // The audit log's table waits for its update: nothing is deleted, as no entry could say so.
+        $waiting = $this->sendTo($app, 'DELETE', self::BASE . '/7', $this->admin());
+        self::assertSame(503, $waiting->getStatusCode());
+        self::assertSame('feature_unavailable', $this->json($waiting)['code']);
+        self::assertSame('60', $waiting->getHeaderLine('Retry-After'));
+        self::assertSame([], $this->deleted, 'the hook never asked');
+
+        self::assertNull($this->migrator([AdminSchema::migrationSet(), $this->set('site'), Schema::migrationSet()])->apply()['error']);
+        self::assertSame(200, $this->sendTo($app, 'DELETE', self::BASE . '/7', $this->admin())->getStatusCode());
+        $row = $this->rows("SELECT actor_id, target_type, target_id, details FROM anotoki_audit_log WHERE action = 'person.data_deleted'");
+        self::assertCount(1, $row);
+        self::assertSame([1, 'user', '7'], [$row[0]['actor_id'], $row[0]['target_type'], $row[0]['target_id']]);
+        $details = json_decode((string) $row[0]['details'], true);
+        self::assertSame(['Progress' => 1], $details['deleted']);
+        self::assertSame($this->transactions[0], $details['_txid'], 'written in the delete\'s own transaction');
+
+        // An entry that cannot be written undoes its delete.
+        $this->pdo->exec("ALTER TABLE anotoki_audit_log ADD CONSTRAINT test_refuses CHECK (target_id <> '8')");
+        try {
+            $this->sendTo($app, 'DELETE', self::BASE . '/8', $this->admin());
+            self::fail('a delete without its entry answered');
+        } catch (PDOException $e) {
+            self::assertSame('23514', (string) $e->getCode());
+        }
+        self::assertSame([7, 8], $this->deleted);
+        self::assertSame(1, (int) $this->value('SELECT count(*) FROM progress WHERE user_id = 8'), 'bob\'s progress is there still');
+        self::assertFalse($this->pdo->inTransaction());
+        self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'person.data_deleted'"));
+    }
+
     public function testASearchThatIsNoTextIsRefusedNotAnError(): void
     {
         $this->person(7, 'alice', '1 hour');
@@ -354,6 +399,7 @@ final class PeopleRoutesTest extends DatabaseTestCase
                 visitors: static fn (PDO $pdo): array => ['count' => (int) $pdo->query('SELECT count(*) FROM users WHERE id < 0')->fetchColumn()],
                 delete: function (PDO $pdo, int $sub): ?array {
                     $this->deleted[] = $sub;
+                    $this->transactions[] = (string) $pdo->query('SELECT txid_current()')->fetchColumn();
                     $known = (bool) $pdo->query("SELECT count(*) FROM users WHERE id = $sub")->fetchColumn();
                     if (!$known) {
                         return null;

@@ -9,6 +9,7 @@ use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\AtomicFile;
+use Anotoki\Lib\Support\Connection;
 use Anotoki\Lib\Support\GuardedDirectory;
 use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Log;
@@ -40,8 +41,9 @@ use Throwable;
  *
  * Made in one REPEATABLE READ, READ ONLY transaction - one snapshot of every
  * table, its time the database's own (the manifest's snapshot_at: the clock
- * the audit log's entries are written by, which a restore reads what was done
- * since by) - in an order a restore can load (parents first), each table COPYed
+ * the audit log's entries are written by) and the transactions it sees (its
+ * txid_snapshot), which a restore reads what was done since by - in an order a
+ * restore can load (parents first), each table COPYed
  * into a spool of its own (Spool) in a working folder of this run, then
  * tarred, gzipped, encrypted where the site says so (`encryption`: the IAM's,
  * always), hashed, written aside and renamed. On a site that encrypts, the
@@ -62,7 +64,13 @@ use Throwable;
  * the site's beforeCommit - what must be done again before anybody sees the
  * rows (People::replay(): the deletes done since the backup) - and only then
  * the commit: whatever fails rolls the restore back whole, and nobody reads
- * the restored rows, nor backs them up, before it ran. Never restored, always
+ * the restored rows, nor backs them up, before it ran. A restore that waits
+ * more than a minute between two of its statements is ended by PostgreSQL
+ * (idle_in_transaction_session_timeout) and rolled back with its connection: a
+ * hook that works on another connection - the site's own in place of the $pdo
+ * it is given - waits on the restore's own locks while the restore waits on the
+ * hook, and every request to those tables would wait behind both for ever (no
+ * deadlock is seen: the restore's connection is idle). Never restored, always
  * kept: the bookkeeping table(s), anotoki_audit_log (the history stays, the
  * restore's own entry in it) and the site's `keep`. Then the site's
  * afterRestore - what cannot run inside the transaction: the scrub of the
@@ -81,15 +89,27 @@ use Throwable;
  * sealed and never restored here (restored offline, from extractTo(), when its
  * owner means it). The seal vouches for the id and the SHA-256 alone, so a
  * restore compares the SHA-256 of the very bytes it reads - whatever else the
- * sidecar says. It stops somebody who can write the storage folder but not
- * read it: whoever reads storage/anotoki-lib.key can seal anything. An
- * encrypted one is sealed by its own cipher, and carries no seal; without the
+ * sidecar says. What it stops is a file put into storage/backups by somebody
+ * who cannot replace the installation's key: a copy from another installation,
+ * a file changed or damaged since, whatever writes into the backups folder but
+ * never reaches the key (the file explorer reaches neither: it refuses a root
+ * that holds anotoki-lib.key, or is, holds or is inside the storage folder).
+ * Not somebody who can write the whole storage folder: deleting
+ * storage/anotoki-lib.key and making it again are a folder's operations - no
+ * read of the old key needed - and with a key of their own they seal what they
+ * like (as they can put a key set of their own in place of the IAM's, kept in
+ * the same folder, which tokens are checked with: the storage folder is the
+ * site's own, and nothing in it holds against whoever writes it). An encrypted
+ * one is sealed by its own cipher, and carries no seal; without the
  * installation's key a plain one is made unsealed, never refused.
  */
 final class Backups
 {
     /** Why a backup without this installation's seal is not restored here. */
     private const UNSEALED = 'It carries no seal of this site\'s - it was not made here, or it was changed since - so it is not restored here: restore it offline (README).';
+
+    /** Why a restore the database ended left nothing of it (load()); %s: how long it may wait between two statements. */
+    private const ENDED = 'the database ended its connection, and its transaction with it - as it ends a restore that waits more than %s between two of its statements: a hook inside it that works on another connection waits on the restore\'s own locks (a delete hook works on the $pdo it is given, never on the site\'s own connection).';
 
     public const DAILY = 'daily';
     public const MANUAL = 'manual';
@@ -141,6 +161,15 @@ final class Backups
     private bool $sealKeyMissing = false;
 
     /**
+     * How long a restore's connection may wait between two statements inside its transaction before PostgreSQL ends
+     * it, in milliseconds: a minute. The restore itself never waits so long - PHP between two statements takes
+     * milliseconds, and COPY reads the spools inside its own statement (it is no wait between two) - so only a hook
+     * that waits on something else does: on another connection, which waits on the restore's own locks. No option:
+     * the tests shorten it.
+     */
+    private int $idleMilliseconds = 60_000;
+
+    /**
      * @param Closure(): PDO $connect  a connection (PDO::ERRMODE_EXCEPTION) - opened with Copy::connect() where
      *        PHP has Pdo\Pgsql (8.4+), so COPY raises no deprecation
      * @param string $directory  where the backups are kept: the site's storage/backups
@@ -172,8 +201,10 @@ final class Backups
      *   - restore: false refuses every restore (the IAM, until its afterRestore exists)
      *   - beforeCommit: inside a restore's transaction - its rows loaded and counted, its locks held - before the
      *     commit: what must be done again before anybody sees the rows (People::replay(): the deletes done since
-     *     the backup), on the restore's connection, the manifest given (its snapshot_at). What it throws rolls the
-     *     restore back whole; it ends no transaction (a savepoint is fine)
+     *     the backup), on the restore's connection, the manifest given (its snapshot_at, its txid_snapshot). What
+     *     it throws rolls the restore back whole; it ends no transaction (a savepoint is fine), and does all its
+     *     work on the PDO it is given: another connection waits on the restore's locks, and the restore is ended
+     *     after a minute of waiting for it
      *   - afterRestore: after a restore committed, what cannot run inside it (People::afterRestore(): the scrub,
      *     asking the IAM; the IAM's anonymization sweep again, caches cleared) - what it throws is the answer's
      *     after_restore_error
@@ -790,9 +821,13 @@ final class Backups
             try {
                 // One snapshot of every table, and nothing written meanwhile by this connection.
                 $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
-                // The snapshot's time by the database's clock, which writes every audit entry (now(): the
-                // transaction's start, before its snapshot) - what a restore reads the deletes done since by.
-                $snapshotAt = (string) $pdo->query("SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')")->fetchColumn();
+                // What a restore reads the deletes done since by (People::replay()): the snapshot itself - the
+                // transactions it sees (txid_current_snapshot(): taken by this, the transaction's first statement,
+                // and every COPY reads under it) - and its time by the database's clock, which writes every audit
+                // entry (now(): the transaction's start, before its snapshot).
+                [$snapshotAt, $txidSnapshot] = $pdo->query(
+                    "SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), CAST(txid_current_snapshot() AS text)"
+                )->fetch(PDO::FETCH_NUM);
                 $shape = DatabaseShape::read($pdo, $this->schema);
                 $migrator = ($this->migrator)($pdo);
                 $records = self::records($migrator);
@@ -860,7 +895,8 @@ final class Backups
                 'site' => $this->site,
                 'kind' => $kind,
                 'created_at' => $createdAt,
-                'snapshot_at' => $snapshotAt,
+                'snapshot_at' => (string) $snapshotAt,
+                'txid_snapshot' => (string) $txidSnapshot,
                 'created_by' => $actorId,
                 'description' => $description,
                 'database_schema' => $this->schema,
@@ -1183,8 +1219,13 @@ final class Backups
             throw new RuntimeException('A restore is its own transaction: the connection is in another one.');
         }
         $pdo->beginTransaction();
+        $committing = false;
         try {
             $pdo->exec("SET LOCAL lock_timeout = '5s'");
+            // Ended by PostgreSQL - rolled back, its locks let go - should it wait between two statements longer than
+            // a restore ever does by itself ($idleMilliseconds): a hook that waits on another connection, which waits
+            // on these locks, would otherwise hold the site's tables for ever. SET LOCAL: until the transaction ends.
+            $pdo->exec('SET LOCAL idle_in_transaction_session_timeout = ' . max(1, $this->idleMilliseconds));
             $pdo->exec('SET CONSTRAINTS ALL DEFERRED');
             if ($qualified !== []) {
                 $pdo->exec('LOCK TABLE ' . implode(', ', $qualified) . ' IN ACCESS EXCLUSIVE MODE');
@@ -1238,10 +1279,22 @@ final class Backups
             if ($this->beforeCommit !== null) {
                 $this->runBeforeCommit($manifest, $pdo);
             }
+            $committing = true;
             $pdo->commit();
         } catch (Throwable $e) {
+            // The database ended the connection - its transaction went with it, rolled back: nothing of the restore
+            // stayed. Unless it went while the COMMIT was on its way, which may have been done.
+            if (Connection::lost($pdo)) {
+                throw $committing
+                    ? new RestoreEnded('Its connection to the database was lost while it committed: ' . $e->getMessage(), 0, $e)
+                    : new RuntimeException(sprintf(self::ENDED, self::seconds($this->idleMilliseconds)), 0, $e);
+            }
             if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+                try {
+                    $pdo->rollBack();
+                } catch (Throwable) {
+                    // What failed first is what is said.
+                }
             }
             throw $e;
         }
@@ -1249,10 +1302,23 @@ final class Backups
         return ['tables' => count($tables), 'rows' => $rows];
     }
 
+    /** A wait in milliseconds as the restore's words say it: "a minute", "5 seconds". */
+    private static function seconds(int $milliseconds): string
+    {
+        $seconds = max(1, intdiv($milliseconds + 999, 1000));
+
+        return match (true) {
+            $seconds === 60 => 'a minute',
+            $seconds === 1 => 'a second',
+            default => $seconds . ' seconds',
+        };
+    }
+
     /**
      * The site's beforeCommit, behind a savepoint of the restore's: a hook that ended the transaction - a commit
      * or a rollback, a new one begun after it or not - leaves the savepoint gone, and is told apart from a hook
-     * that failed inside it (RestoreEnded: what the restore had loaded may have been committed with it).
+     * that failed inside it (RestoreEnded: what the restore had loaded may have been committed with it), and from
+     * a connection the database ended meanwhile (load() says so: nothing of the restore stayed).
      *
      * @param array<string, mixed> $manifest
      */
@@ -1262,12 +1328,15 @@ final class Backups
         try {
             ($this->beforeCommit)($manifest, $pdo);
         } catch (Throwable $e) {
-            if (!self::savepointHeld($pdo, 'ROLLBACK TO')) {
+            if (!self::savepointHeld($pdo, 'ROLLBACK TO') && !Connection::lost($pdo)) {
                 throw new RestoreEnded('Its beforeCommit ended the restore\'s transaction, then failed: ' . $e->getMessage(), 0, $e);
             }
             throw $e;
         }
         if (!self::savepointHeld($pdo, 'RELEASE')) {
+            if (Connection::lost($pdo)) {
+                throw new RuntimeException('The database ended the restore\'s connection while its beforeCommit ran.');
+            }
             throw new RestoreEnded('Its beforeCommit ended the restore\'s transaction - a hook inside a restore begins, commits or rolls back none of its own (a savepoint is fine).');
         }
     }

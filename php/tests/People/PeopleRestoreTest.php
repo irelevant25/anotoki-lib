@@ -26,6 +26,7 @@ use LogicException;
 use PDO;
 use PDOException;
 use Psr\Http\Message\ServerRequestInterface;
+use ReflectionProperty;
 use RuntimeException;
 
 /**
@@ -33,7 +34,8 @@ use RuntimeException;
  * inside its transaction, before anybody sees its rows, the deletes the audit log holds from the backup's
  * snapshot on - a person's, a feedback message's (People::replay(), Backups' beforeCommit) - and after it the
  * scrub of the IAM's deleted accounts, reported and retried when it does not go through (People::afterRestore()).
- * Piano Academy's shape, with the admin tools' tables, restored for real.
+ * A hook that waits on another connection ends the restore, never the site. Piano Academy's shape, with the
+ * admin tools' tables, restored for real.
  */
 final class PeopleRestoreTest extends DatabaseTestCase
 {
@@ -62,8 +64,7 @@ final class PeopleRestoreTest extends DatabaseTestCase
         self::assertNull($this->siteMigrator($this->pdo)->apply()['error']);
         $this->people = new People(SiteShapes::table('piano'), fn (): PDO => $this->pdo, $this->iam->client());
         $this->audit = new AuditLog(fn (): PDO => $this->pdo);
-        $settings = TestDatabase::settings();
-        $this->connection = Copy::connect(sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $this->database), $settings['username'], $settings['password']);
+        $this->connection = $this->backupsConnection();
 
         foreach ([7 => 'alice', 8 => 'bob'] as $sub => $name) {
             $this->pdo->prepare('INSERT INTO users (id, preferred_username) VALUES (?, ?)')->execute([$sub, $name]);
@@ -234,6 +235,109 @@ final class PeopleRestoreTest extends DatabaseTestCase
         self::assertFalse($this->connection->inTransaction());
     }
 
+    public function testAHookOnTheSitesOwnConnectionEndsTheRestoreInsteadOfHangingTheSite(): void
+    {
+        // A delete hook of before: it works on the site's own connection (db()), not on the $pdo it is given. In a
+        // restore that connection waits on the restore's locks while the restore waits on the hook - for ever, and
+        // every request to those tables behind both. The database ends the restore's connection once it waited
+        // past its limit (a minute; a second here), and the restore with it: rolled back, its locks let go.
+        $own = function (PDO $pdo, int $sub): ?array {
+            $this->deleted[] = $sub;
+            $progress = $this->pdo->prepare('DELETE FROM progress WHERE user_id = ?');
+            $progress->execute([$sub]);
+
+            return ['deleted' => ['Progress' => $progress->rowCount()]];
+        };
+        $backups = $this->backups($this->people->restoreHooks(delete: $own, defer: $this->defer()));
+        (new ReflectionProperty(Backups::class, 'idleMilliseconds'))->setValue($backups, 1000);
+        $backup = $backups->create(Backups::MANUAL, null, 1);
+        self::assertIsArray($backup);
+        $this->people->delete($this->pdo, 7, $this->hook());
+        $this->audit->record(null, 1, 'person.data_deleted', 'user', '7', ['deleted' => ['Progress' => 1]]);
+        $this->pdo->exec("INSERT INTO users (id, preferred_username) VALUES (9, 'carol')");
+        $before = $this->state();
+        // Should the restore never be ended, the hook's statement gives up instead: a failure, never a hung test.
+        $this->pdo->exec("SET lock_timeout = '20s'");
+
+        $started = microtime(true);
+        $result = $backups->restore($backup['id'], 1);
+        $took = microtime(true) - $started;
+        $this->pdo->exec('SET lock_timeout = 0');
+
+        self::assertInstanceOf(Refusal::class, $result);
+        self::assertSame([500, 'restore_failed'], [$result->status, $result->code]);
+        self::assertStringStartsWith('The restore failed and nothing of it stayed: the database ended its connection, and its transaction with it - as it ends a restore that waits more than a second between two of its statements', $result->message);
+        self::assertStringContainsString('a delete hook works on the $pdo it is given, never on the site\'s own connection', $result->message);
+        self::assertLessThan(15.0, $took, 'ended by the database after its wait - not by the hook\'s statement giving up');
+        self::assertSame([7, 7], $this->deleted, 'the hook\'s statement went through once the restore was gone');
+        self::assertSame($before, $this->state(), 'nothing of the restore stayed: carol is there, alice\'s progress still gone');
+        self::assertSame([], $this->later, 'no work after a restore that did not happen');
+
+        // Nothing of it holds the site: the same restore, with a hook on the $pdo it is given, goes through.
+        $this->connection = $this->backupsConnection();
+        $restored = $this->backups()->restore($backup['id'], 1);
+        self::assertIsArray($restored, $restored instanceof Refusal ? $restored->message : '');
+        self::assertSame(0, (int) $this->value('SELECT count(*) FROM users WHERE id = 9'), 'restored');
+        self::assertSame(0, (int) $this->value('SELECT count(*) FROM progress WHERE user_id = 7'), 'her delete done again');
+    }
+
+    public function testAnEntryInsideTheDeletesTransactionIsMatchedToTheBackupByThatTransaction(): void
+    {
+        // The People page writes its entry inside the delete's transaction (AuditLog::recordInside()), so the
+        // entry's time is when that transaction began - not when it committed.
+        $entry = fn (string $sub): Closure => function (PDO $pdo, array $deleted) use ($sub): void {
+            $this->audit->recordInside($pdo, null, 1, 'person.data_deleted', 'user', $sub, ['deleted' => $deleted['deleted']]);
+        };
+        $backups = $this->backups();
+        // bob's delete committed before the backup was made: it is in the backup, and never done again.
+        $this->people->delete($this->pdo, 8, $this->hook(), null, $entry('8'));
+        // alice's begins before the backup and commits after its snapshot: the backup still has her progress.
+        $this->pdo->beginTransaction();
+        $this->people->delete($this->pdo, 7, $this->hook(), null, $entry('7'));
+        $backup = $backups->create(Backups::MANUAL, null, 1);
+        self::assertIsArray($backup);
+        $this->pdo->commit();
+        $began = $this->pdo->prepare("SELECT target_id, created_at < CAST(? AS timestamptz) FROM anotoki_audit_log WHERE action = 'person.data_deleted' ORDER BY target_id");
+        $began->execute([$backups->manifest($backup['id'])['snapshot_at']]);
+        self::assertSame([['7', true], ['8', true]], $began->fetchAll(PDO::FETCH_NUM), 'both begun before the backup: by the time alone, neither would be done again');
+
+        $result = $backups->restore($backup['id'], 1);
+
+        self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
+        self::assertSame([8, 7, 7], $this->deleted, 'alice\'s delete done again - its transaction is not in the backup\'s snapshot; bob\'s is');
+        self::assertSame(0, (int) $this->value('SELECT count(*) FROM progress WHERE user_id IN (7, 8)'), 'neither person\'s progress came back');
+        self::assertSame(2, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'person.data_deleted'"), 'a replay writes no entry of its own');
+    }
+
+    public function testWhatAfterRestoreThrowsKeepsItsFirstFailure(): void
+    {
+        $this->pdo->exec(<<<'SQL'
+CREATE FUNCTION refuse_sync() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the scrub''s table is read-only today'; END $$;
+CREATE TRIGGER refuse_sync BEFORE INSERT OR UPDATE ON anotoki_people_sync FOR EACH ROW EXECUTE FUNCTION refuse_sync();
+SQL);
+        $own = new RuntimeException('Not every progress took a new generation.');
+        $after = $this->people->afterRestore($this->defer(), static function () use ($own): void {
+            throw $own;
+        });
+
+        try {
+            $after([], $this->pdo);
+            self::fail('nothing thrown');
+        } catch (RuntimeException $e) {
+            self::assertInstanceOf(PDOException::class, $e->getPrevious(), 'the scrub\'s failure, the first: its class, file, line and trace kept');
+            self::assertStringContainsString('read-only today', $e->getPrevious()->getMessage());
+        }
+
+        $this->pdo->exec('DROP TRIGGER refuse_sync ON anotoki_people_sync');
+        try {
+            $after([], $this->pdo);
+            self::fail('nothing thrown');
+        } catch (RuntimeException $e) {
+            self::assertSame($own, $e->getPrevious(), 'the scrub went through: the site\'s own failure is the first');
+            self::assertSame('Not every progress took a new generation.', $e->getMessage());
+        }
+    }
+
     public function testAnIamOutOfReachIsTheRestoresErrorAndTheNextRequestScrubsAgain(): void
     {
         $backups = $this->backups();
@@ -309,6 +413,16 @@ SQL);
             self::fail('a backup without a time passed');
         } catch (RuntimeException $e) {
             self::assertSame('This backup says no time it was made at, so what was deleted since cannot be done again.', $e->getMessage());
+        } finally {
+            $this->connection->rollBack();
+        }
+
+        $this->connection->beginTransaction();
+        try {
+            $replay(['snapshot_at' => '2026-10-11T10:00:00.000000Z', 'txid_snapshot' => '10:20:1x'], $this->connection);
+            self::fail('a snapshot that cannot be read passed');
+        } catch (RuntimeException $e) {
+            self::assertSame('This backup\'s snapshot cannot be read, so what was deleted since cannot be told.', $e->getMessage());
         } finally {
             $this->connection->rollBack();
         }
@@ -392,6 +506,7 @@ SQL);
         $within = $this->pdo->prepare('SELECT CAST(? AS timestamptz) BETWEEN CAST(? AS timestamptz) AND CAST(? AS timestamptz)');
         $within->execute([$snapshotAt, $before, $after]);
         self::assertTrue((bool) $within->fetchColumn(), 'the database\'s clock, while the backup was made');
+        self::assertMatchesRegularExpression('/^[0-9]+:[0-9]+:(?:[0-9]+(?:,[0-9]+)*)?$/D', (string) ($backups->manifest($backup['id'])['txid_snapshot'] ?? ''), 'and the snapshot itself: the transactions it sees');
 
         // A replay goes by it, not by PHP's created_at: an entry between the two is done again.
         $this->audit->record(null, 1, 'person.data_deleted', 'user', '7', ['deleted' => ['Progress' => 1]]);
@@ -475,6 +590,14 @@ SQL);
     private function siteMigrator(PDO $pdo): Migrator
     {
         return new Migrator($pdo, [AdminSchema::migrationSet(), $this->set('site'), Schema::migrationSet()]);
+    }
+
+    /** A connection of the backups' own, as a site opens one. */
+    private function backupsConnection(): PDO
+    {
+        $settings = TestDatabase::settings();
+
+        return Copy::connect(sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $this->database), $settings['username'], $settings['password']);
     }
 
     /** A message from $sub, with the address they gave and their browser; its id. */

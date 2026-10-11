@@ -9,6 +9,7 @@ use Anotoki\Lib\Auth\IamClient;
 use Anotoki\Lib\Feedback\Feedback;
 use Anotoki\Lib\People\Http\PeopleUpkeep;
 use Anotoki\Lib\Support\AfterResponse;
+use Anotoki\Lib\Support\Connection;
 use Closure;
 use InvalidArgumentException;
 use LogicException;
@@ -91,18 +92,25 @@ final class People
      * The People page's Delete of one person: the site's $hook - what it keeps of them, gone, answered by label,
      * or null for nobody with that id - and, where the site has the admin tools' feedback, that person's
      * messages losing the address and browser they were sent with (Feedback::forgetPeopleOn(), as the scrub of
-     * a deleted account does; the words stay). Both or neither: in a transaction of the library's on $pdo - or,
-     * inside a caller's (a restore doing the delete again, replay()), behind a savepoint of the library's. The
-     * hook works on the $pdo it is given and begins, commits or rolls back no transaction of its own (a savepoint
-     * is fine): one that ends the transaction it was given - a commit and a new BEGIN would pass for it still
-     * open - is found by the savepoint being gone, and told so. Its $request is the page's: null when a restore
-     * does the delete again, and then the hook does the database's part alone (a copy kept of what a person
-     * asked to delete - Japanese Academy's JSON before a delete - is not made for a replay).
+     * a deleted account does; the words stay), and the delete's $entry. All or nothing: in a transaction of the
+     * library's on $pdo - or, inside a caller's (a restore doing the delete again, replay()), behind a savepoint
+     * of the library's. The hook does ALL its work on the $pdo it is given - never on the site's own connection,
+     * which in a restore waits on the restore's own locks while the restore waits on the hook - and begins,
+     * commits or rolls back no transaction of its own (a savepoint is fine): one that ends the transaction it was
+     * given - a commit and a new BEGIN would pass for it still open - is found by the savepoint being gone, and
+     * told so. Its $request is the page's: null when a restore does the delete again, and then the hook does the
+     * database's part alone (a copy kept of what a person asked to delete - Japanese Academy's JSON before a
+     * delete - is not made for a replay).
+     *
+     * $entry (PeopleRoutes': the audit log's person.data_deleted, AuditLog::recordInside()) is written inside the
+     * same transaction, after the hook, with what the hook answered: a delete is never made without it - a
+     * restore does the delete again by it (replay()) - and what it throws undoes the delete. A replay writes none.
      *
      * @param Closure(PDO, int, ?ServerRequestInterface): ?array<string, mixed> $hook
+     * @param ?Closure(PDO, array<string, mixed>): void $entry
      * @return ?array<string, mixed> what the hook answered
      */
-    public function delete(PDO $pdo, int $sub, Closure $hook, ?ServerRequestInterface $request = null): ?array
+    public function delete(PDO $pdo, int $sub, Closure $hook, ?ServerRequestInterface $request = null, ?Closure $entry = null): ?array
     {
         $own = !$pdo->inTransaction();
         if ($own) {
@@ -112,8 +120,13 @@ final class People
             $pdo->exec('SAVEPOINT ' . self::DELETE_SAVEPOINT);
             try {
                 $deleted = $hook($pdo, $sub, $request);
-                if ($deleted !== null && AdminSchema::has($pdo, AdminSchema::FEEDBACK_TABLE)) {
-                    Feedback::forgetPeopleOn($pdo, [$sub]);
+                if ($deleted !== null) {
+                    if (AdminSchema::has($pdo, AdminSchema::FEEDBACK_TABLE)) {
+                        Feedback::forgetPeopleOn($pdo, [$sub]);
+                    }
+                    if ($entry !== null) {
+                        $entry($pdo, $deleted);
+                    }
                 }
             } catch (Throwable $e) {
                 // Its own work undone; a caller's transaction - a restore's - stays as it was before it.
@@ -122,12 +135,12 @@ final class People
                     throw new LogicException('People: the delete hook runs inside the library\'s transaction (0.5.0) - it begins none of its own (a savepoint is fine).', 0, $e);
                 }
                 if (!$held) {
-                    throw new LogicException(self::HOOK_ENDED, 0, $e);
+                    throw self::gone($pdo, $e);
                 }
                 throw $e;
             }
             if (!self::savepoint($pdo, 'RELEASE')) {
-                throw new LogicException(self::HOOK_ENDED);
+                throw self::gone($pdo);
             }
             if ($own) {
                 $pdo->commit();
@@ -136,7 +149,11 @@ final class People
             return $deleted;
         } catch (Throwable $e) {
             if ($own && $pdo->inTransaction()) {
-                $pdo->rollBack();
+                try {
+                    $pdo->rollBack();
+                } catch (Throwable) {
+                    // A connection the database ended took its transaction with it: what failed first is said.
+                }
             }
             throw $e;
         }
@@ -165,7 +182,13 @@ final class People
      * it still says what was done since - from the backup's snapshot_at on (the database's clock, which writes
      * the audit log too; a backup of before 0.5.0 has its created_at alone, PHP's):
      *   - every person.data_deleted: the People page's delete again (delete(): the site's $delete, its request
-     *     null, and the person's feedback forgotten), in the order they were done;
+     *     null, and the person's feedback forgotten), in the order they were done. Its entry is written inside
+     *     the delete's transaction (0.5.0, `_txid` its transaction's id), so its time is when that transaction
+     *     began: one begun before the snapshot may have committed after it. Such an entry is done again when its
+     *     transaction is not in the backup's snapshot (txid_visible_in_snapshot(), the manifest's txid_snapshot)
+     *     - and, whatever its id says, from the snapshot's time on: an id is one PostgreSQL cluster's, and a
+     *     database moved to another by pg_dump counts anew. An entry of before, or a backup without a snapshot:
+     *     the time alone;
      *   - every feedback.deleted: the message deleted again where it is the same one - its id and the time it
      *     was sent both (an entry of before 0.5.0 names no time, and is passed over).
      * No check of the IAM's deleted accounts may run across a restore: one begun before it would keep its own
@@ -174,8 +197,10 @@ final class People
      * deadlock: the check waits on the restore's tables).
      *
      * Whatever fails is thrown, and the restore is rolled back whole - never a restore that brings back a
-     * deleted person's data. With something to do again (a $delete, the feedback), a backup that says no time
-     * or a database with no audit log is a failure too, never a delete passed over in silence.
+     * deleted person's data. With something to do again (a $delete, the feedback), a backup that says no time,
+     * one whose snapshot cannot be read, or a database with no audit log is a failure too, never a delete passed
+     * over in silence. The $delete does all its work on the restore's PDO it is given: on another connection it
+     * waits on the restore's locks, and the restore is ended (Backups: rolled back after a minute's wait).
      *
      * @param ?Closure(PDO, int, ?ServerRequestInterface): ?array<string, mixed> $delete  the People page's hook -
      *        PeopleRoutes' delete:; without it, no person's delete is done again
@@ -198,12 +223,16 @@ final class People
             if ($since === null) {
                 throw new RuntimeException('This backup says no time it was made at, so what was deleted since cannot be done again.');
             }
+            $snapshot = $manifest['txid_snapshot'] ?? null;
+            if ($snapshot !== null && (!is_string($snapshot) || preg_match('/^[0-9]{1,19}:[0-9]{1,19}:(?:[0-9]{1,19}(?:,[0-9]{1,19})*)?$/D', $snapshot) !== 1)) {
+                throw new RuntimeException('This backup\'s snapshot cannot be read, so what was deleted since cannot be told.');
+            }
             if (!AdminSchema::has($pdo, AdminSchema::AUDIT_TABLE)) {
                 throw new RuntimeException('There is no audit log here to say what was deleted since this backup was made.');
             }
 
             if ($delete !== null) {
-                foreach (self::peopleDeletedSince($pdo, $since) as $sub) {
+                foreach (self::peopleDeletedSince($pdo, $since, $snapshot) as $sub) {
                     try {
                         $this->delete($pdo, (int) $sub, $delete);
                     } catch (Throwable $e) {
@@ -234,7 +263,8 @@ final class People
      *   2. the site's own work after a restore ($then: Piano Academy's new generations), whatever the scrub did.
      * What could not be done is thrown, all of it in one RuntimeException: the restore's after_restore_error,
      * which the Backups page shows and the site's onError hears - never a restore that looks complete with a
-     * deleted person's name back.
+     * deleted person's name back. The first failure that threw is its previous: its class, file, line and trace
+     * stay with it.
      *
      * @param ?Closure(callable): void $defer  the site's after-the-answer runner (PeopleUpkeep's); default
      *        AfterResponse::shared()
@@ -245,15 +275,18 @@ final class People
     {
         return function (array $manifest, PDO $pdo) use ($defer, $then): void {
             $failed = [];
+            $first = null;
             try {
                 $why = $this->scrubAgain($pdo);
             } catch (Throwable $e) {
+                $first = $e;
                 $why = 'it failed: ' . self::said($e);
             }
             if ($why !== null) {
                 try {
                     $this->scrubSoon($defer);
                 } catch (Throwable $e) {
+                    $first ??= $e;
                     $why .= '; nor could the next request be told to: ' . self::said($e);
                 }
                 $failed[] = "The accounts the IAM deleted were not checked again ($why). Whoever it deleted since this backup was made may be named here "
@@ -263,11 +296,12 @@ final class People
                 try {
                     $then($manifest, $pdo);
                 } catch (Throwable $e) {
+                    $first ??= $e;
                     $failed[] = self::said($e) . '.';
                 }
             }
             if ($failed !== []) {
-                throw new RuntimeException(implode(' ', $failed));
+                throw new RuntimeException(implode(' ', $failed), 0, $first);
             }
         };
     }
@@ -315,6 +349,20 @@ final class People
         return rtrim(trim(preg_split('/\R/', $message, 2)[0] ?? ''), '.');
     }
 
+    /**
+     * Why the delete's savepoint is gone: the hook ended the transaction it was given - or the database ended the
+     * connection itself (a restore's, past its wait while the hook waited on another connection), whose failure is
+     * told as it is.
+     */
+    private static function gone(PDO $pdo, ?Throwable $failure = null): Throwable
+    {
+        if (Connection::lost($pdo)) {
+            return $failure ?? new RuntimeException('People: the database ended the connection while the delete hook ran.');
+        }
+
+        return new LogicException(self::HOOK_ENDED, 0, $failure);
+    }
+
     /** $how (RELEASE, ROLLBACK TO) the delete's savepoint: false when it is gone - the hook ended the transaction. */
     private static function savepoint(PDO $pdo, string $how): bool
     {
@@ -349,19 +397,24 @@ final class People
     }
 
     /**
-     * The people whose data was deleted from $since on (an entry of that very moment counts), each once, in the
-     * order first done. Ids only: a target that is no id is passed over.
+     * The people whose data was deleted since the backup - from $since on (an entry of that very moment counts),
+     * or, for an entry that names its transaction (`_txid`), in a transaction the backup's $snapshot does not see
+     * (see replay()) - each once, in the order first done. Ids only: a target that is no id is passed over.
      *
      * @return list<string>
      */
-    private static function peopleDeletedSince(PDO $pdo, string $since): array
+    private static function peopleDeletedSince(PDO $pdo, string $since, ?string $snapshot): array
     {
         $statement = $pdo->prepare(
-            "SELECT target_id FROM " . AdminSchema::AUDIT_TABLE . "
-              WHERE action = 'person.data_deleted' AND target_type = 'user' AND created_at >= CAST(? AS timestamptz) AND target_id IS NOT NULL
-              GROUP BY target_id ORDER BY min(created_at), min(id)"
+            'SELECT target_id FROM ' . AdminSchema::AUDIT_TABLE . '
+              WHERE action = \'person.data_deleted\' AND target_type = \'user\' AND target_id IS NOT NULL
+                AND (created_at >= CAST(? AS timestamptz)
+                     OR CASE WHEN CAST(? AS text) IS NOT NULL AND details->>\'_txid\' ~ \'^[0-9]{1,18}$\'
+                             THEN NOT txid_visible_in_snapshot(CAST(details->>\'_txid\' AS bigint), CAST(? AS txid_snapshot))
+                             ELSE false END)
+              GROUP BY target_id ORDER BY min(created_at), min(id)'
         );
-        $statement->execute([$since]);
+        $statement->execute([$since, $snapshot, $snapshot]);
 
         return array_values(array_filter(
             array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)),

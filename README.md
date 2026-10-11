@@ -770,15 +770,26 @@ version: `^0.4.1` never takes it by itself. Each site moves on purpose, its
 PHP and its Angular half together (`anotoki/lib ^0.5.0`, the 0.5.0 tarball).
 
 1. **The People delete hook** (every site with the People page) runs inside
-   the library's transaction (`People::delete()`), on the `$pdo` it is given:
-   it begins, commits or rolls back no transaction of its own - a savepoint is
-   fine. genshin's and the build analyzer's begin one today: they would be
-   refused with a `LogicException` saying so. It takes `?ServerRequestInterface
-   $request`: null when a restore does the delete again - and then it does the
-   database's part alone, and skips what only a person asking does: Japanese
-   Academy's JSON copy of what is deleted is not made for a replay. The library
-   forgets the person's feedback with it: a hook that calls
-   `Feedback::forgetPeople()` itself drops it.
+   the library's transaction (`People::delete()`), and does ALL its work on
+   the `$pdo` it is given - never on the site's own connection: Japanese
+   Academy's `people_delete` (`db_tx`/`db_exec` on `db()`), Piano Academy's
+   `peopleDelete` (`dbTx`/`dbExec`/`db()`) and the build analyzer's
+   `SitePeople::deleteData` (its `Db`, `Users`, `Feedback`) work on their own
+   today. On the People page that is the same connection; in a restore it is
+   not: the site's own waits on the restore's locks while the restore waits on
+   the hook, and every request to those tables waits behind both - PostgreSQL
+   ends such a restore after a minute (rolled back, `500 restore_failed`: "the
+   database ended its connection"). The hook begins, commits or rolls back no
+   transaction of its own - a savepoint is fine. genshin's and the build
+   analyzer's begin one today: they would be refused with a `LogicException`
+   saying so. It takes `?ServerRequestInterface $request`: null when a restore
+   does the delete again - and then it does the database's part alone, and
+   skips what only a person asking does: Japanese Academy's JSON copy of what
+   is deleted is not made for a replay. The library forgets the person's
+   feedback with it: a hook that calls `Feedback::forgetPeople()` itself drops
+   it. With the site's `AuditLog` as `audit:`, the delete's `person.data_deleted`
+   is written inside the delete's transaction - no delete without it: while the
+   audit log's table waits for its update, `503 feature_unavailable`.
 2. **A restore does the deletes again inside its transaction.** The site's
    Backups take both hooks from People - `...$people->restoreHooks(delete:
    $deleteHook, defer: ..., then: ...)` among its options (`beforeCommit`, the
@@ -790,7 +801,9 @@ PHP and its Angular half together (`anotoki/lib ^0.5.0`, the 0.5.0 tarball).
    running, and rolled back whole when a delete cannot be done again.
 3. **Only a backup made here is restored here.** A plain backup is sealed under
    the installation's key; one made before 0.5.0 has no seal and is restored
-   offline (`--extract`) only - make a backup right after the update.
+   offline (`--extract`) only - make a backup right after the update. The seal
+   keeps out a file put into `storage/backups` by somebody who cannot replace
+   that key - not somebody who can write the whole storage folder ("Backups").
 4. **Addresses** (the admin tools): a site behind Cloudflare passes
    `trustedProxies: ClientAddress::CLOUDFLARE` to its `AdminContext` (and to its
    `AuditLog` where it keeps the address); without it, nothing but
@@ -1509,9 +1522,10 @@ $people = new People(
     hooks: [fn (PDO $pdo, int $sub, ?array $former) => /* the site's copies of the name elsewhere */ null],
 );
 
-// The page's delete: on the $pdo it is given, inside the library's transaction (it begins, commits or rolls back
-// none); its request is null when a restore does it again - then the database's part alone, no copy kept first.
-// The person's feedback is forgotten with it, by the library (0.5.0).
+// The page's delete: ALL of it on the $pdo it is given - never db(), which in a restore waits on the restore's locks -
+// inside the library's transaction (it begins, commits or rolls back none); its request is null when a restore does
+// it again - then the database's part alone, no copy kept first. The person's feedback is forgotten with it, by the
+// library (0.5.0).
 $deleteHook = fn (PDO $pdo, int $sub, ?ServerRequestInterface $request): ?array => ['deleted' => ['Progress' => …]];
 
 $app->group('/api', $siteRoutes)->add(new RecordPerson($people));            // never on the Migrations routes
@@ -1519,7 +1533,7 @@ PeopleRoutes::admin($app, '/api/admin/people', $people,                       //
     columns: [new PeopleColumn('notes', 'Notes', 'count', fn (PDO $pdo, array $subs): array => …)],
     visitors: fn (PDO $pdo): array => ['count' => …],
     delete: $deleteHook,                                                         // null: nobody with that id
-    audit: $auditLog,                                                            // person.data_deleted, people.synced
+    audit: $auditLog,                                                            // person.data_deleted (in the delete's transaction), people.synced
 )->add(RequireRole::admin()->refusing('admin_only'));                            // a site's own words, where it has them
 $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState::READY));   // inside the SiteGate
 // and after $app->run(): \Anotoki\Lib\Support\AfterResponse::shared()->run();   (a site's own runner: PeopleUpkeep's defer)
@@ -1573,19 +1587,28 @@ $backups = new Backups($connect, $directory, [
   in its words. With `audit:` (the site's `AuditLog`) a delete is recorded
   `person.data_deleted` (target `user` {sub}, the counts by label) and an
   asked-for scrub `people.synced` (its state, handled, scrubbed), by the
-  token's sub - or `context:`'s `actorId()`. A delete asks for no proof of a
-  recent sign-in, unlike a backup's restore: the page's question is all it asks
-  (the owner's decision of 2026-10-11).
-- `People::delete($pdo, $sub, $hook, $request)` (0.5.0) - the page's delete:
-  the site's hook and, where the site has the admin tools' feedback, that
-  person's messages without the address and browser they were sent with
-  (`Feedback::forgetPeopleOn()`; the words stay), in one transaction of the
-  library's - or, inside a caller's (a restore's), behind a savepoint of its
-  own, so a hook that fails takes back its own work and nothing else. The hook
-  works on the `$pdo` it is given and begins, commits or rolls back no
-  transaction of its own (a savepoint is fine): one that begins one is told so,
-  and one that ends the transaction it was given - a commit and a new BEGIN
-  would pass for it still open - is found by the savepoint being gone.
+  token's sub - or `context:`'s `actorId()`. The delete's entry is written
+  inside the delete's own transaction (`AuditLog::recordInside()`): a restore
+  does the delete again by it, so no delete is made without it - one that
+  cannot be written undoes the delete, and while the audit log's table waits
+  for its update the route answers `503 feature_unavailable` (and
+  `Retry-After: 60`) and deletes nothing; another `AuditRecorder` records
+  after the delete, as before. A delete asks for no proof of a recent sign-in,
+  unlike a backup's restore: the page's question is all it asks (the owner's
+  decision of 2026-10-11).
+- `People::delete($pdo, $sub, $hook, $request, $entry)` (0.5.0) - the page's
+  delete: the site's hook and, where the site has the admin tools' feedback,
+  that person's messages without the address and browser they were sent with
+  (`Feedback::forgetPeopleOn()`; the words stay), and the route's `$entry`
+  (its audit entry; a replay writes none), in one transaction of the library's
+  - or, inside a caller's (a restore's), behind a savepoint of its own, so a
+  hook that fails takes back its own work and nothing else. The hook does ALL
+  its work on the `$pdo` it is given - never the site's own connection, which
+  in a restore waits on the restore's locks while the restore waits on the
+  hook - and begins, commits or rolls back no transaction of its own (a
+  savepoint is fine): one that begins one is told so, and one that ends the
+  transaction it was given - a commit and a new BEGIN would pass for it still
+  open - is found by the savepoint being gone.
 - `People::restoreHooks(delete:, defer:, then:)` (0.5.0) - both of a restore's
   hooks for the site's Backups, spread among its options: `replay()` as
   `beforeCommit`, `afterRestore()` as `afterRestore`.
@@ -1599,22 +1622,31 @@ $backups = new Backups($connect, $directory, [
   `person.data_deleted` is done again (`People::delete()` with the site's hook,
   its request null) and every `feedback.deleted` where it is the same message:
   its id and the time it was sent (an entry of before 0.5.0 names no time and is
-  passed over). No check of the IAM's deleted accounts may run across a
+  passed over). A `person.data_deleted` written inside its delete's transaction
+  names that transaction (`_txid`), and its time is when the transaction began
+  - before the backup's snapshot, it may have committed after it: such an entry
+  is done again when its transaction is not in the backup's snapshot
+  (`txid_visible_in_snapshot()`, the manifest's `txid_snapshot`), and, whatever
+  its id says, from the snapshot's time on (an id is one PostgreSQL cluster's: a
+  database moved by `pg_dump` counts anew); entries and backups of before go by
+  the time alone. No check of the IAM's deleted accounts may run across a
   restore - one begun before it would keep its own place in the IAM's list over
   the restored one: the restore takes the check's lock until it commits, and is
   refused while a check holds it ("restore again in a minute"). Whatever fails
   rolls the restore back whole, as does - with something to do again - a backup
-  that says no time or a database without the audit log.
+  that says no time, one whose snapshot cannot be read, or a database without
+  the audit log.
 - `People::afterRestore(defer:, then:)` - for Backups' `afterRestore`, once the
   restore committed: the scrub of the IAM's deleted accounts at once (the
   restore brought back the scrub's place of that day). One that does not go
   through - the IAM out of reach, a failure of any kind - is thrown, with the
-  site's own failure, in one sentence: the restore's `after_restore_error`; the
-  upkeep's hourly stamp then goes after the answer (`defer`, the site's
-  runner), so the next request scrubs again. `then:` is the site's own work
-  after a restore (Piano Academy's new generations), run whatever the scrub
-  did. The survey's, Piano Academy's and genshin's hand-written versions of
-  all this go.
+  site's own failure, in one sentence: the restore's `after_restore_error`
+  (the first failure that threw chained, its class, file, line and trace kept
+  for the site's `onError`); the upkeep's hourly stamp then goes after the
+  answer (`defer`, the site's runner), so the next request scrubs again.
+  `then:` is the site's own work after a restore (Piano Academy's new
+  generations), run whatever the scrub did. The survey's, Piano Academy's and
+  genshin's hand-written versions of all this go.
 
 ### The People page: `@anotoki/lib/people` and `@anotoki/lib/people/page`
 
@@ -1845,10 +1877,12 @@ ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the 
   echoed values, e-mail and IP addresses, JWTs, Bearer credentials,
   `password=`-like secrets (their names quoted or not: `{"password":"…"}`,
   `'pass' => '…'`), query strings and token-like runs become marks; at most
-  4,096 characters are read, and a rule that cannot run gives nothing of the
-  message. A site's own names of a secret go the same way once it names them
-  (`Redactor::addSecretNames()`, while it starts) - never a message edited by
-  reflection.
+  4,096 characters are read - the run of characters the cut went through goes
+  with the rest (half a JWT, an address or a token is one no rule knows), and a
+  quoted secret the text ends inside goes to its end - and a rule that cannot
+  run gives nothing of the message. A site's own names of a secret go the same
+  way once it names them (`Redactor::addSecretNames()`, while it starts) -
+  never a message edited by reflection.
 - A day's file goes into parts past 4 MB, days past 30 are deleted, and past
   64 MB in all the oldest days go first - today is never kept out by the days
   before it; only what today alone does not fit is counted instead of written
@@ -1905,6 +1939,14 @@ AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): 
   flush reads and empties the file under the lock its writers take too (an
   entry written meanwhile waits, and lands in it after), and never inserts an
   entry that is in already: one killed after its commit puts nothing in twice.
+- `recordInside($pdo, $request, $actorId, $action, ...)` (0.5.0) is the other
+  way round, for a change that must not be made without its entry (the People
+  page's delete, which a restore does again by it): written on `$pdo` inside
+  the change's own transaction, thrown when it cannot be written - never left
+  in the pending file, while the table waits it throws - and naming that
+  transaction in its details (`_txid`, whatever their cut): its `created_at`
+  is when the transaction began, and a backup holds the change exactly when its
+  snapshot sees that transaction.
 - `AuditContextMiddleware::fromRequest($audit, fn ($request) => ['actor' => ..., 'session' => ...])`
   (inside the site's sign-in check) or `begin()`/`end()` hold who acts, so deep
   code records with `recordHere()`; `withScope('characters', 42, fn () => ...)`
@@ -2034,17 +2076,28 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   once) and refuses any other, whatever else the sidecar says. A file dropped
   into the folder, or changed since, is refused (`422 archive_invalid`) and
   restored offline (`--extract`); one without a seal lists `sealed: false`. A
-  plain backup made before 0.5.0 has none: offline too. The seal stops somebody
-  who can write the storage folder but not read it - whoever reads
-  `anotoki-lib.key` can seal anything. Without that key (it can be neither read
-  nor made) a plain backup is still made, unsealed, and the site's `onError` is
-  told. Every file of the backups is written `0600` before a byte is in
-  it, every folder `0700`, as every folder the tools guard and the
-  installation's key. Where PHP runs as the web server's own user (not the FTP
-  account's, as under PHP-FPM or suEXEC), those modes keep the FTP account out
-  of `storage/backups` too: to take a backup off the server for a restore
-  offline, download it from the Backups page, or have the host's panel (or
-  `chmod` from PHP's own user) open the folder first.
+  plain backup made before 0.5.0 has none: offline too. What the seal stops is
+  a file put into `storage/backups` by somebody who cannot replace the
+  installation's key: a copy from another installation, a file changed or
+  damaged since, whatever writes into the backups folder but never reaches the
+  key (the file explorer reaches neither: it refuses a root that holds
+  `anotoki-lib.key`, or is, holds or is inside the storage folder). Not
+  somebody who can write the whole storage folder: deleting
+  `storage/anotoki-lib.key` and making it again are a folder's operations - no
+  read of the old key needed - and with a key of their own they seal what they
+  like (as they can put a key set of their own in place of the IAM's, kept in
+  the same folder, which tokens are checked with). The key stays there on
+  purpose: one kept in the database would be lost with it - every restore
+  refused in the very disaster a backup is for - and the survey, Piano Academy
+  and Japanese Academy keep no secret outside `storage/`. Without that key (it
+  can be neither read nor made) a plain backup is still made, unsealed, and the
+  site's `onError` is told. Every file of the backups is the site's own user's
+  alone (`0600`) from the moment it is made, every folder `0700`, as every
+  folder the tools guard and the installation's key. Where PHP runs as the web
+  server's own user (not the FTP account's, as under PHP-FPM or suEXEC), those
+  modes keep the FTP account out of `storage/backups` too: to take a backup off
+  the server for a restore offline, download it from the Backups page, or have
+  the host's panel (or `chmod` from PHP's own user) open the folder first.
 - Kinds and keeping: `daily` (14), `before-migration` (5, once per list of
   pending files; a backup that fails stops the Apply), `before-restore` (5),
   `manual` (until deleted; `stale` after 90 days). Only files of these names
@@ -2060,11 +2113,21 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   restore's transaction itself is said apart ("may have stayed"), the
   before-restore backup named. Nobody reads the restored rows, nor backs them
   up, before the hook ran: the tables stay locked, and the folder's lock holds
-  every other backup off. The site's `afterRestore` runs once it committed -
-  what cannot be inside it, the scrub that asks the IAM - and what it throws is
-  the answer's `after_restore_error`. A backup's manifest says when its snapshot
-  was taken by the database's own clock (`snapshot_at`, 0.5.0) - the one the
-  audit log is written by - beside PHP's `created_at`. A sequence never goes
+  every other backup off. A restore that waits more than a minute between two
+  of its statements is ended by PostgreSQL
+  (`idle_in_transaction_session_timeout`, set for its transaction alone) and
+  rolled back with its connection - "the database ended its connection",
+  nothing of it stayed: the restore itself never waits so long (COPY reads its
+  spools inside its own statement), only a hook that waits on something else
+  does - on another connection, which waits on the restore's own locks while
+  every request to those tables waits behind both (no deadlock is seen: the
+  restore's connection is idle). A hook does all its work on the PDO it is
+  given. The site's `afterRestore` runs once it committed - what cannot be
+  inside it, the scrub that asks the IAM - and what it throws is the answer's
+  `after_restore_error`. A backup's manifest says when its snapshot was taken
+  by the database's own clock (`snapshot_at`, 0.5.0) - the one the audit log is
+  written by - beside PHP's `created_at`, and the transactions it sees
+  (`txid_snapshot`, for `People::replay()`). A sequence never goes
   back: it goes on from the later of the backup's value and today's, so an id
   handed out since - one the kept audit log names - is never handed out again.
   Never restored: the bookkeeping table, the audit log and `keep`. `restore:
@@ -2138,7 +2201,12 @@ FilesRoutes::raw($app, '/api/admin/files/raw', $explorer, $context);          //
   `POST $base/{root}/trash/restore`. Previews: links signed for five minutes;
   inline only raster pictures, sound, video and text up to 64 KB, everything
   else (SVG among it) a download; CSP `sandbox`, `nosniff`, same-origin,
-  `no-store`, byte ranges.
+  `no-store`, byte ranges. A link alone reads one file of a root - no session
+  asked, nothing written - and is signed under the installation's key unless
+  the explorer is given `key:`: whoever can write the storage folder can make
+  that key their own and sign links (as they can sign in as anybody through the
+  IAM's key set kept there). A site with a secret outside `storage/` passes
+  `'key' => Keys::derive($itsSecret, 'file-preview')`.
 
 ### The pages (Angular)
 
@@ -2279,7 +2347,10 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   token, `password=`-like secret or address. A value thrown that is no Error is
   named by its kind, never written out. A message, a frame and the path are cut
   to what a report keeps before they are scrubbed, so a megabyte of them costs
-  no more than a line. The server redacts it all again.
+  no more than a line - and lose the run the cut went through (the path, its
+  segment): half a token, an address or a stored value is one no rule knows,
+  and a quoted secret the text ends inside goes to its end. The server redacts
+  it all again, by the same rules.
 - At most `perPage` reports a page load, each error once; never an HTTP failure
   (the server writes its own, and a visitor's network is not the site's), never
   an error raised while a report is made, never the report's own failure; a
@@ -2304,7 +2375,14 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   request all the same.
 - `Support\Keys`: `derive($secret, $purpose)` (HKDF-SHA256, `anotoki-lib/<purpose>/v1`);
   `installation($storage)` - 32 random bytes in `storage/anotoki-lib.key` for a
-  site without a secret, its folder guarded.
+  site without a secret, its folder guarded; made once, written whole and the
+  site's own user's alone from its creation (`tempnam()`), then linked into
+  place (`link()`: of two processes making it at one moment, one key stays and
+  both read it). It keys the error log's client hashes, the feedback limits'
+  buckets, the file explorer's preview links and the backups' seal, and is as
+  safe as the storage folder, no safer: whoever can write that folder can
+  delete the key and make one of their own - as they can the IAM's key set
+  kept there, which tokens are checked with. It keeps out whoever cannot.
 - **genshin** moves its `audit_logs` and `feedback` rows into the library's
   tables in its own migrations (gated, the old tables dropped by a later one) and
   drops `ip` and `submitter_hash` in the move; **the IAM** moves `audit_log`

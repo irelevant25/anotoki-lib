@@ -1,0 +1,13 @@
+<anotoki-card class="show-feedback-demo__card">
+    <anotoki-feedback-form (sent)="thanked()" />
+</anotoki-card>
+
+<p class="show-feedback-demo__footer">
+    <button anotokiButton variant="link" data-open-feedback (click)="open.set(true)">{{ title() }}</button>
+</p>
+
+@if (open()) {
+    <anotoki-dialog [heading]="title()" size="md" (dismiss)="open.set(false)">
+        <anotoki-feedback-form [heading]="null" [closable]="true" (closed)="open.set(false)" />
+    </anotoki-dialog>
+}

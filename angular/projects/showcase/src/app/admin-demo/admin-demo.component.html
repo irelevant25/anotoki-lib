@@ -1,0 +1,11 @@
+<nav class="show-admin-demo__nav" aria-label="The admin tools">
+    @for (tool of tools; track tool.path) {
+        <a class="show-admin-demo__link" [routerLink]="tool.path" routerLinkActive="show-admin-demo__link--active" ariaCurrentWhenActive="page">
+            {{ tool.label }}
+            @if (tool.path === "feedback" && unread.count()) {
+                <span class="show-admin-demo__badge" [attr.aria-label]="unread.count() + ' new'">{{ unread.count() }}</span>
+            }
+        </a>
+    }
+</nav>
+<router-outlet />

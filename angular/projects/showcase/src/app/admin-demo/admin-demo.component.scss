@@ -1,0 +1,48 @@
+// The showcase's own: a site's admin panel draws its navigation its own way (the IAM: the side navigation of its frame).
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.show-admin-demo__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--anotoki-border);
+}
+
+.show-admin-demo__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  color: var(--anotoki-muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--anotoki-surface-2);
+    color: var(--anotoki-text);
+  }
+}
+
+.show-admin-demo__link--active {
+  background: var(--anotoki-primary-soft);
+  color: var(--anotoki-primary-soft-text);
+}
+
+.show-admin-demo__badge {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--anotoki-primary);
+  color: var(--anotoki-primary-contrast);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  text-align: center;
+}

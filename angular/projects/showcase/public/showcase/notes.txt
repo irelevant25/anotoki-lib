@@ -1,0 +1,5 @@
+Notes for the next update
+
+- Amber: her talents read again from the game data.
+- The map: a dark version for the night.
+<b>Markup in a text file stays text: the preview never reads it as a page.</b>

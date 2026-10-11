@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { FeedbackUnread } from '@anotoki/lib/admin';
 import { ShellComponent, TopBarComponent, TopBarLink, TopBarMenuItem } from '@anotoki/lib/shell';
 import { TranslationService } from '@anotoki/lib/translations';
 import { AnotokiWords } from '@anotoki/lib/ui';
@@ -24,6 +25,7 @@ import { filter } from 'rxjs';
 export class AppComponent {
   private readonly words = inject(AnotokiWords);
   private readonly i18n = inject(TranslationService);
+  private readonly unread = inject(FeedbackUnread);
 
   protected readonly brand = computed(() => ({ area: 'kit', link: '/', label: 'anotoki kit: the showcase' }));
   protected readonly links = computed<TopBarLink[]>(() => [
@@ -31,6 +33,9 @@ export class AppComponent {
     { id: 'translations', label: 'Translations', path: '/translations', lang: 'en' },
     { id: 'languages', label: 'Languages', path: '/languages', lang: 'en' },
     { id: 'migrations', label: 'Migrations', path: '/migrations', lang: 'en' },
+    // The admin tools, the new feedback beside them (FeedbackUnread) - as a site's admin navigation shows it.
+    { id: 'admin', label: 'Admin tools', path: '/admin/errors', under: ['/admin'], lang: 'en', badge: this.unread.count() || null },
+    { id: 'feedback', label: 'Feedback form', path: '/feedback', lang: 'en' },
     { id: 'reviews', label: this.i18n.t('nav.reviews'), path: '/reviews', badge: 12 },
   ]);
   protected readonly person = computed(() => ({ name: 'Mira Nováková', email: 'mira@example.test', role: this.words.t('topbar.roleAdmin') }));
@@ -45,6 +50,8 @@ export class AppComponent {
   protected readonly signOut = () => new Promise<void>((done) => setTimeout(done, 2500));
 
   constructor() {
+    // The new feedback beside the admin tools' link, as a site's admin navigation reads it once.
+    void this.unread.refresh();
     inject(Router)
       .events.pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),

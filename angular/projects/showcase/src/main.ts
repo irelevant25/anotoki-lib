@@ -2,12 +2,16 @@ import { HttpInterceptorFn, HttpResponse, provideHttpClient, withInterceptors } 
 import { inject, provideAppInitializer, provideZonelessChangeDetection, signal } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { provideAnotokiAdmin } from '@anotoki/lib/admin';
+import { provideAnotokiFeedback } from '@anotoki/lib/feedback';
 import { provideAnotokiMigrations, siteStatusInterceptor } from '@anotoki/lib/migrations';
 import { AnotokiThemeMode, ThemeService, provideAnotokiShell } from '@anotoki/lib/shell';
 import { TranslationService, anotokiUnsavedChangesGuard, provideAnotokiTranslations, siteStatusWords } from '@anotoki/lib/translations';
 import { provideAnotokiUi } from '@anotoki/lib/ui';
 import { iconLanguages, iconTrash, iconUsers } from '@anotoki/lib/ui/icons';
+import { ToastService } from '@anotoki/lib/ui/toast';
 import { delay, of } from 'rxjs';
+import { IAM_CASE, adminServer } from './app/admin-server';
 import { AppComponent } from './app/app.component';
 import { SHOWCASE_GROUPS, wordsServer } from './app/words-server';
 
@@ -53,20 +57,68 @@ const fixtures: HttpInterceptorFn = (request, next) => {
 };
 
 /** The showcase's admin pages: English, whatever the page is read in. */
-const ENGLISH_AREAS = /^\/(migrations|translations|languages)(\/|\?|#|$)/;
+const ENGLISH_AREAS = /^\/(migrations|translations|languages|admin)(\/|\?|#|$)/;
+
+/** ?signedin=1: somebody signed in, for the feedback form (their address written in, "send it without my name"). */
+const signedIn = signal(!!params.get('signedin'));
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
-    // The translations' routes (words-server.ts) answer from memory, before the rest of the imagined server.
-    provideHttpClient(withInterceptors([wordsServer, fixtures, siteStatusInterceptor])),
+    // The translations' routes (words-server.ts) answer from memory, before the rest of the imagined server; the admin
+    // tools' and the feedback form's (admin-server.ts) beside them.
+    provideHttpClient(withInterceptors([wordsServer, adminServer, fixtures, siteStatusInterceptor])),
     provideRouter([
       { path: '', loadComponent: () => import('./app/gallery/gallery.component').then((m) => m.GalleryComponent) },
       { path: 'migrations', loadComponent: () => import('./app/migrations-demo/migrations-demo.component').then((m) => m.MigrationsDemoComponent) },
       { path: 'translations', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.TranslationsPageComponent) },
       { path: 'languages', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.LanguagesPageComponent) },
+      {
+        path: 'admin',
+        loadComponent: () => import('./app/admin-demo/admin-demo.component').then((m) => m.AdminDemoComponent),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'errors' },
+          { path: 'errors', loadComponent: () => import('@anotoki/lib/admin/errors').then((m) => m.ErrorLogPageComponent) },
+          { path: 'audit', loadComponent: () => import('@anotoki/lib/admin/audit').then((m) => m.AuditLogPageComponent) },
+          { path: 'feedback', loadComponent: () => import('@anotoki/lib/admin/feedback').then((m) => m.FeedbackPageComponent) },
+          { path: 'backups', loadComponent: () => import('@anotoki/lib/admin/backups').then((m) => m.BackupsPageComponent) },
+          { path: 'files', loadComponent: () => import('@anotoki/lib/admin/files').then((m) => m.FilesPageComponent) },
+        ],
+      },
+      { path: 'feedback', loadComponent: () => import('./app/feedback-demo/feedback-demo.component').then((m) => m.FeedbackDemoComponent) },
       { path: '**', redirectTo: '' },
     ]),
+    // The admin tools: for the site's ADMIN (?visitor=1: nobody); "Sign in again" says what a site would do.
+    provideAnotokiAdmin(() => {
+      const toasts = inject(ToastService);
+      return {
+        isAdmin: admin,
+        signInAgain: () => toasts.info("A site sends you through the IAM's sign-in here, and back to this page."),
+        migrationsRoute: '/migrations',
+        siteName: IAM_CASE ? 'the IAM' : 'the showcase',
+        feedbackFields: { steps: 'Steps to reproduce', expected: 'What should have happened' },
+        restoreOffText: IAM_CASE
+          ? 'A restore of the IAM would bring back the sign-ins ended since and the accounts deleted since: it waits for the work that ends every session and deletes those accounts again.'
+          : null,
+      };
+    }),
+    // The visitors' feedback form: in the page's language, the database's words over the library's.
+    provideAnotokiFeedback(() => {
+      const i18n = inject(TranslationService);
+      const slovak = () => i18n.language() === 'sk';
+      return {
+        language: () => i18n.language(),
+        translate: (key) => i18n.libraryWord(key),
+        sections: () => [
+          { value: 'Characters', label: slovak() ? 'Postavy' : 'Characters' },
+          { value: 'Weapons', label: slovak() ? 'Zbrane' : 'Weapons' },
+          { value: 'The map', label: slovak() ? 'Mapa' : 'The map' },
+        ],
+        fields: () => [{ name: 'steps', label: slovak() ? 'Ako sa k tomu dostať' : 'Steps to reproduce', kinds: ['bug'], max: 5000 }],
+        signedIn: () => signedIn(),
+        email: () => (signedIn() ? 'mira@example.test' : null),
+      };
+    }),
     // The words: the bundle's language (?lang=sk, a choice in the bar), the database's strings over the library's.
     provideAnotokiTranslations(() => ({
       storagePrefix: 'anotoki-showcase',

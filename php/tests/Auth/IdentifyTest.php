@@ -109,6 +109,50 @@ final class IdentifyTest extends TestCase
         self::assertNotContains('[anotoki auth] token refused: expired', $lines, 'an everyday thing is not said');
     }
 
+    public function testARefusedTokenIsOneLineAMinuteForEachKindAndNeverTheTokensOwn(): void
+    {
+        $app = $this->app();
+        $good = $this->iam->claims(7, ['ADMIN']);
+        $forged = "x\n[11-Oct-2026 10:00:00 UTC] PHP Fatal error: forged\r\n" . str_repeat('A', 9000);
+
+        foreach (range(1, 20) as $n) {
+            $token = $this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => $forged . $n]);
+            self::assertSame(401, $this->send($app, 'GET', '/api/progress', $token)->getStatusCode());
+        }
+        $lines = LogLines::take();
+        self::assertCount(1, $lines, 'made-up kids by the score: one line a minute');
+        self::assertStringStartsWith('[anotoki auth] token refused: no published key with kid x??11-Oct-2026?10?00?00?UTC??PHP?Fatal?error??forged??AAA', $lines[0]);
+        self::assertDoesNotMatchRegularExpression('/[^\x20-\x7E]/', $lines[0], 'one printable line, whatever the token held');
+        self::assertLessThan(140, strlen($lines[0]));
+
+        // Another kind is said at once - and once.
+        $forger = TestIam::create($this->folder('forger'), 'https://iam.test', 'test-site', $this->iam->kid);
+        $this->send($app, 'GET', '/api/progress', $forger->token(7));
+        $this->send($app, 'GET', '/api/progress', $forger->token(8));
+        self::assertSame(['[anotoki auth] token refused: bad signature'], LogLines::take());
+
+        // A minute on, the kind is said again (a stamp later than now is none, too).
+        $stamp = $this->iam->dir . '/cache/anotoki-auth-refused-no-published-key-with-kid.stamp';
+        self::assertFileExists($stamp);
+        foreach (['a minute on' => time() - 61, 'a stamp from the future' => time() + 3600] as $case => $at) {
+            file_put_contents($stamp, (string) $at);
+            $this->send($app, 'GET', '/api/progress', $this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => 'another']));
+            self::assertSame(['[anotoki auth] token refused: no published key with kid another'], LogLines::take(), $case);
+        }
+
+        // A site's own log hears every reason - in the library's words alone.
+        $heard = [];
+        $own = $this->app(log: function (string $reason) use (&$heard): void {
+            $heard[] = $reason;
+        });
+        foreach (range(1, 3) as $n) {
+            $this->send($own, 'GET', '/api/progress', $this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => $forged . $n]));
+        }
+        self::assertCount(3, $heard);
+        self::assertSame([], array_filter($heard, static fn (string $reason): bool => preg_match('/[^\x20-\x7E]/', $reason) === 1 || strlen($reason) > 100));
+        self::assertSame([], LogLines::take());
+    }
+
     public function testOnlyTheBearerSchemeClaimsSomebody(): void
     {
         $app = $this->app();
@@ -309,7 +353,7 @@ final class IdentifyTest extends TestCase
      *
      * @param ?list<string> $gate
      */
-    private function app(bool $visitors = true, ?Closure $responder = null, ?string $realm = null, ?Closure $routes = null, ?array $gate = null): App
+    private function app(bool $visitors = true, ?Closure $responder = null, ?string $realm = null, ?Closure $routes = null, ?array $gate = null, ?Closure $log = null): App
     {
         $app = AppFactory::create();
         $client = $this->iam->client();
@@ -343,6 +387,7 @@ final class IdentifyTest extends TestCase
             } : null,
             responder: $responder,
             realm: $realm,
+            log: $log,
         ));
 
         return $app;

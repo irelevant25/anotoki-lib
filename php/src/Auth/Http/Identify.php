@@ -11,6 +11,7 @@ use Anotoki\Lib\Auth\SignInRule;
 use Anotoki\Lib\Support\JsonResponse;
 use Anotoki\Lib\Support\Log;
 use Anotoki\Lib\Support\Refusal;
+use Anotoki\Lib\Support\Throttle;
 use Closure;
 use LogicException;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -67,6 +68,12 @@ final class Identify implements MiddlewareInterface
     /** The longest visitor key looked up at all: the sites' keys are 43 to 64 characters. */
     private const VISITOR_KEY_MAX = 256;
 
+    /** A kind of refused token is said to the library's Log at most once in this many seconds. */
+    private const LOG_EVERY = 60;
+
+    /** @var array<string, int> when each kind of refusal was last said, for a site with no cache folder */
+    private static array $said = [];
+
     private readonly string $realm;
 
     /**
@@ -104,7 +111,11 @@ final class Identify implements MiddlewareInterface
             $token = Bearer::token($header);
             $person = $token === null ? null : $this->tokens->verify($token);
             if ($person === null) {
-                $this->note($token === null ? 'a Bearer header with no token' : (string) $this->tokens->lastReason());
+                if ($token === null) {
+                    $this->note('a Bearer header with no token', 'a Bearer header with no token');
+                } else {
+                    $this->note((string) $this->tokens->lastReason(), (string) $this->tokens->lastReasonKind());
+                }
 
                 return $this->refuse(new Refusal(401, 'invalid_token', 'Your sign-in has run out. Please sign in again.'));
             }
@@ -198,15 +209,40 @@ final class Identify implements MiddlewareInterface
         return in_array($caller, ['person', 'visitor', 'nobody'], true) ? $caller : 'nobody';
     }
 
-    private function note(string $reason): void
+    /**
+     * Why a token was refused, for whoever keeps the site: to the site's own `log`, every time; to the library's
+     * Log, never for an expired token (an everyday thing) and at most once a minute for each kind of refusal -
+     * a stamp per kind in the IAM client's cache folder (per process without one) - so tokens made up by the
+     * thousand are one line a minute, not a line each. The reason is the library's words (AccessTokens).
+     */
+    private function note(string $reason, string $kind): void
     {
         if ($this->log !== null) {
             ($this->log)($reason);
 
             return;
         }
-        if ($reason !== 'expired') {
+        if ($kind !== 'expired' && self::firstThisMinute($this->tokens->iam()->cacheDirectory(), $kind)) {
             Log::say('[anotoki auth] token refused: ' . $reason);
         }
+    }
+
+    private static function firstThisMinute(?string $directory, string $kind): bool
+    {
+        // A folder the stamp cannot be written to would silence every line: then counted per process instead.
+        if ($directory !== null && is_writable($directory)) {
+            $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($kind)), '-');
+
+            return Throttle::due($directory . '/anotoki-auth-refused-' . ($slug === '' ? 'other' : $slug) . '.stamp', self::LOG_EVERY);
+        }
+
+        $now = time();
+        $last = self::$said[$kind] ?? null;
+        if ($last !== null && $last <= $now && $now - $last < self::LOG_EVERY) {
+            return false;
+        }
+        self::$said[$kind] = $now;
+
+        return true;
     }
 }

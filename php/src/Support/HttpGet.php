@@ -15,6 +15,11 @@ namespace Anotoki\Lib\Support;
  * no answer at all (unreachable, timed out, refused, larger than MAX_BYTES) -
  * which is how a caller tells "the IAM said no" (a 404) from "the IAM is not
  * there".
+ *
+ * Only http and https: an address of any other scheme is no answer (0) without
+ * a byte read - never a file, a PHP stream (php://, phar://, data:) or another
+ * protocol curl knows (ftp, gopher, dict, file). Curl is told so as well
+ * (CURLOPT_PROTOCOLS_STR, or the bit flags of an older PHP).
  */
 final class HttpGet
 {
@@ -28,12 +33,24 @@ final class HttpGet
     public static function fetch(string $url, float $timeout, array $headers = ['Accept: application/json']): array
     {
         $timeout = max(0.1, $timeout);
+        if (!self::allowed($url)) {
+            return ['status' => 0, 'body' => null];
+        }
 
         if (function_exists('curl_init')) {
             return self::byCurl($url, $timeout, $headers);
         }
 
         return self::byStream($url, $timeout, $headers);
+    }
+
+    /** Whether an address is one this asks at all: http or https, with a host. */
+    public static function allowed(string $url): bool
+    {
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return is_string($scheme) && in_array(strtolower($scheme), ['http', 'https'], true) && is_string($host) && $host !== '';
     }
 
     /**
@@ -49,7 +66,7 @@ final class HttpGet
 
         $body = '';
         $tooLarge = false;
-        curl_setopt_array($handle, [
+        $options = [
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_CONNECTTIMEOUT_MS => (int) ceil($timeout * 1000),
             CURLOPT_TIMEOUT_MS => (int) ceil($timeout * 1000),
@@ -65,7 +82,18 @@ final class HttpGet
 
                 return strlen($chunk);
             },
-        ]);
+        ];
+        // http and https alone, by curl's own rule too (the string form since PHP 8.3 and libcurl 7.85).
+        if (defined('CURLOPT_PROTOCOLS_STR') && defined('CURLOPT_REDIR_PROTOCOLS_STR')) {
+            $options[constant('CURLOPT_PROTOCOLS_STR')] = 'http,https';
+            $options[constant('CURLOPT_REDIR_PROTOCOLS_STR')] = 'http,https';
+        } else {
+            $options[CURLOPT_PROTOCOLS] = CURLPROTO_HTTP | CURLPROTO_HTTPS;
+            $options[CURLOPT_REDIR_PROTOCOLS] = CURLPROTO_HTTP | CURLPROTO_HTTPS;
+        }
+        if (!curl_setopt_array($handle, $options)) {
+            return ['status' => 0, 'body' => null];
+        }
         $done = curl_exec($handle);
         $status = $done === false || $tooLarge ? 0 : (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         // No curl_close(): the handle goes with the variable, the call has done nothing since PHP 8.0,
@@ -83,6 +111,10 @@ final class HttpGet
      */
     private static function byStream(string $url, float $timeout, array $headers): array
     {
+        // fopen() opens whatever a wrapper is registered for: http and https alone here, whoever calls.
+        if (!self::allowed($url)) {
+            return ['status' => 0, 'body' => null];
+        }
         $context = stream_context_create(['http' => [
             'timeout' => $timeout,
             'ignore_errors' => true,

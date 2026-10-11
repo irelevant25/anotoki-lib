@@ -73,8 +73,8 @@ final class Jwks
         $url = $this->iam->keySetUrl();
         $directory = $this->iam->cacheDirectory();
         $file = $directory === null ? null : $directory . '/anotoki-iam-jwks-' . sha1($url) . '.json';
-        $kept = $this->read($file, $url);
         $now = time();
+        $kept = $this->read($file, $url, $now);
 
         $fresh = $kept !== null && $kept['fetched_at'] + $this->iam->cacheTtl > $now;
         $lastTry = max($kept['fetched_at'] ?? 0, $kept['failed_at'] ?? 0);
@@ -155,23 +155,28 @@ final class Jwks
         return "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode(self::sequence($algorithm . $bitString)), 64, "\n") . "-----END PUBLIC KEY-----\n";
     }
 
-    /** @return ?array{fetched_at: int, failed_at: int, keys: array<string, array{kty: string, kid: string, n: string, e: string}>} */
-    private function read(?string $file, string $url): ?array
+    /**
+     * The copy kept, its stamps read as times that have been: one later than now is none (0), as the answer
+     * about signing in reads its own (SignInRule::fromCache()) - a clock set back, or a copy from another
+     * machine, would otherwise keep the set "fresh", and an unknown kid unfetched, until the clock caught up.
+     *
+     * @return ?array{fetched_at: int, failed_at: int, keys: array<string, array{kty: string, kid: string, n: string, e: string}>}
+     */
+    private function read(?string $file, string $url, int $now): ?array
     {
         if ($file === null) {
-            return self::$memory[$url] ?? null;
+            $record = self::$memory[$url] ?? null;
+        } else {
+            $record = is_file($file) ? json_decode((string) @file_get_contents($file), true) : null;
         }
-        if (!is_file($file)) {
-            return null;
-        }
-        $record = json_decode((string) @file_get_contents($file), true);
         if (!is_array($record)) {
             return null;
         }
+        $stamp = static fn (mixed $at): int => is_int($at) && $at <= $now ? $at : 0;
 
         return [
-            'fetched_at' => is_int($record['fetched_at'] ?? null) ? $record['fetched_at'] : 0,
-            'failed_at' => is_int($record['failed_at'] ?? null) ? $record['failed_at'] : 0,
+            'fetched_at' => $stamp($record['fetched_at'] ?? null),
+            'failed_at' => $stamp($record['failed_at'] ?? null),
             // What was kept is checked again on the way out: a copy is only as good as what it holds.
             'keys' => self::usable(['keys' => is_array($record['keys'] ?? null) ? array_values($record['keys']) : []]),
         ];

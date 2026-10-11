@@ -17,10 +17,13 @@ namespace Anotoki\Lib\Support;
  */
 final class Throttle
 {
-    /** True for the one caller that may run the work now (the stamp is written then); false for every other. */
+    /**
+     * True for the one caller that may run the work now (the stamp is written then); false for every other. A
+     * stamp later than now is none: a clock set back would otherwise hold the work off until it caught up.
+     */
     public static function due(string $stampFile, int $seconds): bool
     {
-        return self::claim($stampFile, static fn (string $stamp): bool => !ctype_digit($stamp) || (int) $stamp <= time() - $seconds, (string) time());
+        return self::claim($stampFile, static fn (string $stamp): bool => !ctype_digit($stamp) || (int) $stamp <= time() - $seconds || (int) $stamp > time(), (string) time());
     }
 
     /**

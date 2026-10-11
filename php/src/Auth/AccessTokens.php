@@ -26,14 +26,22 @@ use RuntimeException;
  *   - sub an IAM user id (Person::userId())
  *
  * Every failure is the same null: to anybody holding a token that did not
- * work the answer is the same. Why it failed is lastReason(), for a log line.
+ * work the answer is the same. Why it failed is lastReason(), for a log line:
+ * the library's words, with at most a short piece of the token's own (its
+ * typ, its kid) in the characters such a name is made of - a token never
+ * writes a line of its own into a site's log. lastReasonKind() is the same
+ * without the token's piece: what a log line is counted by.
  */
 final class AccessTokens
 {
     /** The longest token read at all: the IAM's are about a kilobyte. */
     public const MAX_LENGTH = 16384;
 
+    /** The most of a token's own words a reason shows. */
+    private const SHOWN_MAX = 64;
+
     private ?string $lastReason = null;
+    private ?string $lastKind = null;
     private readonly Jwks $jwks;
 
     public function __construct(private readonly IamClient $iam, ?Jwks $jwks = null)
@@ -50,7 +58,7 @@ final class AccessTokens
         }
         $person = Person::fromClaims($claims);
         if ($person === null) {
-            $this->lastReason = 'no usable subject';
+            $this->refuse('no usable subject');
         }
 
         return $person;
@@ -64,6 +72,7 @@ final class AccessTokens
     public function claims(string $token): ?array
     {
         $this->lastReason = null;
+        $this->lastKind = null;
 
         if (!$this->iam->configured()) {
             return $this->refuse('the IAM settings have no issuer or client_id');
@@ -95,7 +104,7 @@ final class AccessTokens
         // RFC 9068 spells it at+jwt; the media-type form is accepted too.
         $typ = is_string($header['typ'] ?? null) ? strtolower($header['typ']) : '';
         if ($typ !== 'at+jwt' && $typ !== 'application/at+jwt') {
-            return $this->refuse('not an access token (typ ' . ($typ === '' ? 'missing' : $typ) . ')');
+            return $this->refuse('not an access token', ' (typ ' . ($typ === '' ? 'missing' : self::shown($typ)) . ')');
         }
         if (array_key_exists('crit', $header)) {
             return $this->refuse('a header with critical extensions');
@@ -107,7 +116,7 @@ final class AccessTokens
 
         $key = $this->jwks->key($kid);
         if ($key === null) {
-            return $this->refuse('no published key with kid ' . $kid);
+            return $this->refuse('no published key with kid', ' ' . self::shown($kid));
         }
         $pem = Jwks::pem($key);
         if ($pem === null || openssl_verify($encodedHeader . '.' . $encodedPayload, $signature, $pem, OPENSSL_ALGO_SHA256) !== 1) {
@@ -161,10 +170,34 @@ final class AccessTokens
         return $this->lastReason;
     }
 
-    /** @return null */
-    private function refuse(string $reason): ?array
+    /**
+     * The same, in the library's words alone (no typ, no kid): one of a few, whatever the token held - what a
+     * log counts its lines by, so a stream of made-up kids is not a stream of lines. Null after a token that passed.
+     */
+    public function lastReasonKind(): ?string
     {
-        $this->lastReason = $reason;
+        return $this->lastKind;
+    }
+
+    /**
+     * A piece of the token itself in a reason - its typ, its kid: only the characters such a name is made of
+     * (anything else a ?), at most 64 of them. Never a line break, never a page of text.
+     */
+    private static function shown(string $words): string
+    {
+        $shown = (string) preg_replace('/[^A-Za-z0-9._+\-]/', '?', $words);
+
+        return strlen($shown) > self::SHOWN_MAX ? substr($shown, 0, self::SHOWN_MAX) . '...' : $shown;
+    }
+
+    /**
+     * @param string $detail  the token's own piece, shown() already
+     * @return null
+     */
+    private function refuse(string $reason, string $detail = ''): ?array
+    {
+        $this->lastKind = $reason;
+        $this->lastReason = $reason . $detail;
 
         return null;
     }

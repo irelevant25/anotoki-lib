@@ -15,7 +15,10 @@ use InvalidArgumentException;
  * fromArray() takes the keys of the IAM's PHP SDK (anotoki_iam.php), so every
  * site's config/iam.local.php or auth.local.php stays as it is:
  *
- *   issuer               required  the IAM's address, http://localhost:4300 in development
+ *   issuer               required  the IAM's address: https - http only on this computer (localhost,
+ *                                  127.0.0.1, [::1]), http://localhost:4300 in development. Anything else
+ *                                  is refused (InvalidArgumentException): the keys tokens are checked with
+ *                                  come from there, and never over plain http across a network
  *   client_id            required  this application's client id
  *   cache_dir            -         where the key set and the IAM's answers are kept - a PRIVATE folder of
  *                                  the site's own (storage/cache), outside the web root, which only the
@@ -23,7 +26,7 @@ use InvalidArgumentException;
  *                                  a site to visitors, and the kept keys are what tokens are checked with.
  *                                  Without one nothing is kept on disk, and the IAM is asked on every
  *                                  request (said once per process in the error log)
- *   jwks_url             -         default {issuer}/.well-known/jwks.json
+ *   jwks_url             -         default {issuer}/.well-known/jwks.json; https too (http on this computer)
  *   jwks_file            -         tests: a key set on disk instead of the IAM's
  *   cache_ttl            3600      seconds the key set is kept
  *   leeway               60        seconds of clock slack when a token's times are checked
@@ -59,6 +62,13 @@ final class IamClient
         // A trailing slash is how an address is often written; the tokens' iss never has one.
         $this->issuer = rtrim(trim($issuer), '/');
         $this->clientId = trim($clientId);
+
+        // No issuer is a site not set up yet (every token refused, signing in required); a wrong one is refused here.
+        foreach (['issuer' => $this->issuer === '' ? null : $this->issuer, 'jwks_url' => $jwksUrl] as $name => $address) {
+            if ($address !== null && !self::secureAddress($address)) {
+                throw new InvalidArgumentException("IamClient: the $name is an https address - http only on this computer (localhost, 127.0.0.1, [::1]) - and \"" . self::shown($address) . '" is not.');
+            }
+        }
 
         foreach (['cacheTtl' => $cacheTtl, 'httpTimeout' => $httpTimeout, 'applicationTtl' => $applicationTtl,
             'applicationTimeout' => $applicationTimeout, 'anonymizedTimeout' => $anonymizedTimeout] as $name => $value) {
@@ -98,6 +108,26 @@ final class IamClient
             anonymizedTimeout: max(1, $int('anonymized_timeout', 3)),
             anonymizedFile: $text('anonymized_file'),
         );
+    }
+
+    /**
+     * An address the library may ask the IAM at: https with a host, or http to this computer alone - localhost,
+     * 127.0.0.0/8, [::1] - as in development. Never another scheme, never plain http across a network: a key
+     * set read there could be anybody's.
+     */
+    public static function secureAddress(string $url): bool
+    {
+        $parts = parse_url($url);
+        if (!is_array($parts) || !is_string($parts['scheme'] ?? null) || !is_string($parts['host'] ?? null) || $parts['host'] === '') {
+            return false;
+        }
+        $scheme = strtolower($parts['scheme']);
+        if ($scheme === 'https') {
+            return true;
+        }
+        $host = strtolower(trim($parts['host'], '[]'));
+
+        return $scheme === 'http' && ($host === 'localhost' || $host === '::1' || preg_match('/^127(?:\.\d{1,3}){3}$/D', $host) === 1);
     }
 
     /** Whether the site names an IAM and itself: without both, nobody is let in and signing in is required. */
@@ -142,6 +172,14 @@ final class IamClient
     public function accountUrl(): string
     {
         return $this->issuer . '/account';
+    }
+
+    /** An address in a refusal: printable, and short. */
+    private static function shown(string $address): string
+    {
+        $shown = (string) preg_replace('/[^\x21-\x7E]/', '?', $address);
+
+        return strlen($shown) > 100 ? substr($shown, 0, 100) . '...' : $shown;
     }
 
     /**

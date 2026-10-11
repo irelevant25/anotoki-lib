@@ -130,6 +130,32 @@ final class AccessTokensTest extends TestCase
         self::assertNotNull($tokens->verify($this->iam->sign(['sub' => '123456789012345678'] + $good)), '18 digits');
     }
 
+    public function testAReasonIsTheLibrarysWordsNeverALineTheTokenWrote(): void
+    {
+        $tokens = new AccessTokens($this->iam->client());
+        $good = $this->iam->claims(7);
+        $forged = "x\n[11-Oct-2026 10:00:00 UTC] PHP Fatal error: Uncaught Exception in /var/www/index.php:1\r\n" . str_repeat('A', 9000);
+
+        $kid = $this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => $forged]);
+        self::assertLessThan(AccessTokens::MAX_LENGTH, strlen($kid), 'a token the site reads');
+        self::assertNull($tokens->verify($kid));
+        self::assertSame('no published key with kid x??11-Oct-2026?10?00?00?UTC??PHP?Fatal?error??Uncaught?Exception...', $tokens->lastReason());
+        self::assertSame('no published key with kid', $tokens->lastReasonKind());
+
+        self::assertNull($tokens->verify($this->iam->sign($good, "JWT\nPHP Warning: " . str_repeat('B', 9000))));
+        self::assertSame('not an access token (typ jwt?php?warning??' . str_repeat('b', 47) . '...)', $tokens->lastReason(), 'at most 64 of its characters');
+        self::assertSame('not an access token', $tokens->lastReasonKind());
+
+        foreach ([$kid, $this->iam->sign(['exp' => time() - 3600] + $good), 'garbage'] as $token) {
+            $tokens->verify($token);
+            self::assertDoesNotMatchRegularExpression('/[^\x20-\x7E]/', (string) $tokens->lastReason(), 'printable, one line');
+            self::assertLessThanOrEqual(100, strlen((string) $tokens->lastReason()));
+        }
+        self::assertNotNull($tokens->verify($this->iam->token(7)));
+        self::assertNull($tokens->lastReason());
+        self::assertNull($tokens->lastReasonKind(), 'nothing after a token that passed');
+    }
+
     public function testAPersonIsWhatTheTokenSays(): void
     {
         $tokens = new AccessTokens($this->iam->client());
@@ -262,6 +288,32 @@ final class AccessTokensTest extends TestCase
         self::assertNotNull($tokens->verify($this->iam->token(7)), 'the copy kept, past its hour, while the IAM is down');
         self::assertNotNull($tokens->verify($this->iam->token(8)));
         self::assertSame(['down'], array_slice($fetched, 2), 'asked once, then not again for five minutes');
+    }
+
+    public function testAStampLaterThanNowIsNone(): void
+    {
+        // A copy stamped in the future - a clock set back, a copy from another machine - is no fresh copy.
+        $cache = $this->folder('cache');
+        $client = IamClient::fromArray(['issuer' => 'https://iam.example.test', 'client_id' => 'app', 'cache_dir' => $cache]);
+        $file = $cache . '/anotoki-iam-jwks-' . sha1('https://iam.example.test/.well-known/jwks.json') . '.json';
+        $rotated = TestIam::create($this->folder('rotated'), 'https://iam.example.test', 'app', 'new-key');
+        $fetched = 0;
+        $tokens = new AccessTokens($client, new Jwks($client, function () use (&$fetched, $rotated): array {
+            $fetched++;
+
+            return ['status' => 200, 'body' => json_encode(['keys' => array_merge($this->iam->jwks()['keys'], $rotated->jwks()['keys'])])];
+        }));
+
+        foreach (['fetched_at' => ['fetched_at' => time() + 3600, 'failed_at' => 0], 'failed_at' => ['fetched_at' => time() - 600, 'failed_at' => time() + 3600]] as $stamp => $record) {
+            $fetched = 0;
+            file_put_contents($file, json_encode($record + ['keys' => Jwks::usable($this->iam->jwks())]));
+
+            self::assertNotNull($tokens->verify($rotated->token(7)), "$stamp in the future: the unknown kid is fetched for at once");
+            self::assertSame(1, $fetched, $stamp);
+            $kept = json_decode((string) file_get_contents($file), true);
+            self::assertLessThanOrEqual(time(), $kept['fetched_at'], "$stamp: the copy is stamped now");
+            self::assertSame(0, $kept['failed_at'], $stamp);
+        }
     }
 
     public function testOnlyRsaSignatureKeysForRs256AreKept(): void

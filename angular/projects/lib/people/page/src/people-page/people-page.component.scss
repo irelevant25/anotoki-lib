@@ -1,0 +1,354 @@
+@use "../../../../sass/kit";
+
+// The page answers to the width it is given, not the window's: a site's frame may have a side navigation.
+:host {
+  display: block;
+  container-type: inline-size;
+  color: kit.token(text);
+}
+
+.anotoki-people-page__notice {
+  margin: 0;
+  color: kit.token(muted);
+}
+
+.anotoki-people-page__page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.anotoki-people-page__counts {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+
+  strong {
+    color: kit.token(text);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.anotoki-people-page__alert-text,
+.anotoki-people-page__alert-note {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-people-page__alert-note {
+  margin-top: 0.4rem;
+  color: kit.token(muted);
+}
+
+.anotoki-people-page__problems {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+// Where the scrub of the IAM's deleted accounts stands: one line, and Check now at its end.
+.anotoki-people-page__sync {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+}
+
+.anotoki-people-page__sync-icon {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 0.1rem;
+  color: kit.token(primary);
+}
+
+.anotoki-people-page__sync--stopped {
+  border-color: kit.token(danger-border);
+
+  .anotoki-people-page__sync-icon {
+    color: kit.token(danger-text);
+  }
+}
+
+.anotoki-people-page__sync-body {
+  display: flex;
+  flex: 1 1 18rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.anotoki-people-page__sync-title {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.anotoki-people-page__sync-text {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-people-page__sync-text--error {
+  color: kit.token(danger-text);
+  font-weight: 600;
+}
+
+.anotoki-people-page__search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.anotoki-people-page__query {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+}
+
+.anotoki-people-page__search-icon {
+  flex: none;
+  margin-left: 0.75rem;
+  color: kit.token(muted);
+}
+
+.anotoki-people-page__found {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+// A wide table scrolls in its own box, never the page.
+.anotoki-people-page__table-box {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+
+  &[aria-busy="true"] {
+    opacity: 0.6;
+  }
+}
+
+.anotoki-people-page__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: kit.token(text);
+  font-size: 0.875rem;
+
+  th,
+  td {
+    padding: 0.65rem 0.8rem;
+    border-bottom: 1px solid kit.token(border);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    background: kit.token(surface-2);
+    color: kit.token(muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+}
+
+.anotoki-people-page__row {
+  transition: background-color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-2);
+  }
+}
+
+// The name and what is said of the person: the row's header.
+.anotoki-people-page__who {
+  min-width: 11rem;
+  font-weight: 400;
+}
+
+.anotoki-people-page__name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.45rem;
+}
+
+.anotoki-people-page__name {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-people-page__name--none {
+  color: kit.token(muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.anotoki-people-page__deleted {
+  display: block;
+  margin-top: 0.2rem;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+// An account the IAM deleted: there, and quieter - its data stays, nobody's now.
+.anotoki-people-page__row--anonymized {
+  .anotoki-people-page__name,
+  .anotoki-people-page__cell {
+    color: kit.token(muted);
+  }
+
+  .anotoki-people-page__name {
+    font-weight: 500;
+  }
+}
+
+.anotoki-people-page__sub {
+  padding: 0;
+  background: none;
+  font-family: kit.token(font-mono);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.anotoki-people-page__time {
+  white-space: nowrap;
+}
+
+// A count: its digits under each other, at the column's end.
+.anotoki-people-page__table .anotoki-people-page__number {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.anotoki-people-page__none {
+  color: kit.token(subtle);
+}
+
+.anotoki-people-page__actions-head {
+  width: 1%;
+}
+
+.anotoki-people-page__actions {
+  width: 1%;
+  white-space: nowrap;
+
+  // The two buttons side by side, at the row's end.
+  > * + * {
+    margin-left: 0.35rem;
+  }
+}
+
+.anotoki-people-page__iam-note,
+.anotoki-people-page__visitors {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.anotoki-people-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}
+
+// A narrow page: each person a small card - the name, then each value under its label, then the buttons.
+@container (max-width: 640px) {
+  .anotoki-people-page__table-box {
+    overflow-x: visible;
+  }
+
+  .anotoki-people-page__table {
+    thead {
+      @include kit.visually-hidden;
+    }
+
+    tbody,
+    tr,
+    th,
+    td {
+      display: block;
+    }
+
+    th,
+    td {
+      border-bottom: 0;
+    }
+
+    tbody tr {
+      padding: 0.6rem 0.2rem;
+      border-bottom: 1px solid kit.token(border);
+    }
+
+    tbody tr:last-child {
+      border-bottom: 0;
+    }
+
+    td.anotoki-people-page__cell {
+      display: grid;
+      grid-template-columns: minmax(6.5rem, 36%) minmax(0, 1fr);
+      gap: 0.75rem;
+      padding: 0.15rem 0.8rem;
+      text-align: left;
+
+      &::before {
+        content: attr(data-label);
+        color: kit.token(muted);
+        font-size: 0.8125rem;
+      }
+    }
+
+    .anotoki-people-page__time {
+      white-space: normal;
+    }
+  }
+
+  .anotoki-people-page__who {
+    min-width: 0;
+    padding-bottom: 0.35rem;
+  }
+
+  .anotoki-people-page__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    width: auto;
+    padding-top: 0.5rem;
+    white-space: normal;
+
+    > * + * {
+      margin-left: 0;
+    }
+  }
+
+  .anotoki-people-page__query {
+    max-width: none;
+  }
+}

@@ -10,7 +10,8 @@
 //   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
 //   Languages pages into the translations module's. The auth module imports the core's pieces and the migrations
-//   module (whether the site is blocked), and nothing imports it but its testing helper.
+//   module (whether the site is blocked), and nothing imports it but its testing helper. The People page imports the
+//   kit and its configuration's small entry point, which imports nothing.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -58,8 +59,11 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences, the
  * callback page and the failure's screen - 14.9 at 0.4.0 before the screen. Every site that signs in loads it on its
  * first page, as it loads the SDK and its wrappers today.
+ *
+ * people: the People page's configuration and the shape of its API, in a site's app.config - a token and a function
+ * (the page itself is people/page, on a lazy admin route).
  */
-const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16 };
+const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16, "@anotoki/lib/people": 0.5 };
 const UI_AND_SHELL = 28;
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
@@ -99,6 +103,10 @@ const MAY_IMPORT = {
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
     "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/words/sign-in"],
     "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
+    // The People page's configuration needs nothing of the package; the page takes the kit (never the auth module: who
+    // reads it is the site's to say, `me`) and is never pulled back into it.
+    "@anotoki/lib/people": [],
+    "@anotoki/lib/people/page": ["@anotoki/lib/people", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons", "@anotoki/lib/ui/pagination"],
     // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;

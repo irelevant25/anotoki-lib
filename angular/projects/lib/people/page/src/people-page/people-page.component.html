@@ -1,0 +1,241 @@
+@if (!admin()) {
+    <p class="anotoki-people-page__notice">People are for administrators.</p>
+} @else {
+    <div class="anotoki-people-page__page">
+        <anotoki-page-header heading="People" [lead]="lead" [headingId]="id + '-title'">
+            @if (list(); as current) {
+                @if (searched() === "") {
+                    <p pageMeta class="anotoki-people-page__counts" data-total>
+                        <strong>{{ count(current.total) }}</strong>
+                        {{ current.total === 1 ? "person" : "people" }}
+                    </p>
+                }
+            }
+        </anotoki-page-header>
+
+        @if (outcome(); as said) {
+            <anotoki-alert data-outcome [tone]="said.tone" [announce]="said.tone === 'danger' || said.tone === 'warning' ? true : 'polite'">
+                <p class="anotoki-people-page__alert-text">{{ said.text }}</p>
+                @if (said.note) {
+                    <p class="anotoki-people-page__alert-note">{{ said.note }}</p>
+                }
+            </anotoki-alert>
+        }
+
+        @if (list(); as current) {
+            @if (!current.ready && current.problems.length) {
+                <anotoki-alert data-problems tone="warning" heading="Not everything the page needs is in the database yet">
+                    <ul class="anotoki-people-page__problems">
+                        @for (problem of current.problems; track problem) {
+                            <li>{{ problem }}</li>
+                        }
+                    </ul>
+                    @if (migrationsRoute) {
+                        <div alertActions>
+                            <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="migrationsRoute">Open Migrations</a>
+                        </div>
+                    }
+                </anotoki-alert>
+            }
+
+            @if (current.sync; as sync) {
+                <section class="anotoki-people-page__sync" data-sync [class.anotoki-people-page__sync--stopped]="!!sync.error" [attr.aria-labelledby]="id + '-sync'">
+                    <anotoki-icon class="anotoki-people-page__sync-icon" [name]="sync.error ? 'alert' : 'shield'" [size]="18" />
+                    <div class="anotoki-people-page__sync-body">
+                        <h2 class="anotoki-people-page__sync-title" [id]="id + '-sync'">Accounts deleted at the IAM</h2>
+                        @if (sync.error) {
+                            <p class="anotoki-people-page__sync-text anotoki-people-page__sync-text--error" data-sync-error>
+                                The last check{{ sync.checked_at ? ", " + date(sync.checked_at) + "," : "" }} stopped: {{ sync.error }}
+                            </p>
+                            @if (sync.ok_at) {
+                                <p class="anotoki-people-page__sync-text">The last one that went through: {{ date(sync.ok_at) }}. {{ count(sync.scrubbed) }} scrubbed here so far.</p>
+                            }
+                        } @else if (sync.checked_at) {
+                            <p class="anotoki-people-page__sync-text">
+                                Last checked {{ date(sync.checked_at) }}; {{ sync.scrubbed === 1 ? "1 person" : count(sync.scrubbed) + " people" }} scrubbed here so far - their names the IAM's
+                                placeholders, the rest of their data kept.
+                            </p>
+                        } @else {
+                            <p class="anotoki-people-page__sync-text">Not checked yet. The site asks the IAM by itself, at most once an hour, as people use it.</p>
+                        }
+                    </div>
+                    <button anotokiButton size="sm" data-sync-now [loading]="syncing()" (click)="checkNow()">
+                        <anotoki-icon name="refresh" [size]="15" />
+                        Check now
+                    </button>
+                </section>
+            }
+        }
+
+        <form class="anotoki-people-page__search" role="search" [attr.aria-label]="'Find a person'" (submit)="search($event)">
+            <anotoki-text-field
+                class="anotoki-people-page__query"
+                label="Find a person"
+                type="search"
+                placeholder="Name or IAM id"
+                autocomplete="off"
+                [hideLabel]="true"
+                [maxlength]="200"
+                [value]="query()"
+                (valueChange)="typed($event)">
+                <anotoki-icon fieldPrefix class="anotoki-people-page__search-icon" name="search" [size]="17" />
+            </anotoki-text-field>
+            <button anotokiButton type="submit" data-search>Search</button>
+            @if (searched() !== "") {
+                <button anotokiButton variant="ghost" data-clear (click)="clearSearch()">Clear</button>
+            }
+        </form>
+
+        @if (loadProblem(); as problem) {
+            @if (problem.unavailable) {
+                <anotoki-alert data-unavailable tone="warning" heading="The people are not in the database yet" [announce]="true">
+                    <p class="anotoki-people-page__alert-text">{{ problem.message }}</p>
+                    <div alertActions>
+                        @if (migrationsRoute) {
+                            <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="migrationsRoute">Open Migrations</a>
+                        }
+                        <button anotokiButton size="sm" [loading]="loading()" (click)="load()">
+                            <anotoki-icon name="refresh" [size]="15" />
+                            Look again
+                        </button>
+                    </div>
+                </anotoki-alert>
+            } @else {
+                <anotoki-error-state data-load-error heading="The people could not be loaded" retryLabel="Try again" [message]="problem.message" (retry)="load()" />
+            }
+        } @else if (list(); as current) {
+            @if (searched() !== "") {
+                <p class="anotoki-people-page__found" data-found role="status">
+                    {{ current.total === 0 ? "Nobody" : current.total === 1 ? "1 person" : count(current.total) + " people" }} found for “{{ searched() }}”
+                </p>
+            }
+            @if (current.people.length === 0) {
+                @if (searched() === "") {
+                    <anotoki-empty-state data-empty icon="users" heading="Nobody has signed in yet" text="A person is listed here from the first time they use the site signed in." />
+                }
+            } @else {
+                <div #tableTop class="anotoki-people-page__table-box" [attr.aria-busy]="loading() ? 'true' : null">
+                    <table class="anotoki-people-page__table" data-people [attr.aria-describedby]="id + '-iam-note'">
+                        <caption class="anotoki-visually-hidden">People, the most recently seen first</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">IAM id</th>
+                                @if (showsFirstSeen()) {
+                                    <th scope="col">First seen</th>
+                                }
+                                @if (showsLastSeen()) {
+                                    <th scope="col">Last seen</th>
+                                }
+                                @for (column of current.columns; track column.key) {
+                                    <th scope="col" [class.anotoki-people-page__number]="column.kind === 'count'" [attr.data-column]="column.key">{{ column.label }}</th>
+                                }
+                                <th scope="col" class="anotoki-people-page__actions-head"><span class="anotoki-visually-hidden">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (person of current.people; track person.sub) {
+                                <tr class="anotoki-people-page__row" [class.anotoki-people-page__row--anonymized]="!!person.anonymized_at" [attr.data-person]="person.sub">
+                                    <th scope="row" class="anotoki-people-page__who">
+                                        <span class="anotoki-people-page__name-line">
+                                            @if (person.name) {
+                                                <span class="anotoki-people-page__name">{{ person.name }}</span>
+                                            } @else {
+                                                <span class="anotoki-people-page__name anotoki-people-page__name--none">No name</span>
+                                            }
+                                            @if (isMe(person)) {
+                                                &ngsp;
+                                                <anotoki-badge tone="primary" data-you>you</anotoki-badge>
+                                            }
+                                        </span>
+                                        @if (person.anonymized_at) {
+                                            <span class="anotoki-people-page__deleted" data-deleted>
+                                                Deleted at the IAM on
+                                                <time [attr.datetime]="person.anonymized_at">{{ day(person.anonymized_at) }}</time>
+                                            </span>
+                                        }
+                                    </th>
+                                    <td class="anotoki-people-page__cell" data-label="IAM id">
+                                        <code class="anotoki-people-page__sub">{{ person.sub }}</code>
+                                    </td>
+                                    @if (showsFirstSeen()) {
+                                        <td class="anotoki-people-page__cell anotoki-people-page__time" data-label="First seen">
+                                            @if (person.first_seen_at) {
+                                                <time [attr.datetime]="person.first_seen_at">{{ date(person.first_seen_at) }}</time>
+                                            } @else {
+                                                <span class="anotoki-people-page__none" aria-hidden="true">–</span>
+                                                <span class="anotoki-visually-hidden">never</span>
+                                            }
+                                        </td>
+                                    }
+                                    @if (showsLastSeen()) {
+                                        <td class="anotoki-people-page__cell anotoki-people-page__time" data-label="Last seen">
+                                            @if (person.last_seen_at) {
+                                                <time [attr.datetime]="person.last_seen_at">{{ date(person.last_seen_at) }}</time>
+                                            } @else {
+                                                <span class="anotoki-people-page__none" aria-hidden="true">–</span>
+                                                <span class="anotoki-visually-hidden">never</span>
+                                            }
+                                        </td>
+                                    }
+                                    @for (column of current.columns; track column.key) {
+                                        <td
+                                            class="anotoki-people-page__cell"
+                                            [class.anotoki-people-page__number]="column.kind === 'count'"
+                                            [class.anotoki-people-page__time]="column.kind === 'time'"
+                                            [attr.data-label]="column.label"
+                                            [attr.data-column]="column.key">
+                                            @if (cell(person, column); as value) {
+                                                {{ value }}
+                                            } @else {
+                                                <span class="anotoki-people-page__none" aria-hidden="true">–</span>
+                                                <span class="anotoki-visually-hidden">none</span>
+                                            }
+                                        </td>
+                                    }
+                                    <td class="anotoki-people-page__actions">
+                                        <a anotokiButton variant="ghost" size="sm" data-iam target="_blank" rel="noopener noreferrer" [href]="person.iam_url" [attr.aria-label]="iamLabel(person)">
+                                            Open at the IAM
+                                            <anotoki-icon name="externalLink" [size]="14" />
+                                        </a>
+                                        @if (deleting) {
+                                            <button
+                                                anotokiButton
+                                                size="sm"
+                                                data-delete
+                                                [loading]="removing() === person.sub"
+                                                [disabled]="(removing() !== null && removing() !== person.sub) || !deletable(person)"
+                                                [attr.aria-label]="deleteLabel + ': ' + shortName(person)"
+                                                (click)="ask(person)">
+                                                <anotoki-icon name="trash" [size]="15" />
+                                                {{ deleteLabel }}
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="anotoki-people-page__iam-note" [id]="id + '-iam-note'">“Open at the IAM” opens the account in the IAM's admin panel - for the IAM's administrators.</p>
+                @if (current.total > current.page_size) {
+                    <anotoki-pagination [page]="current.page" [pageSize]="current.page_size" [total]="current.total" [busy]="loading()" (pageChange)="goTo($event)" />
+                }
+            }
+            @if (visitorsLine(); as line) {
+                <p class="anotoki-people-page__visitors" data-visitors>{{ line }}</p>
+            }
+        } @else {
+            <div class="anotoki-people-page__loading"><anotoki-spinner size="lg" label="Loading the people" [showLabel]="true" /></div>
+        }
+    </div>
+
+    @if (question(); as asked) {
+        <anotoki-dialog data-confirm size="sm" [heading]="asked.title" [description]="asked.message" (dismiss)="cancelDelete()">
+            <div dialogFooter>
+                <button anotokiButton autofocus data-confirm-cancel (click)="cancelDelete()">Cancel</button>
+                <button anotokiButton variant="danger" data-confirm-delete (click)="confirmDelete()">{{ asked.confirm }}</button>
+            </div>
+        </anotoki-dialog>
+    }
+}

@@ -33,7 +33,8 @@ use Throwable;
  *   GET    $base/unread                                {unread} - the admin panel's badge
  *   GET    $base/{id}                                  {message} - opening a new one makes it read
  *   PUT    $base/{id}/status {status}                  {message} - audited feedback.status_changed
- *   DELETE $base/{id}                                  {deleted: true} - audited feedback.deleted
+ *   DELETE $base/{id}                                  {deleted: true} - audited feedback.deleted (details: kind,
+ *                                                      status, created_at - the message's, for a restore's replay)
  * Every item carries user_name and handled_by_name from the site's $names. 503
  * feature_unavailable while the table is not there yet.
  */
@@ -161,7 +162,8 @@ final class FeedbackRoutes
                 if ($before === null || !$feedback->delete($id)) {
                     return $context->refuse($response, self::notFound());
                 }
-                $audit?->record($request, $context->actorId($request), 'feedback.deleted', 'feedback', $id, ['kind' => $before['kind'], 'status' => $before['status']]);
+                // The time it was sent beside its id: a restore deletes it again by both (People::replay()).
+                $audit?->record($request, $context->actorId($request), 'feedback.deleted', 'feedback', $id, ['kind' => $before['kind'], 'status' => $before['status'], 'created_at' => $before['created_at']]);
 
                 return JsonResponse::write($response, 200, ['deleted' => true]);
             }));

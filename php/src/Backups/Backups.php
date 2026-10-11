@@ -39,7 +39,9 @@ use Throwable;
  * JSON copies, genshin's pg_dump folders) is never touched.
  *
  * Made in one REPEATABLE READ, READ ONLY transaction - one snapshot of every
- * table - in an order a restore can load (parents first), each table COPYed
+ * table, its time the database's own (the manifest's snapshot_at: the clock
+ * the audit log's entries are written by, which a restore reads what was done
+ * since by) - in an order a restore can load (parents first), each table COPYed
  * into a spool of its own (Spool) in a working folder of this run, then
  * tarred, gzipped, encrypted where the site says so (`encryption`: the IAM's,
  * always), hashed, written aside and renamed. On a site that encrypts, the
@@ -56,10 +58,16 @@ use Throwable;
  * a before-restore backup first, then one transaction - every restored table
  * locked (5 seconds at most), its user triggers off (no updated_at rewritten,
  * no IAM MEMBER rows added), emptied in one TRUNCATE, loaded by COPY in the
- * archive's order, its sequences set, its triggers on, its rows counted. Never
- * restored, always kept: the bookkeeping table(s), anotoki_audit_log (the
- * history stays, the restore's own entry in it) and the site's `keep`. Then
- * the site's afterRestore (its anonymization sweep from the backup's time).
+ * archive's order, its sequences set, its triggers on, its rows counted, then
+ * the site's beforeCommit - what must be done again before anybody sees the
+ * rows (People::replay(): the deletes done since the backup) - and only then
+ * the commit: whatever fails rolls the restore back whole, and nobody reads
+ * the restored rows, nor backs them up, before it ran. Never restored, always
+ * kept: the bookkeeping table(s), anotoki_audit_log (the history stays, the
+ * restore's own entry in it) and the site's `keep`. Then the site's
+ * afterRestore - what cannot run inside the transaction: the scrub of the
+ * IAM's deleted accounts, which asks the IAM (People::afterRestore()), the
+ * IAM's own sweep.
  *
  * Downloads go by single-use tickets, good for `ticketSeconds` (60; Tickets).
  * The two files of fixed names the folder holds - the before-migration note
@@ -93,10 +101,13 @@ final class Backups
     public const DESCRIPTION_LIMIT = 200;
 
     private const OPTIONS = [
-        'site', 'migrator', 'bookkeeping', 'keep', 'encryption', 'restore', 'afterRestore', 'keepDaily',
+        'site', 'migrator', 'bookkeeping', 'keep', 'encryption', 'restore', 'beforeCommit', 'afterRestore', 'keepDaily',
         'keepBeforeMigration', 'keepBeforeRestore', 'staleManualDays', 'schema', 'defer', 'audit', 'lock', 'ready',
         'storage', 'onError', 'ticketSeconds',
     ];
+
+    /** The savepoint a restore's beforeCommit runs behind: gone after it, its transaction was ended inside. */
+    private const BEFORE_COMMIT_SAVEPOINT = 'anotoki_backups_before_commit';
 
     private readonly string $directory;
     private readonly string $site;
@@ -107,6 +118,7 @@ final class Backups
     private readonly array $keep;
     private readonly ?string $encryption;
     private readonly bool $restoreEnabled;
+    private readonly ?Closure $beforeCommit;
     private readonly ?Closure $afterRestore;
     /** @var array<string, int> */
     private readonly array $retention;
@@ -133,6 +145,7 @@ final class Backups
      *   keep?: list<string>,
      *   encryption?: ?string,
      *   restore?: bool,
+     *   beforeCommit?: Closure(array<string, mixed>, PDO): void,
      *   afterRestore?: Closure(array<string, mixed>, PDO): void,
      *   keepDaily?: int, keepBeforeMigration?: int, keepBeforeRestore?: int, staleManualDays?: int,
      *   schema?: string,
@@ -151,7 +164,13 @@ final class Backups
      *   - encryption: the site's backup key, 32 bytes (the IAM: Keys::derive(iamMasterKey(), 'iam-backup')) -
      *     every backup is then encrypted, and none opens without it
      *   - restore: false refuses every restore (the IAM, until its afterRestore exists)
-     *   - afterRestore: after a restore committed (the anonymization sweep again, caches cleared)
+     *   - beforeCommit: inside a restore's transaction - its rows loaded and counted, its locks held - before the
+     *     commit: what must be done again before anybody sees the rows (People::replay(): the deletes done since
+     *     the backup), on the restore's connection, the manifest given (its snapshot_at). What it throws rolls the
+     *     restore back whole; it ends no transaction (a savepoint is fine)
+     *   - afterRestore: after a restore committed, what cannot run inside it (People::afterRestore(): the scrub,
+     *     asking the IAM; the IAM's anonymization sweep again, caches cleared) - what it throws is the answer's
+     *     after_restore_error
      *   - keepDaily 14, keepBeforeMigration 5, keepBeforeRestore 5; manual ones flagged after staleManualDays 90
      *   - defer: the site's after-the-answer runner (the daily backup); default: at once
      *   - audit: backup.created (by nobody for the automatic ones), .deleted, .downloaded, .restored, .restore_failed
@@ -185,6 +204,7 @@ final class Backups
         }
         $this->encryption = $encryption;
         $this->restoreEnabled = (bool) ($options['restore'] ?? true);
+        $this->beforeCommit = $options['beforeCommit'] ?? null;
         $this->afterRestore = $options['afterRestore'] ?? null;
         $this->retention = [
             self::DAILY => max(1, (int) ($options['keepDaily'] ?? 14)),
@@ -617,7 +637,9 @@ final class Backups
                     $reason = Redactor::text($e->getMessage());
                     $this->audit?->record($request, $actorId, 'backup.restore_failed', 'backup', $id, ['before_restore' => $before['id'], 'error' => Utf8::cut($reason, 500)]);
 
-                    return new Refusal(500, 'restore_failed', 'The restore failed and nothing of it stayed: ' . $reason);
+                    return new Refusal(500, 'restore_failed', ($e instanceof RestoreEnded
+                        ? 'The restore did not finish, and what it had loaded may have stayed (' . $before['id'] . ' holds the data as it was): '
+                        : 'The restore failed and nothing of it stayed: ') . $reason);
                 }
             } finally {
                 $this->unlock($pdo);
@@ -762,6 +784,9 @@ final class Backups
             try {
                 // One snapshot of every table, and nothing written meanwhile by this connection.
                 $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+                // The snapshot's time by the database's clock, which writes every audit entry (now(): the
+                // transaction's start, before its snapshot) - what a restore reads the deletes done since by.
+                $snapshotAt = (string) $pdo->query("SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')")->fetchColumn();
                 $shape = DatabaseShape::read($pdo, $this->schema);
                 $migrator = ($this->migrator)($pdo);
                 $records = self::records($migrator);
@@ -829,6 +854,7 @@ final class Backups
                 'site' => $this->site,
                 'kind' => $kind,
                 'created_at' => $createdAt,
+                'snapshot_at' => $snapshotAt,
                 'created_by' => $actorId,
                 'description' => $description,
                 'database_schema' => $this->schema,
@@ -1186,6 +1212,12 @@ final class Backups
                     throw new RuntimeException('The table ' . $table['name'] . ' holds ' . $count . ' rows after the load, where the backup has ' . $table['rows'] . '.');
                 }
             }
+            // What must be done again before anybody sees these rows - the deletes done since the backup - is
+            // done here, the locks still held: a request that dies after the commit leaves nothing undone, and no
+            // backup is ever made of the rows without it.
+            if ($this->beforeCommit !== null) {
+                $this->runBeforeCommit($manifest, $pdo);
+            }
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -1195,6 +1227,44 @@ final class Backups
         }
 
         return ['tables' => count($tables), 'rows' => $rows];
+    }
+
+    /**
+     * The site's beforeCommit, behind a savepoint of the restore's: a hook that ended the transaction - a commit
+     * or a rollback, a new one begun after it or not - leaves the savepoint gone, and is told apart from a hook
+     * that failed inside it (RestoreEnded: what the restore had loaded may have been committed with it).
+     *
+     * @param array<string, mixed> $manifest
+     */
+    private function runBeforeCommit(array $manifest, PDO $pdo): void
+    {
+        $pdo->exec('SAVEPOINT ' . self::BEFORE_COMMIT_SAVEPOINT);
+        try {
+            ($this->beforeCommit)($manifest, $pdo);
+        } catch (Throwable $e) {
+            if (!self::savepointHeld($pdo, 'ROLLBACK TO')) {
+                throw new RestoreEnded('Its beforeCommit ended the restore\'s transaction, then failed: ' . $e->getMessage(), 0, $e);
+            }
+            throw $e;
+        }
+        if (!self::savepointHeld($pdo, 'RELEASE')) {
+            throw new RestoreEnded('Its beforeCommit ended the restore\'s transaction - a hook inside a restore begins, commits or rolls back none of its own (a savepoint is fine).');
+        }
+    }
+
+    /** Whether the restore's savepoint is still there: $how (RELEASE, ROLLBACK TO) it, or fail. */
+    private static function savepointHeld(PDO $pdo, string $how): bool
+    {
+        if (!$pdo->inTransaction()) {
+            return false;
+        }
+        try {
+            $pdo->exec($how . ' SAVEPOINT ' . self::BEFORE_COMMIT_SAVEPOINT);
+
+            return true;
+        } catch (\PDOException) {
+            return false;
+        }
     }
 
     /**

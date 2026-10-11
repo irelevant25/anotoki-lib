@@ -263,6 +263,11 @@ final class FeedbackTest extends DatabaseTestCase
             $entries
         ));
         self::assertSame(['to' => 'resolved', 'from' => 'read'], json_decode((string) $entries[0]['details'], true));
+        self::assertSame(
+            ['kind' => $opened['kind'], 'status' => 'resolved', 'created_at' => $opened['created_at']],
+            json_decode((string) $entries[1]['details'], true),
+            'the time it was sent beside its id: a restore deletes it again by both (People::replay())',
+        );
     }
 
     public function testWithoutItsTableFeedbackIsUnavailable(): void

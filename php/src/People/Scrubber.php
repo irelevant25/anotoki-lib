@@ -51,8 +51,11 @@ use Throwable;
  * library's tables are there (looked for in the catalog on every run).
  *
  * A restored backup brings its own cursor back with it, and the next run
- * scrubs again whatever the backup brought back. Files kept outside the
- * database (backup copies) need a retention no longer than the IAM's.
+ * scrubs again whatever the backup brought back: a restore takes the runs'
+ * lock before it commits, refused while a run holds it (People::replay()),
+ * and a run a restore overtook all the same keeps the restored cursor, not
+ * its own. Files kept outside the database (backup copies) need a retention
+ * no longer than the IAM's.
  */
 final class Scrubber
 {
@@ -161,6 +164,7 @@ final class Scrubber
     {
         $started = microtime(true);
         $since = self::status($this->pdo)['since'] ?? null;
+        $from = $this->exactSince();
         $newest = null;
         $cursor = [$since, null];
 
@@ -196,9 +200,19 @@ final class Scrubber
             $cursor = [$page['next']['since'], $page['next']['after']];
         }
 
-        $this->keep($result, $newest);
+        $this->keep($result, $newest, $from);
 
         return $result;
+    }
+
+    /** `since` exactly as kept (to the microsecond, unlike status()'s), or null for none. */
+    private function exactSince(): ?string
+    {
+        $value = $this->pdo->query(
+            "SELECT to_char(since AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') FROM anotoki_people_sync WHERE id = 1"
+        )->fetchColumn();
+
+        return is_string($value) ? $value : null;
     }
 
     /** One account, in a transaction of its own; whether a row of this site's people was scrubbed. */
@@ -275,18 +289,28 @@ final class Scrubber
         }
     }
 
-    /** @param array{state: string, handled: int, scrubbed: int, error: ?string} $result */
-    private function keep(array $result, ?string $newest): void
+    /**
+     * The run's outcome; `since` moved on (and ok_at) only where it still is where the run read it ($from): a
+     * restore that put the backup's place back while the run went on keeps it - the run's place would pass over
+     * whoever the restore brought back. (A restore holds the run's lock from its People::replay() on; this is
+     * for a site that does not run it.)
+     *
+     * @param array{state: string, handled: int, scrubbed: int, error: ?string} $result
+     */
+    private function keep(array $result, ?string $newest, ?string $from): void
     {
         $sets = ['checked_at = now()', 'error = ?', 'scrubbed = scrubbed + CAST(? AS integer)'];
         $parameters = [$result['state'] === 'unreachable' || $result['state'] === 'stopped' ? $result['error'] : null, $result['scrubbed']];
+        $unmoved = 'since IS NOT DISTINCT FROM CAST(? AS timestamptz)';
         if ($newest !== null) {
             // Never back: a run that started from a cursor kept by another one cannot move it behind.
-            $sets[] = 'since = GREATEST(since, CAST(? AS timestamptz))';
+            $sets[] = "since = CASE WHEN $unmoved THEN GREATEST(since, CAST(? AS timestamptz)) ELSE since END";
+            $parameters[] = $from;
             $parameters[] = $newest;
         }
         if ($result['state'] === 'done') {
-            $sets[] = 'ok_at = now()';
+            $sets[] = "ok_at = CASE WHEN $unmoved THEN now() ELSE ok_at END";
+            $parameters[] = $from;
         }
         $this->pdo->prepare('INSERT INTO anotoki_people_sync (id) VALUES (1) ON CONFLICT (id) DO NOTHING')->execute();
         $this->pdo->prepare('UPDATE anotoki_people_sync SET ' . implode(', ', $sets) . ' WHERE id = 1')->execute($parameters);

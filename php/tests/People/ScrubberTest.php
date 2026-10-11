@@ -306,6 +306,30 @@ final class ScrubberTest extends DatabaseTestCase
         self::assertSame([['candidate' => '', 'meta' => '{"score": 9}']], $this->rows('SELECT candidate, meta FROM exam_attempts'));
     }
 
+    public function testARunARestoreOvertookKeepsTheRestoredPlace(): void
+    {
+        SiteShapes::create($this->pdo, 'survey');
+        $this->applyPeopleSet();
+        $this->people('survey', 12, 'alice');
+        $this->pdo->exec("UPDATE anotoki_people_sync SET since = '2026-11-01T00:00:00.5Z' WHERE id = 1");
+        $this->iam->anonymized(['12' => '2026-11-06T10:00:00Z']);
+        // While the run goes on, a restore puts the backup's place back - on its own connection, as a restore does.
+        $other = $this->connect();
+        $restore = static function (PDO $pdo, int $sub) use ($other): void {
+            $other->exec("UPDATE anotoki_people_sync SET since = '2026-10-01T00:00:00.25Z'");
+        };
+
+        self::assertSame('done', $this->scrubber('survey', [$restore])->run()['state']);
+
+        $sync = Scrubber::status($this->pdo);
+        self::assertSame('2026-10-01T00:00:00Z', $sync['since'], 'the restored place kept - the run\'s would pass over whoever the restore brought back');
+        self::assertNull($sync['ok_at'], 'nor said gone through: the restored place was not');
+        // The next run goes on from the restored place, and moves it - from a since with a fraction of a second too.
+        self::assertSame('done', $this->scrubber('survey')->run()['state']);
+        self::assertSame('2026-11-06T10:00:00Z', Scrubber::status($this->pdo)['since']);
+        self::assertNotNull(Scrubber::status($this->pdo)['ok_at']);
+    }
+
     public function testNeverInsideACallersTransaction(): void
     {
         SiteShapes::create($this->pdo, 'survey');

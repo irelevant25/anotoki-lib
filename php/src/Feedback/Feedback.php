@@ -334,11 +334,20 @@ final class Feedback
         return self::deleteOn(($this->pdo)(), $id);
     }
 
-    /** delete() on a connection of the caller's: a restore doing again what was done since its backup (People::afterRestore()). */
-    public static function deleteOn(PDO $pdo, int $id): bool
+    /**
+     * delete() on a connection of the caller's: a restore doing again what was done since its backup
+     * (People::replay()) - with $createdAt, only the message sent at that time (as get() gives it): an id
+     * alone might name another message after a restore.
+     */
+    public static function deleteOn(PDO $pdo, int $id, ?string $createdAt = null): bool
     {
-        $statement = $pdo->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . ' WHERE id = ?');
-        $statement->execute([$id]);
+        if ($createdAt === null) {
+            $statement = $pdo->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . ' WHERE id = ?');
+            $statement->execute([$id]);
+        } else {
+            $statement = $pdo->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . ' WHERE id = ? AND ' . AuditLog::isoColumn('created_at') . ' = ?');
+            $statement->execute([$id, $createdAt]);
+        }
 
         return $statement->rowCount() > 0;
     }

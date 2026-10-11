@@ -56,9 +56,11 @@ use Slim\Interfaces\RouteInterface;
  *   the person (Piano Academy's progress, a backup copy first at Japanese Academy, the build analyzer's
  *   game accounts) and answers what went, by label, or null when there is nobody with that id. Without
  *   it, no DELETE route. It runs through People::delete(): inside a transaction of the library's on $pdo,
- *   with the person's feedback forgotten in it (it begins none of its own); its request is null when a
- *   restore does it again (People::afterRestore()). It asks for no proof of a recent sign-in, unlike a
- *   backup's restore: the page's question is all it asks (the owner's decision of 2026-10-11).
+ *   with the person's feedback forgotten in it (it begins, commits or rolls back none of its own); its
+ *   request is null when a restore does it again (People::replay(), inside the restore's transaction) -
+ *   then it does the database's part alone (no backup copy first). It asks for no proof of a recent
+ *   sign-in, unlike a backup's restore: the page's question is all it asks (the owner's decision of
+ *   2026-10-11).
  * - $error: fn(ResponseInterface, Refusal): ResponseInterface - the site's error body; by default {code, message}.
  * - $audit: where a delete and an asked-for scrub are recorded - the site's AuditLog; without one, nowhere.
  * - $context: who acts in those entries (AdminContext::actorId()); without one, the token's sub.

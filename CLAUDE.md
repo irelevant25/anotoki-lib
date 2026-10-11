@@ -7,8 +7,8 @@ package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
-`auth`, `auth/testing`, and the generated `words`, `words/<namespace>`; the Sass
-module `styles/`). `README.md` says how a site
+`auth`, `auth/testing`, `people`, `people/page`, and the generated `words`,
+`words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
 
@@ -88,11 +88,14 @@ bun run words           # the library's words from php/resources/library-words.j
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
   limits, every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces
-  and `migrations`; a `words/<namespace>` is imported by its module, which
+  and `migrations`; `people/page` the kit and `people`, which imports nothing; a
+  `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the
   words, a button and the sign-in to their limits and to the namespaces of words
-  their pages say.
+  their pages say. No bundle names innerHTML, outerHTML, insertAdjacentHTML or
+  bypassSecurityTrust, comments included (the IAM's deploy check refuses such a
+  release): the kit draws text.
 - No composer.lock (a library); nothing sensitive in a file; never print a
   database password.
 - **Signing in** (auth): the IAM's rules do not loosen here - RS256 and `typ`

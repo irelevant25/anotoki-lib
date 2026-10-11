@@ -22,10 +22,11 @@ Version 0.3.0 holds:
   pages, one implementation for every site (the section "Translations" below).
 
 Unreleased (0.4.0, CHANGELOG.md): **auth** - signing in through the anotoki IAM,
-both halves, with the sign-in hint - and **people** - each site's record of the
-accounts that use it, and the scrub of the accounts the IAM deleted (the
-sections "Auth" and "People"); and the PHP half of the **admin tools** - error
-log, audit log, feedback, backups, file explorer (the section "Admin tools").
+both halves, with the sign-in hint and the screen of a sign-in that failed - and
+**people** - each site's record of the accounts that use it, the scrub of the
+accounts the IAM deleted and the administrators' People page (the sections
+"Auth" and "People"); and the PHP half of the **admin tools** - error log, audit
+log, feedback, backups, file explorer (the section "Admin tools").
 
 ## The behaviour
 
@@ -211,8 +212,10 @@ uses is in the first load again.
 | `@anotoki/lib/translations` | the translation service, the `translate` and `translatePlural` pipes, the kit's and the shell's wiring, the status page's words, the admin pages' guard | yes (every page) |
 | `@anotoki/lib/translations/admin` | the admin Translations and Languages pages, their drafts | lazy admin routes |
 | `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
-| `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page ("Auth" below) | yes (every page of a site that signs in) |
+| `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page and the failure's screen ("Auth" below) | yes (every page of a site that signs in) |
 | `@anotoki/lib/auth/testing` (0.4.0) | `provideTestAnotokiAuth()`, `FakeAuthClient`: the module without an IAM, for a site's specs | a site's specs |
+| `@anotoki/lib/people` (0.4.0) | `provideAnotokiPeople()` and the shape of the People API ("People" below) | where the site configures the page (its app.config, or the page's route) |
+| `@anotoki/lib/people/page` (0.4.0) | the admin People page | a lazy admin route |
 | `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's) | with its module, which alone imports it and registers it with the translations module |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
@@ -309,7 +312,8 @@ The tokens (each `--anotoki-<name>`, light and dark): `bg`, `surface`,
 `surface-2`, `surface-3`, `surface-raised`, `border`, `border-strong`, `text`,
 `muted`, `subtle`, `primary`, `primary-hover`, `primary-contrast`,
 `primary-soft`, `primary-soft-text`, `accent`, `link`, `danger`, `danger-hover`,
-`danger-contrast`, `danger-soft`, `danger-border`, `success`, `success-text`,
+`danger-contrast`, `danger-soft`, `danger-border`, `danger-text` (0.4.0),
+`success`, `success-text`,
 `success-soft`, `success-border`, `warning`, `warning-text`, `warning-soft`,
 `warning-border`, `info`, `info-soft`, `info-border`, `ring`, `focus`,
 `backdrop`, `skeleton`, `skeleton-shine`, `switch-thumb` (the switch's knob:
@@ -323,6 +327,13 @@ ground the kit draws reaches 4.5:1 in both themes (badges: `success-text`
 edge of every control: fields, selects, code boxes, radio cards, segmented
 controls, the bar's round buttons - 3:1 on every ground (WCAG 1.4.11; light
 `#7a8ca5`, dark `#5e72a3`). The decorative `border` (cards, separators) stays light.
+`danger-text` is the ink of words that say something went wrong - a field's
+error, a refusal, a danger badge, the People page's Delete - at 4.5:1 at least on
+every ground and on `danger-soft` (light `#b42833`, 5.4:1 at the least; dark
+`#ff6b75`, 5.2:1), apart from `danger`, the fill of a button under white words: a
+site whose own red fill is darker (Japanese Academy's dark `#ae4a3f`, 3:1 on its
+surfaces) keeps its error words readable, or names its words red for them
+(`dark: (danger: #ae4a3f, danger-text: <its words red>)`).
 
 A site with a palette of its own (Japanese, Piano) gives its colours, light and
 dark, and keeps the family's for the rest:
@@ -432,8 +443,11 @@ buttons in `<ng-template anotokiDialogFooter>`. `ConfirmService.ask({ title, mes
 `<anotoki-toast-host>` is a polite region, always in the page.
 
 **`ui/forms`** - every field: `label`, `[(value)]`, `name`, `hint`, `error`
-(role="alert", tied by aria-describedby, aria-invalid), `required`,
-`optional`, `disabled`, `hideLabel`, `autofocus`, `focus()`.
+(role="alert", tied by aria-describedby, aria-invalid), `invalid` (0.4.0:
+aria-invalid and the danger edge without a message of its own - for fields
+whose words are said once elsewhere, under a range's two dates, in a form's
+summary; the text field, textarea, password field, select and code input),
+`required`, `optional`, `disabled`, `hideLabel`, `autofocus`, `focus()`.
 `anotoki-text-field` (`type`, `autocomplete`, `inputmode`, `placeholder`,
 `readonly`, `maxlength`, `minlength`, `min`, `max`, `pattern`, `spellcheck`,
 `autocapitalize`, `(blurred)`, `[fieldPrefix]` / `[fieldSuffix]`),
@@ -455,7 +469,8 @@ and `copyText()`; `ui/qr` `<anotoki-qr-code value label>` and `encodeQr()`.
 
 `provideAnotokiShell(factory)`: `theme` (`storageKey` - the same as the boot
 script's `data-storage-key`; `account` - the account's theme, null while there
-is none; `save` - rejects when the account refuses; `themeColor`) and
+is none; `save` - rejects when the account refuses, and a rejection whose `code`
+is `login_required` - nobody signed in any more - is no refusal; `themeColor`) and
 `languages` (`current`, `offered`, `choose` -> true once the page reads in it,
 `notSaved`, `clearNotSaved`).
 
@@ -464,7 +479,10 @@ is none; `save` - rejects when the account refuses; `themeColor`) and
   `<meta name="theme-color">`; follows the device while `auto`; keeps the mode
   in localStorage (nothing for auto); shows the account's theme from its first
   moment and whenever it changes - not while its own save is out; one save at a
-  time, the latest last; a refusal puts the account's theme back and sets `refused`.
+  time, the latest last; a refusal puts the account's theme back and sets
+  `refused` - only while there is an account: a save that failed because the
+  account went meanwhile (signed out here or in another tab) leaves the choice
+  shown and says nothing (0.4.0).
 - `latestChoiceSaver(save, onRefused)` - that rule for a site's own saves (the
   language): `const saveLanguage = latestChoiceSaver((code) => api.save(code), () => notSaved.set(true))`.
 - `<anotoki-theme-toggle [iconsOnly]>` - light / dark / as the device is set
@@ -496,7 +514,7 @@ is none; `save` - rejects when the account refuses; `themeColor`) and
 | `languages` | the language switcher (where the site's pages are translated) |
 | `phoneMax` | the site's measured fold, px (760 by default) |
 | `nameMin` | the person's name shows from here (phoneMax + 201) |
-| `shortBrandMax` | the brand short up to here (phoneMax) - the survey's admin panel: 960 |
+| `shortBrandMax` | the brand short up to here (phoneMax by default) - the survey's admin panel: 960. Given, it alone decides (0.4.0): below phoneMax too, a folded bar keeps the full wordmark above it - a bar that folds wide (Piano Academy's 1320 px) measures where "anotoki Piano Academy" still fits beside the language, the theme and the menu button |
 | `width` | `wide` (84rem) or `narrow` (49rem); `--anotoki-topbar-max-width` overrides; in a frame with a side navigation, 88rem, and in one with a `maxWidth`, that |
 | `phoneMark` | `{ badge?, label? }` (the button's name says the count) or `{ dot, description? }` |
 | `menuNote` | `{ title, text? }` heading both menus |
@@ -506,7 +524,7 @@ is none; `save` - rejects when the account refuses; `themeColor`) and
   stands before the language (a widget reads `bar.phone()`); `closeMenu(returnFocus)`.
   A menu closes when the bar folds or unfolds, when the person changes and when
   the links do; in development the bar warns once when its row overflows above
-  `phoneMax` (measure again).
+  `phoneMax`, or folded with the full wordmark above `shortBrandMax` (measure again).
 
 A site keeps a thin wrapper where its roles, status and words meet the bar - the
 survey's, for example:
@@ -579,8 +597,9 @@ provideAppInitializer(() => inject(SiteStatus).check()),   // early in the boot;
 - `<anotoki-update-banner>` - the IAM's one line for its administrators.
 - `<anotoki-migrations-page>` (`@anotoki/lib/migrations/page`) - the admin page
   (English; for the site's ADMIN only), drawn with the kit: Pending (with
-  drafts), Applied (with each file's SQL in a dialog), Missing, and "Apply
-  pending" behind a question whose focus starts on Cancel.
+  drafts; with more than one set, each headed by its name - `iam`,
+  `anotoki_translations` - never a folder), Applied (with each file's SQL in a
+  dialog), Missing, and "Apply pending" behind a question whose focus starts on Cancel.
 
 A site that does not block while an update waits (the IAM, `blockWhilePending:
 false`) puts **no** gate around its outlet and does not ask at boot: the status
@@ -686,6 +705,28 @@ of the Migrations page; everything else is new.
 3. A site on the translations module applies `anotoki_translations/003` (the
    sign-in page's words) as any migration; the modules 0.4.0 brings are taken
    when the site adopts them ("Auth", "People", "Admin tools").
+4. **The kit's fixes the sites found** - nothing to change to keep building;
+   what a site may do, or what its specs read:
+   - `danger-text`, the ink of error words, apart from the fill `danger`: a site
+     with a red fill of its own that is too dark for words (Japanese Academy's
+     dark) gets the family's `danger-text`, or gives its words red
+     (`root((dark: (danger-text: …)))`). A field's error, the translations pages'
+     refusals and a danger badge read it now.
+   - `shortBrandMax`, given, alone says where the brand is short - below
+     `phoneMax` too: a bar that folds wide (Piano Academy, the IAM) measures where
+     its full wordmark still fits and passes it, and keeps "anotoki <area>" above.
+     No site passes one below its `phoneMax` today, so nothing moves by itself.
+   - A field takes `invalid` (aria-invalid and the edge, no message).
+   - The Migrations page heads each set by its name: a spec that reads
+     `migrations/<set>/` in `[data-pending] h3` reads `<set>`.
+   - The translations admin pages: `admin.allows.importStrings`, `addLanguages`
+     and `deleteLanguages`, each as its page's permission unless the site says
+     otherwise (the survey: `deleteLanguages: () => auth.isAdmin()`); the
+     Translations page's note about what is typed no longer mentions signing out;
+     no `beforeunload` question once nobody is signed in.
+   - The PHP half's `invalid_placeholder` for a key with no placeholders reads
+     "… has a { or }, and its English string has no placeholders: a brace belongs
+     only around a placeholder, so take it out." (a test reading the message).
 
 ## Translations (0.3.0)
 
@@ -731,8 +772,9 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   key that has none, so a site that took a key over - its own words, a language
   left blank on purpose - keeps them, and so does an owner's rewording.
 - `003_sign_in_words.sql` (0.4.0) adds the auth module's sign-in page's words
-  (`anotoki.signIn.*`: "Signing you in…", why a sign-in came back without one,
-  Try again, Back), 8 keys in English and Slovak, by 002's rule.
+  (`anotoki.signIn.*`: "Signing you in…", the failure's heading "Signing in did
+  not work", why a sign-in came back without one, Try again, Back), 9 keys in
+  English and Slovak, by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -970,7 +1012,8 @@ this.i18n.noteAddress(url);
   database (`overrides` win: a site's own page around the library's).
 - `<anotoki-translations-page>` (English; for `admin.allows.strings`) - each
   language's coverage (only the plural forms its numbers take count), tags,
-  export (the server's file and name) and import (at most 1 MiB, a byte-order
+  export (the server's file and name) and import (for `admin.allows.importStrings`,
+  as `strings` unless the site says otherwise; at most 1 MiB, a byte-order
   mark taken off, a flat map, a question with the count of the strings in it);
   a search over keys, descriptions and text (stored and typed; diacritics and
   case aside; rows decided as the search changes, never while typing);
@@ -986,15 +1029,23 @@ this.i18n.noteAddress(url);
   names and place with its own Save and Undo; the offered switch saving at once
   (back when refused; English's off); "Fallback" and "Released with the site"
   tags; the site's own fields in words (`admin.languageNotes.row`: the IAM's
-  accounts); delete only for a language not released - offering an export of
+  accounts); delete only for a language not released, and only for
+  `admin.allows.deleteLanguages` - offering an export of
   its strings first, then a question naming them (and `beforeDelete`'s words),
   then what went (`afterDelete`: Japanese Academy's copy); a new language hidden
-  unless asked otherwise. Both pages read again after every change
+  unless asked otherwise, added only for `admin.allows.addLanguages`. Both
+  `*Languages` follow `languages` unless the site says otherwise - the survey lets
+  its EDITORs name, order and offer the languages, and its ADMIN alone delete one
+  (`deleteLanguages: () => auth.isAdmin()`): what the site does not allow is not
+  drawn. Both pages read again after every change
   (`reload()`), ask their questions in their own dialog (nothing in the site's
   root), say what happened in the page, and work at 390 px.
 - `LocalizationDrafts` - what is typed and not saved, in sessionStorage
   (`<prefix>:localization-drafts`) with whose it is: kept through a reload and a
-  sign-out, dropped when somebody else signs in; one `beforeunload` question.
+  sign-out, dropped when somebody else signs in; one `beforeunload` question -
+  never once nobody is signed in (the page is on its way to the sign-in, and the
+  drafts wait in the tab). The Translations page's note promises nothing of a
+  sign-out: a site's own bar may ask before it (the survey's does).
   `anotokiUnsavedChangesGuard` asks the page (`HoldsUnsavedChanges.canLeave()`),
   never once nobody is signed in.
 - `@anotoki/lib/translations/testing` - `provideTestTranslations(values, { language, languages, english })`
@@ -1171,7 +1222,7 @@ provideAnotokiAuth(() => {
     beforeSignOut: () => inject(SignInChecks).ready(),
     // preferences: () => inject(SitePreferences),      // apply(preferences, locale) - below
     // api: { prefixes: ['/api/'], skip: [...], visitorPrefixes: ['/api/surveys'] }, headers: () => ({ 'X-Time-Zone': … }),
-    // hint: { cookieName: 'anotoki_signed_in' } | false, makesVisitor, forbiddenRoute, words
+    // hint: { cookieName: 'anotoki_signed_in' } | false, makesVisitor, forbiddenRoute, failureRoute: '/sign-in-failed', words
   };
 }),
 provideAnotokiShell(() => {
@@ -1196,6 +1247,7 @@ provideAppInitializer(() => {
 
 // app.routes.ts
 { path: 'auth/callback', component: AuthCallbackComponent },
+{ path: 'sign-in-failed', component: SignInFailureComponent },                 // optional: the module's failureRoute, in the site's frame
 { path: '', canActivateChild: [personOrVisitorGuard], children: [/* … */] },   // personGuard where only a person may
 { path: 'admin', canActivate: [staffGuard], children: [/* … */] },             // adminGuard for ADMIN alone
 ```
@@ -1239,22 +1291,36 @@ show.
   writes counted in `SavesInFlight`, which a sign-in waits for.
 - `personGuard`, `personOrVisitorGuard`, `staffGuard`, `adminGuard` - a sign-in
   started for the page asked for; every page while `SiteStatus.blocked()`; the
-  callback route when a sign-in came back without one (sent to the IAM again,
-  the browser would go round).
+  failure's screen when a sign-in came back without one, could not start or
+  cannot be set up (sent to the IAM again, the browser would go round) - on the
+  module's `failureRoute`, else the callback route.
 - `AccountPreferences.save(name, value)` → `saved | refused(code) | superseded |
   device` (genshin's), one save at a time; with the site's `preferences`, its
   `apply(preferences, locale)` is given what to show - a choice on its way as
   made, a refused one taken back, a language the IAM does not offer kept for the
   visit.
-- `<anotoki-auth-callback>` - "Signing you in…" on the callback route, or why a
-  sign-in failed, from its code alone, with Try again and Back; `noindex` while
-  it shows. Drawn with the kit (its buttons, the status page's frame; its own
-  classes `anotoki-auth-callback__panel`, `__message`, `__actions`; the buttons
-  `[data-retry]`, `[data-back]`). Its words are the library's
+- `<anotoki-auth-callback>` - "Signing you in…" on the callback route
+  (`anotoki-auth-callback__panel`, `__message`), or in its place the failure's
+  screen; `noindex` while it shows.
+- `<anotoki-sign-in-failure>` (`SignInFailureComponent`, 0.4.0) - the screen of a
+  sign-in that came back without one, could not start, or cannot be set up: "Signing
+  in did not work", why - from the failure's code alone, never the IAM's
+  sentence - and Try again (the sign-in once more, back to where it started; a
+  sign-in that cannot be set up loads the page afresh) and Back (to that page
+  without signing in; never the callback or the screen itself). The status page's
+  frame, drawn with the kit whatever the site's own styles say (classes
+  `anotoki-sign-in-failure__panel`, `__title`, `__message` with role="alert",
+  `__actions`; the buttons `[data-retry]`, `[data-back]`); `noindex` while it
+  shows; with nothing to say - opened by hand - on to the home page. The callback
+  page shows it, and so can a route of the site's own, in its frame under its bar:
+  name it the module's `failureRoute` and the guards send the browser there; a
+  site that lets visitors in may send a visitor there itself when
+  `signInFailure()` says a sign-in of theirs failed.
+- The words of both are the library's
   `anotoki.signIn.*` (`php/resources/library-words.json`, every site's database
   through `anotoki_translations/003`, built in from `@anotoki/lib/words/sign-in`):
   an owner's rewording through `translate`, then the site's `words`, then the
-  built-in English and informal Slovak.
+  built-in English and informal Slovak - in the visitor's language (`language`).
 - `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth({user, roles,
   loginRequired, visitors, cookie})` and `FakeAuthClient` for a site's specs
   (then `await TestBed.inject(AnotokiAuth).init()`).
@@ -1285,7 +1351,7 @@ signed in at the IAM in this browser, never who. A site never writes it.
   (`personGuard`), and its sessions follow the IAM the same way.
 - **Search engines** never get the cookie, so are never sent anywhere. A site
   keeps them off the callback: its `robots.txt` says `Disallow: /auth/`, and
-  `<anotoki-auth-callback>` sets `noindex`.
+  `<anotoki-auth-callback>` and `<anotoki-sign-in-failure>` set `noindex`.
 
 ## People (unreleased, 0.4.0)
 
@@ -1294,8 +1360,8 @@ table, keyed by the IAM's `sub` (every foreign key, every visitor and two
 sites' per-person locks live there) - and blanks its copies of a person's name
 when the IAM deletes their account, thirty days after they asked: the data
 stays, nobody's now. No site keeps a copy of anybody's email (the owner's
-decision of 2026-10-07). The People admin page comes with the UI kit; its API
-is here.
+decision of 2026-10-07). The administrators' People page is the Angular half,
+on the UI kit ("The People page" below).
 
 ### The schema
 
@@ -1364,6 +1430,72 @@ $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState
   problems}`; `q` finds a name or an id), `DELETE $base/{sub}` (the site's hook;
   404 `not_found`), `POST $base/sync` (the scrub now). `iam_url` is the account
   in the IAM's admin panel, for its administrators.
+
+### The People page: `@anotoki/lib/people` and `@anotoki/lib/people/page`
+
+```ts
+// app.config.ts (or the page's route's providers) - a token and a function: @anotoki/lib/people
+provideAnotokiPeople(() => {
+  const auth = inject(AnotokiAuth);
+  return {
+    me: () => auth.sub(),                              // "you" on the reader's own row
+    lead: 'Everybody who signed in and whom Piano Academy keeps anything of, the most recently seen first.',
+    delete: {                                          // only where the site's PeopleRoutes has its delete hook
+      label: 'Delete their progress',
+      // question: (person, columns) => ({ title, message, confirm }),   the family's names the counts
+      // allowed: (person) => person['accounts'] !== 0 || person['imports'] !== 0,
+      done: (person) => person.sub === auth.sub() && inject(ProgressStore).reload(),
+    },
+    visitorsLine: (visitors) => `${visitors.count} visitors, practising without signing in.`,
+    migrationsRoute: '/admin/migrations',
+    // apiBase: '/api/admin/people', isAdmin: () => auth.isAdmin(), formatDate: (iso) => …
+  };
+}),
+
+// the admin routes: the page's own entry point, never in the first load
+{ path: 'people', canActivate: [adminGuard], loadComponent: () => import('@anotoki/lib/people/page').then((m) => m.PeoplePageComponent) }
+```
+
+`<anotoki-people-page>` - English, for the site's ADMIN (`isAdmin`; nothing is
+asked of the server for anybody else), over the routes above - the union of what
+Piano Academy's, Japanese Academy's and the build analyzer's pages showed and did:
+
+- a search by name (any case, anywhere in it) or IAM id, as the typing rests or
+  at Enter (only the latest answer counts), and paging, 50 a page, the newest
+  seen first;
+- each person: the name - "you" on the reader's own row, "No name" where the
+  site never learned one - and under it what can be done, never off the screen
+  however many columns the site has: "Open at the IAM" (`iam_url`, a new tab; a
+  note says it is for the IAM's administrators) and, with `delete`, Delete in
+  `danger-text`; the IAM id; first and last seen (a time no person on the page
+  has is not drawn: the build analyzer has no last-seen); the site's
+  `PeopleColumn`s - a count right-aligned (none: 0), text, a time; none: a dash,
+  "none" to a screen reader;
+- an account the IAM deleted: muted, under the IAM's placeholder name, "Deleted
+  at the IAM on {day}";
+- where the scrub stands (`sync`): when the IAM's deleted accounts were last
+  checked and how many were scrubbed here, or why the last check stopped (in
+  `danger-text`), with Check now (`POST sync`: what it did - scrubbed, none, part
+  of the list, the IAM not answering, another check running - then the list again);
+- Delete behind a question in the page's own dialog (the focus on Cancel; the
+  site's `question`, or the family's, which names the counts and "This is you."),
+  what went said with the site's labels and its `note`, the site's `done` after
+  it, then the list again (a 404: "not here any more"); `allowed` disables it
+  where there is nothing to delete;
+- the visitors line (`visitorsLine`, or the family's), the database's
+  `problems` with the way to `migrationsRoute`, a 503 (no table yet) with Look
+  again, any other failure with Try again.
+
+A table that answers to the width it is given (a container query): in a page
+narrower than 640 px each person is a card - the name and what can be done, then
+each value under its label. The page's classes are its own,
+`anotoki-people-page__*`; its markers `[data-people]`, `[data-person="<sub>"]`,
+`[data-iam]`, `[data-delete]`, `[data-confirm]` (`[data-confirm-cancel]`,
+`[data-confirm-delete]`), `[data-sync]`, `[data-sync-now]`, `[data-outcome]`,
+`[data-found]`, `[data-visitors]`. It replaces Piano Academy's
+`pages/admin/people/*`, Japanese Academy's `admin/people/*` and the build
+analyzer's `pages/admin/people/*` with their API glue; the survey and genshin may
+take it with one route.
 
 ### Adopting auth and people, site by site
 
@@ -1715,13 +1847,17 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 bun install
 bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs: each entry point's
                         # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
-                        # build keeps of an entry point nothing is used of (nothing); and five first loads - the
+                        # build keeps of an entry point nothing is used of (nothing); no bundle naming innerHTML,
+                        # outerHTML, insertAdjacentHTML or bypassSecurityTrust, comments too (the IAM's deploy
+                        # check refuses such a release); and five first loads - the
                         # gate, the bar, the words, a button, the sign-in - beside lazy pages that use the rest (no
                         # file of theirs, under a limit), each file through Angular's own linker and the CLI's esbuild
 bun run test            # ng test lib --watch=false (Vitest, jsdom)
 bun run showcase        # projects/showcase on http://localhost:4320: every piece and the bar, from the source
                         # (?theme=dark, ?lang=sk, ?account=1 for a refused theme, ?frame=88rem for the frame's
-                        # maxWidth; /migrations, /translations, /languages against an imagined server; never published)
+                        # maxWidth; /migrations, /translations, /languages (?editor=1: no delete or import),
+                        # /people (?people=unready, ?people=down) against an imagined server; /sign-in, the sign-in
+                        # failure's screen (?code=state_mismatch, ..., unavailable); never published)
 bun run build:showcase  # the same, built into angular/dist/showcase
 bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)
 ```

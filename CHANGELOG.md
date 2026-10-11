@@ -8,9 +8,9 @@ said here, with what a site must do.
 ## 0.4.0 - unreleased
 
 Two modules, both halves: **auth** - signing in through the anotoki IAM, the IAM's SDKs moved into the
-library, and the sign-in hint (the owner's decisions of 2026-10-07) - and **people** - each site's
-record of the accounts that use it, and the scrub of the accounts the IAM deleted (the Angular People
-page comes with the UI kit); and the PHP half of the **admin tools** every site's panel shares (the
+library, the sign-in hint (the owner's decisions of 2026-10-07) and the screen of a sign-in that failed -
+and **people** - each site's record of the accounts that use it, the scrub of the accounts the IAM
+deleted, and the administrators' People page on the UI kit; and the PHP half of the **admin tools** every site's panel shares (the
 owner's request of 2026-10-07, step 4): the error log, the audit log, feedback, backups and the file
 explorer - for the site's ADMIN alone (the owner's decision: EDITORs see none of them). The admin tools'
 Angular pages come later, on the UI kit. Nothing a site's code uses of 0.3.0 changes; each module is
@@ -109,19 +109,77 @@ Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
   (one try a value, one a minute, ten minutes after the IAM did not answer); following the IAM - a hint
   gone or changed means one refresh at boot.
 - `provideTestAnotokiAuth`, `FakeAuthClient` for a site's specs.
-- On 0.3.0's structure: `<anotoki-auth-callback>` is drawn with the kit - its buttons
-  (`@anotoki/lib/ui/button`), the status page's frame, classes of its own (`anotoki-auth-callback__panel`,
-  `__message`, `__actions`; `[data-retry]`, `[data-back]`); the module imports the kit's pieces from their
+- On 0.3.0's structure: `<anotoki-auth-callback>` is drawn with the kit - the status page's frame, classes
+  of its own (`anotoki-auth-callback__panel`, `__message`); the module imports the kit's pieces from their
   own entry points and the migrations module, never `@anotoki/lib/ui`; its top-level `HttpContextToken`s
   and words are marked pure.
-- The sign-in page's words are library words: `anotoki.signIn.signingIn|notCompleted|expired|
+- `<anotoki-sign-in-failure>` (`SignInFailureComponent`) - the screen of a sign-in that came back without
+  one, could not start, or cannot be set up, a kit screen a site can route to: "Signing in did not work",
+  why - from the failure's code alone - Try again (the sign-in once more, back to where it started; a
+  sign-in that cannot be set up reloads the page) and Back (never to the callback or the screen itself),
+  the kit's buttons (`[data-retry]`, `[data-back]`) in the status page's frame (`anotoki-sign-in-failure__panel`,
+  `__title`, `__message`, `__actions`), noindex while it shows, in the visitor's language. The callback
+  page shows it in its place; the module's `failureRoute` names a route of the site's own, in its frame,
+  where the guards send a failed sign-in instead of the callback route.
+- The sign-in page's words are library words: `anotoki.signIn.signingIn|failedTitle|notCompleted|expired|
   storageUnavailable|unavailable|failed|retry|back`, English and informal Slovak, in
   `php/resources/library-words.json`, generated into `@anotoki/lib/words/sign-in` (below) and read from
   there (`SIGN_IN_WORD_NAMES`, as the status page reads its own); an owner's rewording through
   `translate` (with the translations module, `libraryWord()`).
-- `scripts/check-package.mjs` knows the two entry points: auth is eager (16 kB at most; 14.9 kB), its
-  testing helper imports it alone; a fifth first load, "the sign-in" (the gate and every eager part of
-  auth, 19.5 kB at most; 18.7 kB).
+- `scripts/check-package.mjs` knows the two entry points: auth is eager (16 kB at most; 15.3 kB with the
+  failure's screen), its testing helper imports it alone; a fifth first load, "the sign-in" (the gate and
+  every eager part of auth, the failure's screen with it, 19.5 kB at most; 19.0 kB).
+
+Angular, people (`@anotoki/lib/people`, `@anotoki/lib/people/page`):
+- `@anotoki/lib/people` (0.2 kB, 0.5 kB at most: a site's app.config, or the page's route) -
+  `provideAnotokiPeople()` (`apiBase`, `isAdmin`, `me`, `lead`, `formatDate`, `delete: { label, question,
+  allowed, done }`, `visitorsLine`, `migrationsRoute` - its functions run in an injection context) and the
+  types of the PHP half's PeopleRoutes::admin() answers.
+- `@anotoki/lib/people/page` (9.6 kB, a lazy admin route) - `<anotoki-people-page>`: the union of what
+  Piano Academy's, Japanese Academy's and the build analyzer's People pages showed and did, over the routes
+  as built. A search by name or IAM id (as the typing rests, or at Enter; only the latest answer counts),
+  50 a page, newest seen first; the name with "you" and, under it, never off the screen, "Open at the IAM"
+  (for the IAM's administrators) and Delete in `danger-text`; the IAM id, first and last seen (a time no
+  person on the page has is not drawn), the site's columns (count, text, time); an account the IAM deleted
+  muted and said to be; where the scrub stands - last checked, scrubbed, or why it stopped - with Check
+  now; Delete behind a question in the page's own dialog (the site's words, or the family's naming the
+  counts), what went in the site's labels with its note; the visitors line; what the database lacks, with
+  the way to Migrations. English; a table whose rows are cards in a page narrower than 640 px.
+- `scripts/check-package.mjs` knows both: the configuration imports nothing of the package, the page the
+  kit and the configuration - never the auth module.
+
+Angular, the kit's fixes the sites found:
+- `@anotoki/lib/styles`: the token `danger-text` (light `#b42833`, dark `#ff6b75`; 4.5:1 at least on every
+  ground and on `danger-soft`, 5.4 and 5.2 at the least), the ink of the words that say something went
+  wrong - a field's error, the translations pages' refusals, a danger badge read it - apart from the fill
+  `danger`, so a site's own darker fill red (Japanese Academy's dark, 3:1 on its surfaces) no longer takes
+  its error words down with it.
+- `ui/forms`: `invalid` - aria-invalid and the danger edge without a message of its own (one message for a
+  range's two dates, a form's summary) - on the text field, textarea, password field, select and code input.
+- `shell`: `shortBrandMax`, when given, alone says where the brand is short - below `phoneMax` too, so a
+  bar that folds wide (Piano Academy's at 1320 px) keeps "anotoki Piano Academy" where it fits; in
+  development the bar warns when the folded row overflows with the full wordmark.
+- `shell`: `ThemeService` says no refusal when the account went while a choice was on its way - signed
+  out here or in another tab (no account any more, or `login_required`): the choice stays shown;
+  `refused` holds only while there is an account.
+- `ui/alert`: the heading breaks a word longer than its line (a migration file's name with its set at
+  390 px).
+- `migrations/page`: the Pending card heads each set by its name (`iam`, `anotoki_translations`), never
+  `migrations/<set>/` - a site's folder is not its set's name. A spec reading the heading changes.
+- `translations/admin`: no `beforeunload` question once nobody is signed in - on the way to the IAM's
+  sign-in, the drafts wait in the tab for the same person, as the pages' route guard already let the page go.
+- `scripts/check-package.mjs`: no bundle may name innerHTML, outerHTML, insertAdjacentHTML or
+  bypassSecurityTrust, in any spelling, comments too - the IAM's deploy check's rule, refused before a
+  release can reach it.
+
+Translations, found by the survey moving onto 0.3.0:
+- `admin.allows` gains `importStrings`, `addLanguages` and `deleteLanguages`, each as its page's permission
+  unless the site says otherwise; a control for what the site does not allow is not drawn (the survey's
+  EDITORs see no Delete on the Languages page, which its server refuses them).
+- The Translations page's note about what is typed promises nothing of a sign-out: a site's bar may ask
+  before it (the survey's does).
+- PHP: `invalid_placeholder` on a key with no placeholders is worded for it - "a brace belongs only around
+  a placeholder, so take it out" - instead of "like {count}", a placeholder the key does not have.
 
 Angular, the library's words a namespace at a time, each module's with the module - so that a module's
 words weigh neither on the kit's first loads nor on the translations module's:
@@ -158,8 +216,9 @@ words weigh neither on the kit's first loads nor on the translations module's:
   run words --check` holds byte for byte).
 
 PHP, translations: the library's set `anotoki_translations` gains `003_sign_in_words.sql` - the sign-in
-page's eight keys, by 002's rule (descriptions the library's; strings only for a key that has none; a
-gate on English). A site that applies the set gets it as any migration: the upload waits for Apply.
+page's nine keys (the failure screen's heading among them), by 002's rule (descriptions the library's;
+strings only for a key that has none; a gate on English). A site that applies the set gets it as any
+migration: the upload waits for Apply.
 
 What a site must do - auth and people (README.md, "Adopting auth and people, site by site"):
 `anotoki/lib ^0.4` and the 0.4.0 tarball together; a migration of its own adding
@@ -167,7 +226,17 @@ What a site must do - auth and people (README.md, "Adopting auth and people, sit
 SDKs deleted (the IAM keeps `sdk/` frozen for third parties) and its wrappers replaced by the wiring in
 README.md; `robots.txt` `Disallow: /auth/` where visitors are welcome (genshin, the build analyzer). The
 boot configuration answers snake_case now - the Angular half reads the camelCase the sites answer today
-too.
+too. A site with a People page of its own (Piano Academy, Japanese Academy, the build analyzer) routes
+`@anotoki/lib/people/page` in its place, `provideAnotokiPeople()` with its words, and deletes its page and
+its API glue; one that wants the sign-in failure in its frame routes `SignInFailureComponent` and names it
+`failureRoute`.
+
+What a site may do - the kit's fixes (README.md, "Upgrading from 0.3.x", 4): give `danger-text` where its
+own red fill is too dark for words; pass `shortBrandMax` below `phoneMax` where its bar folds wide; mark
+fields `invalid`; give the translations admin pages' per-action permissions (the survey:
+`deleteLanguages: () => auth.isAdmin()`). A spec that reads the Migrations page's set heading
+(`migrations/<set>/`) or the PHP half's `invalid_placeholder` sentence for a key with no placeholders
+changes.
 
 What a site must do - the admin tools: nothing until it takes them. Taking them:
 `Admin\Schema::migrationSet()` **first** in every place that builds its Migrator (the site, its

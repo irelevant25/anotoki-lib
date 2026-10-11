@@ -33,10 +33,14 @@ version.
 - `@anotoki/lib/auth` - signing in through the anotoki IAM: its browser client
   (the IAM SDK 1.2.0, ported, with the same storage), `AnotokiAuth` (the session
   as signals, the sign-in hint's silent hop, following the IAM),
-  `anotokiAuthInterceptor`, the guards, `AccountPreferences` and
-  `<anotoki-auth-callback>`, configured with `provideAnotokiAuth(...)`.
+  `anotokiAuthInterceptor`, the guards, `AccountPreferences`,
+  `<anotoki-auth-callback>` and `<anotoki-sign-in-failure>` (the screen of a
+  sign-in that failed, a site can route to), configured with `provideAnotokiAuth(...)`.
 - `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth()` and `FakeAuthClient` for a
   site's specs.
+- `@anotoki/lib/people` - `provideAnotokiPeople(...)` and the shape of the People
+  API (the PHP half's `PeopleRoutes`); `@anotoki/lib/people/page` - the admin
+  page `<anotoki-people-page>`, for a lazy admin route.
 - `@anotoki/lib/words` - the library's own words, every module's: `LIBRARY_WORDS`
   (for a site's specs); `@anotoki/lib/words/<namespace>` - one module's
   (`/site-status`, `/sign-in`), imported by that module alone, which registers

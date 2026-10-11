@@ -90,13 +90,18 @@ deletes audited before 0.5.0 name no time and are not done again.
   `--inspect` reads the manifest alone; a HEAD never spends a download ticket; files the site's own user's alone
   (`0600`) from their creation (`tempnam()`: `Support\AtomicFile`), folders `0700` (every guarded folder too);
   the installation's key made whole before it is linked into place (`link()`: one key, whoever makes it at the
-  same moment).
+  same moment) - without `link()` (a host's `disable_functions`), its name claimed with an empty file only one
+  process can make (`fopen('x')`) and only the claimant's key renamed over it, the others waiting while it is
+  empty.
 - Audit log: a flush empties the pending file under the lock its writers take (an entry written meanwhile waits
   and lands after) and never inserts an entry twice; the 64 KB cut keeps the details' keys; `recordInside()`
   writes an entry that must be there inside its change's transaction, or throws. Feedback: a
   signed-in sender is counted by account, in a day's budget of the people signed in apart from the visitors'
   (`allPerDay` each); a message "without my name" is counted as a visitor's; a count that cannot be kept
-  answers `503 storage_unavailable`, which the error log writes; the reply address is only what the form sends.
+  answers `503 storage_unavailable`, which the error log writes; the reply address is only what the form sends;
+  with the site's `AuditLog`, a delete's `feedback.deleted` is written inside the delete's transaction
+  (`Feedback::deleteWithEntry()`: no delete without it, `503 feature_unavailable` while the audit log's table
+  waits) and a restore matches it to the backup as it does a person's.
 - `Support\Keys::installation()` is as safe as the storage folder, no safer: it keys the error log's client
   hashes, the feedback limits' buckets, the file explorer's preview links and the backups' seal, and whoever can
   write the whole folder can make it their own. A preview link alone reads one file of a root: a site with a

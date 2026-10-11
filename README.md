@@ -1622,15 +1622,16 @@ $backups = new Backups($connect, $directory, [
   `person.data_deleted` is done again (`People::delete()` with the site's hook,
   its request null) and every `feedback.deleted` where it is the same message:
   its id and the time it was sent (an entry of before 0.5.0 names no time and is
-  passed over). A `person.data_deleted` written inside its delete's transaction
-  names that transaction (`_txid`), and its time is when the transaction began
-  - just before the backup's snapshot, it may have committed after it: such an
-  entry, dated within the hour before the backup's time, is done again when its
-  transaction is not in the backup's snapshot (`txid_visible_in_snapshot()`, the
-  manifest's `txid_snapshot`); every entry from the snapshot's time on is done
-  again, as before. Further back the id is not asked: an id is one PostgreSQL
-  cluster's, and after a move by `pg_dump` every older entry would seem unseen -
-  its delete done again on whatever the person kept here since. Entries and
+  passed over). A `person.data_deleted` or a `feedback.deleted` written inside
+  its delete's transaction names that transaction (`_txid`), and its time is
+  when the transaction began - just before the backup's snapshot, it may have
+  committed after it: such an entry, dated within the hour before the backup's
+  time, is done again when its transaction is not in the backup's snapshot
+  (`txid_visible_in_snapshot()`, the manifest's `txid_snapshot`); every entry
+  from the snapshot's time on is done again, as before. Further back the id is
+  not asked: an id is one PostgreSQL cluster's, and after a move by `pg_dump`
+  every older entry would seem unseen - its delete done again on whatever was
+  kept here since. Entries and
   backups of before go by the time alone. No check of the IAM's deleted
   accounts may run across a restore - one begun before it would keep its own
   place in the IAM's list over the restored one: the restore takes the check's
@@ -2017,8 +2018,10 @@ FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, 
   `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
   `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited; a delete with
   the message's `created_at` beside its id, 0.5.0: a restore deletes it again
-  by both, `People::replay()`). `forgetPeople($ids)` for an anonymized account;
-  `prune()` daily.
+  by both, `People::replay()` - with the site's `AuditLog`, written inside the
+  delete's own transaction, `Feedback::deleteWithEntry()`: no delete without
+  it, `503 feature_unavailable` while the audit log's table waits).
+  `forgetPeople($ids)` for an anonymized account; `prune()` daily.
 
 ### Backups
 
@@ -2385,11 +2388,15 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   site without a secret, its folder guarded; made once, written whole and the
   site's own user's alone from its creation (`tempnam()`), then linked into
   place (`link()`: of two processes making it at one moment, one key stays and
-  both read it). It keys the error log's client hashes, the feedback limits'
-  buckets, the file explorer's preview links and the backups' seal, and is as
-  safe as the storage folder, no safer: whoever can write that folder can
-  delete the key and make one of their own - as they can the IAM's key set
-  kept there, which tokens are checked with. It keeps out whoever cannot.
+  both read it). Without `link()` (a host's `disable_functions`), the name is
+  claimed with an empty file only one process can make (`fopen('x')`), and only
+  the claimant renames its key over it - the others wait while it is empty, and
+  a claim its maker left goes once it is 10 seconds old. It keys the error
+  log's client hashes, the feedback limits' buckets, the file explorer's
+  preview links and the backups' seal, and is as safe as the storage folder,
+  no safer: whoever can write that folder can delete the key and make one of
+  their own - as they can the IAM's key set kept there, which tokens are
+  checked with. It keeps out whoever cannot.
 - **genshin** moves its `audit_logs` and `feedback` rows into the library's
   tables in its own migrations (gated, the old tables dropped by a later one) and
   drops `ip` and `submitter_hash` in the move; **the IAM** moves `audit_log`

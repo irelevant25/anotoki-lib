@@ -198,7 +198,8 @@ final class People
      *     done again on whatever the person kept here since. An entry of before 0.5.0, or a backup without a
      *     snapshot: the time alone;
      *   - every feedback.deleted: the message deleted again where it is the same one - its id and the time it
-     *     was sent both (an entry of before 0.5.0 names no time, and is passed over).
+     *     was sent both (an entry of before 0.5.0 names no time, and is passed over). Its entry is written inside
+     *     the delete's transaction too (Feedback::deleteWithEntry()), and matched to the backup the same way.
      * No check of the IAM's deleted accounts may run across a restore: one begun before it would keep its own
      * place in the IAM's list over the restored one, past whoever the restore brought back. The restore holds
      * the check's lock until it commits - and while a check holds it, the restore is refused (waiting could
@@ -250,7 +251,7 @@ final class People
             }
             if ($feedback) {
                 try {
-                    foreach (self::feedbackDeletedSince($pdo, $since) as [$id, $sentAt]) {
+                    foreach (self::feedbackDeletedSince($pdo, $since, $snapshot) as [$id, $sentAt]) {
                         Feedback::deleteOn($pdo, $id, $sentAt);
                     }
                 } catch (Throwable $e) {
@@ -405,31 +406,20 @@ final class People
     }
 
     /**
-     * The people whose data was deleted since the backup - from $since on (an entry of that very moment counts),
-     * or, for an entry that names its transaction (`_txid`) and is dated within TXID_WINDOW before $since, in a
-     * transaction the backup's $snapshot does not see (see replay()) - each once, in the order first done. Ids
-     * only: a target that is no id is passed over.
+     * The people whose data was deleted since the backup (sinceTheBackup()) - each once, in the order first done.
+     * Ids only: a target that is no id is passed over.
      *
      * @return list<string>
      */
     private static function peopleDeletedSince(PDO $pdo, string $since, ?string $snapshot): array
     {
-        // The transaction's id is asked only of an entry dated just before the backup: the one race it is for - a
-        // delete begun before the snapshot, committed after it - lasts as long as a delete's transaction, never an
-        // hour. Further back, a cluster's ids may not be this backup's at all (a database moved by pg_dump counts
-        // anew): an entry of before the move would seem unseen by every later snapshot, and be done again on
-        // whatever the person kept here since. The time alone says it is in the backup.
+        [$after, $parameters] = self::sinceTheBackup($since, $snapshot);
         $statement = $pdo->prepare(
             'SELECT target_id FROM ' . AdminSchema::AUDIT_TABLE . '
-              WHERE action = \'person.data_deleted\' AND target_type = \'user\' AND target_id IS NOT NULL
-                AND (created_at >= CAST(? AS timestamptz)
-                     OR CASE WHEN CAST(? AS text) IS NOT NULL AND created_at >= CAST(? AS timestamptz) - CAST(? AS interval)
-                                  AND details->>\'_txid\' ~ \'^[0-9]{1,18}$\'
-                             THEN NOT txid_visible_in_snapshot(CAST(details->>\'_txid\' AS bigint), CAST(? AS txid_snapshot))
-                             ELSE false END)
+              WHERE action = \'person.data_deleted\' AND target_type = \'user\' AND target_id IS NOT NULL AND ' . $after . '
               GROUP BY target_id ORDER BY min(created_at), min(id)'
         );
-        $statement->execute([$since, $snapshot, $since, self::TXID_WINDOW, $snapshot]);
+        $statement->execute($parameters);
 
         return array_values(array_filter(
             array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)),
@@ -438,20 +428,21 @@ final class People
     }
 
     /**
-     * The feedback messages deleted from $since on: each by its id and the time it was sent, as its delete
-     * recorded them (FeedbackRoutes, 0.5.0) - an entry without the time is passed over: by its id alone it
-     * might be another message now.
+     * The feedback messages deleted since the backup (sinceTheBackup()): each by its id and the time it was sent,
+     * as its delete recorded them (FeedbackRoutes, 0.5.0) - an entry without the time is passed over: by its id
+     * alone it might be another message now.
      *
      * @return list<array{int, string}>
      */
-    private static function feedbackDeletedSince(PDO $pdo, string $since): array
+    private static function feedbackDeletedSince(PDO $pdo, string $since, ?string $snapshot): array
     {
+        [$after, $parameters] = self::sinceTheBackup($since, $snapshot);
         $statement = $pdo->prepare(
-            "SELECT target_id, details->>'created_at' FROM " . AdminSchema::AUDIT_TABLE . "
-              WHERE action = 'feedback.deleted' AND target_type = 'feedback' AND created_at >= CAST(? AS timestamptz) AND target_id IS NOT NULL
-              ORDER BY created_at, id"
+            'SELECT target_id, details->>\'created_at\' FROM ' . AdminSchema::AUDIT_TABLE . '
+              WHERE action = \'feedback.deleted\' AND target_type = \'feedback\' AND target_id IS NOT NULL AND ' . $after . '
+              ORDER BY created_at, id'
         );
-        $statement->execute([$since]);
+        $statement->execute($parameters);
         $out = [];
         foreach ($statement->fetchAll(PDO::FETCH_NUM) as [$id, $sentAt]) {
             if (preg_match('/^[1-9][0-9]{0,17}$/D', (string) $id) === 1 && is_string($sentAt) && $sentAt !== '') {
@@ -460,5 +451,31 @@ final class People
         }
 
         return $out;
+    }
+
+    /**
+     * Which audit entries were written since the backup, as an SQL condition and its parameters: every entry from
+     * $since on (an entry of that very moment counts), and an entry that names its transaction (`_txid`, written
+     * inside its delete's own: its time is when that began) dated within TXID_WINDOW before $since, when the
+     * backup's $snapshot does not see that transaction.
+     *
+     * The transaction's id is asked only of an entry dated just before the backup: the one race it is for - a
+     * delete begun before the snapshot, committed after it - lasts as long as a delete's transaction, never an
+     * hour. Further back, a cluster's ids may not be this backup's at all (a database moved by pg_dump counts
+     * anew): an entry of before the move would seem unseen by every later snapshot, and its delete be done again
+     * on whatever was kept here since. The time alone says it is in the backup.
+     *
+     * @return array{string, list<?string>}
+     */
+    private static function sinceTheBackup(string $since, ?string $snapshot): array
+    {
+        return [
+            '(created_at >= CAST(? AS timestamptz)
+              OR CASE WHEN CAST(? AS text) IS NOT NULL AND created_at >= CAST(? AS timestamptz) - CAST(? AS interval)
+                           AND details->>\'_txid\' ~ \'^[0-9]{1,18}$\'
+                      THEN NOT txid_visible_in_snapshot(CAST(details->>\'_txid\' AS bigint), CAST(? AS txid_snapshot))
+                      ELSE false END)',
+            [$since, $snapshot, $since, self::TXID_WINDOW, $snapshot],
+        ];
     }
 }

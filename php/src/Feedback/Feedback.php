@@ -339,6 +339,56 @@ final class Feedback
     }
 
     /**
+     * Deletes a message and writes its $entry in one transaction - the audit log's feedback.deleted
+     * (AuditLog::recordInside()), given the message as it was: a restore deletes the message again by that entry
+     * (People::replay()), so the delete is never made without it, and what $entry throws undoes the delete. Inside
+     * a caller's transaction, behind a savepoint of its own. The message as it was, or null for none.
+     *
+     * @param Closure(PDO, array<string, mixed>): void $entry
+     * @return ?array<string, mixed>
+     */
+    public function deleteWithEntry(int $id, Closure $entry): ?array
+    {
+        $pdo = ($this->pdo)();
+        $own = !$pdo->inTransaction();
+        if ($own) {
+            $pdo->beginTransaction();
+        } else {
+            $pdo->exec('SAVEPOINT anotoki_feedback_delete');
+        }
+        try {
+            // Held while its entry is written: nobody changes its status between the entry and the delete.
+            $statement = $pdo->prepare('SELECT ' . self::columns() . ' FROM ' . Schema::FEEDBACK_TABLE . ' WHERE id = ? FOR UPDATE');
+            $statement->execute([$id]);
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+            $message = is_array($row) ? self::item($row) : null;
+            if ($message !== null) {
+                self::deleteOn($pdo, $id);
+                $entry($pdo, $message);
+            }
+            if ($own) {
+                $pdo->commit();
+            } else {
+                $pdo->exec('RELEASE SAVEPOINT anotoki_feedback_delete');
+            }
+
+            return $message;
+        } catch (Throwable $e) {
+            try {
+                if ($own && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                } elseif (!$own) {
+                    $pdo->exec('ROLLBACK TO SAVEPOINT anotoki_feedback_delete');
+                    $pdo->exec('RELEASE SAVEPOINT anotoki_feedback_delete');
+                }
+            } catch (Throwable) {
+                // What failed first is what is said.
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * delete() on a connection of the caller's: a restore doing again what was done since its backup
      * (People::replay()) - with $createdAt, only the message sent at that time (as get() gives it): an id
      * alone might name another message after a restore.

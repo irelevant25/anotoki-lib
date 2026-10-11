@@ -287,11 +287,50 @@ final class FeedbackTest extends DatabaseTestCase
             $entries
         ));
         self::assertSame(['to' => 'resolved', 'from' => 'read'], json_decode((string) $entries[0]['details'], true));
+        $deleted = json_decode((string) $entries[1]['details'], true);
+        self::assertMatchesRegularExpression('/^[0-9]+$/D', $deleted['_txid'], 'written inside the delete\'s transaction, which it names');
+        unset($deleted['_txid']);
         self::assertSame(
             ['kind' => $opened['kind'], 'status' => 'resolved', 'created_at' => $opened['created_at']],
-            json_decode((string) $entries[1]['details'], true),
+            $deleted,
             'the time it was sent beside its id: a restore deletes it again by both (People::replay())',
         );
+    }
+
+    public function testWithTheLibrarysAuditLogADeleteIsNeverMadeWithoutItsEntry(): void
+    {
+        $moved = false;
+        $audit = new AuditLog(fn (): PDO => $this->pdo, ['ready' => static function () use (&$moved): bool {
+            return $moved;
+        }]);
+        $app = $this->app([], $audit);
+        $this->post($app, ['kind' => 'bug', 'message' => 'Delete me at my asking']);
+        $this->post($app, ['kind' => 'idea', 'message' => 'Keep me']);
+        [$first, $second] = array_map('intval', $this->pdo->query('SELECT id FROM anotoki_feedback ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
+
+        // The audit log's table waits for its update: nothing is deleted, as no entry could say so.
+        $waiting = $this->send($app, 'DELETE', "/api/admin/feedback/$first");
+        self::assertSame([503, 'feature_unavailable', '60'], [$waiting->getStatusCode(), $this->json($waiting)['code'], $waiting->getHeaderLine('Retry-After')]);
+        self::assertSame(2, (int) $this->value('SELECT count(*) FROM anotoki_feedback'));
+
+        $moved = true;
+        self::assertSame(['deleted' => true], $this->json($this->send($app, 'DELETE', "/api/admin/feedback/$first")));
+        $entry = $this->rows("SELECT target_id, details FROM anotoki_audit_log WHERE action = 'feedback.deleted'");
+        self::assertSame((string) $first, $entry[0]['target_id']);
+        self::assertArrayHasKey('_txid', json_decode((string) $entry[0]['details'], true));
+
+        // An entry the table refuses undoes its delete: never a delete a restore would not do again.
+        $this->pdo->exec("ALTER TABLE anotoki_audit_log ADD CONSTRAINT test_refuses CHECK (target_id <> '$second')");
+        try {
+            $this->send($app, 'DELETE', "/api/admin/feedback/$second");
+            self::fail('a delete without its entry answered');
+        } catch (\PDOException $e) {
+            self::assertSame('23514', (string) $e->getCode());
+        }
+        self::assertSame([$second], array_map('intval', $this->pdo->query('SELECT id FROM anotoki_feedback')->fetchAll(PDO::FETCH_COLUMN)), 'the message is there still');
+        self::assertFalse($this->pdo->inTransaction());
+        self::assertSame(404, $this->send($app, 'DELETE', '/api/admin/feedback/999999')->getStatusCode(), 'nobody: nothing written');
+        self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'feedback.deleted'"));
     }
 
     public function testWithoutItsTableFeedbackIsUnavailable(): void

@@ -309,6 +309,31 @@ final class PeopleRestoreTest extends DatabaseTestCase
         self::assertSame(2, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'person.data_deleted'"), 'a replay writes no entry of its own');
     }
 
+    public function testAFeedbackDeleteInsideItsTransactionIsMatchedToTheBackupByThatTransaction(): void
+    {
+        // The Feedback page's delete writes its entry inside its transaction too (Feedback::deleteWithEntry()): one
+        // begun before the backup and committed after its snapshot is done again, though its time is before it.
+        $message = $this->message(8, 'bob@example.test');
+        $feedback = new Feedback(fn (): PDO => $this->pdo, ['storage' => $this->path('feedback-storage')]);
+        $backups = $this->backups();
+        $this->pdo->beginTransaction();
+        $deleted = $feedback->deleteWithEntry($message, function (PDO $pdo, array $deleted) use ($message): void {
+            $this->audit->recordInside($pdo, null, 1, 'feedback.deleted', 'feedback', $message, ['kind' => $deleted['kind'], 'status' => $deleted['status'], 'created_at' => $deleted['created_at']]);
+        });
+        self::assertSame($message, $deleted['id'] ?? null);
+        $backup = $backups->create(Backups::MANUAL, null, 1);
+        self::assertIsArray($backup);
+        $this->pdo->commit();
+        $began = $this->pdo->prepare("SELECT created_at < CAST(? AS timestamptz) FROM anotoki_audit_log WHERE action = 'feedback.deleted'");
+        $began->execute([$backups->manifest($backup['id'])['snapshot_at']]);
+        self::assertTrue((bool) $began->fetchColumn(), 'begun before the backup: by the time alone, it would not be done again');
+
+        $result = $backups->restore($backup['id'], 1);
+
+        self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
+        self::assertSame(0, (int) $this->value("SELECT count(*) FROM anotoki_feedback WHERE id = $message"), 'the message deleted at its sender\'s asking did not come back with the backup');
+    }
+
     public function testAnEntrysTransactionIsAskedOnlyWithinTheHourBeforeTheBackup(): void
     {
         // A database moved to another cluster by pg_dump counts its transactions anew: an entry of before the move

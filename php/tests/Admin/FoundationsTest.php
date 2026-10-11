@@ -143,31 +143,73 @@ final class FoundationsTest extends TestCase
     public function testOfProcessesMakingTheKeyAtOneMomentOneKeyIsMadeAndEveryOneReadsIt(): void
     {
         $storage = $this->temporaryFolder() . '/storage';
-        // Each waits for the same moment, then asks for the installation's key: one link() makes it, the others read it.
-        $at = microtime(true) + 1.5;
+
+        $keys = $this->keysOfProcessesAtOnce($storage, 8);
+
+        self::assertSame(array_fill(0, 8, 'link'), array_column($keys, 0), 'made by link()');
+        self::assertCount(1, array_unique(array_column($keys, 1)), 'one key for every process');
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/D', $keys[0][1]);
+        self::assertSame($keys[0][1], bin2hex(Keys::installation($storage)));
+        self::assertSame(['.', '..', '.htaccess', 'anotoki-lib.key', 'index.html'], scandir($storage), 'nothing of the others left beside it');
+    }
+
+    public function testWithoutLinkTheKeyIsStillMadeOnceByProcessesAtOneMoment(): void
+    {
+        // A shared host's disable_functions takes link() away: the name is claimed with an empty file only one
+        // process can make, and only the claimant renames its key over it - the others wait while it is empty.
+        for ($round = 1; $round <= 5; $round++) {
+            $storage = $this->temporaryFolder() . '/storage';
+
+            $keys = $this->keysOfProcessesAtOnce($storage, 8, ['-d', 'disable_functions=link']);
+
+            self::assertSame(array_fill(0, 8, 'nolink'), array_column($keys, 0), "round $round: no link() in any of them");
+            foreach ($keys as [, $key]) {
+                self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/D', $key, "round $round: every process read a key - none could neither read nor make one");
+            }
+            self::assertCount(1, array_unique(array_column($keys, 1)), "round $round: one key for every process");
+            self::assertSame($keys[0][1], bin2hex(Keys::installation($storage)));
+            self::assertSame(['.', '..', '.htaccess', 'anotoki-lib.key', 'index.html'], scandir($storage), "round $round: nothing of the others left beside it");
+            if (PHP_OS_FAMILY !== 'Windows') {
+                self::assertSame('600', substr(sprintf('%o', fileperms($storage . '/anotoki-lib.key')), -3), 'the claimant\'s file, the site\'s own user\'s alone');
+            }
+        }
+    }
+
+    /**
+     * $count processes of this PHP (with $options) that each ask for the installation's key in $storage at one
+     * moment - all started, they wait for a file naming that moment, then spin to it - each one's [link or
+     * nolink, the key in hex].
+     *
+     * @param list<string> $options
+     * @return list<array{string, string}>
+     */
+    private function keysOfProcessesAtOnce(string $storage, int $count, array $options = []): array
+    {
+        $go = $this->temporaryFolder() . '/go';
         $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) . ';'
-            . ' usleep(max(0, (int) round((' . var_export($at, true) . ' - microtime(true)) * 1e6)));'
-            . ' echo bin2hex(Anotoki\Lib\Support\Keys::installation(' . var_export($storage, true) . '));';
+            . ' $until = microtime(true) + 30; while (!is_file(' . var_export($go, true) . ') && microtime(true) < $until) { usleep(500); clearstatcache(); }'
+            . ' $at = (float) @file_get_contents(' . var_export($go, true) . '); while (microtime(true) < $at) { }'
+            . ' try { echo function_exists(\'link\') ? \'link\' : \'nolink\', \' \', bin2hex(Anotoki\Lib\Support\Keys::installation(' . var_export($storage, true) . ')); }'
+            . ' catch (Throwable $e) { echo \'failed \', $e->getMessage(); }';
         $running = [];
-        for ($index = 0; $index < 6; $index++) {
-            $process = proc_open([PHP_BINARY, '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        for ($index = 0; $index < $count; $index++) {
+            $process = proc_open([PHP_BINARY, ...$options, '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
             self::assertIsResource($process);
             $running[] = [$process, $pipes];
         }
+        self::assertTrue(AtomicFile::write($go, (string) (microtime(true) + 0.3)));
         $keys = [];
         foreach ($running as [$process, $pipes]) {
-            $keys[] = (string) stream_get_contents($pipes[1]);
+            $output = (string) stream_get_contents($pipes[1]);
             $errors = (string) stream_get_contents($pipes[2]);
             fclose($pipes[1]);
             fclose($pipes[2]);
             proc_close($process);
             self::assertSame('', $errors);
+            $keys[] = array_pad(explode(' ', $output, 2), 2, '');
         }
 
-        self::assertCount(1, array_unique($keys), 'one key for every process');
-        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/D', $keys[0]);
-        self::assertSame($keys[0], bin2hex(Keys::installation($storage)));
-        self::assertSame(['.', '..', '.htaccess', 'anotoki-lib.key', 'index.html'], scandir($storage), 'nothing of the others left beside it');
+        return $keys;
     }
 
     public function testATornKeyIsNeverTakenForAKey(): void

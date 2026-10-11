@@ -163,7 +163,7 @@
                         <div>
                             <dt>Answer at</dt>
                             <dd>
-                                <a [href]="'mailto:' + message.contact_email">{{ message.contact_email }}</a>
+                                <a [href]="mailLink(message.contact_email)">{{ message.contact_email }}</a>
                             </dd>
                         </div>
                     }

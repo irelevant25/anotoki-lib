@@ -1549,13 +1549,26 @@ survive: the storage keys are the same.
 
 Five tools every site's admin panel shares, for the site's **ADMIN alone**
 (EDITORs see none of them - the owner's decision of 2026-10-07). The library
-decides nobody's permissions: each `*Routes::admin()` returns its route group
-and the site adds its own ADMIN check (the IAM: `requireSession()` +
-`requireAdmin()`, and its CSRF header on every write, as on every first-party
-write). Each has its page in the Angular half, an entry point of its own on a
-lazy admin route, in English as every admin page ("The pages" below); the
-visitors' side of feedback is a form in their language ("The visitors' feedback
-form").
+decides nobody's permissions, and mounts no admin route unguarded: every
+`*Routes::admin()` group asks the site's own ADMIN check, given once in its
+`AdminContext` (`isAdmin`), before anything else - `401 sign_in_required` for
+nobody, `403 forbidden` for anybody else - and a context without one mounts
+none (a `LogicException` while the site builds its app). The site still adds
+its own middleware to the group it gets back, which runs first (the IAM:
+`requireSession()` + `requireAdmin()`, and its CSRF header on every write, as
+on every first-party write). The groups may sit inside the site's own groups,
+under its base path: every link the server hands out names where its route is.
+Each tool has its page in the Angular half, an entry point of its own on a lazy
+admin route, in English as every admin page ("The pages" below); the visitors'
+side of feedback is a form in their language ("The visitors' feedback form").
+
+Two routes are **deliberately outside** every admin check, a navigation and an
+`<img>` sending no Bearer header: the backups' download (`BackupsRoutes::file()`
+- its single-use ticket is the check) and the file explorer's previews
+(`FilesRoutes::raw()` - its signed five-minute link is the check). A site whose
+sign-in rides on a cookie (the IAM) may mount `file()` inside its own session
+check and pass `samePerson: true`: the ticket then opens the file for the person
+it was issued to alone (the ticket's `by`).
 
 | tool | namespace | kept in | sites |
 | --- | --- | --- | --- |
@@ -1578,6 +1591,7 @@ use Anotoki\Lib\Admin\AdminContext;
 
 $context = new AdminContext(
     actorId: fn ($request) => $request->getAttribute('user')['id'] ?? null,   // from the session or the token, never a body
+    isAdmin: fn ($request): bool => Identify::person($request)?->isAdmin() ?? false,  // the site's ADMIN; the IAM: its own entry's ADMIN
     proof: AdminContext::recentSignIn(fn ($request) => $request->getAttribute('claims')['auth_time'] ?? null),  // the sites: 10 minutes
     // the IAM: proof: fn ($request, array $body) => accountProof($pdo, $request, $user, $session, $body['password'] ?? null, 'backup'),
     //          proofKind: 'password' (or a closure: 'recent_sign_in' where the account has no password)
@@ -1638,7 +1652,7 @@ $errorLog->installPhpHandlers();                                        // fatal
 $errors = $app->addErrorMiddleware(false, true, true);
 $errors->setDefaultErrorHandler($errorLog->wrapHandler($siteHandler));  // or ErrorLogMiddleware::inner() inside a site's own
 $app->add(ErrorLogMiddleware::outer($errorLog));                        // added last: outside the error middleware
-ErrorLogRoutes::admin($app, '/api/admin/errors', $errorLog, $context, $audit)->add($requireAdmin);
+ErrorLogRoutes::admin($app, '/api/admin/errors', $errorLog, $context, $audit); // guarded by the context; ->add() the site's own
 ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the pages' own errors (optional)
 ```
 
@@ -1651,20 +1665,25 @@ ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the 
   a token or the session.
 - `Support\Redactor`: PostgreSQL's DETAIL/HINT/CONTEXT/QUERY lines go whole,
   echoed values, e-mail and IP addresses, JWTs, Bearer credentials,
-  `password=`-like secrets, query strings and token-like runs become marks; at
-  most 4,096 characters are read, and a rule that cannot run gives nothing of
-  the message.
+  `password=`-like secrets (their names quoted or not: `{"password":"…"}`,
+  `'pass' => '…'`), query strings and token-like runs become marks; at most
+  4,096 characters are read, and a rule that cannot run gives nothing of the
+  message.
 - A day's file goes into parts past 4 MB, days past 30 are deleted, and past
-  64 MB in all a day's lines are dropped and counted (`dropped` in the
-  report). One line per fingerprint per request. genshin's own lines are read
-  as they were (their `at` in the server's zone, their `ip` shown).
+  64 MB in all the oldest days go first - today is never kept out by the days
+  before it; only what today alone does not fit is counted instead of written
+  (`dropped` in the report). One line per fingerprint per request, and at most
+  `perFingerprintDay` (100) of one kind a day, the rest counted: a scanner's
+  404s fill a hundred lines, not the budget. genshin's own lines are read as
+  they were (their `at` in the server's zone, their `ip` shown).
 - `GET $base` (`days`, `level`, `status`, `search`) answers genshin's report -
   `{total, errors, warnings, notices, distinct, truncated, days, daily,
   statuses, groups, dropped}`, the newest 2,000 lines grouped by fingerprint;
   `GET $base/{fingerprint}` every occurrence; `DELETE $base` clears it, and
   `DELETE $base?before=YYYY-MM-DD` the UTC days before that one (`{deleted}`,
   the files gone; audited `errors.cleared`). The log's own routes are never
-  logged.
+  logged - known by their route as they run, and by the path they are mounted
+  at (group, base path and all) for what fails before a route runs.
 - The client route: `POST {type?, message, page?, stack?, status?}` -> 204,
   8 KB at most, 20 an hour from one address bucket and 500 a day in all
   (`429 too_many`), each redacted, `source: client`.
@@ -1687,7 +1706,7 @@ MigrationsRoutes::admin($app, '/api/admin/migrations', $migrator, function ($req
     $audit->flushPending();
     $audit->record($request, $actorOf($request), 'migrations.applied', null, null, ['files' => $result['applied']]);
 });
-AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): array => namesOf($ids))->add($requireAdmin);
+AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): array => namesOf($ids));
 ```
 
 - `record()` never throws; inside the caller's transaction it writes behind a
@@ -1712,6 +1731,9 @@ AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): 
   `errors.cleared`, `backup.created|deleted|downloaded|restored|restore_failed`,
   `feedback.status_changed|deleted`, `file.uploaded|moved|renamed|deleted|restored|trash_emptied`,
   `folder.created`.
+- An entry that cannot be written is said to `onError` in a fixed sentence and
+  a code (the SQLSTATE, or the failure's class) - never the entry, its details
+  or its address, nor the database's words, which quote values.
 
 ### Feedback
 
@@ -1720,22 +1742,28 @@ use Anotoki\Lib\Feedback\Feedback;
 use Anotoki\Lib\Feedback\Http\FeedbackRoutes;
 
 $feedback = new Feedback(fn (): PDO => db(), [
-    'storage' => storageDir(),                       // the installation's key, the daily prune's stamp
+    'storage' => storageDir(),                       // required: the limits' count, the installation's key, the prune's stamp
     'sections' => ['Characters', 'Weapons'],         // the site's places, optional
     'fields' => ['steps' => 5000, 'expected' => 2000], // the site's extra fields, into details
     'defer' => afterResponse(...),                   // the prune after the answer
     // 'kinds' => ['bug', 'idea', 'other'], 'limits' => ['perHour' => 5, 'perDay' => 20, 'allPerDay' => 300],
-    // 'keep' => ['spam' => 30, 'resolved' => 365, 'client_hash' => 30], 'honeypot' => 'website', 'notify' => fn (array $message) => ...
+    // 'keep' => ['spam' => 30, 'resolved' => 365], 'honeypot' => 'website', 'notify' => fn (array $message) => ...
 ]);
 FeedbackRoutes::public($app, '/api/feedback', $feedback, $context, fn ($request): ?array => optionalSender($request));
-FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, fn (array $ids): array => namesOf($ids))->add($requireAdmin);
+FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, fn (array $ids): array => namesOf($ids));
 ```
 
 - The form: identity from the token only (`anonymous` drops the id and the
-  address); the page as a path; a filled honeypot answers `202` and keeps
-  nothing; the limits count an HMAC of the address bucket (never an address),
-  under one advisory lock; 64 KB a body; `201 {ok: true}` - no id. No mail: the
-  panel's badge reads `GET $base/unread`.
+  address); the page as a path; an address with none of `? & = % #`, a space
+  or a control character (a mail link would read them as more than an address:
+  `?bcc=`); a filled honeypot gets a kept message's answer word for word and
+  keeps nothing; 64 KB a body; `201 {ok: true}` - no id. No mail: the panel's
+  badge reads `GET $base/unread`.
+- Nothing of where a message came from is kept with it - no address, no hash of
+  one (the owner's decision). The limits count apart, in
+  `storage/cache/anotoki-feedback-limits.json` under its lock: an HMAC of each
+  address bucket that sent a message in the last day, and when - never in the
+  database, so never in a backup, each time gone a day later.
 - The admin side: `GET $base` (`kind`, `status`, `section`, `search`, `page`),
   `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
   `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited).
@@ -1760,8 +1788,9 @@ $backups = new Backups(fn (): PDO => Copy::connect($dsn, $user, $password), stor
 ]);
 $backups->dailyIfDue();                                                        // on requests: once a UTC day, after the answer
 $migratorOptions['beforeApply'] = $backups->beforeApplyHook($siteOwnHook);    // a backup before every update
-BackupsRoutes::admin($app, '/api/admin/backups', $backups, $context)->add($requireAdmin);
-BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          // OUTSIDE the admin check
+BackupsRoutes::admin($app, '/api/admin/backups', $backups, $context);
+BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          // DELIBERATELY outside the admin check: the ticket
+// the IAM may: BackupsRoutes::file($sessionGroup, ..., samePerson: true)    // inside its session check, for the ticket's person alone
 ```
 
 - No pg_dump: COPY through PDO (`Pdo\Pgsql::copyToFile()` on PHP 8.4+ -
@@ -1770,6 +1799,22 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   transaction, parents first (a circle of keys that cannot be deferred is
   refused by name), with the list and the SQL of the applied migrations. One
   backup or Apply at a time (a lock file and the migrations' advisory lock).
+- COPY writes each table into a spool of its own in the run's working folder
+  (`.tmp-<id>/`, `0700`, files `0600`) through the library's stream wrapper -
+  pdo_pgsql opens COPY's file with PHP's streams - and a restore reads them
+  back the same way. Where the site's backups are encrypted (the IAM's), a
+  spool seals the rows in AES-256-GCM chunks as COPY hands them over, under a
+  key that lives only in memory: the rows are never in the clear on the disk,
+  not even a table at a time, and memory stays at a chunk. A working folder a
+  timeout or a kill left behind goes once nothing in it changed for an hour
+  (with the next backup or restore, and the daily run); the file explorer does
+  the same with an upload left on its way in.
+- The two files of known names - `.before-migration.json` (a hash of the
+  pending files, and when their backup was made) and
+  `cache/anotoki-backup-daily.json` - name no backup: a host that ignores
+  `.htaccess` would hand both out. A site that encrypts reads no backup in the
+  clear (one put there is refused), and `BackupsCommand` runs on the command
+  line alone.
 - `<id>.anotoki-backup` (`YYYYMMDD-HHMMSSZ-<kind>-<32 hex>`): `ANOTOKI-BACKUP 1`,
   a JSON header, then a gzip'd ustar of `manifest.json`, `schema/<set>/<file>.sql`
   and `data/NNN-<table>.copy` (COPY's text format) - opened anywhere by
@@ -1791,9 +1836,11 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   `afterRestore` that ends every session and token and deletes again the
   accounts deleted since has been reviewed).
 - Downloads: `POST $base/{id}/ticket` (the proof, audited) answers `{url,
-  expires_in: 60}`; the page navigates to it; the ticket is 32 random bytes,
-  kept as its hash, good once, for one backup, for a minute; the file comes as
-  an attachment, `no-store`, `nosniff`, `no-referrer`.
+  expires_in}` - the url where the request came through, group and base path
+  and all; `ticketSeconds`, 60 - the page navigates to it; the ticket is 32
+  random bytes, kept as its hash with who it was issued to (`by`), good once,
+  for one backup, for its seconds; the file comes as an attachment,
+  `no-store`, `nosniff`, `no-referrer`.
 - `GET $base` `{backups, status}` (space, last daily, encryption, whether a
   restore can run here), `GET $base/proof` `{kind}`, `POST $base`,
   `GET|DELETE $base/{id}`, `GET $base/{id}/preview` (the rows a restore would
@@ -1817,24 +1864,35 @@ $explorer = new FileExplorer([
     'storage' => storageDir(),
     'afterWrite' => fn (string $root, string $op, string $path, ?string $from) => keepTheCatalogueInStep($op, $path, $from),
 ]);
-FilesRoutes::admin($app, '/api/admin/files', $explorer, $context, $audit)->add($requireAdmin);
-FilesRoutes::raw($app, '/api/admin/files/raw', $explorer, $context);          // OUTSIDE the admin check: signed links
+FilesRoutes::admin($app, '/api/admin/files', $explorer, $context, $audit);
+FilesRoutes::raw($app, '/api/admin/files/raw', $explorer, $context);          // DELIBERATELY outside the admin check: signed links
 ```
 
+- Roots: the site's data, never its code or its secrets - a root that holds the
+  site's `*.local.php`, a `vendor/` or `anotoki-lib.key` (in itself or a folder
+  of it), or that is, holds or is inside the storage folder, is refused when the
+  site builds it.
 - Paths (`PathGuard`): relative, `/`-separated, NFC; no NUL or control
   characters, `\`, `:`, leading `/`, `.`/`..`, dot-names, trailing dots or
-  spaces; every existing part must be no link and resolve to itself inside the
-  root's real path plus a separator (symbolic links, Windows junctions, short
-  names and a sibling `assets-old/` all fail).
+  spaces, Windows' device names whatever their extension (`CON`, `nul.png`,
+  `COM1.txt`, `LPT9`, ...); every existing part must be no link and resolve to
+  itself inside the root's real path plus a separator (symbolic links, Windows
+  junctions, short names and a sibling `assets-old/` all fail).
 - Names and bytes (`UploadPolicy`, genshin's rules): one extension per name,
   from the root's list, every other dot a dash; a name with any script,
   server-configuration or browser-markup part refused (`shell.php.png`,
   `.htaccess`, `.user.ini`, `x.svg.png`); the bytes must be what the extension
-  says; a renamed file's new extension is checked the same way.
-- The guard: a written root gets an `.htaccess` before its first write - only
-  `RemoveHandler` and `RemoveType` for the script extensions, never `php_flag`,
-  `Options` or `Require` (each can answer 500 for every file of the folder where
-  AllowOverride does not allow it) - never over the site's own.
+  says (an MP4, M4A or AVIF's first box a real `ftyp` box's size); no file
+  begins with markup after a byte order mark and white space, no text carries
+  `<` before a letter, `!` or `?` in its first kilobyte, no picture or sound a
+  page's tags there (its XMP metadata stays); a renamed file's new extension is
+  checked the same way.
+- The guard: a written root gets an `.htaccess` before its first write -
+  `RemoveHandler` and `RemoveType` for the script extensions, `AddType` for
+  every extension the explorer takes (text as `text/plain`), and nosniff inside
+  `<IfModule mod_headers.c>`; never `php_flag`, `Options` or `Require` (each can
+  answer 500 for every file of the folder where AllowOverride does not allow
+  it) - never over the site's own.
 - `GET $base/roots`; `GET $base/{root}` (`path`, `search`, `page`, `mode=new`);
   `POST $base/{root}/rescan`, `/upload` (multipart: `path`, `replace`, the
   files), `/folder`, `/move`; `DELETE $base/{root}?path=` (to

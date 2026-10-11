@@ -38,6 +38,17 @@ function wordOf(name: string): string {
   return words ? words[0].toUpperCase() + words.slice(1) : name;
 }
 
+/**
+ * A mail link to the address a visitor gave - the address and nothing more:
+ * every character a mailto: link would read as its own (? & = % # - "?bcc="
+ * would add a recipient) is percent-encoded, the @ left as it is. The server
+ * refuses such addresses now; a message kept before is shown safely all the
+ * same.
+ */
+function mailLink(address: string): string {
+  return 'mailto:' + encodeURIComponent(address).replace(/%40/g, '@');
+}
+
 let nextId = 0;
 
 /**
@@ -96,6 +107,7 @@ export class FeedbackPageComponent {
   protected readonly statuses = STATUSES;
   protected readonly formatCount = formatCount;
   protected readonly wordOf = wordOf;
+  protected readonly mailLink = mailLink;
   protected readonly questions = new Questions();
   /** The statuses a message can be marked with, as the control in its dialog names them. */
   protected readonly markOptions: SegmentedOption[] = STATUSES.map((status) => ({ value: status, label: wordOf(status) }));

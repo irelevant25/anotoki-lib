@@ -72,8 +72,11 @@
             <anotoki-error-state heading="The error log could not be read" retryLabel="Try again" [message]="message" (retry)="load()" />
         } @else if (report(); as data) {
             @if (dropped().length) {
-                <anotoki-alert data-dropped tone="warning" heading="The log was full">
-                    <p class="anotoki-admin__text">Past its size the log keeps counting, not writing. Lines that were not written: {{ dropped().join(", ") }}. Clear the old days to make room.</p>
+                <anotoki-alert data-dropped tone="warning" heading="Some lines were only counted">
+                    <p class="anotoki-admin__text">
+                        A hundred lines of one kind a day, and what does not fit the log's size beside today's, are counted instead of written - the oldest days go first to make room. Lines not
+                        written: {{ dropped().join(", ") }}.
+                    </p>
                 </anotoki-alert>
             }
 

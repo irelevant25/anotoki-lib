@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Anotoki\Lib\Admin\Http;
 
+use Anotoki\Lib\Admin\AdminContext;
 use Anotoki\Lib\Support\JsonBody;
 use Anotoki\Lib\Support\Refusal;
 use Anotoki\Lib\Support\Utf8;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Handlers\Strategies\RequestResponse;
+use Slim\Interfaces\RouteCollectorProxyInterface;
+use Slim\Interfaces\RouteGroupInterface;
 use Slim\Interfaces\RouteInterface;
 
 /**
@@ -22,6 +25,37 @@ final class Routes
     public static function plain(RouteInterface $route): RouteInterface
     {
         return $route->setInvocationStrategy(new RequestResponse());
+    }
+
+    /**
+     * An admin() route group with its guard (AdminGuard) as the group's first middleware - so the site's
+     * own, added to the group it gets back, run before it (its session first). The guard is made before
+     * the group: a context that does not say who the ADMIN is throws while the site builds its app, with
+     * no route of the group mounted.
+     *
+     * @param callable(RouteCollectorProxyInterface): void $routes
+     */
+    public static function adminGroup(RouteCollectorProxyInterface $app, string $base, AdminContext $context, callable $routes): RouteGroupInterface
+    {
+        $guard = new AdminGuard($context, $app->getResponseFactory());
+
+        return $app->group($base, $routes)->add($guard);
+    }
+
+    /**
+     * The path a route of a group is mounted under, from the request it answers: its path without the
+     * route's own end ($suffix: '/<id>/ticket'). So a link the server hands out names the same place
+     * whatever group, prefix or base path the site mounted the routes under. Null when the path does not
+     * end so.
+     */
+    public static function mountedAt(ServerRequestInterface $request, string $suffix): ?string
+    {
+        $path = $request->getUri()->getPath();
+        if ($suffix === '' || !str_ends_with($path, $suffix)) {
+            return null;
+        }
+
+        return substr($path, 0, -strlen($suffix));
     }
 
     /**

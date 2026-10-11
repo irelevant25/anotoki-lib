@@ -7,6 +7,8 @@ namespace Anotoki\Lib\Tests\Backups;
 use Anotoki\Lib\Backups\Archive;
 use Anotoki\Lib\Backups\Backups;
 use Anotoki\Lib\Backups\ChunkCipher;
+use Anotoki\Lib\Backups\Copy;
+use Anotoki\Lib\Backups\Spool;
 use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Refusal;
@@ -101,6 +103,73 @@ final class BackupsTest extends BackupsTestCase
         $result = $backups->restore($backup['id']);
         self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
         self::assertSame(3500, (int) $this->value('SELECT count(*) FROM notes'));
+    }
+
+    public function testAnEncryptedSitesRowsAreSealedAsCopyHandsThemOverAndNeverInTheClearOnItsDisk(): void
+    {
+        $this->fill();
+        $folder = $this->path('spools');
+        mkdir($folder);
+        $connection = $this->backupConnection();
+        $sealed = Spool::create($folder . '/people.copy', true);
+        $plain = Spool::create($folder . '/people-plain.copy', false);
+        Copy::toFile($connection, '"public"."people"', '"id", "name"', $sealed->url());
+        Copy::toFile($connection, '"public"."people"', '"id", "name"', $plain->url());
+
+        $rows = (string) file_get_contents($folder . '/people-plain.copy');
+        self::assertStringContainsString('Zuzana', $rows, 'a site that does not encrypt: its rows as COPY writes them');
+        self::assertStringNotContainsString('Zuzana', (string) file_get_contents($folder . '/people.copy'), 'a site that does: sealed as they come');
+        self::assertSame(['bytes' => strlen($rows), 'sha256' => hash('sha256', $rows), 'rows' => 4], $sealed->facts(), 'counted as they pass');
+        self::assertSame($rows, (string) file_get_contents($sealed->url()), 'read back whole, as often as asked');
+        self::assertSame($rows, (string) file_get_contents($sealed->url()));
+
+        // A byte changed on the disk: the spool opens no more - its key was only ever in memory.
+        $bytes = (string) file_get_contents($folder . '/people.copy');
+        file_put_contents($folder . '/people.copy', substr_replace($bytes, chr(ord($bytes[24]) ^ 1), 24, 1));
+        self::assertNotSame($rows, (string) @file_get_contents($sealed->url()));
+        self::assertNotNull($sealed->failure());
+
+        $sealed->discard();
+        $plain->discard();
+        self::assertSame([], glob($folder . '/*') ?: [], 'discarded: the files gone');
+        self::assertFalse(@fopen($plain->url(), 'rb'), 'and their urls open nothing');
+    }
+
+    public function testAWorkingFolderAKillLeftBehindGoesOnceItIsAnHourOld(): void
+    {
+        $this->fill();
+        $backups = $this->backupsWith();
+        self::assertIsArray($backups->create());
+        $stale = $this->backups . '/.tmp-20261001-000000Z-manual-' . str_repeat('a', 32);
+        $fresh = $this->backups . '/.tmp-restore-' . str_repeat('b', 16);
+        $foreign = $this->backups . '/.tmpfolder';
+        foreach ([$stale . '/data', $fresh, $foreign] as $folder) {
+            mkdir($folder, 0777, true);
+        }
+        file_put_contents($stale . '/data/001-people.copy', "1\tZuzana\n");
+        foreach ([$stale . '/data/001-people.copy', $stale . '/data', $stale, $foreign] as $path) {
+            touch($path, time() - 7200);
+        }
+
+        self::assertIsArray($backups->create(), 'the next backup sweeps');
+
+        self::assertDirectoryDoesNotExist($stale, 'two hours old: gone');
+        self::assertDirectoryExists($fresh, 'younger than an hour: perhaps a run of another process');
+        self::assertDirectoryExists($foreign, 'not of the library\'s names: never touched');
+    }
+
+    public function testAnEncryptedSiteReadsNoBackupInTheClear(): void
+    {
+        $this->fill();
+        $plain = $this->backupsWith()->create();
+        self::assertIsArray($plain);
+        $iam = $this->backupsWith(['encryption' => str_repeat('k', 32)]);
+
+        $refused = $iam->restore($plain['id']);
+        self::assertSame([422, 'archive_invalid'], [$refused->status ?? null, $refused->code ?? null], 'somebody put a plain one there: it is not restored');
+        self::assertStringContainsString('encrypted, and this one is not', $refused->message ?? '');
+        $this->expectException(\RuntimeException::class);
+        $iam->extractTo($plain['id'], $this->path('offline'));
     }
 
     public function testASidecarsChecksumCatchesAChangedFile(): void
@@ -283,6 +352,9 @@ final class BackupsTest extends BackupsTestCase
         }
         self::assertSame(['daily'], array_column($backups->list(), 'kind'), 'one backup made');
         self::assertFalse($backups->dailyIfDue(), 'done for today');
+        $stamp = (string) file_get_contents($this->storage . '/cache/anotoki-backup-daily.json');
+        self::assertSame(['date', 'status', 'at'], array_keys((array) json_decode($stamp, true)), 'a file of a known name names no backup');
+        self::assertStringNotContainsString($backups->list()[0]['id'], $stamp);
 
         // Another process holds the day's claim: this one leaves.
         file_put_contents($this->storage . '/cache/anotoki-backup-daily.json', '{"date":"2000-01-01","status":"done"}');
@@ -323,6 +395,10 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame(['set' => 'shop', 'name' => '002_broken.sql'], $first['failed']);
         self::assertMatchesRegularExpression('/^The order is right\. A backup of the database as it was is \d{8}-\d{6}Z-before-migration-[0-9a-f]{32}\.$/D', (string) $first['note']);
         self::assertCount(1, $guard, 'the site\'s own hook ran first');
+        $note = (string) file_get_contents($this->backups . '/.before-migration.json');
+        self::assertSame(['pending', 'made'], array_keys((array) json_decode($note, true)), 'a hash of the files, and when its backup was made');
+        self::assertStringNotContainsString($backups->list()[0]['id'], $note, 'a file of a known name names no backup');
+        self::assertStringNotContainsString('002_broken', $note);
         $again = $migrator->apply();
         self::assertSame($first['note'], $again['note'], 'tried again: the same backup');
         self::assertCount(1, $backups->list());

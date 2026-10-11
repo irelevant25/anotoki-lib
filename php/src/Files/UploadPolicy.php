@@ -22,15 +22,22 @@ use Anotoki\Lib\Support\Refusal;
  *   ("5.0 - Epitome.png" is stored as "5-0 - Epitome.png"); and no name may
  *   begin with a dot (.htaccess, .user.ini).
  * - Content. The bytes must be what the extension says (images: getimagesize()
- *   and finfo; audio and video: their container's magic bytes; text: UTF-8 with
- *   no NUL; PDF: %PDF-), and no picture or sound may carry markup in its first
- *   bytes (an HTML polyglot named .png).
+ *   and finfo; audio and video: their container's magic bytes, an ISO box's
+ *   size a box's; text: UTF-8 with no NUL; PDF: %PDF-). No file may begin with
+ *   markup (after a byte order mark and white space) - what a browser that
+ *   sniffs reads as a page; a text file may carry none in its first kilobyte
+ *   (`<` before a letter, ! or ?); and no picture or sound may carry a page's
+ *   tags there (an HTML polyglot named .png) - a picture's own metadata (XMP)
+ *   stays.
  * - The folder. A root the explorer writes into gets a guard .htaccess before
  *   its first write (never overwritten): RemoveHandler and RemoveType for every
- *   script extension, and nothing else - never php_flag, Options or Require,
+ *   script extension, AddType for every extension it takes - so no file of it
+ *   goes out without a type a browser would sniff past - and, where Apache has
+ *   mod_headers, nosniff; nothing else - never php_flag, Options or Require,
  *   each of which answers 500 for every file in the folder on a host whose
- *   AllowOverride does not allow it. The name rule stops the attack; the guard
- *   is the second line, not a reason to risk the first.
+ *   AllowOverride does not allow it (AddType and Header need FileInfo, as
+ *   RemoveHandler does). The name rule stops the attack; the guard is the
+ *   second line, not a reason to risk the first.
  */
 final class UploadPolicy
 {
@@ -68,6 +75,9 @@ final class UploadPolicy
         'txt' => 'text/plain', 'csv' => 'text/csv', 'md' => 'text/markdown', 'json' => 'application/json', 'log' => 'text/plain',
         'pdf' => 'application/pdf',
     ];
+
+    /** A page's tags, never in a binary file's first kilobyte (a picture's XMP metadata is none of them). */
+    private const PAGE_TAGS = '/<\?php|<\?=|<script|<html|<!doctype|<svg|<iframe|<body|<object|<embed|<!--|<img|<a[\s>\/]|<meta|<link|<style|<math|<form|<base|<input|<template|<frame|<applet/i';
 
     /** What getimagesize() must say each picture is. */
     private const IMAGE_TYPES = [
@@ -159,7 +169,12 @@ final class UploadPolicy
         if ($family === null || $head === '') {
             return $mismatch;
         }
-        if ($family !== 'text' && preg_match('/<\?php|<\?=|<script|<html|<!doctype|<svg|<iframe|<body|<object|<embed/i', substr($head, 0, 1024)) === 1) {
+        // What a browser that sniffs reads as a page: markup where the file begins - in every family, first.
+        if (preg_match('/^(?:\xEF\xBB\xBF)?\s*<[!a-z?]/i', $head) === 1) {
+            return $mismatch;
+        }
+        $early = substr($head, 0, 1024);
+        if ($family === 'text' ? preg_match('/<[!a-z?]/i', $early) === 1 : preg_match(self::PAGE_TAGS, $early) === 1) {
             return $mismatch;
         }
 
@@ -174,12 +189,27 @@ final class UploadPolicy
         return $ok ? null : $mismatch;
     }
 
-    /** The guard's rules (RemoveHandler and RemoveType only): genshin's uploadGuardRules(), word for word. */
+    /**
+     * The guard's rules: genshin's uploadGuardRules() word for word (RemoveHandler and RemoveType), then a
+     * type for every extension the explorer takes (text as plain text), and nosniff where Apache has
+     * mod_headers.
+     */
     public static function guardRules(): string
     {
         $handlers = '.' . implode(' .', self::GUARDED_HANDLERS);
+        $types = [];
+        foreach (self::TYPES as $extension => $type) {
+            $types[self::FAMILIES[$extension] === 'text' && $extension !== 'json' ? 'text/plain' : $type][] = '.' . $extension;
+        }
+        $lines = ["RemoveHandler $handlers", "RemoveType $handlers"];
+        foreach ($types as $type => $extensions) {
+            $lines[] = "AddType $type " . implode(' ', $extensions);
+        }
+        $lines[] = '<IfModule mod_headers.c>';
+        $lines[] = '    Header set X-Content-Type-Options nosniff';
+        $lines[] = '</IfModule>';
 
-        return "RemoveHandler $handlers\nRemoveType $handlers\n";
+        return implode("\n", $lines) . "\n";
     }
 
     public static function guardHtaccess(): string
@@ -191,10 +221,11 @@ final class UploadPolicy
             '# first upload here, when the folder had no .htaccess.',
             '#',
             '# Only rules that cannot take the folder down on an unknown Apache: mod_mime\'s',
-            '# RemoveHandler and RemoveType (AllowOverride FileInfo, which the web root\'s',
-            '# rewrite rules need already). Never php_flag, Options or Require: each can',
-            '# answer 500 for every file in the folder on a host whose AllowOverride does',
-            '# not allow it.',
+            '# RemoveHandler, RemoveType and AddType - every file goes out with its own type,',
+            '# never one a browser would sniff past - and, where mod_headers is there,',
+            '# nosniff (AllowOverride FileInfo, which the web root\'s rewrite rules need',
+            '# already). Never php_flag, Options or Require: each can answer 500 for every',
+            '# file in the folder on a host whose AllowOverride does not allow it.',
             '',
         ]) . self::guardRules();
     }
@@ -221,7 +252,7 @@ final class UploadPolicy
     {
         if ($extension === 'avif') {
             // getimagesize() reads AVIF only on newer builds; the container says it.
-            $isAvif = substr($head, 4, 4) === 'ftyp' && in_array(substr($head, 8, 4), ['avif', 'avis'], true);
+            $isAvif = self::isoFile($head) && in_array(substr($head, 8, 4), ['avif', 'avis'], true);
         } else {
             $size = @getimagesize($file);
             $isAvif = false;
@@ -250,11 +281,25 @@ final class UploadPolicy
             'ogg', 'oga', 'opus' => str_starts_with($head, 'OggS'),
             'mp3' => str_starts_with($head, 'ID3') || (strlen($head) > 1 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0),
             'wav' => str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WAVE',
-            'm4a', 'mp4' => substr($head, 4, 4) === 'ftyp',
+            'm4a', 'mp4' => self::isoFile($head),
             'flac' => str_starts_with($head, 'fLaC'),
             'webm', 'weba' => str_starts_with($head, "\x1A\x45\xDF\xA3"),
             default => false,
         };
+    }
+
+    /**
+     * An ISO media file (MP4, M4A, AVIF): its first box is ftyp, of a size a ftyp box has - 8 bytes and more,
+     * a few dozen in practice - so its first bytes are no markup ("<!--ftypavif" is none).
+     */
+    private static function isoFile(string $head): bool
+    {
+        if (strlen($head) < 16 || substr($head, 4, 4) !== 'ftyp') {
+            return false;
+        }
+        $size = unpack('N', substr($head, 0, 4))[1];
+
+        return $size >= 16 && $size <= 1024 && preg_match('/^[\x20-\x7E]{4}$/D', substr($head, 8, 4)) === 1;
     }
 
     private static function isText(string $file): bool

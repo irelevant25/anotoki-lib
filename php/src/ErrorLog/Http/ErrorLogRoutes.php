@@ -8,6 +8,7 @@ use Anotoki\Lib\Admin\AdminContext;
 use Anotoki\Lib\Admin\Http\Routes;
 use Anotoki\Lib\Audit\AuditRecorder;
 use Anotoki\Lib\ErrorLog\ErrorLog;
+use Anotoki\Lib\ErrorLog\ErrorLogMiddleware;
 use Anotoki\Lib\ErrorLog\ErrorLogReader;
 use Anotoki\Lib\Support\JsonBody;
 use Anotoki\Lib\Support\JsonResponse;
@@ -20,9 +21,13 @@ use Slim\Interfaces\RouteInterface;
 
 /**
  * The error log's routes, on the site's Slim app. Requests to them are never
- * written into the log itself.
+ * written into the log itself - known by their route as they run, and by the
+ * path they are mounted at (under whatever group or base path the site gives
+ * them) for what fails before a route runs.
  *
- * admin() - for the site's ADMIN alone (the site's check on the returned group):
+ * admin() - for the site's ADMIN alone: the group asks the context's isAdmin()
+ * before anything else (401, 403), and the site adds its own middleware to it
+ * as to any group:
  *   GET    $base?days=&level=&status=&search=   ErrorLogReader::report()
  *   GET    $base/{fingerprint}?days=&...        every occurrence of one ([] -> 404 not_found)
  *   DELETE $base?before=                        {deleted: files} - every file, or (before, a UTC date) the days
@@ -46,10 +51,9 @@ final class ErrorLogRoutes
         AdminContext $context,
         ?AuditRecorder $audit = null,
     ): RouteGroupInterface {
-        $log->ignorePath($base);
         $reader = $log->reader();
 
-        return $app->group($base, function (RouteCollectorProxyInterface $group) use ($reader, $context, $audit): void {
+        $routes = Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($reader, $context, $audit): void {
             Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader): ResponseInterface {
                 return JsonResponse::write($response, 200, $reader->report(self::filter($request)));
             }));
@@ -74,6 +78,11 @@ final class ErrorLogRoutes
                 return JsonResponse::write($response, 200, ['deleted' => $deleted]);
             }));
         });
+        // Added after the guard, so it runs before it: a refusal of the guard is the log's own too.
+        $routes->add(ErrorLogMiddleware::own($log));
+        $log->ignorePath($app->getBasePath() . $routes->getPattern());
+
+        return $routes;
     }
 
     /**
@@ -83,9 +92,7 @@ final class ErrorLogRoutes
      */
     public static function client(RouteCollectorProxyInterface $app, string $path, ErrorLog $log, AdminContext $context): RouteInterface
     {
-        $log->ignorePath($path);
-
-        return Routes::plain($app->post($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($log, $context): ResponseInterface {
+        $route = Routes::plain($app->post($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($log, $context): ResponseInterface {
             $body = JsonBody::read($request, self::CLIENT_BODY_LIMIT);
             if ($body instanceof Refusal) {
                 return $context->refuse($response, $body);
@@ -108,6 +115,10 @@ final class ErrorLogRoutes
 
             return $response->withStatus(204)->withHeader('Cache-Control', 'no-store');
         }));
+        $route->add(ErrorLogMiddleware::own($log));
+        $log->ignorePath($app->getBasePath() . $route->getPattern());
+
+        return $route;
     }
 
     /**

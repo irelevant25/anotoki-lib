@@ -86,6 +86,7 @@ final class BackupsRoutesTest extends BackupsTestCase
                 ? null
                 : ['status' => 422, 'code' => 'wrong_password', 'error' => 'The current password is not right'],
             AdminContext::PROOF_PASSWORD,
+            isAdmin: static fn (): bool => true,
         ));
         self::assertSame(['kind' => 'password'], $this->json($this->send($app, 'GET', '/api/admin/backups/proof')));
 
@@ -138,8 +139,9 @@ final class BackupsRoutesTest extends BackupsTestCase
         }
     }
 
-    public function testTheAdminRoutesAreTheAdminsAlone(): void
+    public function testTheAdminRoutesAreTheAdminsAloneWithNoCheckOfTheSitesOnThem(): void
     {
+        // app() adds nothing of the site's to the group: the library's own check is the only one.
         $app = $this->app();
         $id = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup']['id'];
 
@@ -148,9 +150,46 @@ final class BackupsRoutesTest extends BackupsTestCase
             ['GET', "/api/admin/backups/$id"], ['DELETE', "/api/admin/backups/$id"], ['POST', "/api/admin/backups/$id/ticket"],
             ['GET', "/api/admin/backups/$id/preview"], ['POST', "/api/admin/backups/$id/restore"],
         ] as [$method, $path]) {
-            self::assertSame(403, $this->send($app, $method, $path, admin: false)->getStatusCode(), "$method $path");
+            $bare = $this->send($app, $method, $path, admin: false);
+            self::assertSame([401, 'sign_in_required'], [$bare->getStatusCode(), $this->json($bare)['code']], "a bare $method $path");
+            $other = $this->send($app, $method, $path, admin: false, actor: 9);
+            self::assertSame([403, 'forbidden'], [$other->getStatusCode(), $this->json($other)['code']], "somebody else's $method $path");
         }
         self::assertCount(1, $this->backupsWith()->list());
+        self::assertSame(0, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action <> 'backup.created'"));
+    }
+
+    public function testMountedInsideAGroupUnderABasePathTheTicketNamesTheFileWhereItIs(): void
+    {
+        $backups = $this->backupsWith();
+        $app = AppFactory::create();
+        $app->setBasePath('/iam');
+        // The IAM's way: the admin routes inside its own admin group, the file beside them outside the check.
+        $app->group('/api/admin', function ($group) use ($backups): void {
+            BackupsRoutes::admin($group, '/backups', $backups, $this->context());
+        });
+        BackupsRoutes::file($app, '/api/admin/backups', $backups, $this->context());
+
+        $id = $this->json($this->send($app, 'POST', '/iam/api/admin/backups'))['backup']['id'];
+        $ticket = $this->json($this->send($app, 'POST', "/iam/api/admin/backups/$id/ticket"));
+        self::assertMatchesRegularExpression('~^/iam/api/admin/backups/' . $id . '/file\?ticket=[A-Za-z0-9_-]{43}$~D', $ticket['url'], 'the group\'s prefix and the base path, both');
+        self::assertSame(200, $this->send($app, 'GET', $ticket['url'], admin: false)->getStatusCode(), 'and the link opens the file');
+    }
+
+    public function testATicketIsGoodForAsLongAsTheSiteSaysAndWithSamePersonForItsPersonAlone(): void
+    {
+        $app = $this->app(null, ['ticketSeconds' => 120], samePerson: true);
+        $id = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup']['id'];
+
+        $ticket = $this->json($this->send($app, 'POST', "/api/admin/backups/$id/ticket"));
+        self::assertSame(120, $ticket['expires_in']);
+        self::assertSame(403, $this->send($app, 'GET', $ticket['url'], admin: false, actor: 9)->getStatusCode(), 'another person: refused');
+        self::assertSame(403, $this->send($app, 'GET', $ticket['url'], admin: false, actor: 7)->getStatusCode(), 'and the ticket went with that try');
+
+        $again = $this->json($this->send($app, 'POST', "/api/admin/backups/$id/ticket"))['url'];
+        self::assertSame(403, $this->send($app, 'GET', $again, admin: false)->getStatusCode(), 'nobody is never the person');
+        $mine = $this->json($this->send($app, 'POST', "/api/admin/backups/$id/ticket"))['url'];
+        self::assertSame(200, $this->send($app, 'GET', $mine, admin: false, actor: 7)->getStatusCode(), 'the person it was issued to');
     }
 
     public function testARestoreThroughThePage(): void
@@ -204,25 +243,33 @@ final class BackupsRoutesTest extends BackupsTestCase
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    /** @param array<string, mixed> $options */
-    private function app(?AdminContext $context = null, array $options = []): App
+    /**
+     * A site's context: X-Test-Actor says who acts, X-Test-Admin: yes makes them the site's ADMIN, X-Test-Auth-Time
+     * when they signed in.
+     */
+    private function context(): AdminContext
     {
-        $context ??= new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => $request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : null,
+        return new AdminContext(
+            static fn (ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Actor')) ? (int) $request->getHeaderLine('X-Test-Actor') : null,
             AdminContext::recentSignIn(static fn (ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Auth-Time')) ? (int) $request->getHeaderLine('X-Test-Auth-Time') : null),
+            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
         );
+    }
+
+    /** @param array<string, mixed> $options */
+    private function app(?AdminContext $context = null, array $options = [], bool $samePerson = false): App
+    {
+        $context ??= $this->context();
         $backups = $this->backupsWith($options);
         $app = AppFactory::create();
-        BackupsRoutes::admin($app, '/api/admin/backups', $backups, $context)
-            ->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $request->getHeaderLine('X-Test-Admin') === 'yes'
-                ? $handler->handle($request)
-                : (new ResponseFactory())->createResponse(403));
-        BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);
+        BackupsRoutes::admin($app, '/api/admin/backups', $backups, $context);
+        BackupsRoutes::file($app, '/api/admin/backups', $backups, $context, samePerson: $samePerson);
 
         return $app;
     }
 
-    private function send(App $app, string $method, string $target, string $body = '', bool $admin = true, ?int $authTime = null): ResponseInterface
+    /** As the ADMIN (actor 7), or ($admin false) as $actor - nobody without one. */
+    private function send(App $app, string $method, string $target, string $body = '', bool $admin = true, ?int $authTime = null, ?int $actor = null): ResponseInterface
     {
         $request = (new ServerRequestFactory())->createServerRequest($method, 'https://site.example' . $target);
         parse_str((string) parse_url($target, PHP_URL_QUERY), $query);
@@ -232,8 +279,12 @@ final class BackupsRoutesTest extends BackupsTestCase
         if ($body !== '') {
             $request = $request->withHeader('Content-Type', 'application/json');
         }
+        if ($admin) {
+            $request = $request->withHeader('X-Test-Admin', 'yes');
+            $actor ??= 7;
+        }
 
-        return $app->handle($admin ? $request->withHeader('X-Test-Admin', 'yes') : $request);
+        return $app->handle($actor === null ? $request : $request->withHeader('X-Test-Actor', (string) $actor));
     }
 
     /** @param list<string> $open */

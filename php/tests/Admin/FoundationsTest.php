@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Anotoki\Lib\Tests\Admin;
 
 use Anotoki\Lib\Admin\AdminContext;
+use Anotoki\Lib\ErrorLog\ErrorLog;
+use Anotoki\Lib\ErrorLog\Http\ErrorLogRoutes;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\GuardedDirectory;
@@ -15,8 +17,13 @@ use Anotoki\Lib\Support\Throttle;
 use Anotoki\Lib\Support\Utf8;
 use Anotoki\Lib\Tests\Support\TemporaryFolder;
 use InvalidArgumentException;
+use LogicException;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
+use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ResponseFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
 
@@ -139,6 +146,11 @@ final class FoundationsTest extends TestCase
         yield 'a Bearer credential' => ['Authorization: Bearer abc.def-ghi', 'Authorization: {…} {…}'];
         yield 'Bearer alone' => ['sent Bearer abcdefghijklmnop', 'sent Bearer {…}'];
         yield 'name=value secrets' => ['password=hunter2&next=/ token: "s3cr3t" cookie=a1b2', 'password={…}&next=/ token: {…} cookie={…}'];
+        yield 'a JSON body\'s secret' => ['bad body {"password":"Summer2026!","name":"x"}', 'bad body {"password":{…},"name":"x"}'];
+        yield 'a quoted name, a quoted escape' => ['{"token": "a\\"b c", "ok": 1}', '{"token": {…}, "ok": 1}'];
+        yield 'single quotes' => ["sent {'pass': 'hunter2'}", "sent {'pass': {…}}"];
+        yield 'a PHP array' => ["['password' => 'two words', 'secret'=>'s3']", "['password' => {…}, 'secret'=>{…}]"];
+        yield 'names that only begin so' => ['passed: true, tokens: 5', 'passed: true, tokens: 5'];
         yield 'a query string' => ['GET https://iam.example.sk/reset?token=abc123&x=1 failed', 'GET https://iam.example.sk/reset?{…} failed'];
         yield 'IPv4' => ['from 203.0.113.7, again 10.0.0.1:8080', 'from {ip}, again {ip}:8080'];
         yield 'IPv6' => ['from 2001:db8::1 and [fe80::1%eth0] and ::ffff:198.51.100.7', 'from {ip} and [{ip}] and ::ffff:{ip}'];
@@ -308,5 +320,65 @@ final class FoundationsTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         new AdminContext(static fn (): int => 1, null, 'magic');
+    }
+
+    public function testTheContextSaysWhoTheAdminIsAndRefusesEverybodyElse(): void
+    {
+        $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/api/admin/x');
+        $admins = new AdminContext(
+            static fn (ServerRequestInterface $r): ?int => ctype_digit($r->getHeaderLine('X-Actor')) ? (int) $r->getHeaderLine('X-Actor') : null,
+            isAdmin: static fn (ServerRequestInterface $r): bool => $r->getHeaderLine('X-Actor') === '1',
+        );
+        self::assertTrue($admins->knowsAdmins());
+        self::assertSame([401, 'sign_in_required'], [$admins->adminRefusal($request)?->status, $admins->adminRefusal($request)?->code], 'nobody');
+        self::assertSame([403, 'forbidden'], [$admins->adminRefusal($request->withHeader('X-Actor', '2'))?->status, $admins->adminRefusal($request->withHeader('X-Actor', '2'))?->code]);
+        self::assertNull($admins->adminRefusal($request->withHeader('X-Actor', '1')));
+
+        // A check that fails, or answers anything but true, is a no.
+        $throwing = new AdminContext(static fn (): int => 1, isAdmin: static function (): bool {
+            throw new RuntimeException('no token');
+        });
+        self::assertSame(403, $throwing->adminRefusal($request)?->status);
+        $truthy = new AdminContext(static fn (): int => 1, isAdmin: static fn (): mixed => 'yes');
+        self::assertSame(403, $truthy->adminRefusal($request)?->status);
+
+        $unknown = new AdminContext(static fn (): int => 1);
+        self::assertFalse($unknown->knowsAdmins());
+        self::assertSame(403, $unknown->adminRefusal($request)?->status, 'a context that cannot tell is never a yes');
+    }
+
+    public function testAnAdminGroupAsksTheSitesAdminBeforeAnythingElseAndTheSitesOwnStillRunsFirst(): void
+    {
+        $log = new ErrorLog($this->temporaryFolder() . '/logs');
+        $context = new AdminContext(
+            static fn (ServerRequestInterface $r): ?int => is_int($r->getAttribute('person')) ? $r->getAttribute('person') : null,
+            isAdmin: static fn (ServerRequestInterface $r): bool => $r->getAttribute('person') === 1,
+        );
+        $app = AppFactory::create();
+        $ran = [];
+        // The site's own middleware on the group: its session, which says who the person is.
+        ErrorLogRoutes::admin($app, '/api/admin/errors', $log, $context)->add(static function (ServerRequestInterface $request, RequestHandlerInterface $handler) use (&$ran): ResponseInterface {
+            $ran[] = 'the site\'s session';
+            $person = $request->getHeaderLine('X-Session');
+
+            return $handler->handle(ctype_digit($person) ? $request->withAttribute('person', (int) $person) : $request);
+        });
+        $get = static fn (string $session = ''): ResponseInterface => $app->handle(
+            (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/api/admin/errors')->withHeader('X-Session', $session)
+        );
+
+        self::assertSame(401, $get()->getStatusCode(), 'nobody');
+        self::assertSame(403, $get('2')->getStatusCode(), 'somebody, not the ADMIN');
+        self::assertSame(200, $get('1')->getStatusCode(), 'the ADMIN, known by what the site\'s middleware set');
+        self::assertSame(['the site\'s session', 'the site\'s session', 'the site\'s session'], $ran);
+
+        // A context that does not say who the ADMIN is mounts no admin group at all.
+        $bare = AppFactory::create();
+        try {
+            ErrorLogRoutes::admin($bare, '/api/admin/errors', $log, new AdminContext(static fn (): int => 1));
+            self::fail('mounted without an ADMIN check');
+        } catch (LogicException) {
+            self::assertSame([], $bare->getRouteCollector()->getRoutes(), 'no route of it mounted');
+        }
     }
 }

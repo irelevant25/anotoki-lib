@@ -12,8 +12,12 @@ import { firstValueFrom } from 'rxjs';
 const MESSAGE_MAX = 10_000;
 const SUBJECT_MAX = 200;
 const EMAIL_MAX = 254;
-/** An address as a person types it: something, an @, something with a dot. The server's check is the stricter one. */
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * An address as a person types it: something, an @, something with a dot - and none of ? & = % # or a
+ * control character, which a mail link would read as more than an address (the server refuses them too).
+ * The server's check is the stricter one.
+ */
+const EMAIL = /^[^\s@?&=%#\u0000-\u001f\u007f]+@[^\s@?&=%#\u0000-\u001f\u007f]+\.[^\s@?&=%#\u0000-\u001f\u007f]+$/;
 const LANGUAGE = /^[a-z]{2}(-[a-z]{2})?$/;
 
 /** The length the server measures: characters, not UTF-16 units. */

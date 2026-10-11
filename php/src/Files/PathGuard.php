@@ -12,7 +12,9 @@ namespace Anotoki\Lib\Files;
  * characters, "\" and ":" (another separator, a drive, a Windows stream), a
  * leading "/", empty parts, "." and "..", a part that begins with a dot
  * (.htaccess, .user.ini, .git) or ends with a dot or a space (Windows drops
- * them: "x.php." is x.php there), and < > " | ? * (no name on Windows). A
+ * them: "x.php." is x.php there), < > " | ? * (no name on Windows), and the
+ * names Windows keeps for its devices, whatever their extension (CON, PRN,
+ * AUX, NUL, COM1-9, LPT1-9 and their kin: "nul.png" is no file there). A
  * request's query is decoded once by the server, so "%2e%2e" arrives as ".."
  * and is refused as such.
  *
@@ -69,6 +71,10 @@ final class PathGuard
             return null;
         }
         if ($segment[0] === '.' || str_ends_with($segment, '.') || trim($segment) !== $segment) {
+            return null;
+        }
+        // A device's name before the first dot, as Windows reads it (with spaces before the dot dropped).
+        if (preg_match('/^(?:CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³]|CONIN\$|CONOUT\$)\s*(?:\.|$)/iu', $segment) === 1) {
             return null;
         }
 

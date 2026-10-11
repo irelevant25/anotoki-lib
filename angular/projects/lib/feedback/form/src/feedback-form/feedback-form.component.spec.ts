@@ -153,6 +153,26 @@ describe("<anotoki-feedback-form>: a visitor's message, in their language, check
     http.expectNone('/api/feedback');
   });
 
+  it('refuses an address a mail link would read as more than an address, as the server does', async () => {
+    await open();
+    type(field('message'), 'Hello');
+
+    for (const address of ['jan.novak%40gmail.com?bcc=attacker%40evil.example&x=@example.com', 'a?b@example.com', 'a&b@example.com', 'a=b@example.com', 'a#b@example.com']) {
+      type(field('email'), address);
+      await send();
+      http.expectNone('/api/feedback');
+      expect(errorOf('email')).toBe('That does not look like an e-mail address.');
+    }
+
+    type(field('email'), 'jan.novak+feedback@example.com');
+    await send();
+    const sent = request();
+    expect(sent.request.body['email']).toBe('jan.novak+feedback@example.com');
+    sent.flush({ ok: true }, { status: 201, statusText: 'Created' });
+    await settle(fixture);
+    expect(host.querySelector('[data-thanks]')).not.toBeNull();
+  });
+
   it("sends what was filled in - the page as a path, the language, the empty robots' field - and thanks", async () => {
     await open({ sections: () => [{ value: 'Characters', label: 'Postavy' }], fields: () => [{ name: 'steps', label: 'Steps', kinds: ['bug'], max: 100 }] });
 
@@ -266,7 +286,8 @@ describe("<anotoki-feedback-form>: a visitor's message, in their language, check
     await send();
     const sending = request();
     expect(sending.request.body['website']).toBe('https://spam.example');
-    sending.flush({ ok: true }, { status: 202, statusText: 'Accepted' });
+    // The server answers a filled trap as it answers a message it kept, word for word.
+    sending.flush({ ok: true }, { status: 201, statusText: 'Created' });
     await settle(fixture);
     expect(host.querySelector('[data-thanks]')).not.toBeNull();
   });

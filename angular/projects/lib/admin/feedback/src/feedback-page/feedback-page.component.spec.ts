@@ -194,6 +194,18 @@ describe('<anotoki-feedback-page>: what visitors sent, opened, marked and delete
     expect(viewer()).toBeNull();
   });
 
+  it('links to the address a visitor gave as an address and nothing more, whatever it holds', async () => {
+    setUp();
+    await open();
+
+    // Kept before the server refused such addresses: "?bcc=" would add a recipient to the mail.
+    const crafted = 'jan.novak%40gmail.com?bcc=attacker%40evil.example&x=@example.com';
+    await view(0, message({ status: 'read', contact_email: crafted }));
+    const link = viewer()!.querySelector<HTMLAnchorElement>('[data-facts] a[href^="mailto:"]')!;
+    expect(link.getAttribute('href')).toBe('mailto:jan.novak%2540gmail.com%3Fbcc%3Dattacker%2540evil.example%26x%3D@example.com');
+    expect(link.textContent?.trim()).toBe(crafted);
+  });
+
   it('marks a message resolved at once, and shows what is true again when the server refuses', async () => {
     setUp();
     await open();

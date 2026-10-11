@@ -23,9 +23,11 @@ use Throwable;
  *
  * public() - the form, for everybody (the site's own gates apply as to any route):
  *   POST $path {kind, section?, subject?, message, email?, page?, language?, anonymous?, details?, website}
- *        -> 201 {ok: true} | 202 {ok: true} (the honeypot) | Feedback::submit()'s refusals
+ *        -> 201 {ok: true} (the honeypot's answer too, word for word) | Feedback::submit()'s refusals
  *
- * admin() - for the site's ADMIN alone (the site's check on the returned group):
+ * admin() - for the site's ADMIN alone: the group asks the context's isAdmin()
+ * before anything else (401, 403), and the site adds its own middleware to it
+ * as to any group:
  *   GET    $base?kind=&status=&section=&search=&page=   {total, page, pageSize: 25, items}
  *   GET    $base/facets                                {kinds, statuses, sections, fields, byStatus, byKind}
  *   GET    $base/unread                                {unread} - the admin panel's badge
@@ -73,7 +75,7 @@ final class FeedbackRoutes
         ?AuditRecorder $audit = null,
         ?Closure $names = null,
     ): RouteGroupInterface {
-        return $app->group($base, function (RouteCollectorProxyInterface $group) use ($feedback, $context, $audit, $names): void {
+        return Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($feedback, $context, $audit, $names): void {
             Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($feedback, $context, $names): ResponseInterface {
                 if (!$feedback->ready()) {
                     return $context->refuse($response, Feedback::unavailable());

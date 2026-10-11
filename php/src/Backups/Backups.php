@@ -39,10 +39,15 @@ use Throwable;
  *
  * Made in one REPEATABLE READ, READ ONLY transaction - one snapshot of every
  * table - in an order a restore can load (parents first), each table COPYed
- * to a file of its own in a denied folder, then tarred, gzipped, encrypted
- * where the site says so (`encryption`: the IAM's, always), hashed, written
- * aside and renamed. One backup or Apply at a time (a lock file and the
- * migrations' advisory lock).
+ * into a spool of its own (Spool) in a working folder of this run, then
+ * tarred, gzipped, encrypted where the site says so (`encryption`: the IAM's,
+ * always), hashed, written aside and renamed. On a site that encrypts, the
+ * rows are never in the clear on its disk: a spool seals them as COPY hands
+ * them over, under a key that lives only in memory - and a restore reads them
+ * back the same way. A working folder a timeout or a kill left behind goes
+ * once it is an hour old (sweep(), with the next backup or restore, and the
+ * daily run). One backup or Apply at a time (a lock file and the migrations'
+ * advisory lock).
  *
  * Restored in place (restore(), unless `restore` is false - the IAM's first
  * version), all or nothing, only when the live database's applied migrations
@@ -55,7 +60,10 @@ use Throwable;
  * history stays, the restore's own entry in it) and the site's `keep`. Then
  * the site's afterRestore (its anonymization sweep from the backup's time).
  *
- * Downloads go by single-use 60-second tickets (Tickets).
+ * Downloads go by single-use tickets, good for `ticketSeconds` (60; Tickets).
+ * The two files of fixed names the folder holds - the before-migration note
+ * and the daily stamp - name no backup: a host that ignores .htaccess would
+ * hand out both.
  */
 final class Backups
 {
@@ -99,6 +107,7 @@ final class Backups
     private readonly ?Closure $ready;
     private readonly string $storage;
     private readonly Closure $onError;
+    private readonly int $ticketSeconds;
     private readonly Tickets $tickets;
 
     /**
@@ -184,7 +193,8 @@ final class Backups
         $this->onError = $options['onError'] ?? static function (Throwable $e): void {
             Log::say('[backups] ' . get_class($e) . ': ' . Redactor::text($e->getMessage()));
         };
-        $this->tickets = new Tickets($this->storage . '/cache/backup-tickets', max(5, (int) ($options['ticketSeconds'] ?? 60)));
+        $this->ticketSeconds = max(5, (int) ($options['ticketSeconds'] ?? 60));
+        $this->tickets = new Tickets($this->storage . '/cache/backup-tickets', $this->ticketSeconds);
     }
 
     public function encrypted(): bool
@@ -477,7 +487,7 @@ final class Backups
     }
 
     /**
-     * A ticket for one download of the backup within the minute (audited
+     * A ticket for one download of the backup within `ticketSeconds` (audited
      * backup.downloaded: the proof was asked before this).
      *
      * @return array{ticket: string, expires_in: int}|Refusal
@@ -495,17 +505,20 @@ final class Backups
         }
         $this->audit?->record($request, $actorId, 'backup.downloaded', 'backup', $id, ['kind' => $info['kind'], 'size' => $info['size']]);
 
-        return ['ticket' => $ticket, 'expires_in' => 60];
+        return ['ticket' => $ticket, 'expires_in' => $this->ticketSeconds];
     }
 
     /**
-     * The file a ticket opens - used up whatever the answer - or null.
+     * The file a ticket opens - used up whatever the answer - or null. With
+     * $by ([the person asking]), only for the person it was issued to: a site
+     * whose download route knows who asks (its session cookie) passes them.
      *
+     * @param ?array{0: int|string|null} $by
      * @return ?array{path: string, size: int, filename: string}
      */
-    public function redeem(string $id, string $ticket): ?array
+    public function redeem(string $id, string $ticket, ?array $by = null): ?array
     {
-        if (!self::validId($id) || !$this->tickets->redeem($ticket, $id)) {
+        if (!self::validId($id) || !$this->tickets->redeem($ticket, $id, $by)) {
             return null;
         }
         $path = $this->path($id);
@@ -545,6 +558,7 @@ final class Backups
             return $held;
         }
         $work = $this->directory . '/.tmp-restore-' . bin2hex(random_bytes(8));
+        $spools = [];
         try {
             $pdo = ($this->connect)();
             if (!$this->tryLock($pdo)) {
@@ -552,10 +566,10 @@ final class Backups
             }
             try {
                 try {
-                    if (!GuardedDirectory::ensure($work)) {
+                    if (!self::workingFolder($work)) {
                         throw new RuntimeException('its working folder cannot be made.');
                     }
-                    $manifest = $this->unpack($id, $info, $work);
+                    [$manifest, $spools] = $this->unpack($id, $info, $work, spooled: true);
                 } catch (Throwable $e) {
                     return new Refusal(422, 'archive_invalid', 'The backup cannot be read: ' . Redactor::text($e->getMessage()));
                 }
@@ -580,7 +594,7 @@ final class Backups
                 $this->audit?->record($request, $actorId, 'backup.created', 'backup', $before['id'], self::auditDetails($before));
 
                 try {
-                    $loaded = $this->load($pdo, $live['shape'], $manifest, $work);
+                    $loaded = $this->load($pdo, $live['shape'], $manifest, $spools);
                 } catch (Throwable $e) {
                     ($this->onError)($e);
                     $reason = Redactor::text($e->getMessage());
@@ -592,6 +606,9 @@ final class Backups
                 $this->unlock($pdo);
             }
         } finally {
+            foreach ($spools as $spool) {
+                $spool->discard();
+            }
             self::removeTree($work);
             $this->release($held);
         }
@@ -626,7 +643,8 @@ final class Backups
 
     /**
      * Reads a backup whole into $directory (made here) - decrypted, every part checked - for the offline
-     * tools: the manifest, schema/<set>/<file>.sql, data/NNN-<table>.copy.
+     * tools: the manifest, schema/<set>/<file>.sql, data/NNN-<table>.copy. The one place the rows are
+     * written in the clear on purpose: the owner's own folder, on the owner's command line.
      *
      * @return array<string, mixed> the manifest
      * @throws RuntimeException when it cannot be read (changed, cut short, another key)
@@ -639,7 +657,7 @@ final class Backups
             throw new RuntimeException('The folder to read it into must be a new one.');
         }
 
-        return $this->unpack($id, $info, $directory);
+        return $this->unpack($id, $info, $directory, spooled: false)[0];
     }
 
     /** A backup's file. */
@@ -679,9 +697,10 @@ final class Backups
         $createdAt = $now->format('Y-m-d\TH:i:s.v\Z');
         $id = $now->format('Ymd-His') . 'Z-' . $kind . '-' . bin2hex(random_bytes(16));
         $work = $this->directory . '/.tmp-' . $id;
-        if (!GuardedDirectory::ensure($work) || !@mkdir($work . '/data') && !is_dir($work . '/data')) {
+        if (!self::workingFolder($work) || !@mkdir($work . '/data', 0700) && !is_dir($work . '/data')) {
             throw new RuntimeException('The backup\'s working folder cannot be made.');
         }
+        $spools = [];
 
         try {
             $pdo->beginTransaction();
@@ -695,9 +714,14 @@ final class Backups
                 $tables = [];
                 foreach ($shape->tables as $index => $table) {
                     $file = sprintf('data/%03d-%s.copy', $index + 1, self::fileName($table['name'], 60));
-                    $path = $work . '/' . $file;
-                    Copy::toFile($pdo, $shape->qualified($table['name']), implode(', ', array_map(Copy::quote(...), $table['columns'])), $path);
-                    $tables[] = ['name' => $table['name'], 'file' => $file, 'columns' => $table['columns']] + self::fileFacts($path);
+                    // Sealed as COPY hands the rows over, where the site's backups are encrypted (Spool).
+                    $spool = $spools[$file] = Spool::create($work . '/' . $file, $this->encryption !== null);
+                    try {
+                        Copy::toFile($pdo, $shape->qualified($table['name']), implode(', ', array_map(Copy::quote(...), $table['columns'])), $spool->url());
+                    } catch (Throwable $e) {
+                        throw $spool->failure() === null ? $e : new RuntimeException('A part of the backup could not be written: ' . $spool->failure(), 0, $e);
+                    }
+                    $tables[] = ['name' => $table['name'], 'file' => $file, 'columns' => $table['columns']] + $spool->facts();
                 }
                 $sequences = [];
                 foreach ($shape->sequences as $sequence) {
@@ -761,7 +785,7 @@ final class Backups
             ];
             array_unshift($entries, ['name' => 'manifest.json', 'data' => json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)]);
             foreach ($tables as $table) {
-                $entries[] = ['name' => $table['file'], 'file' => $work . '/' . $table['file']];
+                $entries[] = ['name' => $table['file'], 'file' => $spools[$table['file']]->url(), 'size' => $table['bytes']];
             }
 
             $part = $work . '/archive.part';
@@ -789,6 +813,9 @@ final class Backups
 
             return $this->info($id) ?? $info;
         } finally {
+            foreach ($spools as $spool) {
+                $spool->discard();
+            }
             self::removeTree($work);
         }
     }
@@ -812,6 +839,8 @@ final class Backups
             if (!$this->dailyDue($stamp)) {
                 return;
             }
+            // Once a day at least, made or not: what a killed run left behind goes (an hour old).
+            $this->sweep();
             $pdo = ($this->connect)();
             $ready = $this->ready !== null ? (bool) ($this->ready)($pdo) : (($this->migrator)($pdo)->applicable() === []);
             if (!$ready) {
@@ -822,9 +851,10 @@ final class Backups
                 return;
             }
             $today = gmdate('Y-m-d');
+            // No backup's name: a host that ignores .htaccess would serve this file of a known name.
             $note = $result instanceof Refusal
                 ? ['date' => $today, 'status' => 'failed', 'at' => time(), 'code' => $result->code]
-                : ['date' => $today, 'status' => 'done', 'at' => time(), 'id' => $result['id']];
+                : ['date' => $today, 'status' => 'done', 'at' => time()];
             ftruncate($handle, 0);
             rewind($handle);
             fwrite($handle, (string) json_encode($note));
@@ -868,12 +898,17 @@ final class Backups
             return null;
         }
 
-        $pending = array_map(static fn (array $file): string => $file['set'] . '/' . $file['name'], $files);
+        // The note names neither the files nor the backup (a host that ignores .htaccess would serve this file
+        // of a known name): a hash of the pending list, and when its backup was made - found again in the list.
+        $pending = hash('sha256', implode("\n", array_map(static fn (array $file): string => $file['set'] . '/' . $file['name'], $files)));
         $noteFile = $this->directory . '/.before-migration.json';
         $last = json_decode((string) @file_get_contents($noteFile), true);
-        if (is_array($last) && ($last['pending'] ?? null) === $pending && is_string($last['backup'] ?? null)
-            && self::validId($last['backup']) && is_file($this->path($last['backup']))) {
-            return $last['backup'];
+        if (is_array($last) && ($last['pending'] ?? null) === $pending && is_string($last['made'] ?? null)) {
+            foreach ($this->list() as $backup) {
+                if ($backup['kind'] === self::BEFORE_MIGRATION && ($backup['created_at'] ?? null) === $last['made']) {
+                    return $backup['id'];
+                }
+            }
         }
 
         $held = $this->hold();
@@ -886,7 +921,7 @@ final class Backups
         } finally {
             $this->release($held);
         }
-        AtomicFile::write($noteFile, (string) json_encode(['pending' => $pending, 'backup' => $info['id'], 'at' => gmdate('Y-m-d\TH:i:s\Z')]));
+        AtomicFile::write($noteFile, (string) json_encode(['pending' => $pending, 'made' => $info['created_at']]));
         $this->audit?->record(null, null, 'backup.created', 'backup', $info['id'], self::auditDetails($info));
         $this->prune();
 
@@ -921,12 +956,14 @@ final class Backups
     // ─── Inside: restoring ───────────────────────────────────────────────────
 
     /**
-     * The backup read whole into $work, every part checked against what its manifest says.
+     * The backup read whole into $work, every part checked against what its manifest says - its tables'
+     * rows into spools ($spooled: a restore; sealed where the site's backups are encrypted), or into plain
+     * files (the offline tools' extractTo()).
      *
      * @param array<string, mixed> $info
-     * @return array<string, mixed> the manifest
+     * @return array{0: array<string, mixed>, 1: array<string, Spool>} the manifest, and the spools by file
      */
-    private function unpack(string $id, array $info, string $work): array
+    private function unpack(string $id, array $info, string $work, bool $spooled): array
     {
         $file = $this->path($id);
         if (isset($info['sha256']) && is_string($info['sha256']) && ($info['status'] ?? null) === 'complete') {
@@ -950,70 +987,84 @@ final class Backups
             return $manifest;
         };
         $seen = [];
-        $header = Archive::extract($file, $this->encryption, function (string $name, int $size) use ($work, $readManifest, &$seen): string {
-            if (isset($seen[$name])) {
-                throw new RuntimeException('It holds a part twice.');
-            }
-            $seen[$name] = true;
-            if ($name === 'manifest.json') {
-                if (count($seen) !== 1 || $size > 64 * 1048576) {
-                    throw new RuntimeException('Its manifest is out of place.');
+        $spools = [];
+        $sealed = $this->encryption !== null;
+        try {
+            $header = Archive::extract($file, $this->encryption, function (string $name, int $size) use ($work, $readManifest, &$seen, &$spools, $spooled, $sealed): string {
+                if (isset($seen[$name])) {
+                    throw new RuntimeException('It holds a part twice.');
                 }
-
-                return $work . '/manifest.json';
-            }
-            $manifest = $readManifest();
-            foreach ($manifest['tables'] ?? [] as $table) {
-                if (($table['file'] ?? null) === $name) {
-                    if ((int) ($table['bytes'] ?? -1) !== $size) {
-                        throw new RuntimeException("Its part $name is not the size its manifest says.");
+                $seen[$name] = true;
+                if ($name === 'manifest.json') {
+                    if (count($seen) !== 1 || $size > 64 * 1048576) {
+                        throw new RuntimeException('Its manifest is out of place.');
                     }
 
-                    return self::placeUnder($work, $name);
+                    return $work . '/manifest.json';
+                }
+                $manifest = $readManifest();
+                foreach ($manifest['tables'] ?? [] as $table) {
+                    if (($table['file'] ?? null) === $name) {
+                        if ((int) ($table['bytes'] ?? -1) !== $size) {
+                            throw new RuntimeException("Its part $name is not the size its manifest says.");
+                        }
+                        if (!$spooled) {
+                            return self::placeUnder($work, $name);
+                        }
+                        $spools[$name] = Spool::create(self::placeUnder($work, $name), $sealed);
+
+                        return $spools[$name]->url();
+                    }
+                }
+                foreach ($manifest['schema_files'] ?? [] as $schemaFile) {
+                    if (($schemaFile['file'] ?? null) === $name) {
+                        return self::placeUnder($work, $name);
+                    }
+                }
+                throw new RuntimeException("It holds a part its manifest does not name ($name).");
+            });
+
+            $manifest = $readManifest();
+            if (($header['id'] ?? null) !== $id || ($manifest['id'] ?? null) !== $id) {
+                throw new RuntimeException('It is another backup than its name says.');
+            }
+            if (($header['schema'] ?? null) !== ($manifest['schema'] ?? null)) {
+                throw new RuntimeException('Its header and its manifest disagree.');
+            }
+            foreach ($manifest['tables'] ?? [] as $table) {
+                $path = $work . '/' . $table['file'];
+                if ($spooled ? !isset($spools[$table['file']]) : !is_file($path)) {
+                    throw new RuntimeException('Its part ' . $table['file'] . ' is missing.');
+                }
+                $facts = $spooled ? $spools[$table['file']]->facts() : self::fileFacts($path);
+                if ($facts['sha256'] !== ($table['sha256'] ?? null) || $facts['rows'] !== (int) ($table['rows'] ?? -1)) {
+                    throw new RuntimeException('Its part ' . $table['file'] . ' is not what its manifest says.');
                 }
             }
             foreach ($manifest['schema_files'] ?? [] as $schemaFile) {
-                if (($schemaFile['file'] ?? null) === $name) {
-                    return self::placeUnder($work, $name);
+                $path = $work . '/' . $schemaFile['file'];
+                if (!is_file($path) || hash_file('sha256', $path) !== ($schemaFile['sha256'] ?? null)) {
+                    throw new RuntimeException('Its part ' . $schemaFile['file'] . ' is not what its manifest says.');
                 }
             }
-            throw new RuntimeException("It holds a part its manifest does not name ($name).");
-        });
-
-        $manifest = $readManifest();
-        if (($header['id'] ?? null) !== $id || ($manifest['id'] ?? null) !== $id) {
-            throw new RuntimeException('It is another backup than its name says.');
-        }
-        if (($header['schema'] ?? null) !== ($manifest['schema'] ?? null)) {
-            throw new RuntimeException('Its header and its manifest disagree.');
-        }
-        foreach ($manifest['tables'] ?? [] as $table) {
-            $path = $work . '/' . $table['file'];
-            if (!is_file($path)) {
-                throw new RuntimeException('Its part ' . $table['file'] . ' is missing.');
+        } catch (Throwable $e) {
+            foreach ($spools as $spool) {
+                $spool->discard();
             }
-            $facts = self::fileFacts($path);
-            if ($facts['sha256'] !== ($table['sha256'] ?? null) || $facts['rows'] !== (int) ($table['rows'] ?? -1)) {
-                throw new RuntimeException('Its part ' . $table['file'] . ' is not what its manifest says.');
-            }
-        }
-        foreach ($manifest['schema_files'] ?? [] as $schemaFile) {
-            $path = $work . '/' . $schemaFile['file'];
-            if (!is_file($path) || hash_file('sha256', $path) !== ($schemaFile['sha256'] ?? null)) {
-                throw new RuntimeException('Its part ' . $schemaFile['file'] . ' is not what its manifest says.');
-            }
+            throw $e;
         }
 
-        return $manifest;
+        return [$manifest, $spools];
     }
 
     /**
      * The restore's one transaction (see the class).
      *
      * @param array<string, mixed> $manifest
+     * @param array<string, Spool> $spools  the tables' rows, by their file in the archive
      * @return array{tables: int, rows: int}
      */
-    private function load(PDO $pdo, DatabaseShape $shape, array $manifest, string $work): array
+    private function load(PDO $pdo, DatabaseShape $shape, array $manifest, array $spools): array
     {
         $kept = $this->keptTables($shape);
         $tables = array_values(array_filter($manifest['tables'], static fn (array $table): bool => !in_array($table['name'], $kept, true)));
@@ -1036,7 +1087,16 @@ final class Backups
             }
             $rows = 0;
             foreach ($tables as $table) {
-                Copy::fromFile($pdo, $shape->qualified($table['name']), implode(', ', array_map(Copy::quote(...), $table['columns'])), $work . '/' . $table['file']);
+                $spool = $spools[$table['file']] ?? throw new RuntimeException('Its part ' . $table['file'] . ' is missing.');
+                try {
+                    Copy::fromFile($pdo, $shape->qualified($table['name']), implode(', ', array_map(Copy::quote(...), $table['columns'])), $spool->url());
+                } catch (Throwable $e) {
+                    throw $spool->failure() === null ? $e : new RuntimeException('A part of the backup could not be read back: ' . $spool->failure(), 0, $e);
+                }
+                // COPY takes a read that failed for the end of the rows: the spool says so, and the transaction goes.
+                if ($spool->failure() !== null) {
+                    throw new RuntimeException('A part of the backup could not be read back: ' . $spool->failure());
+                }
                 $rows += (int) $table['rows'];
             }
             foreach ($manifest['sequences'] ?? [] as $sequence) {
@@ -1187,8 +1247,53 @@ final class Backups
 
             return self::busy();
         }
+        // Nothing else of the folder runs while the lock is held: what a timeout or a kill left goes now.
+        $this->sweep();
 
         return $handle;
+    }
+
+    /**
+     * The working folders a backup or a restore left behind (a timeout, a kill - `finally` never ran) go,
+     * once nothing in them changed for an hour. Only folders of the library's own names.
+     */
+    private function sweep(): void
+    {
+        foreach (@scandir($this->directory) ?: [] as $name) {
+            if (preg_match('/^\.tmp-[A-Za-z0-9-]{8,120}$/D', $name) !== 1) {
+                continue;
+            }
+            $path = $this->directory . '/' . $name;
+            if (is_dir($path) && !is_link($path) && self::lastChanged($path) < time() - 3600) {
+                self::removeTree($path);
+            }
+        }
+    }
+
+    /** The newest change in a folder, its own or of anything in it. */
+    private static function lastChanged(string $path): int
+    {
+        $newest = (int) @filemtime($path);
+        foreach (@scandir($path) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $inner = $path . '/' . $entry;
+            $newest = max($newest, is_dir($inner) && !is_link($inner) ? self::lastChanged($inner) : (int) @filemtime($inner));
+        }
+
+        return $newest;
+    }
+
+    /** A run's own working folder - made new, guarded, open to the site's own user alone. */
+    private static function workingFolder(string $path): bool
+    {
+        if (file_exists($path) || !@mkdir($path, 0700, true)) {
+            return false;
+        }
+        @chmod($path, 0700);
+
+        return GuardedDirectory::ensure($path);
     }
 
     /** @param resource $handle */
@@ -1311,7 +1416,7 @@ final class Backups
     {
         $path = $work . '/' . $name;
         $directory = dirname($path);
-        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+        if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
             throw new RuntimeException('Its working folder cannot be made.');
         }
 

@@ -69,6 +69,6 @@ export interface ErrorLogReport {
   daily: ErrorLogTally[];
   statuses: ErrorLogTally[];
   groups: ErrorLogGroup[];
-  /** Lines dropped because the log was full, by UTC date. */
+  /** Lines only counted - the log was full, or their kind had its lines for the day - by UTC date. */
   dropped: Record<string, number>;
 }

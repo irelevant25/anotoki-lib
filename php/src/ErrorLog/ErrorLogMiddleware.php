@@ -25,26 +25,42 @@ use Throwable;
  *   down with its status (a Slim HTTP exception's own, else 500) and thrown on
  *   to the site's handler. A site with a Slim handler wraps it instead
  *   (ErrorLog::wrapHandler()), which knows the status the site answered.
+ * - own(): on the log's own routes (ErrorLogRoutes puts it there): the request
+ *   is the log's, never written into it - wherever the routes are mounted.
  */
 final class ErrorLogMiddleware implements MiddlewareInterface
 {
-    private function __construct(private readonly ErrorLog $log, private readonly bool $outer)
+    private const OUTER = 'outer';
+    private const INNER = 'inner';
+    private const OWN = 'own';
+
+    private function __construct(private readonly ErrorLog $log, private readonly string $place)
     {
     }
 
     public static function outer(ErrorLog $log): self
     {
-        return new self($log, true);
+        return new self($log, self::OUTER);
     }
 
     public static function inner(ErrorLog $log): self
     {
-        return new self($log, false);
+        return new self($log, self::INNER);
+    }
+
+    /** @internal ErrorLogRoutes */
+    public static function own(ErrorLog $log): self
+    {
+        return new self($log, self::OWN);
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        return $this->outer ? $this->around($request, $handler) : $this->inside($request, $handler);
+        return match ($this->place) {
+            self::OUTER => $this->around($request, $handler),
+            self::INNER => $this->inside($request, $handler),
+            default => $handler->handle($this->log->markOwn($request)),
+        };
     }
 
     private function around(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface

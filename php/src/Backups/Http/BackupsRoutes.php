@@ -20,20 +20,27 @@ use Slim\Interfaces\RouteInterface;
 /**
  * The backups' routes, on the site's Slim app.
  *
- * admin() - for the site's ADMIN alone (the site's check on the returned group;
- * the IAM's CSRF header on its writes, as on every first-party write):
+ * admin() - for the site's ADMIN alone: the group asks the context's isAdmin()
+ * before anything else (401 for nobody, 403 for anybody else), and the site
+ * adds its own middleware to it as to any group (its session; the IAM's CSRF
+ * header on its writes, as on every first-party write):
  *   GET    $base                    {backups: [... restorable], status}
  *   GET    $base/proof              {kind: password | recent_sign_in} - what the page asks for
  *   POST   $base                    {description?, password?} -> 201 {backup}        the proof; audited
  *   GET    $base/{id}               {backup} (with its tables)
  *   DELETE $base/{id}               {password?} -> {deleted: true}                   the proof; audited
- *   POST   $base/{id}/ticket        {password?} -> {url, expires_in: 60}             the proof; audited backup.downloaded
+ *   POST   $base/{id}/ticket        {password?} -> {url, expires_in}                 the proof; audited backup.downloaded
  *   GET    $base/{id}/preview       Backups::preview()
  *   POST   $base/{id}/restore       {confirm: the id's last 6 characters, password?} the proof; audited
  *
- * file() - the download itself, OUTSIDE the admin check: a browser's navigation
- * sends no Bearer header, so the single-use ticket is the check.
+ * file() - the download itself, DELIBERATELY outside the admin check: a
+ * browser's navigation sends no Bearer header, so the single-use ticket is the
+ * check. Mounted at the same path as admin() (the ticket's url names it there,
+ * under whatever group, prefix or base path the request came through).
  *   GET    $base/{id}/file?ticket=  the archive, as an attachment; 403 ticket_invalid
+ * A site whose sign-in rides on a cookie (the IAM) may mount it inside its own
+ * session check and pass samePerson: the ticket then opens the file only for
+ * the person it was issued to (its `by`).
  *
  * Open while an update waits (no table needed; a backup just before Apply is
  * the point), but never restore: openPaths($base) in the site's gate.
@@ -42,9 +49,10 @@ final class BackupsRoutes
 {
     public static function admin(RouteCollectorProxyInterface $app, string $base, Backups $backups, AdminContext $context): RouteGroupInterface
     {
-        $prefix = $app->getBasePath() . $base;
+        // Where the group ended up, for a ticket's url when the request's own path cannot say it (set below).
+        $mounted = null;
 
-        return $app->group($base, function (RouteCollectorProxyInterface $group) use ($backups, $context, $prefix): void {
+        $routes = Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($backups, $context, &$mounted): void {
             $id = '/{id:' . Backups::ID_PATTERN . '}';
 
             Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($backups): ResponseInterface {
@@ -111,7 +119,7 @@ final class BackupsRoutes
                 return JsonResponse::write($response, 200, ['deleted' => true]);
             }));
 
-            Routes::plain($group->post($id . '/ticket', function (ServerRequestInterface $request, ResponseInterface $response) use ($backups, $context, $prefix): ResponseInterface {
+            Routes::plain($group->post($id . '/ticket', function (ServerRequestInterface $request, ResponseInterface $response) use ($backups, $context, &$mounted): ResponseInterface {
                 $body = Routes::body($request, 4096, optional: true);
                 if ($body instanceof Refusal) {
                     return $context->refuse($response, $body);
@@ -128,9 +136,11 @@ final class BackupsRoutes
                 if ($ticket instanceof Refusal) {
                     return $context->refuse($response, $ticket);
                 }
+                // The file route sits beside this one: the request's own path says where, mounted however.
+                $at = Routes::mountedAt($request, '/' . $backupId . '/ticket') ?? $mounted;
 
                 return JsonResponse::write($response, 200, [
-                    'url' => $prefix . '/' . $backupId . '/file?ticket=' . rawurlencode($ticket['ticket']),
+                    'url' => $at . '/' . $backupId . '/file?ticket=' . rawurlencode($ticket['ticket']),
                     'expires_in' => $ticket['expires_in'],
                 ]);
             }));
@@ -172,19 +182,28 @@ final class BackupsRoutes
                 return JsonResponse::write($response, 200, $result);
             }));
         });
+        $mounted = $app->getBasePath() . $routes->getPattern();
+
+        return $routes;
     }
 
-    /** GET $base/{id}/file?ticket= - the download, its ticket its only check (see the class). */
+    /**
+     * GET $base/{id}/file?ticket= - the download, its ticket its only check (see the class); with
+     * $samePerson, also only for the person the ticket was issued to (the context's actorId()).
+     */
     public static function file(
         RouteCollectorProxyInterface $app,
         string $base,
         Backups $backups,
         AdminContext $context,
         ?StreamFactoryInterface $streams = null,
+        bool $samePerson = false,
     ): RouteInterface {
-        return Routes::plain($app->get($base . '/{id:' . Backups::ID_PATTERN . '}/file', function (ServerRequestInterface $request, ResponseInterface $response) use ($backups, $context, $streams): ResponseInterface {
+        return Routes::plain($app->get($base . '/{id:' . Backups::ID_PATTERN . '}/file', function (ServerRequestInterface $request, ResponseInterface $response) use ($backups, $context, $streams, $samePerson): ResponseInterface {
             $ticket = $request->getQueryParams()['ticket'] ?? null;
-            $file = is_string($ticket) ? $backups->redeem((string) $request->getAttribute('id'), $ticket) : null;
+            $file = is_string($ticket)
+                ? $backups->redeem((string) $request->getAttribute('id'), $ticket, $samePerson ? [$context->actorId($request)] : null)
+                : null;
             if ($file === null) {
                 return $context->refuse($response, new Refusal(403, 'ticket_invalid', 'This download link was used already, has run out, or is no link of this backup. Ask for the download again.'))
                     ->withHeader('Referrer-Policy', 'no-referrer');

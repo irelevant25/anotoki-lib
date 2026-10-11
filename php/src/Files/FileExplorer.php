@@ -96,6 +96,14 @@ final class FileExplorer
             throw new InvalidArgumentException('The file explorer needs the site\'s storage folder.');
         }
         $this->storage = rtrim($storage, '/\\');
+        // The storage folder holds the trash, the snapshots, the keys and the backups: never shown or written here.
+        $kept = rtrim(str_replace('\\', '/', (string) (realpath($this->storage) ?: $this->storage)), '/');
+        foreach ($this->roots as $root) {
+            $real = rtrim(str_replace('\\', '/', (string) (realpath($root->path) ?: $root->path)), '/');
+            if (strcasecmp($real, $kept) === 0 || PathGuard::inside($real, $kept) || PathGuard::inside($kept, $real)) {
+                throw new InvalidArgumentException("The root {$root->name} is the storage folder, holds it or is inside it: the explorer never shows what the library keeps there.");
+            }
+        }
         $key = $options['key'] ?? null;
         if ($key !== null && (!is_string($key) || strlen($key) < 16)) {
             throw new InvalidArgumentException('The option key must be a string of at least 16 bytes.');
@@ -251,6 +259,7 @@ final class FileExplorer
         if ($files === []) {
             return Refusal::invalid('no_files', 'Choose the files to upload.');
         }
+        $this->sweepIncoming();
 
         $results = [];
         $uploaded = 0;
@@ -538,7 +547,8 @@ final class FileExplorer
         if ($trashed !== null && $trashed !== '') {
             $relative = PathGuard::relative($trashed);
             $path = $relative === null || $relative === '' ? null : PathGuard::resolve($trashRoot, $relative);
-            if ($path === null || !is_file($path)) {
+            // Only what the trash put there - never its own index.html or anything else of the folder's.
+            if ($path === null || !is_file($path) || preg_match('/^\d{8}-\d{6}(?:-\d+)?__.+$/D', PathGuard::split((string) $relative)[1]) !== 1) {
                 return self::notFound();
             }
             $size = (int) @filesize($path);
@@ -716,6 +726,19 @@ final class FileExplorer
         $this->notify($root->name, 'upload', $relative, null);
 
         return ['name' => $clientName, 'stored_as' => $stored, 'path' => $relative, 'status' => $existed ? 'replaced' : 'uploaded', 'size' => $actual];
+    }
+
+    /**
+     * Uploads a timeout or a kill left on their way in (`finally` never ran) go, once an hour old - only
+     * files of the explorer's own names.
+     */
+    private function sweepIncoming(): void
+    {
+        foreach (glob($this->storage . '/cache/uploads/*.part') ?: [] as $file) {
+            if (preg_match('/^[0-9a-f]{24}\.part$/D', basename($file)) === 1 && is_file($file) && (int) @filemtime($file) < time() - 3600) {
+                @unlink($file);
+            }
+        }
     }
 
     /** The folders of $folder made where they are missing, each inside the root; its path, or null. */

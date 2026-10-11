@@ -81,8 +81,10 @@ final class AuditLog implements AuditRecorder
      *     own migration has moved the old rows in
      *   - personTargetType: the target type of a person, for scrubPeople() ('user')
      *   - actorIds: a name typed into the page's actor filter, as the ids it may mean
-     *   - onError: told why an entry could not be written (default: the library's log line, Support\Log -
-     *     PHP's error log unless the site sends the lines elsewhere)
+     *   - onError: told that an entry could not be written - a fixed sentence and a code (the SQLSTATE, or
+     *     the failure's class), never the entry, its details or address, nor the database's words, which
+     *     quote values (default: the library's log line, Support\Log - PHP's error log unless the site sends
+     *     the lines elsewhere)
      */
     public function __construct(private readonly Closure $pdo, array $options = [])
     {
@@ -153,7 +155,7 @@ final class AuditLog implements AuditRecorder
             }
             $this->insert($pdo, $entry);
         } catch (Throwable $e) {
-            ($this->onError)('[audit] could not record ' . $action . ': ' . $e->getMessage());
+            ($this->onError)('[audit] an entry could not be written (' . self::failureCode($e) . ').');
         }
     }
 
@@ -272,7 +274,7 @@ final class AuditLog implements AuditRecorder
                 fclose($handle);
             }
         } catch (Throwable $e) {
-            ($this->onError)('[audit] the waiting entries could not be written: ' . $e->getMessage());
+            ($this->onError)('[audit] the waiting entries could not be written (' . self::failureCode($e) . '); they wait on.');
 
             return 0;
         }
@@ -454,7 +456,7 @@ final class AuditLog implements AuditRecorder
         $entry['created_at'] = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z');
         $line = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($this->pendingFile === null || $line === false) {
-            ($this->onError)('[audit] the table is not there yet, and the entry had nowhere to wait: ' . ($line === false ? $entry['action'] : $line));
+            ($this->onError)('[audit] the table is not there yet, and an entry had nowhere to wait: it is lost (' . ($line === false ? 'not_encodable' : 'no_pending_file') . ').');
 
             return;
         }
@@ -463,8 +465,21 @@ final class AuditLog implements AuditRecorder
             GuardedDirectory::ensure($directory);
         }
         if (@file_put_contents($this->pendingFile, $line . "\n", FILE_APPEND | LOCK_EX) === false) {
-            ($this->onError)('[audit] the table is not there yet, and the entry could not wait in ' . basename($this->pendingFile) . ': ' . $line);
+            ($this->onError)('[audit] the table is not there yet, and an entry could not wait in its file: it is lost (pending_unwritable).');
         }
+    }
+
+    /** What failed, as a code a log line may carry: the SQLSTATE of a database's refusal, else the failure's class. */
+    private static function failureCode(Throwable $e): string
+    {
+        $state = $e instanceof \PDOException ? ($e->errorInfo[0] ?? $e->getCode()) : null;
+        if (is_string($state) && preg_match('/^[0-9A-Z]{5}$/D', $state) === 1) {
+            return 'SQLSTATE ' . $state;
+        }
+        $class = $e::class;
+        $slash = strrpos($class, '\\');
+
+        return $slash === false ? $class : substr($class, $slash + 1);
     }
 
     private function tableReady(PDO $pdo): bool

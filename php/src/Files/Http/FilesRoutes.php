@@ -22,7 +22,9 @@ use Slim\Interfaces\RouteInterface;
 /**
  * The file explorer's routes, on the site's Slim app.
  *
- * admin() - for the site's ADMIN alone (the site's check on the returned group):
+ * admin() - for the site's ADMIN alone: the group asks the context's isAdmin()
+ * before anything else (401, 403), and the site adds its own middleware to it
+ * as to any group:
  *   GET    $base/roots                               {roots}
  *   GET    $base/{root}?path=&search=&page=&mode=new  FileExplorer::list()
  *   POST   $base/{root}/rescan                       the snapshot's status
@@ -35,10 +37,13 @@ use Slim\Interfaces\RouteInterface;
  *   DELETE $base/{root}/trash?trashed=               -> {deleted, bytes, failed}  audited file.trash_emptied
  * Every upload kept is audited file.uploaded.
  *
- * raw() - a preview, OUTSIDE the admin check (an <img> sends no Bearer header):
+ * raw() - a preview, DELIBERATELY outside the admin check (an <img> sends no
+ * Bearer header): the link's signature is the check.
  *   GET $path?root=&path=&exp=&sig=  the file, its link signed for five minutes - inline only pictures,
- *       sound and short text; every answer with Content-Security-Policy: sandbox; default-src 'none',
+ *       sound, video and short text; every answer with Content-Security-Policy: sandbox; default-src 'none',
  *       nosniff, Cross-Origin-Resource-Policy: same-origin and Cache-Control: private, no-store.
+ * The listing's links name the raw route where it is mounted - under whatever
+ * group, prefix or base path the site gives it.
  */
 final class FilesRoutes
 {
@@ -47,7 +52,7 @@ final class FilesRoutes
 
     public static function admin(RouteCollectorProxyInterface $app, string $base, FileExplorer $explorer, AdminContext $context, ?AuditRecorder $audit = null): RouteGroupInterface
     {
-        return $app->group($base, function (RouteCollectorProxyInterface $group) use ($explorer, $context, $audit): void {
+        return Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($explorer, $context, $audit): void {
             $answer = static function (ResponseInterface $response, mixed $result, int $status = 200) use ($context): ResponseInterface {
                 return $result instanceof Refusal ? $context->refuse($response, $result) : JsonResponse::write($response, $status, $result);
             };
@@ -173,9 +178,7 @@ final class FilesRoutes
         AdminContext $context,
         ?StreamFactoryInterface $streams = null,
     ): RouteInterface {
-        $explorer->servedAt($app->getBasePath() . $path);
-
-        return Routes::plain($app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $context, $streams): ResponseInterface {
+        $route = Routes::plain($app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $context, $streams): ResponseInterface {
             $query = $request->getQueryParams();
             $file = $explorer->raw(
                 is_string($query['root'] ?? null) ? $query['root'] : '',
@@ -198,6 +201,10 @@ final class FilesRoutes
                 ->withHeader('Content-Type', $file['type'])
                 ->withHeader('Content-Disposition', ($file['inline'] ? 'inline' : 'attachment') . '; filename="' . $name . '"; filename*=UTF-8\'\'' . rawurlencode($file['name']));
         }));
+        // The route's whole pattern holds the groups it is mounted in; the base path comes before them all.
+        $explorer->servedAt($app->getBasePath() . $route->getPattern());
+
+        return $route;
     }
 
     /**

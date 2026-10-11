@@ -18,7 +18,8 @@ namespace Anotoki\Lib\Support;
  *     type integer: "..."') becomes "{…}";
  *   - Bearer and Basic credentials, JWTs (eyJ…), a secret written as
  *     name=value or name: value (password, token, secret, cookie, ticket, ...),
- *     a URL's query string;
+ *     its name quoted or not ({"password":"…"}, 'pass' => '…'), a URL's query
+ *     string;
  *   - e-mail addresses ({email}), IPv4 and IPv6 addresses ({ip});
  *   - a run of 24 or more characters of a token's alphabet (base64url, hex)
  *     that mixes letters and digits, or is all hex ({token}) - a session id, a
@@ -59,7 +60,8 @@ final class Redactor
             '/(:\s+)"(?:[^"\\\\\n]++|\\\\.|"")*+"(?=[ \t]*(?:$|\R))/mu' => '$1"' . self::MARK . '"',
             '/\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/=-]+/iu' => '$1 ' . self::MARK,
             '/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/u' => '{token}',
-            '/\b(pass(?:word|wd)?|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|access[_-]?key|authorization|cookie|session(?:[_-]?id)?|sid|ticket|code_verifier|signature|sig)\b(\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s&,;"\']+)/iu' => '$1$2' . self::MARK,
+            // name=value, name: value, and the same quoted - JSON's "password":"…", PHP's 'pass' => '…'.
+            '/\b(pass(?:word|wd)?|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[_-]?key|access[_-]?key|authorization|cookie|session(?:[_-]?id)?|sid|ticket|code_verifier|signature|sig)\b(["\']?\s*(?:=>|[=:])\s*)("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\'|[^\s&,;"\']+)/iu' => '$1$2' . self::MARK,
             '/(\bhttps?:\/\/[^\s?#"\'<>]*)\?[^\s#"\'<>]*/iu' => '$1?' . self::MARK,
             '/\?[A-Za-z0-9_.\[\]-]+=[^\s#"\'<>]*/u' => '?' . self::MARK,
             '/[^\s@<>()\[\]{}"\',;:\/\\\\]+@[^\s@<>()\[\]{}"\',;:\/\\\\]+\.[^\s@<>()\[\]{}"\',;:\/\\\\.]+/u' => '{email}',

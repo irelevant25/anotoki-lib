@@ -87,8 +87,8 @@ PHP, the admin tools:
   (the IAM's rules); `Http\AuditRoutes` (the IAM's answer).
 - `Feedback\Feedback` - the open form (identity from the token, a honeypot, 5 an hour / 20 a day
   per address bucket and 300 a day in all, never an address kept, no id returned, no mail), the
-  admin list with an unread count for the panel's badge, `prune()` (spam 30 days, resolved 365,
-  the bucket's hash 30), `forgetPeople()`; `Http\FeedbackRoutes`.
+  admin list with an unread count for the panel's badge, `prune()` (spam 30 days, resolved 365;
+  the limits' counts kept a day, outside the database), `forgetPeople()`; `Http\FeedbackRoutes`.
 - `Backups\Backups` - no pg_dump: every table by COPY through PDO in one snapshot, with the applied
   migrations, into `<id>.anotoki-backup` (a gzip'd ustar; the IAM's in AES-256-GCM chunks under a
   key derived from its master key); daily after the answer (14), before every update (5), before
@@ -347,6 +347,23 @@ Angular half: `provideAnotokiAdmin()` from its auth (the IAM: `siteName`, `failu
 `restoreOffText` too), the pages on lazy routes under its ADMIN guard, `FeedbackUnread` beside its
 navigation's Feedback; where visitors write: `provideAnotokiFeedback()`, the form loaded as it is
 opened, and `anotoki_translations/004` applied.
+
+The admin tools after their security review (2026-10-11), before any site took them: every
+`*Routes::admin()` group guards itself - `AdminContext`'s new `isAdmin` (a site must give it; 401 for
+nobody, 403 for anybody else), the site's own middleware still first - and the deliberately open
+`BackupsRoutes::file()` (new `samePerson`) and `FilesRoutes::raw()` are documented apart; tickets'
+and previews' links and the error log's own routes hold under a site's groups and base path. COPY goes
+through spools (a stream wrapper): sealed under a key held in memory where backups are encrypted, so no
+row is in the clear on the disk; working folders and uploads a kill left behind go after an hour.
+Feedback keeps nothing of where a message came from (002, unreleased, lost `client_hash`; the limits
+count a day in `storage/cache/anotoki-feedback-limits.json`; `storage` required; `keep.client_hash`
+and `lock` gone; the honeypot answers 201) and refuses `? & = % #` or a space in an address (the page
+encodes its mail link). Uploads: no markup at a file's start or early in text, an ISO box's own size,
+no Windows device names, no root over code, secrets or storage, a guard with `AddType` and nosniff. The
+error log drops its oldest days first and writes 100 lines of a kind a day (`perFingerprintDay`); the
+redactor reads quoted secret names; the audit log's failures are a sentence and a code; the backups'
+notes name no backup, an encrypting site reads no plain one, `BackupsCommand` runs on the command line
+alone, `expires_in` is `ticketSeconds`; 001 and 002 say 0.4.0.
 
 The order of the library's sets in a site's list: `[Admin\Schema::migrationSet(), ...$siteSets,
 Translations\Schema::migrationSet(), People\Schema::migrationSet()]` - the admin set first, the others

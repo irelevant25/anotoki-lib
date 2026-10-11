@@ -57,15 +57,33 @@ final class BackupsCommandTest extends BackupsTestCase
         self::assertSame(2, $this->runCommand($backups, ['--help'])[0]);
     }
 
+    public function testABackupPhpOpenedInABrowserDoesNothing(): void
+    {
+        $this->fill();
+        $backups = $this->backupsWith();
+        self::assertIsArray($backups->create());
+        $id = $backups->list()[0]['id'];
+
+        foreach (['fpm-fcgi', 'apache2handler', 'cgi-fcgi', 'litespeed', 'cli-server'] as $sapi) {
+            foreach ([['--create', 'from the web'], ['--list'], ["--restore=$id", '--confirm=' . substr($id, -6)]] as $arguments) {
+                [$code, $out, $err] = $this->runCommand($backups, $arguments, $sapi);
+                self::assertSame([1, ''], [$code, $out], "$sapi: " . implode(' ', $arguments));
+                self::assertStringContainsString('command line alone', $err);
+            }
+        }
+        self::assertCount(1, $backups->list(), 'nothing made, nothing restored');
+        self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action LIKE 'backup.%'"));
+    }
+
     /**
      * @param list<string> $arguments
      * @return array{int, string, string}
      */
-    private function runCommand(\Anotoki\Lib\Backups\Backups $backups, array $arguments): array
+    private function runCommand(\Anotoki\Lib\Backups\Backups $backups, array $arguments, string $sapi = 'cli'): array
     {
         $out = fopen('php://memory', 'w+');
         $err = fopen('php://memory', 'w+');
-        $code = (new BackupsCommand($backups, $out, $err))->run($arguments);
+        $code = (new BackupsCommand($backups, $out, $err, $sapi))->run($arguments);
         rewind($out);
         rewind($err);
 

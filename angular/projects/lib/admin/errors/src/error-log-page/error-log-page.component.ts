@@ -198,7 +198,7 @@ export class ErrorLogPageComponent {
     });
   });
 
-  /** The days the log was full, the newest first: "6 Oct: 12 lines". */
+  /** The days some lines were only counted (the log was full, or a kind had its lines), newest first: "6 Oct: 12 lines". */
   protected readonly dropped = computed(() =>
     Object.entries(this.report()?.dropped ?? {})
       .sort(([a], [b]) => b.localeCompare(a))

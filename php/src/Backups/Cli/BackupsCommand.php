@@ -24,24 +24,26 @@ use Throwable;
  *                                               in place, as the admin page restores (where the site allows it)
  *
  * What a command line does needs no proof - a shell is the owner's already - and
- * is written by nobody in the audit log.
+ * is written by nobody in the audit log. So it runs on the command line alone:
+ * a backup.php uploaded by mistake and opened in a browser does nothing.
  */
 final class BackupsCommand
 {
-    /** @var resource */
+    /** @var ?resource */
     private $out;
 
-    /** @var resource */
+    /** @var ?resource */
     private $err;
 
     /**
      * @param ?resource $out
      * @param ?resource $err
+     * @param string $sapi  PHP's interface (PHP_SAPI); a test says another
      */
-    public function __construct(private readonly Backups $backups, $out = null, $err = null)
+    public function __construct(private readonly Backups $backups, $out = null, $err = null, private readonly string $sapi = PHP_SAPI)
     {
-        $this->out = $out ?? STDOUT;
-        $this->err = $err ?? STDERR;
+        $this->out = $out ?? (defined('STDOUT') ? STDOUT : null);
+        $this->err = $err ?? (defined('STDERR') ? STDERR : null);
     }
 
     /**
@@ -50,6 +52,14 @@ final class BackupsCommand
      */
     public function run(array $arguments): int
     {
+        // Before anything else: no proof is asked here, so nothing but a shell may ask.
+        if ($this->sapi !== 'cli' && $this->sapi !== 'phpdbg') {
+            if ($this->err !== null) {
+                fwrite($this->err, "The backups' command line runs on the command line alone.\n");
+            }
+
+            return 1;
+        }
         $first = $arguments[0] ?? '';
         try {
             return match (true) {

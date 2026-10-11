@@ -60,8 +60,9 @@ final class FeedbackTest extends DatabaseTestCase
             'the id from the token, never the body; the account\'s address; the page without its query'
         );
         self::assertSame(['steps' => 'Open it'], json_decode($row['details'], true));
-        self::assertSame(hash_hmac('sha256', '203.0.113.9', self::KEY), $row['client_hash']);
+        self::assertArrayNotHasKey('client_hash', $row, 'nothing of where it came from on the message: no address, no hash of one');
         self::assertStringNotContainsString('203.0.113.9', (string) json_encode($row), 'the address itself is kept nowhere');
+        self::assertStringNotContainsString(hash_hmac('sha256', '203.0.113.9', self::KEY), (string) json_encode($row));
         self::assertStringNotContainsString('SECRET', (string) json_encode($row));
 
         $this->post($app, ['kind' => 'idea', 'message' => 'Anonymous', 'email' => 'mine@example.com', 'anonymous' => true], person: ['id' => 42, 'email' => 'ana@example.com']);
@@ -85,6 +86,14 @@ final class FeedbackTest extends DatabaseTestCase
             $response = $this->post($app, $body);
             self::assertSame([422, $code], [$response->getStatusCode(), $this->json($response)['code']], $code);
         }
+        // An address a mail link would read as more than an address: "?bcc=" adds a recipient, the rest end it.
+        foreach ([
+            'jan.novak%40gmail.com?bcc=attacker%40evil.example&x=@example.com', 'a?b@example.com', 'a&b@example.com',
+            'a=b@example.com', 'a%b@example.com', 'a#b@example.com', "a\tb@example.com", 'a b@example.com',
+        ] as $address) {
+            $refused = $this->post($app, ['kind' => 'idea', 'message' => 'x', 'email' => $address]);
+            self::assertSame([422, 'email_invalid', 'email'], [$refused->getStatusCode(), $this->json($refused)['code'], $this->json($refused)['field']], $address);
+        }
         $long = $this->post($app, ['kind' => 'idea', 'message' => 'x', 'details' => ['steps' => str_repeat('s', 2001)]]);
         self::assertSame(['too_long', 'steps'], [$this->json($long)['code'], $this->json($long)['field']]);
         self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => str_repeat('ž', 10000)])->getStatusCode(), 'ten thousand characters, not bytes');
@@ -98,10 +107,12 @@ final class FeedbackTest extends DatabaseTestCase
     {
         $app = $this->app();
 
+        $kept = $this->post($app, ['kind' => 'idea', 'message' => 'A real one']);
         $response = $this->post($app, ['kind' => 'idea', 'message' => 'Buy things', 'website' => 'https://spam.example']);
 
-        self::assertSame([202, ['ok' => true]], [$response->getStatusCode(), $this->json($response)]);
-        self::assertSame(0, (int) $this->value('SELECT count(*) FROM anotoki_feedback'));
+        self::assertSame([$kept->getStatusCode(), (string) $kept->getBody()], [$response->getStatusCode(), (string) $response->getBody()], 'word for word a kept message\'s answer');
+        self::assertSame([201, ['ok' => true]], [$response->getStatusCode(), $this->json($response)]);
+        self::assertSame(['A real one'], $this->pdo->query('SELECT message FROM anotoki_feedback')->fetchAll(PDO::FETCH_COLUMN));
     }
 
     public function testTheLimitsCountTheTrustedProxysAddressNeverAForwardedHeader(): void
@@ -125,10 +136,39 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(429, $everybody->getStatusCode(), 'five a day from everybody');
         self::assertStringContainsString('tomorrow', $this->json($everybody)['message']);
 
-        $this->pdo->exec("UPDATE anotoki_feedback SET created_at = now() - interval '2 hours' WHERE message LIKE 'try %'");
-        $this->pdo->exec("DELETE FROM anotoki_feedback WHERE message LIKE 'via proxy%'");
+        // Two hours on, and the proxy's two senders forgotten: one address's hour is over, its day is not.
+        $this->ageLimits(7200, without: [hash_hmac('sha256', '198.51.100.7', self::KEY), hash_hmac('sha256', '198.51.100.8', self::KEY)]);
         self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'later'])->getStatusCode(), 'the hour is over');
         self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'and later'])->getStatusCode(), 'four a day from one address');
+        $this->ageLimits(86400);
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'a day on'])->getStatusCode(), 'and a day on, the day is over too');
+    }
+
+    public function testTheLimitsAreCountedApartAndForgottenADayLater(): void
+    {
+        $app = $this->app();
+        $this->post($app, ['kind' => 'idea', 'message' => 'one']);
+        $this->post($app, ['kind' => 'idea', 'message' => 'two'], address: '198.51.100.4');
+
+        self::assertFalse(in_array('client_hash', array_column($this->rows("SELECT column_name FROM information_schema.columns WHERE table_name = 'anotoki_feedback'"), 'column_name'), true), 'no column for it');
+        $count = $this->limits();
+        self::assertSame(['v', 'sent'], array_keys($count), 'a keyed hash of each bucket and when - nothing else');
+        self::assertEqualsCanonicalizing([hash_hmac('sha256', '203.0.113.9', self::KEY), hash_hmac('sha256', '198.51.100.4', self::KEY)], array_keys($count['sent']));
+        $raw = (string) file_get_contents($this->path('storage/' . Feedback::LIMITS_FILE));
+        self::assertStringNotContainsString('203.0.113.9', $raw);
+        self::assertStringNotContainsString('one', $raw, 'nothing of a message');
+        self::assertFileExists($this->path('storage/cache/.htaccess'), 'in a denied folder');
+
+        // A day later the times are gone with the next message: the count holds that message's alone.
+        $this->ageLimits(86401);
+        $this->post($app, ['kind' => 'idea', 'message' => 'three'], address: '198.51.100.5');
+        self::assertSame([hash_hmac('sha256', '198.51.100.5', self::KEY)], array_keys($this->limits()['sent']));
+    }
+
+    public function testFeedbackNeedsTheStorageFolderToCountIn(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Feedback(fn (): PDO => $this->pdo, ['key' => self::KEY]);
     }
 
     public function testOnlySignedInWhereTheSiteSaysSo(): void
@@ -147,12 +187,19 @@ final class FeedbackTest extends DatabaseTestCase
         $this->post($app, ['kind' => 'idea', 'message' => 'More weapons']);
         $this->post($app, ['kind' => 'other', 'message' => 'Hello'], address: '198.51.100.30');
 
-        self::assertSame(403, $this->send($app, 'GET', '/api/admin/feedback', admin: false)->getStatusCode());
+        // Nothing of the site's on the group: its own check refuses a bare request and anybody but the ADMIN.
+        foreach (['/api/admin/feedback', '/api/admin/feedback/unread', '/api/admin/feedback/facets'] as $path) {
+            $bare = $this->send($app, 'GET', $path, admin: false);
+            self::assertSame([401, 'sign_in_required'], [$bare->getStatusCode(), $this->json($bare)['code']], "a bare request to $path");
+            $other = $this->send($app, 'GET', $path, headers: ['X-Test-Admin' => 'no'], admin: false);
+            self::assertSame([403, 'forbidden'], [$other->getStatusCode(), $this->json($other)['code']], "somebody else at $path");
+            self::assertStringNotContainsString('Hello', (string) $other->getBody());
+        }
         self::assertSame(['unread' => 3], $this->json($this->send($app, 'GET', '/api/admin/feedback/unread')));
         $page = $this->json($this->send($app, 'GET', '/api/admin/feedback'));
         self::assertSame([3, 1, 25], [$page['total'], $page['page'], $page['pageSize']]);
         self::assertSame(['Hello', 'More weapons', 'It broke'], array_column($page['items'], 'message'));
-        self::assertArrayNotHasKey('client_hash', $page['items'][0], 'the bucket\'s hash never leaves the server');
+        self::assertArrayNotHasKey('client_hash', $page['items'][0], 'nothing of where a message came from');
         self::assertSame('Ana', $page['items'][2]['user_name']);
         self::assertSame(1, $this->json($this->send($app, 'GET', '/api/admin/feedback?search=talent'))['total'], 'the extra fields are searched too');
         self::assertSame(1, $this->json($this->send($app, 'GET', '/api/admin/feedback?kind=bug&status=new&section=Characters'))['total']);
@@ -174,7 +221,9 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(404, $this->send($app, 'PUT', '/api/admin/feedback/999/status', '{"status":"spam"}')->getStatusCode());
         self::assertSame(['deleted' => true], $this->json($this->send($app, 'DELETE', "/api/admin/feedback/$id")));
         self::assertSame(404, $this->send($app, 'DELETE', "/api/admin/feedback/$id")->getStatusCode());
-        self::assertSame(403, $this->send($app, 'DELETE', '/api/admin/feedback/' . $page['items'][0]['id'], admin: false)->getStatusCode());
+        self::assertSame(401, $this->send($app, 'DELETE', '/api/admin/feedback/' . $page['items'][0]['id'], admin: false)->getStatusCode());
+        self::assertSame(403, $this->send($app, 'DELETE', '/api/admin/feedback/' . $page['items'][0]['id'], headers: ['X-Test-Admin' => 'no'], admin: false)->getStatusCode());
+        self::assertSame(2, (int) $this->value('SELECT count(*) FROM anotoki_feedback'), 'neither deleted anything');
 
         $entries = $this->rows('SELECT actor_id, action, target_type, target_id, details FROM anotoki_audit_log ORDER BY id');
         self::assertSame([[7, 'feedback.status_changed', 'feedback', (string) $id], [7, 'feedback.deleted', 'feedback', (string) $id]], array_map(
@@ -207,9 +256,8 @@ final class FeedbackTest extends DatabaseTestCase
         $this->pdo->exec("UPDATE anotoki_feedback SET status = 'resolved', handled_at = now() - interval '300 days' WHERE message = 'resolved new'");
         $this->pdo->exec("UPDATE anotoki_feedback SET created_at = now() - interval '400 days' WHERE message = 'new old'");
 
-        self::assertSame(['spam' => 1, 'resolved' => 1, 'client_hash' => 1], $feedback->prune());
+        self::assertSame(['spam' => 1, 'resolved' => 1], $feedback->prune());
         self::assertSame(['new old', 'resolved new', 'spam new'], $this->pdo->query('SELECT message FROM anotoki_feedback ORDER BY message')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertNull($this->value("SELECT client_hash FROM anotoki_feedback WHERE message = 'new old'"), 'kept, without its bucket\'s hash');
 
         self::assertSame(3, $feedback->forgetPeople([5, 'x']));
         self::assertSame([[null, null, 5]], array_values(array_unique(array_map(
@@ -263,6 +311,7 @@ final class FeedbackTest extends DatabaseTestCase
     {
         return new Feedback(fn (): PDO => $this->pdo, $options + [
             'key' => self::KEY,
+            'storage' => $this->path('storage'),
             'sections' => ['Characters', 'Weapons'],
             'fields' => ['steps' => 2000, 'expected' => 2000],
             'defer' => function (callable $work): void {
@@ -276,7 +325,8 @@ final class FeedbackTest extends DatabaseTestCase
     {
         $feedback = $this->feedback($options);
         $context = new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => $request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : null,
+            // X-Test-Admin: yes is the site's ADMIN (7); any other value somebody else (9); none, nobody.
+            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? ($request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : 9) : null,
             null,
             AdminContext::PROOF_RECENT_SIGN_IN,
             // The site's address: a trusted proxy's header from the trusted proxy alone, else the connection's.
@@ -286,6 +336,7 @@ final class FeedbackTest extends DatabaseTestCase
 
                 return $address === self::PROXY && filter_var($forwarded, FILTER_VALIDATE_IP) !== false ? $forwarded : $address;
             },
+            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
         );
         $app = AppFactory::create();
         FeedbackRoutes::public($app, '/api/feedback', $feedback, $context, static function (ServerRequestInterface $request): ?array {
@@ -293,12 +344,31 @@ final class FeedbackTest extends DatabaseTestCase
 
             return $person === '' ? null : json_decode($person, true);
         });
-        FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, static fn (array $ids): array => array_intersect_key([42 => 'Ana', 7 => 'Bo'], array_flip($ids)))
-            ->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $request->getHeaderLine('X-Test-Admin') === 'yes'
-                ? $handler->handle($request)
-                : (new ResponseFactory())->createResponse(403));
+        // Nothing of the site's on the group: the library's own check is the ADMIN's.
+        FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, static fn (array $ids): array => array_intersect_key([42 => 'Ana', 7 => 'Bo'], array_flip($ids)));
 
         return $app;
+    }
+
+    /** @return array<string, mixed> the limits' count as the file holds it */
+    private function limits(): array
+    {
+        return json_decode((string) file_get_contents($this->path('storage/' . Feedback::LIMITS_FILE)), true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Time passing, for the limits: every time in their count $seconds earlier, and the buckets $without gone.
+     *
+     * @param list<string> $without
+     */
+    private function ageLimits(int $seconds, array $without = []): void
+    {
+        $count = $this->limits();
+        foreach ($count['sent'] as $bucket => $times) {
+            $count['sent'][$bucket] = array_map(static fn (int $at): int => $at - $seconds, $times);
+        }
+        $count['sent'] = array_diff_key($count['sent'], array_flip($without));
+        file_put_contents($this->path('storage/' . Feedback::LIMITS_FILE), (string) json_encode($count));
     }
 
     /**

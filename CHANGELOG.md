@@ -135,7 +135,7 @@ Angular, people (`@anotoki/lib/people`, `@anotoki/lib/people/page`):
   `provideAnotokiPeople()` (`apiBase`, `isAdmin`, `me`, `lead`, `formatDate`, `delete: { label, question,
   allowed, done }`, `visitorsLine`, `migrationsRoute` - its functions run in an injection context) and the
   types of the PHP half's PeopleRoutes::admin() answers.
-- `@anotoki/lib/people/page` (9.6 kB, a lazy admin route) - `<anotoki-people-page>`: the union of what
+- `@anotoki/lib/people/page` (9.7 kB, a lazy admin route) - `<anotoki-people-page>`: the union of what
   Piano Academy's, Japanese Academy's and the build analyzer's People pages showed and did, over the routes
   as built. A search by name or IAM id (as the typing rests, or at Enter; only the latest answer counts),
   50 a page, newest seen first; the name with "you" and, under it, never off the screen, "Open at the IAM"

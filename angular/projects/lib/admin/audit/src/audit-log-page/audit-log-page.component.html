@@ -34,7 +34,11 @@
                 </div>
             </anotoki-alert>
         } @else {
-            <form class="anotoki-admin__filters" role="search" aria-label="Filter the audit log" (submit)="$event.preventDefault(); setFilter('target_id', targetIdText())">
+            <form
+                class="anotoki-admin__filters anotoki-audit-log-page__filters"
+                role="search"
+                aria-label="Filter the audit log"
+                (submit)="$event.preventDefault(); setFilter('target_id', targetIdText())">
                 <anotoki-select label="Who" data-actor placeholder="Anybody" [options]="actorOptions()" [value]="filter().actor" (valueChange)="setFilter('actor', $event)" />
                 <anotoki-select label="Action" data-action placeholder="Any action" [options]="actionOptions()" [value]="filter().action" (valueChange)="setFilter('action', $event)" />
                 <anotoki-select label="About" data-target-type placeholder="Anything" [options]="targetOptions()" [value]="filter().target_type" (valueChange)="setFilter('target_type', $event)" />

@@ -413,7 +413,15 @@ export class BackupsPageComponent {
     if (backup.created_by === null || backup.created_by === '') {
       return backup.kind === 'manual' ? 'Somebody' : 'By itself';
     }
-    return `Person ${backup.created_by}`;
+    return backup.created_by_name || `Person ${backup.created_by}`;
+  }
+
+  /** Why Restore is greyed out for a backup the server says cannot be restored here. */
+  protected whyNotRestorable(backup: BackupInfo): string | null {
+    if (backup.restorable) {
+      return null;
+    }
+    return backup.sealed === false ? 'Not made here, or changed since: it is restored offline' : 'The schema has changed since: it is restored offline';
   }
 
   protected isBusy(action: string, backup: BackupInfo): boolean {

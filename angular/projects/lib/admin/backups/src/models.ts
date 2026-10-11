@@ -16,13 +16,20 @@ export interface BackupInfo {
   size: number;
   /** The site's id of who made it; null for the ones made by themselves. */
   created_by: number | string | null;
+  /** Their name, where the site names people (AdminContext's names); null or missing: "Person 7". */
+  created_by_name?: string | null;
   description: string | null;
   table_count?: number;
   rows?: number;
   duration_ms?: number;
   /** A manual one kept for more than 90 days. */
   stale?: boolean;
-  /** Restoring it here can be done now: the site allows it and the schema is the backup's. */
+  /**
+   * Made here: encrypted under the site's key, or a plain one sealed by this installation. A file put into the
+   * folder by hand is not: it is listed, and restored offline only.
+   */
+  sealed?: boolean;
+  /** Restoring it here can be done now: the site allows it, it was made here and the schema is the backup's. */
   restorable?: boolean;
   tables?: { name: string; rows: number; bytes: number }[];
 }

@@ -154,6 +154,23 @@ describe("<anotoki-backups-page>: made, downloaded, deleted and restored - each 
     expect(row(DAILY).querySelector('[data-tables]')?.getAttribute('aria-expanded')).toBe('true');
   });
 
+  it('names the maker where the site names people, and says why a file put in by hand is not restored here', async () => {
+    setUp();
+    await open(
+      answer([
+        backup({ id: MANUAL, kind: 'manual', created_by: 7, created_by_name: 'Ana Admin', description: 'Before the price changes' }),
+        backup({ created_by: null, sealed: false, restorable: false }),
+      ]),
+    );
+
+    expect(words(row(MANUAL).cells[5])).toBe('Ana Admin');
+    expect(row(MANUAL).querySelector('a')?.getAttribute('href')).toBe('/admin/people/7');
+    expect(row(MANUAL).querySelector('[data-restore]')?.getAttribute('title')).toBeNull();
+    const dropped = row(DAILY).querySelector<HTMLButtonElement>('[data-restore]')!;
+    expect(dropped.disabled).toBe(true);
+    expect(dropped.getAttribute('title')).toBe('Not made here, or changed since: it is restored offline');
+  });
+
   it("the IAM's case: encrypted, restoring switched off - the page says so and offers no Restore", async () => {
     setUp({ siteName: 'the IAM', restoreOffText: 'A restore would bring back sign-ins ended since, and people deleted since.' });
     await open(answer([backup({ encrypted: true })], { encrypted: true, restore_enabled: false, restorable: false }), 'password');

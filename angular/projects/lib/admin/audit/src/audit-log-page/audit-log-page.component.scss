@@ -3,6 +3,30 @@
 
 @include page.styles;
 
+// Six fields in even rows - six, three or two to a row as the page is wide - so none is left alone on a line ("To"
+// without its "From"). "Show all" takes a row of its own.
+.anotoki-audit-log-page__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+
+  > .anotoki-admin__filter-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (min-width: 600px) {
+  .anotoki-audit-log-page__filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 920px) {
+  .anotoki-audit-log-page__filters {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 .anotoki-audit-log-page__scope {
   display: flex;
   flex-wrap: wrap;

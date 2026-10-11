@@ -70,6 +70,9 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * unread feedback count beside its admin navigation (0.9); the feedback form's configuration, which registers its
  * words (0.9, its words an entry point of their own, 1.4). The admin pages and the form are entry points of their own,
  * on lazy routes or loaded as they are opened.
+ *
+ * error-report (0.4.2): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
+ * so on every first page (2.7, its scrubbing's patterns most of it; 2.0 minified in a first load).
  */
 const LIMITS = {
     [CORE]: 15,
@@ -81,6 +84,7 @@ const LIMITS = {
     "@anotoki/lib/people": 0.5,
     "@anotoki/lib/admin": 1.5,
     "@anotoki/lib/feedback": 1.5,
+    "@anotoki/lib/error-report": 3,
 };
 const UI_AND_SHELL = 28;
 
@@ -140,6 +144,8 @@ const MAY_IMPORT = {
     // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
     "@anotoki/lib/feedback": ["@anotoki/lib/ui/config", "@anotoki/lib/words/feedback"],
     "@anotoki/lib/feedback/form": ["@anotoki/lib/feedback", ...PIECES, "@anotoki/lib/ui/forms"],
+    // The browser's errors, reported: Angular's own alone (its ErrorHandler and HttpClient).
+    "@anotoki/lib/error-report": [],
     // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
@@ -162,7 +168,7 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * configuration and the unread feedback count of a site's admin navigation - no words; "the words + feedback": a
  * site's translations with the feedback form's configuration, which registers the form's words - the form itself
  * (@anotoki/lib/feedback/form, the kit's fields) is loaded as it is opened: in a first load it would share ui/forms
- * with the lazy pages.
+ * with the lazy pages; "the error report": the browser's errors reported to the site's error log - no words.
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
@@ -188,6 +194,7 @@ const FIRST_LOADS = [
         limit: 9,
         words: [...KIT_WORDS, "feedback"],
     },
+    { title: "the error report", imports: { "@anotoki/lib/error-report": ["provideAnotokiErrorReport"] }, limit: 2.5, words: [] },
 ];
 
 /**

@@ -81,7 +81,9 @@
     color: kit.token(muted);
   }
 
-  // The filters above a list: fields side by side, wrapping; each at its own width.
+  // The filters above a list: fields side by side, wrapping; each at its own width. A field with a width of its own
+  // says so as a child of the bar (`.anotoki-admin__filters > .x`): Angular's emulated encapsulation gives `> *` an
+  // attribute of its own, so a bare `.x` - the search, the actions, a page's own - would lose to it.
   .anotoki-admin__filters {
     display: flex;
     flex-wrap: wrap;
@@ -93,17 +95,34 @@
       flex: 1 1 11rem;
       min-width: 0;
     }
-  }
 
-  .anotoki-admin__filter--wide {
-    flex: 2 1 16rem;
+    > .anotoki-admin__search {
+      flex: 2 1 24rem;
+    }
+
+    > .anotoki-admin__filter-actions {
+      flex: 0 0 auto;
+    }
   }
 
   .anotoki-admin__filter-actions {
     display: flex;
-    flex: 0 0 auto;
     flex-wrap: wrap;
     gap: 0.4rem;
+  }
+
+  // A search field and its buttons, together: the button is never on a line of its own.
+  .anotoki-admin__search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.4rem 0.6rem;
+    min-width: 0;
+
+    > :first-child {
+      flex: 1 1 12rem;
+      min-width: 0;
+    }
   }
 
   // A refusal, beside what it is about.
@@ -318,7 +337,9 @@
     overflow-wrap: anywhere;
   }
 
-  a {
+  // A link in the words - never a link drawn as the kit's button ("Open Migrations"), whose own colour this rule
+  // would beat: the page's `a` is more specific than the button's `:host`.
+  a:not(.anotoki-button) {
     color: kit.token(link);
   }
 }

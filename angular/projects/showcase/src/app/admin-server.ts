@@ -14,11 +14,13 @@ import { Observable, concat, delay, of, throwError } from 'rxjs';
  *
  * ?iam=1: the IAM's backups (encrypted, restoring switched off, the password as the proof).
  * ?proof=password: the password as the proof on a site's backups.
+ * ?unavailable=1: the audit log's and the feedback's tables wait for an update (503 feature_unavailable).
  */
 
 const params = new URLSearchParams(location.search);
 export const IAM_CASE = params.get('iam') === '1';
 const PASSWORD_PROOF = IAM_CASE || params.get('proof') === 'password';
+const UNAVAILABLE = params.get('unavailable') === '1';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -364,6 +366,8 @@ function backup(msAgo: number, kind: BackupInfo['kind'], seed: number, overrides
     status: 'complete',
     size: 1_400_000 + seed * 37_000,
     created_by: kind === 'manual' ? 7 : null,
+    created_by_name: kind === 'manual' ? 'mira' : null,
+    sealed: true,
     description: null,
     table_count: 18,
     rows: 52_000 + seed * 120,
@@ -380,7 +384,7 @@ let backups: BackupInfo[] = [
   backup(2 * DAY + 5 * HOUR, 'manual', 3, { description: 'Before the price changes' }),
   backup(3 * DAY + 3 * HOUR, 'before-migration', 4, { restorable: false }),
   backup(5 * DAY + 3 * HOUR, 'before-restore', 5, { description: 'Before restoring 20261005-030000Z-daily-…' }),
-  backup(100 * DAY, 'manual', 6, { description: 'The old site, before the move', stale: true, restorable: false }),
+  backup(100 * DAY, 'manual', 6, { description: 'The old site, before the move', stale: true, sealed: false, restorable: false }),
 ];
 
 function backupsStatus(): BackupsStatus {
@@ -541,6 +545,10 @@ export const adminServer: HttpInterceptorFn = (request, next) => {
   const fingerprint = /^\/api\/admin\/errors\/([0-9a-f]{12})$/.exec(url);
   if (fingerprint) {
     return ok(occurrences(fingerprint[1]), 300);
+  }
+
+  if (UNAVAILABLE && (url.startsWith('/api/admin/audit') || url.startsWith('/api/admin/feedback'))) {
+    return refuse(503, 'feature_unavailable', 'A database update waits: apply it on the Migrations page.', {}, 300);
   }
 
   // The audit log.

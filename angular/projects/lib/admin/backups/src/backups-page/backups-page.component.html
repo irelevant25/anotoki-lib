@@ -186,7 +186,7 @@
                                                     variant="ghost"
                                                     data-restore
                                                     [attr.aria-label]="'Restore the backup of ' + tools.date(backup.created_at)"
-                                                    [attr.title]="backup.restorable ? null : 'The schema has changed since: it is restored offline'"
+                                                    [attr.title]="whyNotRestorable(backup)"
                                                     [disabled]="!backup.restorable || busy() !== null"
                                                     (click)="askToRestore(backup)">
                                                     <anotoki-icon name="rotateCcw" [size]="15" />

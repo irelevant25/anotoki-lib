@@ -223,6 +223,7 @@ uses is in the first load again.
 | `@anotoki/lib/admin/parts` (0.4.0) | what those pages share - their requests, failures, dates, question dialog and styles; the library's own, a site imports nothing of it | with the first of them |
 | `@anotoki/lib/feedback` (0.4.0) | the visitors' feedback form's configuration (`provideAnotokiFeedback`, which registers its words) and its words | yes, beside the translations module |
 | `@anotoki/lib/feedback/form` (0.4.0) | `<anotoki-feedback-form>`, on the kit's fields | loaded when the person opens it |
+| `@anotoki/lib/error-report` (0.4.2) | `provideAnotokiErrorReport()`: the browser's errors in the site's error log ("Admin tools" below) | yes (every page) |
 | `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's) | with its module, which alone imports it and registers it with the translations module |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
@@ -1626,7 +1627,9 @@ $context = new AdminContext(
     proof: AdminContext::recentSignIn(fn ($request) => $request->getAttribute('claims')['auth_time'] ?? null),  // the sites: 10 minutes
     // the IAM: proof: fn ($request, array $body) => accountProof($pdo, $request, $user, $session, $body['password'] ?? null, 'backup'),
     //          proofKind: 'password' (or a closure: 'recent_sign_in' where the account has no password)
-    clientKey: fn ($request) => clientAddressCounted($request),               // the trusted proxy's address, its IPv6 /64
+    trustedProxies: ClientAddress::CLOUDFLARE,                                // whose CF-Connecting-IP is believed (0.4.2)
+    names: fn (array $ids): array => usernamesOf($ids),                       // people's names by id, for the pages (0.4.2)
+    // clientHeader: 'CF-Connecting-IP', clientKey: fn ($request) => ...,     a site's own reading of the address instead
     error: fn ($response, Refusal $refusal) => ...,                            // optional: the site's error body
 );
 ```
@@ -1635,9 +1638,21 @@ The proof guards every backup made, deleted, downloaded and restored: the IAM's
 `accountProof()` (its password, or a sign-in of the last 15 minutes; its
 `array` answers are taken as they are), the sites' token `auth_time`
 (`403 reauth_required`; the page offers "Sign in again" with `prompt: 'login'`).
-A context without a proof refuses those (`proof_unavailable`). The client key
-defaults to `REMOTE_ADDR` - behind Cloudflare a bucket shared by strangers:
-stricter, never looser; `X-Forwarded-For` is never read.
+A context without a proof refuses those (`proof_unavailable`).
+
+Where a request comes from is one rule wherever the library reads it
+(`Support\ClientAddress`, the owner's of 2026-10-11): the connection's
+`REMOTE_ADDR`, or - only on a connection from one of `trustedProxies` - the
+address its `clientHeader` names (Cloudflare's `CF-Connecting-IP`;
+`ClientAddress::CLOUDFLARE` holds Cloudflare's published ranges). A header from
+anybody else is never believed, and `X-Forwarded-For` never read. The limits
+count an IPv4 address whole and an IPv6 address by its /64, and what is kept
+of it is a keyed HMAC (the error log's `client`, the feedback's limits), never
+the address. Without `trustedProxies` the visitors behind Cloudflare share the
+edge's bucket: stricter, never looser. `names` gives the people's names by id -
+a backup's maker (`created_by_name`), the audit log's and the feedback's people
+where their routes get no lookup of their own; an id it does not know has none,
+and a lookup that fails gives none.
 
 ### The schema: the library's set `anotoki_admin`, FIRST
 
@@ -1677,8 +1692,10 @@ $errorLog = new ErrorLog(storageDir() . '/logs', [
     'app' => $app,                     // the route's pattern in each line
     // 'key' => Keys::derive(appSecret(), 'error-log'),   default: the installation's key (storage/anotoki-lib.key)
     // 'responses' => fn (int $status) => $status >= 400, default: every 5xx and 404, 405, 413, 415, 429
+    // 'expected' => [],                                  default: update_pending, feature_unavailable, not_set_up (0.4.2)
     // 'ignoreExceptions' => [ApiRefusal::class],         a site's decided answers: logged as their answer
 ]);
+Redactor::addSecretNames('totp_secret', 'recovery_code');               // a site's own names of a secret, once (0.4.2)
 $errorLog->installPhpHandlers();                                        // fatals (shutdown) and warnings (chained)
 $errors = $app->addErrorMiddleware(false, true, true);
 $errors->setDefaultErrorHandler($errorLog->wrapHandler($siteHandler));  // or ErrorLogMiddleware::inner() inside a site's own
@@ -1690,16 +1707,25 @@ ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the 
 - One JSON line (`v: 1`) per event: `at` (UTC, ms), `source` (server, php,
   client), `level`, `status`, `type`, `code`, `message` (redacted, 500 at
   most), `file` (relative), `line`, `method`, `route`, `path` (redacted),
-  `user_id`, `client` (12 hex of an HMAC - never an address), `trace` (12
-  frames, never a call's arguments), `fingerprint`. Never a query string, a
-  header, a cookie, a body (an answer gives only its `code` and its sentence),
-  a token or the session.
+  `user_id`, `client` (12 hex of an HMAC of the address bucket - never an
+  address), `trace` (12 frames, never a call's arguments), `fingerprint`. Never
+  a query string, a header, a cookie, a body (an answer gives only its `code`
+  and its sentence), a token or the session. Every file a line names is
+  relative - an anonymous class's and a closure's too, whose names PHP makes of
+  the absolute path. `user_id` is the context's `actorId` - on an admin tool's
+  route, of the request the route saw (the site's own middleware on the group
+  sets who asks inside the outer middleware), else the person `Identify` set.
+- An answer whose code says a state, not a failure - `update_pending` (the gate
+  while an update waits), `feature_unavailable` (a tool whose table waits),
+  `not_set_up` - is not written (`expected`; `[]` writes them).
 - `Support\Redactor`: PostgreSQL's DETAIL/HINT/CONTEXT/QUERY lines go whole,
   echoed values, e-mail and IP addresses, JWTs, Bearer credentials,
   `password=`-like secrets (their names quoted or not: `{"password":"…"}`,
   `'pass' => '…'`), query strings and token-like runs become marks; at most
   4,096 characters are read, and a rule that cannot run gives nothing of the
-  message.
+  message. A site's own names of a secret go the same way once it names them
+  (`Redactor::addSecretNames()`, while it starts) - never a message edited by
+  reflection.
 - A day's file goes into parts past 4 MB, days past 30 are deleted, and past
   64 MB in all the oldest days go first - today is never kept out by the days
   before it; only what today alone does not fit is counted instead of written
@@ -1715,9 +1741,14 @@ ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the 
   the files gone; audited `errors.cleared`). The log's own routes are never
   logged - known by their route as they run, and by the path they are mounted
   at (group, base path and all) for what fails before a route runs.
-- The client route: `POST {type?, message, page?, stack?, status?}` -> 204,
-  8 KB at most, 20 an hour from one address bucket and 500 a day in all
-  (`429 too_many`), each redacted, `source: client`.
+- The client route: `POST {type?, message, page?, stack?, status?}` -> 204:
+  JSON only (`415`), 8 KB at most (`413`), a message (`422`); 20 an hour from
+  one sender - a signed-in person by their account, a visitor by their address
+  bucket - and 500 a day from the visitors in all, as many from the signed-in
+  people (`429 too_many`, its wait in `retry_after` and `Retry-After`): each
+  its own budget, so a few IPv6 /64s cannot use up the reports of the people
+  signed in. Each redacted again, `source: client`. The browser's side is
+  `@anotoki/lib/error-report` ("The browser's errors" below).
 
 ### Audit log
 
@@ -1729,6 +1760,7 @@ use Anotoki\Lib\Audit\Http\AuditRoutes;
 $audit = new AuditLog(fn (): PDO => db(), [
     'pendingFile' => storageDir() . '/logs/audit-pending.jsonl',
     // 'recordAddress' => true, 'address' => fn ($request) => requestIp($request),   the IAM keeps the address
+    //    (or 'trustedProxies' => ClientAddress::CLOUDFLARE in place of 'address': ClientAddress's rule)
     // 'ready' => fn (PDO $pdo) => auditMovedToLibrary($pdo),                         the IAM: once its own move ran
     // 'actorIds' => fn (string $name): array => ...,                                 the page's actor filter by name
 ]);
@@ -1741,11 +1773,15 @@ AuditRoutes::admin($app, '/api/admin/audit', $audit, $context, fn (array $ids): 
 ```
 
 - `record()` never throws; inside the caller's transaction it writes behind a
-  savepoint, so a failed entry never undoes the change it records; details are
-  cut at 64 KB. While the table is missing (or `ready` says not yet) entries
-  wait in the pending file and go in, with their own times, at
-  `flushPending()` - after every Apply - or with the next entry written outside
-  a transaction.
+  savepoint, so a failed entry never undoes the change it records. Details are
+  cut to 64 KB: the texts shorter and the lists to their first items, each cut
+  saying so (`_cut`); what is too much even so keeps its keys - the shape of
+  every map. While the table is missing (or `ready` says not yet) entries wait
+  in the pending file and go in, with their own times, at `flushPending()` -
+  after every Apply - or with the next entry written outside a transaction. A
+  flush sets the file aside under its lock before it inserts, and never inserts
+  an entry that is in already: one killed after its commit puts nothing in
+  twice.
 - `AuditContextMiddleware::fromRequest($audit, fn ($request) => ['actor' => ..., 'session' => ...])`
   (inside the site's sign-in check) or `begin()`/`end()` hold who acts, so deep
   code records with `recordHere()`; `withScope('characters', 42, fn () => ...)`
@@ -1785,16 +1821,21 @@ FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, 
 ```
 
 - The form: identity from the token only (`anonymous` drops the id and the
-  address); the page as a path; an address with none of `? & = % #`, a space
-  or a control character (a mail link would read them as more than an address:
-  `?bcc=`); a filled honeypot gets a kept message's answer word for word and
-  keeps nothing; 64 KB a body; `201 {ok: true}` - no id. No mail: the panel's
-  badge reads `GET $base/unread`.
+  address); the page as a path; the reply address only as the form sends it
+  (the form writes the account's in, for the person to keep or change; the
+  server never adds it), with none of `? & = % #`, a space or a control
+  character (a mail link would read them as more than an address: `?bcc=`); a
+  filled honeypot gets a kept message's answer word for word and keeps
+  nothing; 64 KB a body; `201 {ok: true}` - no id. No mail: the panel's badge
+  reads `GET $base/unread`.
 - Nothing of where a message came from is kept with it - no address, no hash of
   one (the owner's decision). The limits count apart, in
-  `storage/cache/anotoki-feedback-limits.json` under its lock: an HMAC of each
-  address bucket that sent a message in the last day, and when - never in the
-  database, so never in a backup, each time gone a day later.
+  `storage/cache/anotoki-feedback-limits.json` (`0600`) under its lock: a
+  signed-in sender by their account, a visitor by their address bucket - a
+  keyed HMAC of each, and when - `perHour` and `perDay` for each; `allPerDay`
+  is the visitors' alone, so a few IPv6 /64s cannot use up the messages of the
+  people signed in (0.4.2). Never in the database, so never in a backup, each
+  time gone a day later.
 - The admin side: `GET $base` (`kind`, `status`, `section`, `search`, `page`),
   `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
   `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited).
@@ -1854,6 +1895,14 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   flag (another key, a changed byte, swapped chunks, a cut tail: refused). A
   sidecar `<id>.anotoki-backup.json` feeds the list; a file without one is
   listed from its header.
+- Only a backup made here is restored here (0.4.2): an encrypted one, under the
+  site's key, or a plain one whose sidecar carries this installation's seal - an
+  HMAC of its id and SHA-256 under a key of its own derived from
+  `storage/anotoki-lib.key`. A file dropped into the folder, or changed since,
+  is listed (`sealed: false`) and refused (`422 archive_invalid`): it is
+  restored offline (`--extract`). A plain backup made before 0.4.2 has no seal:
+  offline too. Every file of the backups is written `0600`, every folder
+  `0700`, as every folder the tools guard.
 - Kinds and keeping: `daily` (14), `before-migration` (5, once per list of
   pending files; a backup that fails stops the Apply), `before-restore` (5),
   `manual` (until deleted; `stale` after 90 days). Only files of these names
@@ -1862,22 +1911,27 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   migrations and columns equal the backup's (`409 schema_differs`): a
   `before-restore` backup first, then one transaction (locks within 5 s, user
   triggers off, one TRUNCATE, COPY back, sequences set, deferred keys checked,
-  triggers on, rows counted). Never restored: the bookkeeping table, the audit
-  log and `keep`. `restore: false` refuses it (the IAM, until an
-  `afterRestore` that ends every session and token and deletes again the
-  accounts deleted since has been reviewed).
+  triggers on, rows counted). A sequence never goes back: it goes on from the
+  later of the backup's value and today's, so an id handed out since - one the
+  kept audit log names - is never handed out again. Never restored: the
+  bookkeeping table, the audit log and `keep`. `restore: false` refuses it
+  (the IAM, until an `afterRestore` that ends every session and token and
+  deletes again the accounts deleted since has been reviewed).
 - Downloads: `POST $base/{id}/ticket` (the proof, audited) answers `{url,
   expires_in}` - the url where the request came through, group and base path
   and all; `ticketSeconds`, 60 - the page navigates to it; the ticket is 32
   random bytes, kept as its hash with who it was issued to (`by`), good once,
   for one backup, for its seconds; the file comes as an attachment,
-  `no-store`, `nosniff`, `no-referrer`.
-- `GET $base` `{backups, status}` (space, last daily, encryption, whether a
-  restore can run here), `GET $base/proof` `{kind}`, `POST $base`,
+  `no-store`, `nosniff`, `no-referrer`. A `HEAD` (a link checker, a mail
+  scanner) looks at the ticket without spending it: only the `GET` does.
+- `GET $base` `{backups, status}` (each backup's maker by name where the
+  context names people, `created_by_name`; space, last daily, encryption,
+  whether a restore can run here), `GET $base/proof` `{kind}`, `POST $base`,
   `GET|DELETE $base/{id}`, `GET $base/{id}/preview` (the rows a restore would
   take away), `POST $base/{id}/restore` `{confirm: the id's last 6, password?}`.
 - The command line - `Backups\Cli\BackupsCommand` in a site's `backup.php`
-  (never uploaded): `--list`, `--create`, `--inspect=<id>`,
+  (never uploaded): `--list`, `--create`, `--inspect=<id>` (its manifest
+  alone, read from the archive's first entry: nothing written to the disk),
   `--extract=<id> <folder>` (decrypted and checked, with the order to load it
   into another database: the schema files, then `psql \copy`), `--restore=<id>
   --confirm=<last 6>`.
@@ -1994,7 +2048,9 @@ protected readonly unread = inject(FeedbackUnread);       // void this.unread.re
 - **Backups**: how many and how much, the last daily, encryption, and why a
   backup or a restore cannot run here (the folder not writable, the server's PHP
   without COPY, restoring switched off - `restoreOffText` adds the site's
-  reason); the list with each backup's kind, size, tables and maker. Back up
+  reason); the list with each backup's kind, size, tables and maker (by name
+  where the context's `names` gives one; a backup not made here says why its
+  Restore is off). Back up
   now, Download (a single-use link, opened by the page) and Delete are each
   behind the site's proof: the IAM's password, asked in a dialog that says a
   wrong one and too many; the sites' recent sign-in, whose refusal offers "Sign
@@ -2043,6 +2099,36 @@ const { FeedbackFormComponent } = await import('@anotoki/lib/feedback/form');
 - Its words: the site's database's (`translate`), then the site's own (`words`),
   then the built-in English and informal Slovak (`feedbackWords()`); a language
   with none of them reads English, and the form says `lang="en"`.
+
+### The browser's errors (Angular, 0.4.2)
+
+The owner's decision of 2026-10-11: every site's error log holds its pages'
+errors too.
+
+```ts
+// app.config.ts - every site, beside its HttpClient
+provideHttpClient(withInterceptors([...theSitesOwn])),
+provideBrowserGlobalErrorListeners(),      // Angular's default since 20: window's errors and promises nobody caught too
+provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', perPage: 5, report: (error) => true }
+```
+
+- `AnotokiErrorReporter`, the app's `ErrorHandler`: every error goes to the
+  console as Angular's own has it, and is reported to `ErrorLogRoutes::client()`
+  through the app's `HttpClient` - the site's interceptors add what its writes
+  carry (the IAM's `X-IAM-Request`), never a way around them. The request
+  carries `ANOTOKI_ERROR_REPORT` in its context, for an interceptor that should
+  leave it be (no sign-in redirect for a report).
+- Scrubbed before it leaves the page (`describeError()`, `scrubText()`): the
+  page's path alone, a segment that looks like an address or a code replaced;
+  never a query or a fragment (a frame keeps its line and column); no value the
+  page keeps in localStorage, sessionStorage or a cookie (`storedValues()`); no
+  token, `password=`-like secret or address. A value thrown that is no Error is
+  named by its kind, never written out. The server redacts it all again.
+- At most `perPage` reports a page load, each error once; never an HTTP failure
+  (the server writes its own, and a visitor's network is not the site's), never
+  an error raised while a report is made, never the report's own failure; a
+  `429` ends reporting for the page load. Sent after the error is handled: it
+  never blocks the page, and never throws.
 
 ### What else a site adds
 

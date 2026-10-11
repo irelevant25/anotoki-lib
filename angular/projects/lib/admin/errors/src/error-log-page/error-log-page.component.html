@@ -47,24 +47,25 @@
             </div>
             <anotoki-select label="Level" data-level placeholder="Any level" [options]="levels" [value]="filter().level" (valueChange)="setLevel($event)" />
             <anotoki-select label="Status" data-status placeholder="Any status" [options]="statusOptions()" [value]="filter().status" (valueChange)="setStatus($event)" />
-            <anotoki-text-field
-                class="anotoki-admin__filter--wide"
-                data-search
-                type="search"
-                label="Search"
-                placeholder="Message, path or route"
-                autocomplete="off"
-                [maxlength]="200"
-                [value]="searchText()"
-                (valueChange)="searchText.set($event)" />
-            <div class="anotoki-admin__filter-actions">
-                <button anotokiButton type="submit" data-search-button>
-                    <anotoki-icon name="search" [size]="16" />
-                    Search
-                </button>
-                @if (filtered()) {
-                    <button anotokiButton variant="ghost" data-reset (click)="reset()">Show all</button>
-                }
+            <div class="anotoki-admin__search">
+                <anotoki-text-field
+                    data-search
+                    type="search"
+                    label="Search"
+                    placeholder="Message, path or route"
+                    autocomplete="off"
+                    [maxlength]="200"
+                    [value]="searchText()"
+                    (valueChange)="searchText.set($event)" />
+                <div class="anotoki-admin__filter-actions">
+                    <button anotokiButton type="submit" data-search-button>
+                        <anotoki-icon name="search" [size]="16" />
+                        Search
+                    </button>
+                    @if (filtered()) {
+                        <button anotokiButton variant="ghost" data-reset (click)="reset()">Show all</button>
+                    }
+                </div>
             </div>
         </form>
 

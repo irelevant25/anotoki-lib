@@ -5,6 +5,35 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.4.2 - unreleased
+
+**Admin tools** - what the sites and their reviews found after 0.4.1 (README.md, "Admin tools"):
+- Addresses (the owner's rule of 2026-10-11): `Support\ClientAddress` is the one reading wherever the library
+  takes an address - `CF-Connecting-IP` believed only on a connection from `trustedProxies`
+  (`ClientAddress::CLOUDFLARE`), an IPv6 address counted by its /64, only keyed HMACs kept. A site behind
+  Cloudflare passes `trustedProxies: ClientAddress::CLOUDFLARE` to its `AdminContext` (and to `AuditLog` where
+  it keeps the address); without it, nothing but `REMOTE_ADDR` is read, as before.
+- `AdminContext` `names` (optional): people's names by id - the backups' maker (`created_by_name`), the audit
+  log's and feedback's people where their routes get no lookup of their own.
+- Error log: an expected state (`update_pending`, `feature_unavailable`, `not_set_up`) is no longer written
+  (`expected`); an anonymous class's and a closure's file is relative; on an admin tool's route the person is
+  the one the route saw (or `Identify`'s); `Redactor::addSecretNames()` takes a site's own secrets' names (the
+  IAM: in place of editing messages by reflection); the pages' reports count a signed-in person by account,
+  apart from the visitors' day.
+- `@anotoki/lib/error-report` (new): `provideAnotokiErrorReport()` sends the browser's errors to
+  `ErrorLogRoutes::client()` through the app's HttpClient (the site's interceptors, its CSRF header) - scrubbed,
+  at most 5 a page load, each once, never recursing.
+- Backups: a plain backup is sealed under the installation's key, and only a sealed or encrypted one is restored
+  here (a plain one made before 0.4.2: offline, `--extract`); a restore never moves a sequence back;
+  `--inspect` reads the manifest alone; a HEAD never spends a download ticket; files `0600`, folders `0700`
+  (every guarded folder too).
+- Audit log: a flush sets the pending file aside first and never inserts an entry twice; the 64 KB cut keeps
+  the details' keys. Feedback: a signed-in sender is counted by account, apart from the visitors' budget
+  (`allPerDay` is the visitors'); the reply address is only what the form sends.
+- The pages: "Open Migrations" readable while an update waits; the error log's Range, the filters and each
+  search with its button fit at 1000-1280 px beside a side navigation, and at 390 px.
+- `composer.json` requires `ext-mbstring`, which the library uses.
+
 ## 0.4.1 - 2026-10-11
 
 0.4.0 on PHP 8.2: a search on the admin Feedback page failed with `SQLSTATE[HY093]` - a 500. It said

@@ -28,8 +28,11 @@ interface Renaming {
   isFolder: boolean;
 }
 
-/** A preview's link is signed for five minutes: a listing older than this is read again before one is opened. */
-const FRESH_MS = 4 * 60 * 1000;
+/**
+ * A preview's link is signed for five minutes: a listing older than four is read again before one is opened.
+ * (A number as it is: a site's build keeps a top-level sum it is not told is pure.)
+ */
+const FRESH_MS = 240_000;
 
 const ICONS: Record<string, string> = { image: 'image', audio: 'music', video: 'film', text: 'fileText' };
 

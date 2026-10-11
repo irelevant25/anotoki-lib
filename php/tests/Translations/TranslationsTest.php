@@ -88,7 +88,7 @@ final class TranslationsTest extends DatabaseTestCase
 
         // As the IAM's route writes it, byte for byte.
         self::assertStringStartsWith(
-            '{"language":"sk","languages":[{"code":"en","name":"English","native_name":"English"},{"code":"sk","name":"Slovak","native_name":"Slovenčina"}],"values":{"anotoki.language.button":"Jazyk: {name} ({code})",',
+            '{"language":"sk","languages":[{"code":"en","name":"English","native_name":"English"},{"code":"sk","name":"Slovak","native_name":"Slovenčina"}],"values":{"anotoki.feedback.anonymous":"Poslať bez môjho mena",',
             json_encode($bundle, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
     }

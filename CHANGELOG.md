@@ -5,6 +5,25 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.4.2 - unreleased
+
+People, auth and the kit:
+- A restore no longer brings back what was deleted for a person: `People::afterRestore(delete:, defer:, then:)`, a
+  site's Backups `afterRestore`, does again every `person.data_deleted` and `feedback.deleted` the audit log holds
+  from the backup's time on, then the scrub of the IAM's deleted accounts - not done is `after_restore_error`, and
+  the next request scrubs again (the survey's, Piano Academy's and genshin's hand-written versions go).
+- The People page's delete forgets the person's feedback itself (`People::delete()`, `Feedback::forgetPeopleOn()`),
+  in a transaction of the library's around the site's hook.
+- Auth: the client's token requests (`@anotoki/lib/auth/session`) and the two screens (`@anotoki/lib/auth/screens`;
+  the routes of before load them as they open) left the first load, the shared part `@anotoki/lib/auth/core`. The
+  sign-in's first load: 18.9 -> 17.1 kB gzipped, 63.1 -> 54.7 kB raw (auth 34.4 -> 26.1); the gate's unchanged.
+- The kit: Edge's own reveal button hidden in the password field; the folded bar's menu button marked when a link in
+  it has a badge, its name saying which; the lazy pages' icons their own, out of the first load of a site that loads
+  `@anotoki/lib/ui/icons` (~0.7 kB).
+
+What a site must do: its People delete hook begins no transaction of its own (genshin's, the build analyzer's) and
+takes a null request; then `afterRestore: $people->afterRestore(delete: ..., defer: ...)` replaces its own.
+
 ## 0.4.1 - 2026-10-11
 
 0.4.0 on PHP 8.2: a search on the admin Feedback page failed with `SQLSTATE[HY093]` - a 500. It said

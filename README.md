@@ -202,7 +202,7 @@ uses is in the first load again.
 | `@anotoki/lib/ui/icon`, `/dom` | `<anotoki-icon>`, `AnotokiIcons` and the kit's own icons; `uniqueId`, `keepOnScreen`, `mediaQuery`, `tabbable`, `isShown` | yes (the bar) |
 | `@anotoki/lib/ui/button`, `/spinner` | the button, the spinner | yes (the status page) |
 | `@anotoki/lib/ui/badge`, `/alert`, `/card`, `/empty-state`, `/error-state`, `/page-header`, `/avatar`, `/segmented`, `/autofocus` | one piece each | where a first page uses it |
-| `@anotoki/lib/ui/icons` | the family's other icons, data only (`iconTrash`, `iconUsers`, ...) | what the site registers |
+| `@anotoki/lib/ui/icons` | the family's other icons, data only (`iconTrash`, `iconUsers`, ...) - a site's alone: no entry point imports it (0.4.2: the lazy pages carry their own copies) | what the site registers |
 | `@anotoki/lib/ui/menu` | menu button, menu, menu item, separator; popover | yes (the bar) |
 | `@anotoki/lib/ui/dialog` | dialog, `AnotokiDialog.open()`, `ConfirmService` + `<anotoki-confirm-host>` | where the host is in the root |
 | `@anotoki/lib/ui/toast` | `ToastService` + `<anotoki-toast-host>` | yes |
@@ -214,7 +214,10 @@ uses is in the first load again.
 | `@anotoki/lib/translations` | the translation service, the `translate` and `translatePlural` pipes, the kit's and the shell's wiring, the status page's words, the admin pages' guard | yes (every page) |
 | `@anotoki/lib/translations/admin` | the admin Translations and Languages pages, their drafts | lazy admin routes |
 | `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
-| `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page and the failure's screen ("Auth" below) | yes (every page of a site that signs in) |
+| `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the routes of the callback page and the failure's screen ("Auth" below) | yes (every page of a site that signs in) |
+| `@anotoki/lib/auth/core` (0.4.2) | what the auth module's parts share: the client's types and helpers, the configuration and browser tokens, the built-in words, `SignInSession`; the library's own - `@anotoki/lib/auth` names all of it | with the module |
+| `@anotoki/lib/auth/screens` (0.4.2) | the callback page and the failure's screen themselves | as their route opens |
+| `@anotoki/lib/auth/session` (0.4.2) | the client's token requests: a callback's code exchange, a refresh, a preferences save; the library's own | the first time one is made |
 | `@anotoki/lib/auth/testing` (0.4.0) | `provideTestAnotokiAuth()`, `FakeAuthClient`: the module without an IAM, for a site's specs | a site's specs |
 | `@anotoki/lib/people` (0.4.0) | `provideAnotokiPeople()` and the shape of the People API ("People" below) | where the site configures the page (its app.config, or the page's route) |
 | `@anotoki/lib/people/page` (0.4.0) | the admin People page | a lazy admin route |
@@ -402,7 +405,11 @@ unless labelled. The kit's own: `sun`, `moon`, `monitor`, `user`,
 `eyeOff`, `copy`, `refresh`, `arrowLeft`, `externalLink`, `sparkle`, `search`,
 `plus`; the rest from `@anotoki/lib/ui/icons`, registered by name (`icons`
 above, or an `ANOTOKI_ICONS` multi provider on a lazy route). An unknown name
-draws nothing and warns once in development.
+draws nothing and warns once in development. The library's lazy pages (the
+admin tools', the People page, the translations admin) carry their own copies
+of the family's icons they draw (0.4.2) - one file is one chunk, and a site
+that loads `ui/icons` up front for its own would otherwise carry theirs in its
+first load.
 
 **Pieces** (selectors `anotoki-*`; slot attributes as the IAM's):
 
@@ -459,7 +466,8 @@ summary; the text field, textarea, password field, select and code input),
 `readonly`, `maxlength`, `minlength`, `min`, `max`, `pattern`, `spellcheck`,
 `autocapitalize`, `(blurred)`, `[fieldPrefix]` / `[fieldSuffix]`),
 `anotoki-textarea` (`rows`, `readonly`, ...), `anotoki-password-field`
-(`autocomplete` required, `[labelAside]`), `anotoki-select` (`options`,
+(`autocomplete` required, `[labelAside]`; its Show the only one - Edge's own
+reveal and clear buttons hidden, 0.4.2), `anotoki-select` (`options`,
 `placeholder`, `inline`), `anotoki-checkbox` / `anotoki-switch`
 (`[(checked)]`, `hint`, the switch's `busy`), `anotoki-radio-group`,
 `anotoki-code-input` (`length`, `(complete)`).
@@ -523,7 +531,7 @@ is `login_required` - nobody signed in any more - is no refusal; `themeColor`) a
 | `nameMin` | the person's name shows from here (phoneMax + 201) |
 | `shortBrandMax` | the brand short up to here (phoneMax by default) - the survey's admin panel: 960. Given, it alone decides (0.4.0): below phoneMax too, a folded bar keeps the full wordmark above it - a bar that folds wide (Piano Academy's 1320 px) measures where "anotoki Piano Academy" still fits beside the language, the theme and the menu button |
 | `width` | `wide` (84rem) or `narrow` (49rem); `--anotoki-topbar-max-width` overrides; in a frame with a side navigation, 88rem, and in one with a `maxWidth`, that |
-| `phoneMark` | `{ badge?, label? }` (the button's name says the count) or `{ dot, description? }` |
+| `phoneMark` | `{ badge?, label? }` (the button's name says the count) or `{ dot, description? }`. Without one (0.4.2), a link inside with a badge puts a dot there, the button's name saying which: "Menu: Feedback 3" |
 | `menuNote` | `{ title, text? }` heading both menus |
 | `isolateKeys` | no key pressed in the bar reaches `document` (true) |
 
@@ -1291,7 +1299,7 @@ provideAppInitializer(() => {
   return status.check().then(() => auth.init()).then(() => i18n.init());   // the words after the sign-in put the address back
 }),
 
-// app.routes.ts
+// app.routes.ts - each route loads its screen (@anotoki/lib/auth/screens) as it opens: neither is in the first load
 { path: 'auth/callback', component: AuthCallbackComponent },
 { path: 'sign-in-failed', component: SignInFailureComponent },                 // optional: the module's failureRoute, in the site's frame
 { path: '', canActivateChild: [personOrVisitorGuard], children: [/* … */] },   // personGuard where only a person may
@@ -1313,7 +1321,12 @@ show.
   sign-in in flight while the site is uploaded still lands. The client
   (`createAuthClient`) is the SDK's code, ported: PKCE, state and nonce, the ID
   token's checks, `safeReturnTo`, RFC 9207, rotation, `savePreferences`' own-token
-  rule.
+  rule. What runs only at a moment is loaded then (0.4.2): its token requests - a
+  callback's code exchange, a refresh, a preferences save - are
+  `@anotoki/lib/auth/session`, loaded the first time one is made (one that cannot
+  load is the IAM out of reach: the session stays, a save is refused `network`).
+  The module's shared part is `@anotoki/lib/auth/core`; a site imports from
+  `@anotoki/lib/auth`, which names it all.
 - `AnotokiAuth` - `init()` reads the boot configuration (snake_case, or the
   camelCase the sites answer today), finishes a callback, restores the session,
   follows the IAM, and - for a visitor - may make the hint's hop. Signals:
@@ -1345,6 +1358,15 @@ show.
   `apply(preferences, locale)` is given what to show - a choice on its way as
   made, a refused one taken back, a language the IAM does not offer kept for the
   visit.
+- The two screens are `@anotoki/lib/auth/screens` (0.4.2), out of the first
+  load: `AuthCallbackComponent` and `SignInFailureComponent` from
+  `@anotoki/lib/auth` are what a route names, as before - each a route
+  (`anotoki-auth-callback-route`, `anotoki-sign-in-failure-route`) that loads its
+  screen into itself as it is shown; a route may load a screen directly
+  (`loadComponent: () => import('@anotoki/lib/auth/screens').then((m) =>
+  m.AuthCallbackComponent)`), and a template draws one from there. The screens ask
+  the session through `SignInSession` (`provideAnotokiAuth()` provides
+  `AnotokiAuth` as it), never the service itself.
 - `<anotoki-auth-callback>` - "Signing you in…" on the callback route
   (`anotoki-auth-callback__panel`, `__message`), or in its place the failure's
   screen; `noindex` while it shows.
@@ -1437,15 +1459,25 @@ $people = new People(
     hooks: [fn (PDO $pdo, int $sub, ?array $former) => /* the site's copies of the name elsewhere */ null],
 );
 
+// The page's delete: on the $pdo it is given, inside the library's transaction (it begins none); its request is
+// null when a restore does it again. The person's feedback is forgotten with it, by the library (0.4.2).
+$deleteHook = fn (PDO $pdo, int $sub, ?ServerRequestInterface $request): ?array => ['deleted' => ['Progress' => …]];
+
 $app->group('/api', $siteRoutes)->add(new RecordPerson($people));            // never on the Migrations routes
 PeopleRoutes::admin($app, '/api/admin/people', $people,                       // guards itself: the site's ADMIN
     columns: [new PeopleColumn('notes', 'Notes', 'count', fn (PDO $pdo, array $subs): array => …)],
     visitors: fn (PDO $pdo): array => ['count' => …],
-    delete: fn (PDO $pdo, int $sub, $request): ?array => ['deleted' => ['Progress' => …]],   // null: nobody with that id
+    delete: $deleteHook,                                                         // null: nobody with that id
     audit: $auditLog,                                                            // person.data_deleted, people.synced
 )->add(RequireRole::admin()->refusing('admin_only'));                            // a site's own words, where it has them
 $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState::READY));   // inside the SiteGate
 // and after $app->run(): \Anotoki\Lib\Support\AfterResponse::shared()->run();   (a site's own runner: PeopleUpkeep's defer)
+
+// The site's Backups ("Backups" below): a restore does again what was deleted since its backup, and scrubs at once (0.4.2).
+$backups = new Backups($connect, $directory, [
+    'afterRestore' => $people->afterRestore(delete: $deleteHook),               // defer: the site's own runner, where it has one
+    /* … */
+]);
 ```
 
 - `PeopleTable` - the site's table and columns: `name` (genshin `username`, the
@@ -1492,6 +1524,25 @@ $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState
   token's sub - or `context:`'s `actorId()`. A delete asks for no proof of a
   recent sign-in, unlike a backup's restore: the page's question is all it asks
   (the owner's decision of 2026-10-11).
+- `People::delete($pdo, $sub, $hook, $request)` (0.4.2) - the page's delete:
+  the site's hook and, where the site has the admin tools' feedback, that
+  person's messages without the address and browser they were sent with
+  (`Feedback::forgetPeopleOn()`; the words stay), in one transaction of the
+  library's: the hook works on the `$pdo` it is given and begins no transaction
+  of its own (a savepoint is fine) - one that does is told so.
+- `People::afterRestore(delete:, defer:, then:)` (0.4.2) - for Backups'
+  `afterRestore`: a restore puts the data back as it was when the backup was
+  made, and the audit log, never restored, says what was done since - so every
+  `person.data_deleted` from the backup's time on is done again
+  (`People::delete()` with the site's hook, its request null) and every
+  `feedback.deleted` too; then the scrub of the IAM's deleted accounts runs at
+  once (the restore brought back the scrub's place of that day). What could not
+  be done - the IAM out of reach - is thrown, all of it in one sentence: the
+  restore's `after_restore_error`; the upkeep's hourly stamp then goes after
+  the answer (`defer`, the site's runner), so the next request scrubs again.
+  `then:` is the site's own work after a restore (Piano Academy's new
+  generations). The survey's, Piano Academy's and genshin's hand-written
+  versions of this go.
 
 ### The People page: `@anotoki/lib/people` and `@anotoki/lib/people/page`
 

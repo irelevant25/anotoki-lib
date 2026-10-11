@@ -52,11 +52,13 @@ use Slim\Interfaces\RouteInterface;
  *   panel, for the IAM's administrators.
  * - $columns: the site's own (PeopleColumn), filled for one page at a time.
  * - $visitors: fn(PDO): ?array - the visitors line ({count, ...}), or null.
- * - $delete: fn(PDO $pdo, int $sub, ServerRequestInterface $request): ?array - deletes what the site keeps of
+ * - $delete: fn(PDO $pdo, int $sub, ?ServerRequestInterface $request): ?array - deletes what the site keeps of
  *   the person (Piano Academy's progress, a backup copy first at Japanese Academy, the build analyzer's
  *   game accounts) and answers what went, by label, or null when there is nobody with that id. Without
- *   it, no DELETE route. It asks for no proof of a recent sign-in, unlike a backup's restore: the page's
- *   question is all it asks (the owner's decision of 2026-10-11).
+ *   it, no DELETE route. It runs through People::delete(): inside a transaction of the library's on $pdo,
+ *   with the person's feedback forgotten in it (it begins none of its own); its request is null when a
+ *   restore does it again (People::afterRestore()). It asks for no proof of a recent sign-in, unlike a
+ *   backup's restore: the page's question is all it asks (the owner's decision of 2026-10-11).
  * - $error: fn(ResponseInterface, Refusal): ResponseInterface - the site's error body; by default {code, message}.
  * - $audit: where a delete and an asked-for scrub are recorded - the site's AuditLog; without one, nowhere.
  * - $context: who acts in those entries (AdminContext::actorId()); without one, the token's sub.
@@ -74,7 +76,7 @@ final class PeopleRoutes
     /**
      * @param list<PeopleColumn> $columns
      * @param ?Closure(PDO): ?array<string, mixed> $visitors
-     * @param ?Closure(PDO, int, ServerRequestInterface): ?array<string, mixed> $delete
+     * @param ?Closure(PDO, int, ?ServerRequestInterface): ?array<string, mixed> $delete
      * @param ?Closure(ResponseInterface, Refusal): ResponseInterface $error
      */
     public static function admin(
@@ -127,7 +129,8 @@ final class PeopleRoutes
             if ($delete !== null) {
                 self::plain($group->delete('/{sub}', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $delete, $error, $record): ResponseInterface {
                     $sub = (string) $request->getAttribute('sub');
-                    $deleted = preg_match('/^[1-9][0-9]{0,17}$/D', $sub) === 1 ? $delete($people->pdo(), (int) $sub, $request) : null;
+                    // People::delete(): the hook and the person's feedback forgotten, in one transaction.
+                    $deleted = preg_match('/^[1-9][0-9]{0,17}$/D', $sub) === 1 ? $people->delete($people->pdo(), (int) $sub, $delete, $request) : null;
                     if ($deleted === null) {
                         return self::refuse($response, new Refusal(404, 'not_found', 'There is nobody with that id here.'), $error);
                     }

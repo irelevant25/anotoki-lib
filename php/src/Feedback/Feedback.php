@@ -323,7 +323,13 @@ final class Feedback
     /** Deletes a message; whether there was one. */
     public function delete(int $id): bool
     {
-        $statement = ($this->pdo)()->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . ' WHERE id = ?');
+        return self::deleteOn(($this->pdo)(), $id);
+    }
+
+    /** delete() on a connection of the caller's: a restore doing again what was done since its backup (People::afterRestore()). */
+    public static function deleteOn(PDO $pdo, int $id): bool
+    {
+        $statement = $pdo->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . ' WHERE id = ?');
         $statement->execute([$id]);
 
         return $statement->rowCount() > 0;
@@ -399,11 +405,22 @@ final class Feedback
      */
     public function forgetPeople(array $ids): int
     {
+        return self::forgetPeopleOn(($this->pdo)(), $ids);
+    }
+
+    /**
+     * forgetPeople() on a connection of the caller's - inside its transaction: the People page's delete
+     * (People::delete()).
+     *
+     * @param list<int|string> $ids
+     */
+    public static function forgetPeopleOn(PDO $pdo, array $ids): int
+    {
         $ids = array_values(array_filter(array_map('strval', $ids), static fn (string $id): bool => ctype_digit($id) && strlen($id) <= 18));
         if ($ids === []) {
             return 0;
         }
-        $statement = ($this->pdo)()->prepare(
+        $statement = $pdo->prepare(
             'UPDATE ' . Schema::FEEDBACK_TABLE . ' SET contact_email = NULL, user_agent = NULL, updated_at = now()
               WHERE user_id = ANY (CAST(? AS bigint[])) AND (contact_email IS NOT NULL OR user_agent IS NOT NULL)'
         );

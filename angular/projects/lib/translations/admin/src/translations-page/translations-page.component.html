@@ -70,18 +70,20 @@
                                 <anotoki-icon name="download" [size]="15" />
                                 Export
                             </button>
-                            <button anotokiButton size="sm" data-import [loading]="importing() === item.language.code" (click)="file.click()">
-                                <anotoki-icon name="arrowUp" [size]="15" />
-                                Import
-                            </button>
-                            <input
-                                #file
-                                class="anotoki-translations-page__file"
-                                type="file"
-                                tabindex="-1"
-                                accept=".json,application/json"
-                                [attr.aria-label]="'A JSON file of strings to import into ' + item.language.name"
-                                (change)="importLanguage(item.language, $event)" />
+                            @if (mayImport()) {
+                                <button anotokiButton size="sm" data-import [loading]="importing() === item.language.code" (click)="file.click()">
+                                    <anotoki-icon name="arrowUp" [size]="15" />
+                                    Import
+                                </button>
+                                <input
+                                    #file
+                                    class="anotoki-translations-page__file"
+                                    type="file"
+                                    tabindex="-1"
+                                    accept=".json,application/json"
+                                    [attr.aria-label]="'A JSON file of strings to import into ' + item.language.name"
+                                    (change)="importLanguage(item.language, $event)" />
+                            }
                         </div>
                     </li>
                 }
@@ -122,9 +124,9 @@
                 <p class="anotoki-translations-page__shown" role="status">{{ visibleKeys() }} of {{ total() }} {{ total() === 1 ? "key" : "keys" }}</p>
             </div>
 
-            <p class="anotoki-translations-page__kept">
-                What you type is kept in this tab until it is saved or discarded - through a reload, and through signing out and in again as the same person. Signing out does not ask about it; closing
-                the tab loses it, and the browser asks first.
+            <p class="anotoki-translations-page__kept" data-kept>
+                What you type is kept in this tab until it is saved or discarded - through a reload, and through signing out and in again as the same person. Closing the tab loses it, and the browser
+                asks first.
             </p>
 
             <div class="anotoki-translations-page__grid" [class.anotoki-translations-page__grid--stacked]="stacked()" [style.--_translations-languages]="languages().length">

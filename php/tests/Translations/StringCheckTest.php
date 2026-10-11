@@ -135,7 +135,11 @@ final class StringCheckTest extends TestCase
             'The Slovak string of "test.step" has a { or } that is not part of a placeholder. A placeholder is written exactly as the English string has it, like {n}: no spaces, and its name is not translated.',
             $this->message(['test.step' => ['sk' => 'Krok { n } z {m}']])
         );
-        self::assertStringContainsString('like {count}:', $this->message(['test.bye' => ['sk' => 'Dovidenia {']]), 'a key with none is shown the usual example');
+        // A key with no placeholders is shown none to copy: a brace has no place in it at all.
+        $none = $this->message(['test.bye' => ['sk' => 'Dovidenia {']]);
+        self::assertSame('The Slovak string of "test.bye" has a { or }, and its English string has no placeholders: a brace belongs only around a placeholder, so take it out.', $none);
+        self::assertStringNotContainsString('like {', $none);
+        self::assertSame(['invalid_placeholder', ['key' => 'test.bye', 'language' => 'en']], $this->refused(['test.bye' => ['en' => 'Bye }']]));
     }
 
     public function testEnglishKeepsExactlyItsPlaceholdersAndATranslationAddsNone(): void

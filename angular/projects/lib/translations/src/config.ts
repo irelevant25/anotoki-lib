@@ -85,13 +85,21 @@ export interface TranslationsAdminConfig {
   /**
    * What the person may do (signals work) - the site's own rules; the server
    * checks them again. Nobody may, by default: the page then says whose it is
-   * and asks the server nothing.
+   * and asks the server nothing. Each page's own actions follow its page's
+   * permission unless the site says otherwise: a control for what the site
+   * does not allow is not drawn (its server would answer 403).
    */
   allows?: {
-    /** The Translations page: rewording, export, import (the IAM: ADMIN; the other sites: ADMIN or EDITOR). */
+    /** The Translations page: rewording and export (the IAM: ADMIN; the other sites: ADMIN or EDITOR). */
     strings?: () => boolean;
-    /** The Languages page: adding, naming, ordering, offering, deleting (ADMIN; genshin: ADMIN or EDITOR). */
+    /** Importing a file of strings on the Translations page; as `strings` unless the site says otherwise. */
+    importStrings?: () => boolean;
+    /** The Languages page: naming, ordering and offering a language (ADMIN; genshin and the survey: ADMIN or EDITOR). */
     languages?: () => boolean;
+    /** Adding a language; as `languages` unless the site says otherwise. */
+    addLanguages?: () => boolean;
+    /** Deleting a language; as `languages` unless the site says otherwise (the survey: its ADMIN alone). */
+    deleteLanguages?: () => boolean;
   };
   /** The site's routes of the two pages and of its Migrations page: links between them, and to Migrations while the tables are not there yet. */
   routes?: { translations?: string; languages?: string; migrations?: string };

@@ -97,6 +97,10 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       expect(box('mail.reset.greeting', 'English').placeholder).toBe('Required');
       // The Languages page is linked for whoever may use it.
       expect(host.querySelector('[data-languages-link]')?.getAttribute('href')).toBe('/admin/languages');
+      // What is typed is kept in the tab; nothing is promised of a sign-out, which a site's bar may ask about or not.
+      expect(words(host.querySelector('[data-kept]'))).toBe(
+        'What you type is kept in this tab until it is saved or discarded - through a reload, and through signing out and in again as the same person. Closing the tab loses it, and the browser asks first.',
+      );
     });
 
     it('shows a plural family as one block: the numbers each form is for, and the family as the site says it for 1, 3 and 12', async () => {
@@ -378,6 +382,14 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       await settle(fixture);
       expect(words(host.querySelector('[data-happened]'))).toBe('The strings of Slovak are imported.');
       expect(box('theme.label').value).toBe('Farba');
+    });
+
+    it('offers no import to whom the site does not let import: export stays', async () => {
+      site.importStrings.set(false);
+      await open();
+      expect(host.querySelectorAll('[data-import]')).toHaveLength(0);
+      expect(host.querySelectorAll('input[type=file]')).toHaveLength(0);
+      expect(host.querySelectorAll('[data-export]')).toHaveLength(2);
     });
 
     it('says why a file was not imported: too large, not a language’s strings, nothing in it, refused by the server', async () => {

@@ -198,11 +198,14 @@ final class StringCheck
         }
         if (Placeholders::strayBrace($text)) {
             // It names one of the key's own placeholders: told "like {count}" on a key whose placeholder is
-            // {app}, a translator would add one the key does not have.
+            // {app}, a translator would add one the key does not have - and on a key with none at all, a
+            // placeholder to copy would be one more thing the string must not have.
             return Refusal::invalid(
                 'invalid_placeholder',
-                "The $name string of \"$key\" has a { or } that is not part of a placeholder. A placeholder is written exactly as the English string has it, like {"
-                    . ($placeholders[0] ?? 'count') . '}: no spaces, and its name is not translated.',
+                $placeholders === []
+                    ? "The $name string of \"$key\" has a { or }, and its English string has no placeholders: a brace belongs only around a placeholder, so take it out."
+                    : "The $name string of \"$key\" has a { or } that is not part of a placeholder. A placeholder is written exactly as the English string has it, like {"
+                        . $placeholders[0] . '}: no spaces, and its name is not translated.',
                 $about
             );
         }

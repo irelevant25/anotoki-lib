@@ -118,7 +118,7 @@
                                     <anotoki-icon name="check" [size]="15" />
                                     Save
                                 </button>
-                                @if (!language.seeded && language.code !== fallback) {
+                                @if (mayDelete() && !language.seeded && language.code !== fallback) {
                                     <button anotokiButton size="sm" variant="ghost" data-delete [loading]="deleting() === language.code" (click)="remove(language)">
                                         <anotoki-icon name="trash" [size]="15" />
                                         Delete
@@ -137,37 +137,43 @@
                 }
             </ul>
 
-            <anotoki-card heading="Add a language" subheading="It goes after the ones there are, and reads in English until its strings are written on the Translations page.">
-                <form class="anotoki-languages-page__add" (submit)="$event.preventDefault(); add()">
-                    <anotoki-text-field
-                        class="anotoki-languages-page__code"
-                        label="Code"
-                        autocomplete="off"
-                        autocapitalize="none"
-                        placeholder="cs"
-                        hint="Two small letters: cs, de, pt-br"
-                        [maxlength]="5"
-                        [error]="newCodeError()"
-                        [(value)]="newCode" />
-                    <anotoki-text-field label="Name in English" autocomplete="off" placeholder="Czech" [maxlength]="50" [(value)]="newName" />
-                    <anotoki-text-field label="Name as its speakers write it" autocomplete="off" placeholder="Čeština" [maxlength]="50" [(value)]="newNativeName" />
-                    <anotoki-switch class="anotoki-languages-page__add-offered" hint="A new language starts hidden - write its strings, then offer it." [disabled]="adding()" [(checked)]="newOffered">
-                        Offer it to readers right away
-                    </anotoki-switch>
-                    <div class="anotoki-languages-page__add-actions">
-                        <button anotokiButton variant="primary" type="submit" data-add [loading]="adding()" [disabled]="!canAdd() || newCodeError() !== null">
-                            <anotoki-icon name="plus" [size]="17" />
-                            Add the language
-                        </button>
-                    </div>
-                </form>
-                @if (addError(); as message) {
-                    <p class="anotoki-translations-admin__field-error anotoki-languages-page__add-error" role="alert">
-                        <anotoki-icon name="alert" [size]="15" />
-                        <span>{{ message }}</span>
-                    </p>
-                }
-            </anotoki-card>
+            @if (mayAdd()) {
+                <anotoki-card data-add-card heading="Add a language" subheading="It goes after the ones there are, and reads in English until its strings are written on the Translations page.">
+                    <form class="anotoki-languages-page__add" (submit)="$event.preventDefault(); add()">
+                        <anotoki-text-field
+                            class="anotoki-languages-page__code"
+                            label="Code"
+                            autocomplete="off"
+                            autocapitalize="none"
+                            placeholder="cs"
+                            hint="Two small letters: cs, de, pt-br"
+                            [maxlength]="5"
+                            [error]="newCodeError()"
+                            [(value)]="newCode" />
+                        <anotoki-text-field label="Name in English" autocomplete="off" placeholder="Czech" [maxlength]="50" [(value)]="newName" />
+                        <anotoki-text-field label="Name as its speakers write it" autocomplete="off" placeholder="Čeština" [maxlength]="50" [(value)]="newNativeName" />
+                        <anotoki-switch
+                            class="anotoki-languages-page__add-offered"
+                            hint="A new language starts hidden - write its strings, then offer it."
+                            [disabled]="adding()"
+                            [(checked)]="newOffered">
+                            Offer it to readers right away
+                        </anotoki-switch>
+                        <div class="anotoki-languages-page__add-actions">
+                            <button anotokiButton variant="primary" type="submit" data-add [loading]="adding()" [disabled]="!canAdd() || newCodeError() !== null">
+                                <anotoki-icon name="plus" [size]="17" />
+                                Add the language
+                            </button>
+                        </div>
+                    </form>
+                    @if (addError(); as message) {
+                        <p class="anotoki-translations-admin__field-error anotoki-languages-page__add-error" role="alert">
+                            <anotoki-icon name="alert" [size]="15" />
+                            <span>{{ message }}</span>
+                        </p>
+                    }
+                </anotoki-card>
+            }
         }
     </div>
 

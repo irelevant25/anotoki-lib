@@ -62,7 +62,11 @@ let nextId = 0;
  * so it outlives the page.
  *
  * For whoever the site allows (`admin.allows.languages`); anybody else is told
- * whose page it is, and nothing is asked of the server.
+ * whose page it is, and nothing is asked of the server. Adding and deleting a
+ * language are offered only to whom the site allows them too
+ * (`admin.allows.addLanguages`, `deleteLanguages`; as `languages` unless the
+ * site says otherwise - the survey lets its EDITORs name, order and offer the
+ * languages, and its ADMIN alone delete one).
  */
 @Component({
   selector: 'anotoki-languages-page',
@@ -102,6 +106,9 @@ export class LanguagesPageComponent implements HoldsUnsavedChanges {
 
   /** The site lets this person change its languages. */
   protected readonly allowed = computed(() => this.admin.allows?.languages?.() ?? false);
+  /** ... add one, and delete one: as `languages` unless the site says otherwise - what it does not allow is not offered. */
+  protected readonly mayAdd = computed(() => this.allowed() && (this.admin.allows?.addLanguages?.() ?? true));
+  protected readonly mayDelete = computed(() => this.allowed() && (this.admin.allows?.deleteLanguages?.() ?? true));
   /** The Translations page, where the site has one for this person. */
   protected readonly translationsRoute = computed(() => (this.admin.routes?.translations && (this.admin.allows?.strings?.() ?? false) ? this.admin.routes.translations : null));
 
@@ -316,6 +323,9 @@ export class LanguagesPageComponent implements HoldsUnsavedChanges {
    * imported again - and then the deletion is asked, naming how many strings go.
    */
   protected async remove(language: AdminLanguage): Promise<void> {
+    if (!this.mayDelete()) {
+      return;
+    }
     const count = language.strings;
     if (count > 0) {
       const exportFirst = await this.questions.ask({
@@ -379,7 +389,7 @@ export class LanguagesPageComponent implements HoldsUnsavedChanges {
   // ── A new language ─────────────────────────────────────────────────────────
 
   protected async add(): Promise<void> {
-    if (!this.canAdd() || this.newCodeError() !== null || this.adding()) {
+    if (!this.mayAdd() || !this.canAdd() || this.newCodeError() !== null || this.adding()) {
       return;
     }
     this.adding.set(true);

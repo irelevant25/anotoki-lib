@@ -92,7 +92,9 @@ let nextId = 0;
  * their own, in their own part.
  *
  * For whoever the site allows (`admin.allows.strings`); anybody else is told
- * whose page it is, and nothing is asked of the server. Between an upload and
+ * whose page it is, and nothing is asked of the server. Import is offered only
+ * to whom the site allows it too (`admin.allows.importStrings`; as `strings`
+ * unless the site says otherwise). Between an upload and
  * Apply the tables are not there yet: the page says so, and points at the
  * site's Migrations page.
  *
@@ -140,6 +142,8 @@ export class TranslationsPageComponent implements HoldsUnsavedChanges {
 
   /** The site lets this person reword its strings. */
   protected readonly allowed = computed(() => this.admin.allows?.strings?.() ?? false);
+  /** ... and import a file of them: as `strings` unless the site says otherwise - not offered when it does not allow it. */
+  protected readonly mayImport = computed(() => this.allowed() && (this.admin.allows?.importStrings?.() ?? true));
   /** The Languages page, where the site has one for this person. */
   protected readonly languagesRoute = computed(() => (this.admin.routes?.languages && (this.admin.allows?.languages?.() ?? false) ? this.admin.routes.languages : null));
 
@@ -463,7 +467,8 @@ export class TranslationsPageComponent implements HoldsUnsavedChanges {
   protected async importLanguage(language: AdminLanguage, event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) {
+    if (!file || !this.mayImport()) {
+      input.value = '';
       return;
     }
     const heading = `"${file.name}" was not imported`;

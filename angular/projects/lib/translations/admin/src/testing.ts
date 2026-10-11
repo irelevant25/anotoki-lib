@@ -43,12 +43,15 @@ export function refusal(status: number, code: string, message: string, extra: Re
 /** The person and what the site lets them do - signals the test sets. */
 export interface AdminSite {
   strings: WritableSignal<boolean>;
+  importStrings: WritableSignal<boolean>;
   languages: WritableSignal<boolean>;
+  addLanguages: WritableSignal<boolean>;
+  deleteLanguages: WritableSignal<boolean>;
   person: WritableSignal<string | null>;
 }
 
 export function adminSite(): AdminSite {
-  return { strings: signal(true), languages: signal(true), person: signal('7') };
+  return { strings: signal(true), importStrings: signal(true), languages: signal(true), addLanguages: signal(true), deleteLanguages: signal(true), person: signal('7') };
 }
 
 /** A zoneless app with the module's admin pages configured for `site` - a Slovak page outside them. */
@@ -63,7 +66,13 @@ export function adminProviders(site: AdminSite, admin: Partial<TranslationsAdmin
       storagePrefix: 'test-site',
       account: { language: () => 'sk', userKey: () => site.person() },
       admin: {
-        allows: { strings: () => site.strings(), languages: () => site.languages() },
+        allows: {
+          strings: () => site.strings(),
+          importStrings: () => site.importStrings(),
+          languages: () => site.languages(),
+          addLanguages: () => site.addLanguages(),
+          deleteLanguages: () => site.deleteLanguages(),
+        },
         routes: { translations: '/admin/translations', languages: '/admin/languages', migrations: '/admin/migrations' },
         ...admin,
       },

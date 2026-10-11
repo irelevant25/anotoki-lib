@@ -222,6 +222,20 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       await answerQuestion(false);
       expect(row('cs')).not.toBeNull();
     });
+
+    it('is not offered to whom the site does not let delete (the survey’s EDITORs): no Delete, and nothing is asked', async () => {
+      site.deleteLanguages.set(false);
+      await open();
+      expect(host.querySelectorAll('[data-delete]')).toHaveLength(0);
+      // The rest of the page is theirs: the names, the place, the switch - and adding one.
+      expect(row('cs').querySelector('[data-save]')).not.toBeNull();
+      expect(row('cs').querySelector('[data-offered]')).not.toBeNull();
+      expect(host.querySelector('[data-add-card]')).not.toBeNull();
+
+      site.deleteLanguages.set(true);
+      await settle(fixture);
+      expect(row('cs').querySelector('[data-delete]')).not.toBeNull();
+    });
   });
 
   describe('adding a language', () => {
@@ -267,6 +281,14 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
       http.expectOne({ method: 'POST', url: `${API}/languages` }).flush({ code: 'language_exists', message: 'There is a language "sk" already.' }, { status: 409, statusText: 'Conflict' });
       await settle(fixture);
       expect(words(host.querySelector('.anotoki-languages-page__add-error'))).toBe('There is a language "sk" already.');
+    });
+
+    it('is not offered to whom the site does not let add one', async () => {
+      site.addLanguages.set(false);
+      await open();
+      expect(host.querySelector('[data-add-card]')).toBeNull();
+      expect(host.querySelector('[data-add]')).toBeNull();
+      expect(row('cs').querySelector('[data-delete]')).not.toBeNull();
     });
   });
 

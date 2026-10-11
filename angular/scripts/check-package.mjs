@@ -13,8 +13,10 @@
 //   module (whether the site is blocked), and nothing imports it but its testing helper.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
-//   alone - and by @anotoki/lib/words, which gathers them all for the translations module. Every first load carries
-//   the words of the namespaces its page says, and no others: a module that brings words never weighs on the kit's.
+//   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
+//   which imports none and holds the kit's alone; @anotoki/lib/words, every namespace's, is for a site's specs and
+//   the showcase. Every first load carries the words of the namespaces its page says, and no others: a module that
+//   brings words weighs neither on the kit's first loads nor on the translations module's.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Floors: an entry point nothing is used of leaves nothing in a site's bundle. A site's build keeps a top-level call
@@ -88,7 +90,7 @@ const MAY_IMPORT = {
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
-    "@anotoki/lib/translations": [...PIECES, "@anotoki/lib/words"],
+    "@anotoki/lib/translations": PIECES,
     "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
     "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/words/sign-in"],
@@ -108,15 +110,15 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * A site's first page, what it imports of the package, the gzipped kB its first load may take of the package beside
  * lazy pages that use every other entry point, and the namespaces of the library's words it may carry (null: every
  * one). "the gate": genshin's and the build analyzer's whole use (the status page, its buttons, the kit's and the
- * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, which
- * has every module's words - so a library key is never shown as a key - and is the one first load a module's words
- * weigh on; "a button": one piece alone; "the sign-in": the gate and the auth module's every eager part, the callback
- * page routed with the first page (it is in the gate's company on every site that signs in).
+ * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, with the
+ * kit's words alone - a module's arrive with the module, by its registration; "a button": one piece alone; "the
+ * sign-in": the gate and the auth module's every eager part, the callback page routed with the first page (it is in
+ * the gate's company on every site that signs in).
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
     { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5, words: KIT_WORDS },
-    { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5, words: null },
+    { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5, words: KIT_WORDS },
     { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5, words: KIT_WORDS },
     {
         title: "the sign-in",
@@ -199,6 +201,30 @@ for (const name of WORD_ENTRIES) {
     const held = [...namespacesIn(codeOf[name] ?? "")];
     if (held.length !== 1) {
         problems.push(`${name} holds the words of ${held.length ? held.join(", ") : "no namespace"}: a words entry point holds one namespace (bun run words).`);
+    }
+}
+
+// A module's words reach the translations module only through its registration: the translations module imports no
+// words entry point, nor does any module @anotoki/lib/words (every namespace's), and a module that imports its own
+// namespace's registers them - provideLibraryWords(<them>) among the providers of its provide*() function.
+for (const [name, code] of Object.entries(codeOf)) {
+    if (name === WORDS || name.startsWith(`${WORDS}/`)) {
+        continue;
+    }
+    for (const [, bindings, from] of code.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](@anotoki\/lib\/words(?:\/[^'"]+)?)['"]/g)) {
+        if (name.startsWith("@anotoki/lib/translations")) {
+            problems.push(`${name} imports ${from}: a module's words reach the translations module only through the module's registration (provideLibraryWords), never by an import.`);
+            continue;
+        }
+        if (from === WORDS) {
+            problems.push(`${name} imports ${WORDS}, every module's words: a module imports its own namespace's alone.`);
+            continue;
+        }
+        for (const binding of bindings.split(",").map((part) => part.trim().split(/\s+as\s+/).pop()).filter(Boolean)) {
+            if (!new RegExp(`\\bprovideLibraryWords\\(\\s*${binding}\\s*\\)`).test(code)) {
+                problems.push(`${name} takes ${binding} from ${from} without registering it (provideLibraryWords(${binding})): a module's words reach the translations module only through its registration.`);
+            }
+        }
     }
 }
 

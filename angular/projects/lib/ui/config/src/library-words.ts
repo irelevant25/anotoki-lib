@@ -9,9 +9,9 @@
  *
  * The same keys are in every site's database (anotoki_translations/002 and the library migrations after it), where
  * an owner may reword them; these are what a page reads while it has no string from there. The kit reads its own
- * from here (words.ts: AnotokiWords), so they are in every first load that holds the kit - and no other module's
- * words are: each is in @anotoki/lib/words/<namespace>, which its module alone imports, and @anotoki/lib/words
- * gathers them all for the translations module.
+ * from here (words.ts: AnotokiWords), and so does the translations module, so they are in every first load that
+ * holds either - and no other module's words are: each is in @anotoki/lib/words/<namespace>, which its module alone
+ * imports and registers with the translations module (provideLibraryWords).
  */
 
 const EN = {

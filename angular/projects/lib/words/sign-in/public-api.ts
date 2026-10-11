@@ -1,7 +1,7 @@
 /*
  * @anotoki/lib/words/sign-in - the anotoki library's own words of `anotoki.signIn.*`, in English and in
- * Slovak (informal, "ty"). Imported by the module that says them, and by @anotoki/lib/words (every module's words,
- * for the translations module) - never by the kit, so no first load of the kit carries them.
+ * Slovak (informal, "ty"). Imported by the module that says them, which registers them with the translations module
+ * (provideLibraryWords) - never by the kit nor by the translations module, so they reach a site with the module alone.
  *
  * GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs - never
  * edited by hand: a change is made in the JSON (with the library migration that writes it to the sites'

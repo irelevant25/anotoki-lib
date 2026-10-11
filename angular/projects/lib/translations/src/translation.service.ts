@@ -1,7 +1,6 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { DOCUMENT, Injectable, Injector, computed, effect, inject, signal, untracked } from '@angular/core';
-import { AnotokiUiConfig } from '@anotoki/lib/ui/config';
-import { LIBRARY_WORDS } from '@anotoki/lib/words';
+import { ANOTOKI_LIBRARY_WORDS, AnotokiUiConfig, KIT_LIBRARY_WORDS, ModuleLibraryWords } from '@anotoki/lib/ui/config';
 import { firstValueFrom, isObservable } from 'rxjs';
 import { ANOTOKI_TRANSLATIONS_CONFIG, ANOTOKI_TRANSLATION_BUNDLE, TranslationSettings, translationSettings } from './config';
 import { FALLBACK_LANGUAGE, LanguageCandidate, TranslationParams, addressLanguage, bundleFrom, fillPlaceholders, languageCandidates, languageCode, pickLanguage } from './language';
@@ -35,9 +34,6 @@ export interface ShellLanguages {
   notSaved: () => boolean;
   clearNotSaved: () => void;
 }
-
-/** The library's words, every module's (@anotoki/lib/words), by language, as plain tables. */
-const BUILT_IN: Readonly<Record<string, Readonly<Record<string, string>>>> = LIBRARY_WORDS;
 
 /** What every library key starts with: the library's namespace. */
 const LIBRARY_PREFIX = 'anotoki.';
@@ -77,7 +73,13 @@ interface SaveWaiter {
  * English is read (`fallbackEnglish`), and then the key. A library key
  * (`anotoki.*`) is never shown as a key: the database's string, else the
  * site's own words for it (`libraryWords`), else the library's built-in words
- * of the language, else its English.
+ * of the language, else their English. The built-in words are the kit's, and
+ * those of every module the site uses: each registers its own from its
+ * provide*() function (provideLibraryWords - the status page's with
+ * provideAnotokiMigrations, the sign-in page's with provideAnotokiAuth), so a
+ * module's words come only with the module, and this service holds the kit's
+ * alone. A key of a module the site does not use, with no string, reads as the
+ * key (warned once): its words are not this site's to have.
  *
  * The English areas (an admin panel: `englishOnly`) are English whatever the
  * person reads - `effectiveLanguage` says so, `<html lang>` too, and every
@@ -98,6 +100,7 @@ export class TranslationService {
   private readonly injector = inject(Injector);
   private readonly document = inject(DOCUMENT);
   private settingsMemo: TranslationSettings | null = null;
+  private builtInsMemo: ReadonlyMap<string, ReadonlyMap<string, string>> | null = null;
 
   private readonly _language = signal(FALLBACK_LANGUAGE);
   private readonly _languages = signal<readonly SiteLanguage[]>([]);
@@ -229,7 +232,7 @@ export class TranslationService {
     return this.around(this.pluralForm(key, count), placeholder, { ...params, count: this.number(count) });
   }
 
-  /** Whether a key has words to show now: the bundle's (or, with none, the compiled English); a library key always has. */
+  /** Whether a key has words to show now: the bundle's (or, with none, the compiled English); a library key of the kit's or of a module in use always has. */
   has(key: string): boolean {
     return this.find(key) !== undefined;
   }
@@ -866,14 +869,37 @@ export class TranslationService {
   /** The library's built-in words for a library key: the language on the page's, its base's, English. */
   private builtInWord(key: string): string | null {
     const code = this.effectiveLanguage();
+    const builtIn = this.builtIns();
     for (const language of [code, code.split('-')[0], FALLBACK_LANGUAGE]) {
-      const table = Object.hasOwn(BUILT_IN, language) ? BUILT_IN[language] : undefined;
-      const word = table && Object.hasOwn(table, key) ? table[key] : undefined;
+      const word = builtIn.get(language)?.get(key);
       if (typeof word === 'string' && word !== '') {
         return word;
       }
     }
     return null;
+  }
+
+  /**
+   * The library's built-in words, by language: the kit's, and those each module the site uses registered
+   * (ANOTOKI_LIBRARY_WORDS) - gathered when first read, as the configuration is: nothing is asked while the
+   * service is being made.
+   */
+  private builtIns(): ReadonlyMap<string, ReadonlyMap<string, string>> {
+    if (this.builtInsMemo === null) {
+      const tables: readonly ModuleLibraryWords[] = [KIT_LIBRARY_WORDS, ...this.injector.get(ANOTOKI_LIBRARY_WORDS, [])];
+      const merged = new Map<string, Map<string, string>>();
+      for (const table of tables) {
+        for (const [language, words] of Object.entries(table)) {
+          const into = merged.get(language) ?? new Map<string, string>();
+          for (const [key, word] of Object.entries(words)) {
+            into.set(key, word);
+          }
+          merged.set(language, into);
+        }
+      }
+      this.builtInsMemo = merged;
+    }
+    return this.builtInsMemo;
   }
 
   /** The family member a number asks for: its own form when the strings have it, `.other` otherwise. */

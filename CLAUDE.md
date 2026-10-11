@@ -48,13 +48,15 @@ bun run words           # the library's words from php/resources/library-words.j
   the SQL of `anotoki_translations` is held to it by a test, and the Angular half's
   built-in words are generated from it a namespace at a time (`bun run words`;
   prettier leaves them alone): the kit's namespaces into `ui/config/src/library-words.ts`
-  (read through `AnotokiWords`), every other module's into `@anotoki/lib/words/<namespace>`
-  - imported by that module alone (the status page's, the sign-in page's) - and
-  `@anotoki/lib/words` gathers them for the translations module. A new one is a
-  JSON entry and a new library migration (`anotoki_translations/003` brought
-  `anotoki.signIn.*`; released files are never edited); a module's new words are a
-  namespace of its own, never the kit's - no first load of the kit carries them.
-  Names (a site's sections, brand area) are never kit words.
+  (read through `AnotokiWords` and the translations module), every other module's
+  into `@anotoki/lib/words/<namespace>` - imported by that module alone, which
+  registers them with the translations module from its `provide*()`
+  (`provideLibraryWords`); `@anotoki/lib/words` (all of them) is for specs and the
+  showcase, never a module. A new one is a JSON entry and a new library migration
+  (`anotoki_translations/003` brought `anotoki.signIn.*`; released files are never
+  edited); a module's new words are a namespace of its own and its registration,
+  never the kit's - no first load of the kit or of the translations module carries
+  them. Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says
@@ -86,8 +88,9 @@ bun run words           # the library's words from php/resources/library-words.j
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
   limits, every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces
-  and `migrations`; a `words/<namespace>` is imported by its module and `words`
-  alone) and to an empty floor, and the first loads of the gate, the bar, the
+  and `migrations`; a `words/<namespace>` is imported by its module, which
+  registers it, and by `words` alone - never by the translations module) and to an
+  empty floor, and the first loads of the gate, the bar, the
   words, a button and the sign-in to their limits and to the namespaces of words
   their pages say.
 - No composer.lock (a library); nothing sensitive in a file; never print a

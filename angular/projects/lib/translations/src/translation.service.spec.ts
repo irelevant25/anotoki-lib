@@ -1,8 +1,9 @@
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { EnvironmentProviders, Provider, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { LIBRARY_WORDS } from '@anotoki/lib/words';
+import { KIT_LIBRARY_WORDS, provideLibraryWords } from '@anotoki/lib/ui/config';
+import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 import { ANOTOKI_TRANSLATION_BUNDLE, DEFAULT_WAITS, provideAnotokiTranslations } from './config';
 import { addressLanguage, bundleFrom, fillPlaceholders, isAdminArea, languageCandidates, pickLanguage } from './language';
 import { TranslationBundle } from './models';
@@ -1005,13 +1006,13 @@ describe('TranslationService: wording', () => {
   let site: TranslationsSite;
   let warn: ReturnType<typeof vi.spyOn>;
 
-  async function start(bundle: TranslationBundle | null, extra = {}): Promise<TranslationService> {
+  async function start(bundle: TranslationBundle | null, extra = {}, providers: (Provider | EnvironmentProviders)[] = []): Promise<TranslationService> {
     site = translationsSite();
     site.respond = bundle ? gives(bundle) : fails(UNAVAILABLE);
     localStorage.clear();
     sessionStorage.clear();
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: translationsProviders(site, { waits: { retry: 0 }, ...extra }) });
+    TestBed.configureTestingModule({ providers: [...translationsProviders(site, { waits: { retry: 0 }, ...extra }), ...providers] });
     if (bundle) {
       localStorage.setItem('test-site:language', bundle.language);
     }
@@ -1072,11 +1073,12 @@ describe('TranslationService: wording', () => {
       expect(i18n.t('anotoki.ui.or')).toBe('alebo');
     });
 
-    it('then the library’s built-in words of the language on the page', async () => {
-      const i18n = await start(SK_BUNDLE);
-      expect(i18n.t('anotoki.ui.close')).toBe(LIBRARY_WORDS.sk['anotoki.ui.close']);
+    it('then the library’s built-in words of the language on the page - the kit’s, and those a module in use registered', async () => {
+      const i18n = await start(SK_BUNDLE, {}, [provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)]);
+      expect(i18n.t('anotoki.ui.close')).toBe(KIT_LIBRARY_WORDS.sk['anotoki.ui.close']);
       expect(i18n.t('anotoki.topbar.menuButton', { name: 'Mira' })).toBe('Tvoja ponuka: Mira');
       expect(i18n.has('anotoki.siteStatus.tryAgain')).toBe(true);
+      expect(i18n.t('anotoki.siteStatus.tryAgain')).toBe('Skúsiť znova');
     });
 
     it('then their English - in a language the library has no words for, and with no database at all', async () => {
@@ -1085,10 +1087,22 @@ describe('TranslationService: wording', () => {
       expect(i18n.language()).toBe('de');
       expect(i18n.t('anotoki.ui.close')).toBe('Close');
 
-      const none = await start(null);
+      const none = await start(null, {}, [provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)]);
       expect(none.t('anotoki.siteStatus.tryAgain')).toBe('Try again');
       expect(none.has('anotoki.siteStatus.tryAgain')).toBe(true);
       expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('a module’s words come with the module alone: without its registration, its key with no string is the key - warned once', async () => {
+      const none = await start(null);
+      expect(none.has('anotoki.siteStatus.tryAgain')).toBe(false);
+      expect(none.t('anotoki.signIn.retry')).toBe('anotoki.signIn.retry');
+      expect(none.t('anotoki.signIn.retry')).toBe('anotoki.signIn.retry');
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith("[i18n] no string for 'anotoki.signIn.retry'");
+      // The database's string needs no registration: an owner's words are the site's.
+      const i18n = await start({ ...SK_BUNDLE, values: { ...SK_BUNDLE.values, 'anotoki.signIn.retry': 'Ešte raz' } });
+      expect(i18n.t('anotoki.signIn.retry')).toBe('Ešte raz');
     });
 
     it('an unknown library key with no string is shown as itself, as any other', async () => {

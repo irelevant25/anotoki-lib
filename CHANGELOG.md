@@ -17,7 +17,8 @@ Angular pages come later, on the UI kit. Nothing a site's code uses of 0.3.0 cha
 taken when the site adopts it (README.md: "Auth", "People", "Admin tools"). A site on the translations
 module gets one more library migration to apply (`anotoki_translations/003`, the sign-in page's words).
 The library's words are generated a namespace at a time: `LIBRARY_WORDS` is `@anotoki/lib/words`' now
-(it was `@anotoki/lib/ui/config`'s), and the kit's first loads carry the kit's words alone (README.md,
+(it was `@anotoki/lib/ui/config`'s), a module's words come with the module (its `provide*()` registers
+them), and the kit's first loads and the translations module's carry the kit's words alone (README.md,
 "Upgrading from 0.3.x").
 
 PHP, auth (`Anotoki\Lib\Auth`):
@@ -122,29 +123,39 @@ Angular (`@anotoki/lib/auth`, `@anotoki/lib/auth/testing`):
   testing helper imports it alone; a fifth first load, "the sign-in" (the gate and every eager part of
   auth, 19.5 kB at most; 18.7 kB).
 
-Angular, the library's words a namespace at a time - so that a module's words never weigh on the kit's
-first loads:
+Angular, the library's words a namespace at a time, each module's with the module - so that a module's
+words weigh neither on the kit's first loads nor on the translations module's:
 - `bun run words` generates them per namespace from `php/resources/library-words.json` (still the one
   source; the PHP half and the SQL are unchanged): the kit's namespaces (`language`, `ui`, `topbar`,
   `theme`) into `ui/config/src/library-words.ts` - `KIT_LIBRARY_WORDS`, and `LibraryKey`, every key's name
   (a type); every other namespace into an entry point of its own, `@anotoki/lib/words/<namespace>`
   (`/site-status`, `/sign-in`), which its module alone imports; and `@anotoki/lib/words`, `LIBRARY_WORDS`
-  of every namespace, for the translations module (a library key is still never shown as a key).
-  `--check` also finds a namespace's folder the JSON no longer has, and `bun run words` removes it.
+  of every namespace, for a site's specs and the showcase. `--check` also finds a namespace's folder the
+  JSON no longer has, and `bun run words` removes it.
+- **A module registers its words**: `provideLibraryWords(words)` (`@anotoki/lib/ui/config`, the multi
+  provider `ANOTOKI_LIBRARY_WORDS`) among its `provide*()` function's providers -
+  `provideAnotokiMigrations()` the status page's, `provideAnotokiAuth()` the sign-in page's, every later
+  module its own. The translations module holds the kit's built-in words alone and reads every
+  registered module's beside them, so a key of a module in use with no string is never shown as a key;
+  a key of a module the site does not use, with no string, reads as the key (warned once).
 - **Moved:** `LIBRARY_WORDS` is `@anotoki/lib/words`' (it was `@anotoki/lib/ui/config`'s and
-  `@anotoki/lib/ui`'s); `LibraryKey` stays in `@anotoki/lib/ui/config`, as before.
+  `@anotoki/lib/ui`'s); `LibraryKey` stays in `@anotoki/lib/ui/config`, as before. A site's spec that reads
+  a module's key with no string in its bundle provides the module, or its words (README.md, "Upgrading
+  from 0.3.x").
 - The first loads, gzipped (every library word in `ui/config`, as 0.3.0 had them plus the sign-in page's
-  -> now): a button 5.5 -> 4.8 kB, the bar 20.5 -> 19.7, the gate 8.6 -> 8.3 - the kit's words alone, and
-  the gate the status page's beside them; the sign-in 18.5 -> 18.7 (two small files more); the words 7.1
-  -> 7.3 (every module's words, as before - the one first load a module's words weigh on). `ui/config`
-  3.1 -> 2.3 kB, ui and shell together 28.2 -> 27.4 (back under its 28 kB; 27.8 at 0.3.0). New entry
-  points: `words` 0.2, `words/site-status` 0.5, `words/sign-in` 0.6.
+  -> now): a button 5.5 -> 4.8 kB, the bar 20.5 -> 19.8, the gate 8.6 -> 8.3, the words 7.1 -> 6.5 - the
+  kit's words alone, and the gate the status page's beside them; the sign-in 18.5 -> 18.7 (two small files
+  more). `ui/config` 3.1 -> 2.4 kB, ui and shell together 28.2 -> 27.5 (back under its 28 kB; 27.8 at
+  0.3.0), translations 7.1 -> 7.3 (gathering the registered words). New entry points: `words` 0.2,
+  `words/site-status` 0.5, `words/sign-in` 0.6.
 - `scripts/check-package.mjs`: `ui/config` holds the kit's namespaces alone and each `words/<namespace>`
   one namespace; the words entry points' boundaries come from the package itself (a new namespace needs
-  nothing there but its module's import); and every first load carries the words of the namespaces its
-  page says (a button and the bar the kit's, the gate the status page's too) - a module's words reaching
-  the kit's first loads fail the build. The generated files are left alone by prettier (`bun run
-  format` would rewrite what `bun run words --check` holds byte for byte).
+  nothing there but its module's import); a module's words reach the translations module only through
+  its registration - the translations module imports no words entry point, and a module that imports
+  its words without `provideLibraryWords(...)` of them fails the build; and every first load carries the
+  words of the namespaces its page says (a button, the bar and the words the kit's, the gate the status
+  page's too). The generated files are left alone by prettier (`bun run format` would rewrite what `bun
+  run words --check` holds byte for byte).
 
 PHP, translations: the library's set `anotoki_translations` gains `003_sign_in_words.sql` - the sign-in
 page's eight keys, by 002's rule (descriptions the library's; strings only for a key that has none; a

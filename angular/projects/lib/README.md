@@ -38,8 +38,9 @@ version.
 - `@anotoki/lib/auth/testing` - `provideTestAnotokiAuth()` and `FakeAuthClient` for a
   site's specs.
 - `@anotoki/lib/words` - the library's own words, every module's: `LIBRARY_WORDS`
-  (the translations module's); `@anotoki/lib/words/<namespace>` - one module's
-  (`/site-status`, `/sign-in`), imported by that module alone. Generated from
+  (for a site's specs); `@anotoki/lib/words/<namespace>` - one module's
+  (`/site-status`, `/sign-in`), imported by that module alone, which registers
+  them with the translations module (`provideLibraryWords`). Generated from
   `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site

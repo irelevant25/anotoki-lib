@@ -18,8 +18,19 @@
  * /tooltip, /copy, /qr, /icons.
  */
 
-export type { AnotokiUiConfig, AnotokiWordKey, AnotokiWordTable, IconPaths, IconSet, KitLibraryKey, LibraryKey, WordParams } from '@anotoki/lib/ui/config';
-export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, ANOTOKI_WORD_KEYS, AnotokiWords, BUILT_IN_WORDS, KIT_LIBRARY_WORDS, fillWords, provideAnotokiUi } from '@anotoki/lib/ui/config';
+export type { AnotokiUiConfig, AnotokiWordKey, AnotokiWordTable, IconPaths, IconSet, KitLibraryKey, LibraryKey, ModuleLibraryWords, WordParams } from '@anotoki/lib/ui/config';
+export {
+  ANOTOKI_ICONS,
+  ANOTOKI_LIBRARY_WORDS,
+  ANOTOKI_UI_CONFIG,
+  ANOTOKI_WORD_KEYS,
+  AnotokiWords,
+  BUILT_IN_WORDS,
+  KIT_LIBRARY_WORDS,
+  fillWords,
+  provideAnotokiUi,
+  provideLibraryWords,
+} from '@anotoki/lib/ui/config';
 export type { KitIconName } from '@anotoki/lib/ui/icon';
 export { AnotokiIcons, IconComponent, KIT_ICONS, circle, rect } from '@anotoki/lib/ui/icon';
 export { isShown, keepOnScreen, mediaQuery, tabbable, uniqueId } from '@anotoki/lib/ui/dom';

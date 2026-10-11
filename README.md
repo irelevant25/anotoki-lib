@@ -195,7 +195,7 @@ uses is in the first load again.
 | --- | --- | --- |
 | `@anotoki/lib/styles` | Sass: the tokens (one palette, light and dark), Manrope, the base, utilities, tables | the site's `styles.scss` |
 | `@anotoki/lib/ui` | re-exports the core's pieces below, nothing of its own | - |
-| `@anotoki/lib/ui/config` | `provideAnotokiUi`, `AnotokiWords`, the kit's words (`KIT_LIBRARY_WORDS`), every library key's name (`LibraryKey`) | yes |
+| `@anotoki/lib/ui/config` | `provideAnotokiUi`, `AnotokiWords`, the kit's words (`KIT_LIBRARY_WORDS`), every library key's name (`LibraryKey`), a module's registration of its words (`provideLibraryWords`, `ANOTOKI_LIBRARY_WORDS`) | yes |
 | `@anotoki/lib/ui/icon`, `/dom` | `<anotoki-icon>`, `AnotokiIcons` and the kit's own icons; `uniqueId`, `keepOnScreen`, `mediaQuery`, `tabbable`, `isShown` | yes (the bar) |
 | `@anotoki/lib/ui/button`, `/spinner` | the button, the spinner | yes (the status page) |
 | `@anotoki/lib/ui/badge`, `/alert`, `/card`, `/empty-state`, `/error-state`, `/page-header`, `/avatar`, `/segmented`, `/autofocus` | one piece each | where a first page uses it |
@@ -213,8 +213,8 @@ uses is in the first load again.
 | `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
 | `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page ("Auth" below) | yes (every page of a site that signs in) |
 | `@anotoki/lib/auth/testing` (0.4.0) | `provideTestAnotokiAuth()`, `FakeAuthClient`: the module without an IAM, for a site's specs | a site's specs |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's) | with its module, which alone imports it |
-| `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | with the translations module |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's) | with its module, which alone imports it and registers it with the translations module |
+| `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
 `--anotoki-*` custom properties, each read with the family's own value as its
@@ -676,7 +676,14 @@ of the Migrations page; everything else is new.
    before (the build analyzer's `WordKey` reads it); the kit's own share is
    `KIT_LIBRARY_WORDS` there. The kit's first loads no longer carry the status
    page's words, nor any other module's ("The library's own words").
-2. A site on the translations module applies `anotoki_translations/003` (the
+2. **A module's words come with the module.** The translations module holds the
+   kit's built-in words alone; a module's (the status page's, the sign-in
+   page's) arrive with its `provide*()` function, which registers them
+   (`provideLibraryWords`). A site's app needs nothing; a site's spec that reads
+   a module's key with no string in its bundle provides that module, or its
+   words: `provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)` (from
+   `@anotoki/lib/ui/config` and `@anotoki/lib/words/site-status`).
+3. A site on the translations module applies `anotoki_translations/003` (the
    sign-in page's words) as any migration; the modules 0.4.0 brings are taken
    when the site adopts them ("Auth", "People", "Admin tools").
 
@@ -839,24 +846,30 @@ import it:
 - the kit's namespaces (`language`, `ui`, `topbar`, `theme`) in
   `angular/projects/lib/ui/config/src/library-words.ts` - `KIT_LIBRARY_WORDS`
   and `LibraryKey` (every key's name, a type) of `@anotoki/lib/ui/config`, which
-  the kit reads (`AnotokiWords`);
+  the kit reads (`AnotokiWords`), and the translations module too;
 - every other namespace in an entry point of its own,
   `angular/projects/lib/words/<namespace>/` - `@anotoki/lib/words/site-status`
   (the status page's), `@anotoki/lib/words/sign-in` (the sign-in page's) - which
-  its module alone imports;
+  its module alone imports, and registers with the translations module from its
+  `provide*()` function: `provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)` in
+  `provideAnotokiMigrations()`, `provideLibraryWords(SIGN_IN_LIBRARY_WORDS)` in
+  `provideAnotokiAuth()` (the multi provider `ANOTOKI_LIBRARY_WORDS` of
+  `@anotoki/lib/ui/config`);
 - `@anotoki/lib/words` (`angular/projects/lib/words/`): `LIBRARY_WORDS`, every
-  namespace's, for the translations module.
+  namespace's, for a site's specs and the showcase - no module imports it.
 
 A spec (`library-words.spec.ts`), CI (`bun run words --check`, which also finds a
 namespace's folder the JSON no longer has) and the PHP half's `LibraryWordsTest`
 fail when a file is stale; prettier leaves them alone (`bun run format` would
 rewrite what `--check` holds byte for byte). So a page has the library's words
-while the database cannot be reached, and never shows a library key as a key -
-and a first load carries the words its page says: the kit's (a button, the bar),
-the status page's beside them (the gate), every module's in the translations
-module. A module that brings words brings a namespace, and so an entry point of
-its own: `scripts/check-package.mjs` derives its boundaries, and holds every
-first load to the namespaces its page says (the kit's never carry a module's).
+while the database cannot be reached, and never shows a key of the kit's or of a
+module it uses as a key - and a first load carries the words its page says: the
+kit's (a button, the bar, the translations module), the status page's beside
+them (the gate), the sign-in page's with the auth module. A module that brings
+words brings a namespace, an entry point of its own and its registration:
+`scripts/check-package.mjs` derives the entry point's boundaries, holds every
+first load to the namespaces its page says, and refuses a module that imports
+its words without registering them, and the translations module importing any.
 
 ### The Angular half: `@anotoki/lib/translations`
 
@@ -932,8 +945,11 @@ this.i18n.noteAddress(url);
   bundle, a key it lacks is shown as the key, warned once: the owner wants to see
   it. A library key (`anotoki.*`) is never a key: the database's string (an
   owner's rewording), then the site's `libraryWords`, then the library's
-  built-in words of the language, then their English. `<html lang>` follows
-  `effectiveLanguage`.
+  built-in words of the language, then their English. The built-in words are the
+  kit's, and those each module the site uses registers from its `provide*()`
+  function (`provideLibraryWords`): a module's come with the module alone, and a
+  key of a module the site does not use, with no string, reads as the key
+  (warned once). `<html lang>` follows `effectiveLanguage`.
 - The start: the cache (`<prefix>:language-cache`, in force only until the
   server answers) - a second's wait with one, three without and one more try
   after half a second; two requests at most otherwise (the first wish, then what

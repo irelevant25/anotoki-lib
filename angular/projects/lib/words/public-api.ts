@@ -1,7 +1,7 @@
 /*
- * @anotoki/lib/words - the anotoki library's own words, every module's: LIBRARY_WORDS, for the translations module,
- * which never shows a library key as a key, whichever module's it is. The kit's are ui/config's, each other module's
- * are @anotoki/lib/words/<namespace>; a module imports its own, never this.
+ * @anotoki/lib/words - the anotoki library's own words, every module's: LIBRARY_WORDS, for a site's specs and the
+ * showcase. No module of the library's imports it: the kit's words are ui/config's, each other module's are
+ * @anotoki/lib/words/<namespace>, which the module imports and registers with the translations module.
  *
  * GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs - never
  * edited by hand.

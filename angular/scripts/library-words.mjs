@@ -7,13 +7,15 @@
 //                                                  (a type: nothing of it reaches a bundle).
 //   projects/lib/words/<namespace>/                @anotoki/lib/words/<namespace>: one module's words (siteStatus:
 //                                                  the migrations module's status page; signIn: the auth module's
-//                                                  sign-in page), imported by that module alone - and by
-//   projects/lib/words/                            @anotoki/lib/words: LIBRARY_WORDS, every namespace's, for the
-//                                                  translations module (a library key is never shown as a key).
+//                                                  sign-in page), imported by that module alone, which registers
+//                                                  them with the translations module (provideLibraryWords).
+//   projects/lib/words/                            @anotoki/lib/words: LIBRARY_WORDS, every namespace's, for a
+//                                                  site's specs and the showcase - no module of the library's.
 //
-// So a module that brings words brings a namespace and an entry point of its own: the kit's first loads (a button,
-// the bar, the gate) never carry them - scripts/check-package.mjs holds every first load to the namespaces it may
-// carry. A page has the library's words while the database cannot be reached, and never shows a library key as a key.
+// So a module that brings words brings a namespace and an entry point of its own: they reach a site with the module
+// alone - neither the kit's first loads (a button, the bar, the gate) nor the translations module's carry them, and
+// scripts/check-package.mjs holds every first load to the namespaces it may carry. A page has the library's words
+// while the database cannot be reached, and never shows a key of the kit's or of a module it uses as a key.
 //
 //   bun run words            # writes the files (and removes a namespace's the JSON no longer has)
 //   bun run words --check    # exits 1 when a file is not what the JSON makes, or one is left over (a spec checks too)
@@ -117,9 +119,9 @@ function kitFile(kit, others) {
  *
  * The same keys are in every site's database (anotoki_translations/002 and the library migrations after it), where
  * an owner may reword them; these are what a page reads while it has no string from there. The kit reads its own
- * from here (words.ts: AnotokiWords), so they are in every first load that holds the kit - and no other module's
- * words are: each is in @anotoki/lib/words/<namespace>, which its module alone imports, and @anotoki/lib/words
- * gathers them all for the translations module.
+ * from here (words.ts: AnotokiWords), and so does the translations module, so they are in every first load that
+ * holds either - and no other module's words are: each is in @anotoki/lib/words/<namespace>, which its module alone
+ * imports and registers with the translations module (provideLibraryWords).
  */
 
 ${tables(kit, "KitLibraryKey")}
@@ -139,8 +141,8 @@ function namespaceFile(namespace, words) {
     const keyType = `${pascal(namespace)}LibraryKey`;
     return `/*
  * @anotoki/lib/words/${kebab(namespace)} - the anotoki library's own words of \`anotoki.${namespace}.*\`, in English and in
- * Slovak (informal, "ty"). Imported by the module that says them, and by @anotoki/lib/words (every module's words,
- * for the translations module) - never by the kit, so no first load of the kit carries them.
+ * Slovak (informal, "ty"). Imported by the module that says them, which registers them with the translations module
+ * (provideLibraryWords) - never by the kit nor by the translations module, so they reach a site with the module alone.
  *
  * ${GENERATED} - never
  * edited by hand: a change is made in the JSON (with the library migration that writes it to the sites'
@@ -160,9 +162,9 @@ function aggregateFile(namespaces) {
     const types = namespaces.map((namespace) => `export type { ${pascal(namespace)}LibraryKey } from '@anotoki/lib/words/${kebab(namespace)}';`);
     const spread = ["KIT_LIBRARY_WORDS", ...namespaces.map((namespace) => `${constant(namespace)}_LIBRARY_WORDS`)].map((table) => `...${table}[language]`).join(", ");
     return `/*
- * @anotoki/lib/words - the anotoki library's own words, every module's: LIBRARY_WORDS, for the translations module,
- * which never shows a library key as a key, whichever module's it is. The kit's are ui/config's, each other module's
- * are @anotoki/lib/words/<namespace>; a module imports its own, never this.
+ * @anotoki/lib/words - the anotoki library's own words, every module's: LIBRARY_WORDS, for a site's specs and the
+ * showcase. No module of the library's imports it: the kit's words are ui/config's, each other module's are
+ * @anotoki/lib/words/<namespace>, which the module imports and registers with the translations module.
  *
  * ${GENERATED} - never
  * edited by hand.

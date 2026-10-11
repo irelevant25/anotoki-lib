@@ -1,4 +1,6 @@
 import { EnvironmentProviders, InjectionToken, makeEnvironmentProviders } from '@angular/core';
+import { provideLibraryWords } from '@anotoki/lib/ui/config';
+import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 
 /**
  * Where the site stands, as its pages know it: 'unknown' until the server was
@@ -51,9 +53,13 @@ export const ANOTOKI_MIGRATIONS_CONFIG = new InjectionToken<AnotokiMigrationsCon
 /**
  * Configures the module. The factory runs in an injection context, so it can
  * inject the site's own services (its AuthService, its translations).
+ *
+ * It registers the status page's words (`anotoki.siteStatus.*`) with the
+ * translations module: they reach a site's words with this module, and with
+ * nothing else.
  */
 export function provideAnotokiMigrations(factory: () => AnotokiMigrationsConfig): EnvironmentProviders {
-  return makeEnvironmentProviders([{ provide: ANOTOKI_MIGRATIONS_CONFIG, useFactory: factory }]);
+  return makeEnvironmentProviders([{ provide: ANOTOKI_MIGRATIONS_CONFIG, useFactory: factory }, provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)]);
 }
 
 export const DEFAULT_SETUP_URL = '/setup.php';

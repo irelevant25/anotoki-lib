@@ -3,6 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { EnvironmentProviders, Provider, inject } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideAnotokiAuth } from '@anotoki/lib/auth';
 import { SiteStatus, SiteStatusComponent, provideAnotokiMigrations } from '@anotoki/lib/migrations';
 import { LanguageSwitcherComponent, provideAnotokiShell } from '@anotoki/lib/shell';
 import { AnotokiWords, provideAnotokiUi } from '@anotoki/lib/ui';
@@ -225,6 +226,35 @@ describe('the wiring: the kit’s words, the shell’s switcher and the status p
       expect(siteStatusWords(i18n)).toEqual({ sk: { updatingTitle: 'Aktualizujeme, chvíľu strpenia' } });
       i18n.noteAddress('/admin');
       expect(siteStatusWords(i18n, { en: { signIn: 'Log in' } })).toEqual({ en: { updatingTitle: 'Updating - back soon', signIn: 'Log in' } });
+    });
+  });
+
+  describe('a module’s words reach the translations module through its own registration', () => {
+    const migrations = () =>
+      provideAnotokiMigrations(() => ({
+        statusUrl: '/api/site-status',
+        apiBase: '/api/admin/migrations',
+        migrationsRoute: '/admin/migrations',
+        isAdmin: () => false,
+        isSignedIn: () => false,
+        signIn: () => undefined,
+        language: () => 'sk',
+      }));
+
+    it('provideAnotokiMigrations brings the status page’s, provideAnotokiAuth the sign-in page’s - read when the database has no string', async () => {
+      const i18n = setUp({}, [provideHttpClient(), provideHttpClientTesting(), migrations(), provideAnotokiAuth(() => ({ config: () => null }))]);
+      await i18n.init();
+      expect(i18n.language()).toBe('sk');
+      expect(i18n.t('anotoki.siteStatus.tryAgain')).toBe('Skúsiť znova');
+      expect(i18n.t('anotoki.signIn.back')).toBe('Späť');
+      expect(i18n.t('anotoki.signIn.failed', { code: 'x' })).toBe('Prihlásenie zlyhalo (x).');
+    });
+
+    it('a module the site does not use brings nothing: the gate’s words without the sign-in page’s', async () => {
+      const i18n = setUp({}, [provideHttpClient(), provideHttpClientTesting(), migrations()]);
+      await i18n.init();
+      expect(i18n.has('anotoki.siteStatus.tryAgain')).toBe(true);
+      expect(i18n.has('anotoki.signIn.back')).toBe(false);
     });
   });
 });

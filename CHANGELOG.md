@@ -49,6 +49,24 @@ PHP, people (`Anotoki\Lib\People`):
   `Http\PeopleRoutes` (list, search, paging, the site's columns and visitors line, the delete hook,
   sync now, the IAM's user page).
 
+Auth and people, from the security review (2026-10-11):
+- `PeopleRoutes::admin()` guards itself: the site's ADMIN from the token (`RequireRole::admin()` inside
+  the group), so a site that forgets its check, or mounts the group where EDITORs are let in, opens
+  neither the list nor the delete hook; a site's own check still answers first. New `audit:` and
+  `context:`: a delete is recorded `person.data_deleted` (the counts), an asked-for scrub `people.synced`.
+  A delete asks only its question, no recent sign-in (the owner's decision of 2026-10-11). A `q` that is
+  not UTF-8 or holds a NUL is 422 `invalid_query`, not a 500.
+- `Scrubber`: where a UNIQUE name column has `deleted-{sub}` taken, the IAM's `deleted-{sub}-{hex}` - a
+  chosen name no longer stops the scrub for good.
+- `AccessTokens`: a reason holds at most 64 of the token's own characters, in `[A-Za-z0-9._+-]`
+  (`lastReasonKind()`: none); `Identify` says each kind of refusal to the log at most once a minute.
+- A stamp later than now counts as none: `Jwks` (an unknown kid is fetched for), `PeopleUpkeep`,
+  `Support\Throttle`.
+- `IamClient`: the issuer and `jwks_url` are https - http only on this computer - or it throws;
+  `HttpGet` asks over http and https alone (`CURLOPT_PROTOCOLS_STR`, and on its streams).
+- Angular: the interceptor's and `AnotokiAuth.fetch()`'s origin rule tested against another origin in any
+  spelling, a downgrade, another port and a dot-dot out of the API - no token, no key (no code changed).
+
 PHP, the admin tools - what they share:
 - `Admin\AdminContext` - the site's actor, proof (the IAM's `accountProof()`; the sites'
   `recentSignIn()` from the token's `auth_time`), address bucket and error body, given once.

@@ -1186,14 +1186,22 @@ $app->add(new SiteGate($state, $app->getResponseFactory(), [AuthRoutes::openPath
   **private `cache_dir`** (the site's `storage/cache`): the key set and the
   answer about signing in are kept there, in the SDK's own files - a site that
   moves keeps them; without one nothing is kept, and the IAM is asked on every
-  request.
+  request. The `issuer` (and a `jwks_url`) is **https** - http only on this
+  computer (`localhost`, `127.0.0.1`, `[::1]`), as in development; anything else
+  throws: the keys tokens are checked with come from there. What the library
+  asks the IAM (`Support\HttpGet`) goes over http or https alone - never a
+  file, a PHP stream or another protocol, by curl's rule
+  (`CURLOPT_PROTOCOLS_STR`) and its own.
 - `AccessTokens::verify($token): ?Person` - the SDK's rules: RS256 and `typ`
   `at+jwt` pinned (never read from the token), a `kid` of the IAM's key set
   (`Jwks`: an hour on disk, one fetch per unknown `kid` at most every five
-  minutes, and five minutes' rest after a failed fetch), no `crit`, `iss`
-  exact, `aud` (and `client_id`, when there is one) this application, the
-  times with 60 s of leeway, `sub` an IAM id. Why a token failed is
-  `lastReason()`, for the log only.
+  minutes, and five minutes' rest after a failed fetch - a stamp later than
+  now counting as none), no `crit`, `iss` exact, `aud` (and `client_id`, when
+  there is one) this application, the times with 60 s of leeway, `sub` an IAM
+  id. Why a token failed is `lastReason()`, for the log only: the library's
+  words, with at most 64 characters of the token's own (its `typ`, its `kid`)
+  in `[A-Za-z0-9._+-]`, anything else a `?`; `lastReasonKind()` is the same
+  without them.
 - `Person` - `sub`, `name` (preferred_username), `email`, `locale`,
   `preferences`, `roles` (upper case), `sid`, `authTime`, `scope`, `claims`;
   `has()`, `isAdmin()`, `isStaff()`, `signedInWithin($seconds)`.
@@ -1209,7 +1217,10 @@ $app->add(new SiteGate($state, $app->getResponseFactory(), [AuthRoutes::openPath
   visitor, or 401 `visitor_unknown`; else nobody. It sets `anotoki.person`,
   `anotoki.visitor`, `anotoki.caller`; it reads no table but the site's
   visitor closure. **No cookie is ever read as somebody** - the IAM's sign-in
-  hint least of all.
+  hint least of all. A refused token is said to the library's `Log` at most
+  once a minute for each kind of refusal (a stamp per kind in the `cache_dir`,
+  `anotoki-auth-refused-*.stamp`), an expired one never - tokens made up by the
+  thousand are a line a minute; a site's own `log:` hears every reason.
 - `Http\RequirePerson` (401 `sign_in_required`), `Http\RequireRole` (from the
   token, never the database - the Migrations routes keep working while `users`
   waits; 403 `forbidden`, or `->refusing('admin_only', '…')`),
@@ -1423,11 +1434,12 @@ $people = new People(
 );
 
 $app->group('/api', $siteRoutes)->add(new RecordPerson($people));            // never on the Migrations routes
-PeopleRoutes::admin($app, '/api/admin/people', $people,
+PeopleRoutes::admin($app, '/api/admin/people', $people,                       // guards itself: the site's ADMIN
     columns: [new PeopleColumn('notes', 'Notes', 'count', fn (PDO $pdo, array $subs): array => …)],
     visitors: fn (PDO $pdo): array => ['count' => …],
     delete: fn (PDO $pdo, int $sub, $request): ?array => ['deleted' => ['Progress' => …]],   // null: nobody with that id
-)->add(RequireRole::admin());
+    audit: $auditLog,                                                            // person.data_deleted, people.synced
+)->add(RequireRole::admin()->refusing('admin_only'));                            // a site's own words, where it has them
 $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState::READY));   // inside the SiteGate
 // and after $app->run(): \Anotoki\Lib\Support\AfterResponse::shared()->run();   (a site's own runner: PeopleUpkeep's defer)
 ```
@@ -1446,7 +1458,10 @@ $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState
   `since` (inclusive), following `next` within the run (at most 8 s); each
   account in a transaction of its own: listed in `anotoki_people_anonymized`, its
   row held `FOR UPDATE`, the name `deleted-{sub}` and `anonymized_at` the IAM's
-  time - only UPDATEs, never a visitor's row - then the site's hooks with the row
+  time - only UPDATEs, never a visitor's row; where a UNIQUE name column has
+  `deleted-{sub}` taken already (somebody chose it), the IAM's free form
+  `deleted-{sub}-{eight hex digits}`, so a chosen name never stops the scrub -
+  then the site's hooks with the row
   as it was (`['name', 'anonymized_at']`, null when the site never knew the
   person). A hook that throws rolls its account back and stops the run (the
   error is kept for the People page); an IAM that does not answer keeps `since`;
@@ -1454,13 +1469,25 @@ $app->add(new PeopleUpkeep($people, fn (): bool => $state->state() === SiteState
   be idempotent - an id comes again.
 - `Http\PeopleUpkeep` - the scrub after the answer (`Support\AfterResponse`, or
   the site's own runner as `defer`), at most hourly (the stamp
-  `{cache_dir}/anotoki-people.stamp`), while the site is ready; no cron.
+  `{cache_dir}/anotoki-people.stamp`; one later than now counts as none), while
+  the site is ready; no cron.
 - `Http\PeopleRoutes::admin()` - `GET $base?q=&page=` (50 a page, newest seen
   first; `{people: [{sub, name, first_seen_at, last_seen_at, anonymized_at,
   iam_url, …columns}], columns, total, page, page_size, visitors, sync, ready,
-  problems}`; `q` finds a name or an id), `DELETE $base/{sub}` (the site's hook;
-  404 `not_found`), `POST $base/sync` (the scrub now). `iam_url` is the account
-  in the IAM's admin panel, for its administrators.
+  problems}`; `q` finds a name or an id - 422 `invalid_query` for one that is
+  not UTF-8 or holds a NUL, or is longer than any name), `DELETE $base/{sub}`
+  (the site's hook; 404 `not_found`), `POST $base/sync` (the scrub now).
+  `iam_url` is the account in the IAM's admin panel, for its administrators.
+  **The group guards itself**: the site's ADMIN, from the token
+  (`RequireRole::admin()` inside it, behind the site's `Identify`) - a site that
+  forgets its own check, or mounts the group inside one that lets EDITORs in,
+  opens nothing; a site's own check on the returned group still answers first,
+  in its words. With `audit:` (the site's `AuditLog`) a delete is recorded
+  `person.data_deleted` (target `user` {sub}, the counts by label) and an
+  asked-for scrub `people.synced` (its state, handled, scrubbed), by the
+  token's sub - or `context:`'s `actorId()`. A delete asks for no proof of a
+  recent sign-in, unlike a backup's restore: the page's question is all it asks
+  (the owner's decision of 2026-10-11).
 
 ### The People page: `@anotoki/lib/people` and `@anotoki/lib/people/page`
 

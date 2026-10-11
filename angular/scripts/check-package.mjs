@@ -105,6 +105,9 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/avatar": [],
     "@anotoki/lib/ui/segmented": ["@anotoki/lib/ui/icon"],
     "@anotoki/lib/ui/autofocus": [],
+    // The family's icon set is a site's alone: no entry point imports it. A lazy page carries its own copies of the
+    // icons it draws - a site that loads ui/icons up front would otherwise carry them in its first load (one file is
+    // one chunk), as 0.4.0's admin pages put ~0.7 kB there (ui/icons/own-copies.spec.ts keeps the copies the family's).
     "@anotoki/lib/ui/icons": [],
     "@anotoki/lib/ui/menu": PIECES,
     "@anotoki/lib/ui/dialog": PIECES,
@@ -120,18 +123,18 @@ const MAY_IMPORT = {
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
     "@anotoki/lib/translations": PIECES,
-    "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons"],
+    "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
     "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/words/sign-in"],
     "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
     // The People page's configuration needs nothing of the package; the page takes the kit (never the auth module: who
     // reads it is the site's to say, `me`) and is never pulled back into it.
     "@anotoki/lib/people": [],
-    "@anotoki/lib/people/page": ["@anotoki/lib/people", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/icons", "@anotoki/lib/ui/pagination"],
+    "@anotoki/lib/people/page": ["@anotoki/lib/people", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination"],
     // The admin tools: their configuration (and the unread feedback count, beside a site's admin navigation) imports
     // nothing of the package; their shared parts and their five pages, each on a lazy route, the kit's pieces.
     "@anotoki/lib/admin": [],
-    "@anotoki/lib/admin/parts": ["@anotoki/lib/admin", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/icons"],
+    "@anotoki/lib/admin/parts": ["@anotoki/lib/admin", ...PIECES, "@anotoki/lib/ui/dialog"],
     "@anotoki/lib/admin/errors": ADMIN_PAGE,
     "@anotoki/lib/admin/audit": ADMIN_PAGE,
     "@anotoki/lib/admin/feedback": ADMIN_PAGE,

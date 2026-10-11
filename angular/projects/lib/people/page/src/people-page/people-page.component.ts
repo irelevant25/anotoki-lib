@@ -5,17 +5,16 @@ import { ANOTOKI_PEOPLE_CONFIG, DEFAULT_PEOPLE_API, PeopleColumn, PeopleDeleteQu
 import { AlertComponent, AlertTone } from '@anotoki/lib/ui/alert';
 import { BadgeComponent } from '@anotoki/lib/ui/badge';
 import { ButtonComponent } from '@anotoki/lib/ui/button';
-import { IconSet } from '@anotoki/lib/ui/config';
 import { DialogComponent } from '@anotoki/lib/ui/dialog';
 import { EmptyStateComponent } from '@anotoki/lib/ui/empty-state';
 import { ErrorStateComponent } from '@anotoki/lib/ui/error-state';
 import { TextFieldComponent } from '@anotoki/lib/ui/forms';
 import { AnotokiIcons, IconComponent } from '@anotoki/lib/ui/icon';
-import { iconUsers } from '@anotoki/lib/ui/icons';
 import { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
 import { PaginationComponent } from '@anotoki/lib/ui/pagination';
 import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 import { firstValueFrom } from 'rxjs';
+import { registerPageIcons } from '../icons';
 
 /** What the page said of the last thing done on it: a delete, a check of the IAM's deleted accounts. */
 interface Outcome {
@@ -29,9 +28,6 @@ interface LoadProblem {
   message: string;
   unavailable: boolean;
 }
-
-/** The icons the page draws beside the kit's own - each only where the site has none of that name. */
-const PAGE_ICONS: IconSet = { users: iconUsers };
 
 // Marked pure: a site's build keeps a top-level `new` it is not told is pure, whether the page is used or not.
 const DATE_FORMAT = /* @__PURE__ */ new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -150,8 +146,7 @@ export class PeoplePageComponent {
   private started = false;
 
   constructor() {
-    const icons = inject(AnotokiIcons);
-    icons.register(Object.fromEntries(Object.entries(PAGE_ICONS).filter(([name]) => !icons.has(name))));
+    registerPageIcons(inject(AnotokiIcons));
 
     // Read once the reader is known to be the site's ADMIN - never before, never for anybody else.
     effect(() => {

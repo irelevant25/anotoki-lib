@@ -42,9 +42,9 @@
                         class="anotoki-top-bar__round anotoki-top-bar__menu-button"
                         [anotokiMenuTrigger]="phoneMenu"
                         [attr.aria-label]="phoneMenuName()"
-                        [attr.aria-describedby]="phoneMark()?.description ? markId : null">
+                        [attr.aria-describedby]="menuMark()?.description ? markId : null">
                         <anotoki-icon [name]="phoneMenu.isOpen() ? 'x' : 'menu'" [size]="20" />
-                        @if (phoneMark(); as mark) {
+                        @if (menuMark(); as mark) {
                             @if (mark.badge !== undefined && mark.badge !== null && mark.badge !== "" && mark.badge !== 0) {
                                 <span class="anotoki-top-bar__mark-badge" aria-hidden="true">{{ mark.badge }}</span>
                             } @else if (mark.dot) {

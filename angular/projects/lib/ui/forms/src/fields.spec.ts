@@ -174,6 +174,11 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
     expect(field('password').querySelector('#forgot')).not.toBeNull();
   });
 
+  it("password field: the browser's own reveal and clear buttons hidden (Edge's ::-ms-reveal, ::-ms-clear) - one Show, the field's", () => {
+    const styles = Array.from(document.querySelectorAll('style'), (style) => style.textContent ?? '').join('\n');
+    expect(styles).toMatch(/\.anotoki-field__input[^{,]*::-ms-reveal\s*,\s*\.anotoki-field__input[^{,]*::-ms-clear\s*\{\s*display:\s*none;?\s*\}/);
+  });
+
   it('select: native, its label for screen readers only, a placeholder, options with their own lang', async () => {
     const select = input('pick') as unknown as HTMLSelectElement;
     expect(field('pick').querySelector('label')?.classList).toContain('anotoki-visually-hidden');

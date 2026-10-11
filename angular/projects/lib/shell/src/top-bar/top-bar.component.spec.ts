@@ -540,6 +540,35 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       expect(words(items()[0])).toBe('Kanji 125');
     });
 
+    it('a link inside with a badge puts a dot on the menu button, and its name says which - unless the site marks it itself', async () => {
+      await draw(390);
+      page.links.set([
+        { id: 'surveys', label: 'Surveys', path: '/surveys' },
+        { id: 'feedback', label: 'Feedback', path: '/admin/feedback', badge: 3 },
+        { id: 'reviews', label: 'Reviews', path: '/reviews', badge: '12' },
+        { id: 'quiet', label: 'Quiet', path: '/quiet', badge: 0 },
+      ]);
+      await settle(fixture);
+      expect(phoneButton().querySelector('.anotoki-top-bar__mark-dot')?.getAttribute('aria-hidden')).toBe('true');
+      expect(phoneButton().querySelector('.anotoki-top-bar__mark-badge')).toBeNull();
+      expect(phoneButton().getAttribute('aria-label')).toBe('Menu: Feedback 3, Reviews 12');
+      expect(phoneButton().hasAttribute('aria-describedby')).toBe(false);
+
+      // Nothing new inside: no mark, the plain name.
+      page.links.set([{ id: 'surveys', label: 'Surveys', path: '/surveys' }]);
+      await settle(fixture);
+      expect(phoneButton().querySelector('.anotoki-top-bar__mark-dot')).toBeNull();
+      expect(phoneButton().getAttribute('aria-label')).toBe('Menu');
+
+      // The site's own mark is the one.
+      page.links.set([{ id: 'feedback', label: 'Feedback', path: '/admin/feedback', badge: 3 }]);
+      page.phoneMark.set({ badge: 3, label: 'Menu: 3 new messages' });
+      await settle(fixture);
+      expect(phoneButton().querySelector('.anotoki-top-bar__mark-dot')).toBeNull();
+      expect(words(phoneButton().querySelector('.anotoki-top-bar__mark-badge'))).toBe('3');
+      expect(phoneButton().getAttribute('aria-label')).toBe('Menu: 3 new messages');
+    });
+
     it('a dot on the menu button, with a description for screen readers ("Not saved yet")', async () => {
       await draw(390);
       page.phoneMark.set({ dot: true, description: 'Not saved yet' });

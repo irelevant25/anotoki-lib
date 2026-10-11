@@ -193,6 +193,10 @@ export class TopBarComponent {
   readonly shortBrandMax = input<number | null>(null);
   /** The row's width: 84rem, or 49rem for narrow pages; --anotoki-topbar-max-width overrides. */
   readonly width = input<'wide' | 'narrow'>('wide');
+  /**
+   * What stands on the phone's menu button. Without one of the site's, a link inside with a badge puts a dot there
+   * itself, and the button's name says which ("Menu: Feedback 3") - new feedback is not hidden in a folded bar.
+   */
   readonly phoneMark = input<TopBarPhoneMark | null>(null);
   readonly menuNote = input<TopBarMenuNote | null>(null);
   readonly isolateKeys = input(true, { transform: booleanAttribute });
@@ -211,7 +215,16 @@ export class TopBarComponent {
   protected readonly initial = computed(() => ([...(this.person()?.name.trim() ?? '')][0] ?? '?').toUpperCase());
   /** Whether the phone's menu has anything to hold. */
   protected readonly phoneMenuHolds = computed(() => this.links().length > 0 || this.person() !== null || this.signIn() !== null);
-  protected readonly phoneMenuName = computed(() => this.phoneMark()?.label || this.words.t('topbar.phoneMenu'));
+  /** The site's mark - or, without one, a dot for the links inside with a badge, named in the button's name. */
+  protected readonly menuMark = computed<TopBarPhoneMark | null>(() => {
+    const given = this.phoneMark();
+    if (given) {
+      return given;
+    }
+    const badged = this.links().filter((link) => this.hasBadge(link));
+    return badged.length === 0 ? null : { dot: true, label: `${this.words.t('topbar.phoneMenu')}: ${badged.map((link) => `${link.label} ${link.badge}`).join(', ')}` };
+  });
+  protected readonly phoneMenuName = computed(() => this.menuMark()?.label || this.words.t('topbar.phoneMenu'));
   protected readonly markId = uniqueId('anotoki-topbar-mark');
   protected readonly waiting = signal<Waiting>(null);
 

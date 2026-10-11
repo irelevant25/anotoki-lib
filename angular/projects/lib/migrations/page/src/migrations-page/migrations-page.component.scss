@@ -17,11 +17,12 @@
   gap: 1.25rem;
 }
 
+// A file named in a sentence breaks where its name in a card does; a word wider than the line still breaks.
 .anotoki-migrations-page__result-text,
 .anotoki-migrations-page__result-note {
   margin: 0;
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .anotoki-migrations-page__result-note {
@@ -76,19 +77,6 @@
   color: var(--_muted);
 }
 
-.anotoki-migrations-page__set {
-  margin: 1rem 0 0;
-  color: var(--_muted);
-  font-family: var(--_font-mono);
-  font-size: 0.875rem;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-
-  &:first-child {
-    margin-top: 0;
-  }
-}
-
 .anotoki-migrations-page__files {
   display: flex;
   flex-direction: column;
@@ -102,10 +90,6 @@
   }
 }
 
-.anotoki-migrations-page__set + .anotoki-migrations-page__files {
-  margin-top: 0.5rem;
-}
-
 .anotoki-migrations-page__file {
   display: flex;
   flex-wrap: wrap;
@@ -117,6 +101,8 @@
   background: var(--_bg);
 }
 
+// A file's name breaks after its slash or between its words (the <wbr>s the page puts there); inside a
+// word only when a word alone is wider than the line.
 .anotoki-migrations-page__name {
   flex: 1 1 12rem;
   min-width: 0;
@@ -124,7 +110,7 @@
   background: none;
   font-family: var(--_font-mono);
   font-size: 0.875rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .anotoki-migrations-page__when {

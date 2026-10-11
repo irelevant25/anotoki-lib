@@ -10,7 +10,15 @@
 
         @if (outcome(); as result) {
             <anotoki-alert data-result [tone]="result.tone" [heading]="result.heading" [announce]="result.tone === 'danger' || result.tone === 'warning' ? true : 'polite'">
-                <p class="anotoki-migrations-page__result-text">{{ result.text }}</p>
+                <p class="anotoki-migrations-page__result-text">
+                    @for (piece of result.text; track $index) {
+                        @if (piece.file) {
+                            <ng-container [ngTemplateOutlet]="name" [ngTemplateOutletContext]="{ $implicit: piece.text }" />
+                        } @else {
+                            <span>{{ piece.text }}</span>
+                        }
+                    }
+                </p>
                 @if (result.error) {
                     <pre class="anotoki-migrations-page__error">{{ result.error }}</pre>
                 }
@@ -30,25 +38,22 @@
         } @else if (data(); as status) {
             <div class="anotoki-migrations-page__cards">
                 <anotoki-card data-pending heading="Pending" [headingId]="id + '-pending'">
-                    @if (groups().length === 0) {
+                    @if (pending().length === 0) {
                         <p class="anotoki-migrations-page__card-text">Nothing pending - the database is up to date with the files.</p>
                     } @else {
-                        @for (group of groups(); track group.set) {
-                            @if (manySets()) {
-                                <h3 class="anotoki-migrations-page__set">{{ group.set }}</h3>
+                        <ol class="anotoki-migrations-page__files">
+                            @for (file of pending(); track file.set + "/" + file.name) {
+                                <li class="anotoki-migrations-page__file">
+                                    <code class="anotoki-migrations-page__name">
+                                        <ng-container [ngTemplateOutlet]="name" [ngTemplateOutletContext]="{ $implicit: label(file) }" />
+                                    </code>
+                                    <anotoki-badge [tone]="badgeTones[file.badge]" [attr.data-kind]="file.badge">{{ file.badge }}</anotoki-badge>
+                                    @if (file.badge === "draft") {
+                                        <span class="anotoki-migrations-page__why">a draft - it does not run until it is finished</span>
+                                    }
+                                </li>
                             }
-                            <ol class="anotoki-migrations-page__files">
-                                @for (file of group.files; track file.name) {
-                                    <li class="anotoki-migrations-page__file">
-                                        <code class="anotoki-migrations-page__name">{{ file.name }}</code>
-                                        <anotoki-badge [tone]="badgeTones[file.badge]" [attr.data-kind]="file.badge">{{ file.badge }}</anotoki-badge>
-                                        @if (file.badge === "draft") {
-                                            <span class="anotoki-migrations-page__why">a draft - it does not run until it is finished</span>
-                                        }
-                                    </li>
-                                }
-                            </ol>
-                        }
+                        </ol>
                     }
                 </anotoki-card>
 
@@ -58,7 +63,9 @@
                         <ol class="anotoki-migrations-page__files">
                             @for (file of status.applied; track file.set + "/" + file.name) {
                                 <li class="anotoki-migrations-page__file">
-                                    <code class="anotoki-migrations-page__name">{{ label(file) }}</code>
+                                    <code class="anotoki-migrations-page__name">
+                                        <ng-container [ngTemplateOutlet]="name" [ngTemplateOutletContext]="{ $implicit: label(file) }" />
+                                    </code>
                                     @if (file.applied_at) {
                                         <time class="anotoki-migrations-page__when" [attr.datetime]="file.applied_at">{{ formatDate(file.applied_at) }}</time>
                                     }
@@ -75,7 +82,9 @@
                         <ul class="anotoki-migrations-page__files">
                             @for (file of status.missing; track file.set + "/" + file.name) {
                                 <li class="anotoki-migrations-page__file">
-                                    <code class="anotoki-migrations-page__name">{{ label(file) }}</code>
+                                    <code class="anotoki-migrations-page__name">
+                                        <ng-container [ngTemplateOutlet]="name" [ngTemplateOutletContext]="{ $implicit: label(file) }" />
+                                    </code>
                                 </li>
                             }
                         </ul>
@@ -120,3 +129,14 @@
         </anotoki-dialog>
     }
 }
+
+<!-- A file's name, a line free to break after its slash and between its words, never inside one: <wbr> adds
+     nothing to the words a screen reader hears or a copy takes. -->
+<ng-template #name let-text>
+    @for (part of parts(text); track $index) {
+        <span>{{ part }}</span>
+        @if (!$last) {
+            <wbr />
+        }
+    }
+</ng-template>

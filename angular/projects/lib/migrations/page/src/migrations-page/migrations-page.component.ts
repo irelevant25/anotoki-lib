@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DOCUMENT, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ANOTOKI_MIGRATIONS_CONFIG, SiteStatus } from '@anotoki/lib/migrations';
@@ -42,11 +43,17 @@ interface ApplyResult {
   note: string | null;
 }
 
+/** A piece of a sentence: its own words, or a file's name (drawn so that a line breaks only between the name's words). */
+interface Piece {
+  text: string;
+  file: boolean;
+}
+
 /** What the last Apply did, in words. */
 interface Outcome {
   tone: 'success' | 'info' | 'warning' | 'danger';
   heading: string | null;
-  text: string;
+  text: Piece[];
   /** What the database said, kept as it is. */
   error: string | null;
   note: string | null;
@@ -55,6 +62,16 @@ interface Outcome {
 type Badge = 'pending' | 'draft' | 'waits';
 
 const BADGE_TONES: Record<Badge, BadgeTone> = { pending: 'warning', draft: 'neutral', waits: 'neutral' };
+
+/** A set the library ships: the names that begin with anotoki_ are theirs alone (the engine refuses a site's). */
+function isLibrarySet(set: string): boolean {
+  return set.startsWith('anotoki_');
+}
+
+/** A sentence that names no file. */
+function said(text: string): Piece[] {
+  return [{ text, file: false }];
+}
 
 let nextId = 0;
 
@@ -76,7 +93,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'anotoki-migrations-page',
-  imports: [AlertComponent, BadgeComponent, ButtonComponent, CardComponent, DialogComponent, PageHeaderComponent, SpinnerComponent],
+  imports: [NgTemplateOutlet, AlertComponent, BadgeComponent, ButtonComponent, CardComponent, DialogComponent, PageHeaderComponent, SpinnerComponent],
   templateUrl: './migrations-page.component.html',
   styleUrl: './migrations-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -110,22 +127,8 @@ export class MigrationsPageComponent {
     const count = this.applicable().length;
     return count === 1 ? 'Apply 1 pending migration?' : `Apply ${count} pending migrations?`;
   });
-  protected readonly manySets = computed(() => (this.data()?.sets.length ?? 0) > 1);
-
-  /** The pending files by set, in the order they will run, each with its badge. */
-  protected readonly groups = computed(() => {
-    const groups: { set: string; files: (PendingFile & { badge: Badge })[] }[] = [];
-    for (const file of this.data()?.pending ?? []) {
-      const badge: Badge = !file.ready ? 'draft' : file.blocked ? 'waits' : 'pending';
-      const last = groups.at(-1);
-      if (last && last.set === file.set) {
-        last.files.push({ ...file, badge });
-      } else {
-        groups.push({ set: file.set, files: [{ ...file, badge }] });
-      }
-    }
-    return groups;
-  });
+  /** The pending files in the order they will run, each with its badge - named as the Applied card names them. */
+  protected readonly pending = computed(() => (this.data()?.pending ?? []).map((file) => ({ ...file, badge: (!file.ready ? 'draft' : file.blocked ? 'waits' : 'pending') as Badge })));
 
   protected readonly viewingSql = computed(() => this.viewing()?.sql ?? null);
 
@@ -142,10 +145,22 @@ export class MigrationsPageComponent {
     });
   }
 
-  /** A file as the page names it: with its set when the site has more than one. */
+  /**
+   * A file as the bookkeeping table records it - one name in every card and sentence of the page: the
+   * site's one set's files by their names alone, as the engine records them; every other file with its
+   * set - a library set's (`anotoki_translations/003_sign_in_words.sql`, as recorded where the table has
+   * no folder column), each of a site's several sets (whose table keeps the set in that column), and the
+   * record of a set the site no longer has. A record with no set (no set of the site's own to read it
+   * under) is its name.
+   */
   protected label(file: MigrationFile): string {
-    const sets = this.data()?.sets ?? [];
-    return sets.length > 1 || (sets.length === 1 && sets[0] !== file.set) ? `${file.set}/${file.name}` : file.name;
+    const own = (this.data()?.sets ?? []).filter((set) => !isLibrarySet(set));
+    return file.set === '' || (own.length === 1 && own[0] === file.set) ? file.name : `${file.set}/${file.name}`;
+  }
+
+  /** A name in the pieces a line may break after - its slash, and between its words (_ and -) - never inside a word. */
+  protected parts(name: string): string[] {
+    return name.split(/(?<=[/_-])/);
   }
 
   protected async load(): Promise<void> {
@@ -180,8 +195,8 @@ export class MigrationsPageComponent {
     } catch (error) {
       this.outcome.set(
         error instanceof HttpErrorResponse && error.status === 409
-          ? { tone: 'warning', heading: null, text: messageOf(error), error: null, note: null }
-          : { tone: 'danger', heading: 'Nothing was applied.', text: messageOf(error), error: null, note: null },
+          ? { tone: 'warning', heading: null, text: said(messageOf(error)), error: null, note: null }
+          : { tone: 'danger', heading: 'Nothing was applied.', text: said(messageOf(error)), error: null, note: null },
       );
     } finally {
       this.applying.set(false);
@@ -245,24 +260,30 @@ export class MigrationsPageComponent {
   }
 
   private describe(result: ApplyResult): Outcome {
-    const names = (files: MigrationFile[]) => files.map((file) => this.label(file)).join(', ');
+    /** "Applied: a, b." - the files by name, between the sentence's own words. */
+    const naming = (lead: string, files: MigrationFile[], tail: string): Piece[] => [
+      { text: lead, file: false },
+      ...files.flatMap((file, index) => [...(index ? said(', ') : []), { text: this.label(file), file: true }]),
+      { text: tail, file: false },
+    ];
     const note = result.note || null;
 
     if (result.failed) {
+      const rolledBack = ' The failed file was rolled back as a whole.';
       return {
         tone: 'danger',
         heading: `Stopped at ${this.label(result.failed)}`,
-        text: (result.applied.length ? `Applied first: ${names(result.applied)}.` : 'Nothing was applied.') + ' The failed file was rolled back as a whole.',
+        text: result.applied.length ? naming('Applied first: ', result.applied, '.' + rolledBack) : said('Nothing was applied.' + rolledBack),
         error: result.error,
         note,
       };
     }
     if (result.error) {
-      return { tone: 'danger', heading: 'Nothing was applied.', text: result.error, error: null, note };
+      return { tone: 'danger', heading: 'Nothing was applied.', text: said(result.error), error: null, note };
     }
     if (result.applied.length) {
-      return { tone: 'success', heading: 'Up to date', text: `Applied: ${names(result.applied)}.`, error: null, note };
+      return { tone: 'success', heading: 'Up to date', text: naming('Applied: ', result.applied, '.'), error: null, note };
     }
-    return { tone: 'info', heading: null, text: 'There was nothing to apply.', error: null, note };
+    return { tone: 'info', heading: null, text: said('There was nothing to apply.'), error: null, note };
   }
 }

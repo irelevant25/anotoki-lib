@@ -74,7 +74,7 @@ final class TranslationsCommandTest extends DatabaseTestCase
         $out = $this->written();
         self::assertStringContainsString("Used by the frontend, not in the database - the page shows the key itself:\n    home.missing\n        home.component.html:2\n", $out);
         self::assertStringContainsString("No English string, so nothing to fall back to:\n    home.bare\n", $out);
-        self::assertStringContainsString("Stored as a save would not take them - reword them in the admin pages:\n    anotoki.language.button (en): placeholder_changed - The English string of \"anotoki.language.button\" must keep {code}: the page puts a value there\n", $out);
+        self::assertStringContainsString("Stored as a save would not take them - reword them in the admin pages:\n    anotoki.language.button (en): placeholder_changed - The English string of \"anotoki.language.button\" must keep {code}: the page puts a value there.\n", $out);
         self::assertStringEndsWith("  Not clean.\n", $out);
     }
 
@@ -136,6 +136,18 @@ final class TranslationsCommandTest extends DatabaseTestCase
         self::assertStringContainsString('Refused (not_found)', $this->errors());
         self::assertSame(1, $this->command()->run(['translations.php', '--import', 'sk', $this->path('none.json')]));
         self::assertStringContainsString('There is no file', $this->errors());
+
+        // Keys that are numbers - an object's, or a list's items - as the admin pages' import says them: keys the site does not have.
+        $said = [
+            '{"0": "Domov"}' => 'The site has no key "0".',
+            '["Domov", "x"]' => 'The site has no such keys: "0", "1".',
+        ];
+        foreach ($said as $content => $refusal) {
+            file_put_contents($file, $content);
+            self::assertSame(1, $this->command()->run(['translations.php', '--import', 'sk', $file]), $content);
+            self::assertStringStartsWith("  Refused (unknown_key): $refusal Keys are made by the code, never here.\n", $this->errors(), $content);
+        }
+        self::assertSame([], $this->audited);
     }
 
     public function testWhatItRefusesBeforeAnything(): void

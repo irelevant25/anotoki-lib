@@ -59,12 +59,51 @@ final class StringCheckTest extends TestCase
 
     public function testNotKeyByLanguageIsRefused(): void
     {
-        foreach ([null, 'text', 12, ['a', 'b'], true] as $values) {
+        foreach ([null, 'text', 12, true] as $values) {
             self::assertSame(['invalid_value', []], $this->refused($values), json_encode($values));
         }
         self::assertSame([], $this->checked([]), 'nothing to save');
         self::assertSame(['invalid_value', ['key' => 'common.save']], $this->refused(['common.save' => 'Save']));
         self::assertSame(['invalid_value', ['key' => 'common.save']], $this->refused(['common.save' => false]), 'what a route puts for a list');
+    }
+
+    public function testAKeyThatIsANumberIsAKeyTheSiteDoesNotHaveWhateverShapePhpGaveIt(): void
+    {
+        // {"0": …} reaches PHP as a list, and a list's items are numbered: keys, never another shape of body.
+        self::assertSame(['unknown_key', ['key' => '0', 'keys' => ['0']]], $this->refused([0 => ['sk' => 'Ulož']]));
+        self::assertSame(['unknown_key', ['key' => '0', 'keys' => ['0', '1']]], $this->refused(['a', 'b']), 'a list of anything');
+        self::assertSame(['unknown_key', ['key' => 'no.such', 'keys' => ['no.such']]], $this->refused(['no.such' => 'x']), 'said before what came with it');
+        // The same by language: a list of strings is languages numbered.
+        self::assertSame(['unknown_language', ['key' => 'common.save', 'language' => '0']], $this->refused(['common.save' => ['Ulož']]));
+    }
+
+    public function testEveryRefusalIsASentenceWithItsFullStop(): void
+    {
+        $config = new TranslationsConfig(rules: [new RequiredPlaceholders(['test.step' => ['n']])]);
+        foreach ([
+            null,
+            ['common.save' => 'Save'],
+            ['no.such' => ['en' => 'x']],
+            ['no.such' => ['en' => 'x'], 'nor.this' => ['en' => 'y']],
+            ['common.save' => ['hu' => 'Mentés']],
+            ['common.save' => ['sk' => 12]],
+            ['common.save' => ['en' => ' ']],
+            ['common.save' => ['sk' => str_repeat('a', 2001)]],
+            ['common.save' => ['sk' => 'Ulož {']],
+            ['test.step' => ['sk' => 'Krok { n }']],
+            ['test.hello' => ['en' => 'Hello']],
+            ['test.hello' => ['en' => 'Hello, {name} and {who}']],
+            ['test.hello' => ['sk' => 'Ahoj, {meno}']],
+            ['test.step' => ['sk' => 'Krok z {m}']],
+        ] as $values) {
+            $message = $this->message($values, $config);
+            self::assertStringEndsWith('.', $message, json_encode($values));
+        }
+        foreach ([12, " \u{200B}", str_repeat('x', 51), "Line\nbreak"] as $name) {
+            $refusal = StringCheck::languageName($name, 'The name in English', 'name', new TranslationsConfig());
+            self::assertInstanceOf(Refusal::class, $refusal);
+            self::assertStringEndsWith('.', $refusal->message, json_encode($name));
+        }
     }
 
     public function testUnknownKeysAreNamedEveryOne(): void

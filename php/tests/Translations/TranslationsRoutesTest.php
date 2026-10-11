@@ -85,7 +85,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         foreach (['EN', 'en-GB', 'en_gb', 'english', '%C3%28'] as $code) {
             $response = $this->request($app, 'GET', "/api/translations/$code");
             self::assertSame(404, $response->getStatusCode(), $code);
-            self::assertSame(['code' => 'not_found', 'message' => 'There is no such language'], $this->json($response));
+            self::assertSame(['code' => 'not_found', 'message' => 'There is no such language.'], $this->json($response));
         }
         self::assertSame(0, $this->built, 'the translations were never even built');
     }
@@ -119,7 +119,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         TranslationsRoutes::bundle($app, fn (): Translations => new Translations($this->pdo), $iamError);
         TranslationsRoutes::strings($app, '/api/admin', fn (): Translations => new Translations($this->pdo), static fn (): ?int => 1, $iamError);
 
-        self::assertSame('{"error":"There is no such language","code":"not_found"}', (string) $this->request($app, 'GET', '/api/translations/EN')->getBody());
+        self::assertSame('{"error":"There is no such language.","code":"not_found"}', (string) $this->request($app, 'GET', '/api/translations/EN')->getBody());
         $refused = $this->request($app, 'PUT', '/api/admin/translations', [], ['values' => ['no.such' => ['en' => 'x']]]);
         self::assertSame(422, $refused->getStatusCode());
         self::assertSame(['error' => 'The site has no key "no.such". Keys are made by the code, never here.', 'code' => 'unknown_key', 'key' => 'no.such', 'keys' => ['no.such']], $this->json($refused));
@@ -228,6 +228,30 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame([['translations.imported', 'language', 'sk', ['languages' => ['sk'], 'count' => 1, 'keys' => ['common.save']], '']], $this->audited);
         self::assertSame(422, $this->request($app, 'PUT', '/api/admin/translations/sk/import', [], ['no.such' => 'x'])->getStatusCode());
         self::assertSame(404, $this->request($app, 'PUT', '/api/admin/translations/de/import', [], ['common.save' => 'x'])->getStatusCode());
+    }
+
+    public function testAFileWhoseKeysAreNumbersOrAListIsKeysTheSiteDoesNotHave(): void
+    {
+        $app = $this->app();
+        $import = fn (string $body): ResponseInterface => $this->raw($app, 'PUT', '/api/admin/translations/sk/import', $body);
+
+        // Piano Academy's find: PHP makes a list of {"0": …}, which was refused as a body of another shape.
+        foreach (['{"0": "Uložiť"}' => ['0'], '{"0": "a", "1": "b"}' => ['0', '1'], '["a", "b"]' => ['0', '1'], '{"common.save": "Ulož", "7": "x"}' => ['7']] as $body => $keys) {
+            $response = $import($body);
+            $answer = $this->json($response);
+            self::assertSame([422, 'unknown_key', $keys], [$response->getStatusCode(), $answer['code'] ?? null, $answer['keys'] ?? null], $body);
+            self::assertStringEndsWith('Keys are made by the code, never here.', $answer['message'], $body);
+        }
+        // Not an object nor a list of anything: a body of another shape.
+        foreach (['[]', '"Uložiť"', '12', 'true', 'null'] as $body) {
+            $response = $import($body);
+            self::assertSame([422, 'invalid_value'], [$response->getStatusCode(), $this->json($response)['code'] ?? null], $body);
+            self::assertSame('Send the strings as one flat object: {key: text}.', $this->json($response)['message'], $body);
+        }
+        // A save's strings keyed "0": the same.
+        $saved = $this->raw($app, 'PUT', '/api/admin/translations', '{"values": {"0": {"sk": "x"}}}');
+        self::assertSame([422, 'unknown_key'], [$saved->getStatusCode(), $this->json($saved)['code'] ?? null]);
+        self::assertSame([], $this->audited);
     }
 
     // ─── The languages ──────────────────────────────────────────────────────

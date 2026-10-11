@@ -336,7 +336,7 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     expect(applyButton().disabled).toBe(true);
   });
 
-  it('two sets: a heading for each, and every file named with its set', async () => {
+  it('two sets of the site’s own (genshin’s): every file named with its set, the same in every card', async () => {
     setUp();
     await load({
       sets: ['users', 'genshin_impact'],
@@ -351,9 +351,8 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
       missing: [],
     });
 
-    // Each set by its name - the name its files are recorded under - never a folder: a site's folder is not its set's name.
-    expect(Array.from(host.querySelectorAll('[data-pending] h3')).map(words)).toEqual(['users', 'genshin_impact']);
-    expect(rows('[data-pending]')).toEqual(['041_news.sql pending', '052_weapons.sql pending']);
+    expect(host.querySelector('[data-pending] h3')).toBeNull();
+    expect(rows('[data-pending]')).toEqual(['users/041_news.sql pending', 'genshin_impact/052_weapons.sql pending']);
     expect(rows('[data-applied]')).toEqual(['users/001_initial_schema.sql on 2026-01-01 View', 'genshin_impact/001_initial_schema.sql on 2026-01-02 View']);
 
     await apply(
@@ -362,6 +361,67 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     );
     expect(text('[data-result] .anotoki-alert__heading')).toBe('Stopped at genshin_impact/052_weapons.sql');
     expect(text('[data-result] .anotoki-migrations-page__result-text')).toBe('Applied first: users/041_news.sql. The failed file was rolled back as a whole.');
+  });
+
+  it('a site’s set and the library’s: each file as the bookkeeping table records it, one form in Pending and Applied, a line free to break at the slash and between words', async () => {
+    setUp();
+    await load({
+      sets: ['academy', 'anotoki_translations'],
+      applied: [
+        { set: 'academy', name: '005_visitors.sql', applied_at: '2026-01-01T00:00:00Z' },
+        { set: 'anotoki_translations', name: '001_languages_and_strings.sql', applied_at: '2026-01-02T00:00:00Z' },
+      ],
+      pending: [
+        { set: 'academy', name: '006_exam_attempts.sql', ready: true, blocked: false },
+        { set: 'anotoki_translations', name: '003_sign_in_words.sql', ready: true, blocked: false },
+      ],
+      missing: [{ set: 'gone', name: '001_old.sql', applied_at: '2026-01-01T00:00:00Z' }],
+    });
+
+    // The site's own by its name alone, the library's with its set: as the engine records each, the same in every card.
+    expect(rows('[data-pending]')).toEqual(['006_exam_attempts.sql pending', 'anotoki_translations/003_sign_in_words.sql pending']);
+    expect(rows('[data-applied]')).toEqual(['005_visitors.sql on 2026-01-01 View', 'anotoki_translations/001_languages_and_strings.sql on 2026-01-02 View']);
+    // A set the site no longer has: by its set too.
+    expect(rows('[data-missing]')).toEqual(['gone/001_old.sql']);
+    expect(host.querySelector('[data-applied] button')?.getAttribute('aria-label')).toBe('View 005_visitors.sql');
+
+    // A line may break after the slash and between the words, and nowhere else: nothing is added to the name itself.
+    const name = host.querySelectorAll('[data-pending] .anotoki-migrations-page__name')[1];
+    expect(name.textContent).toBe('anotoki_translations/003_sign_in_words.sql');
+    expect(Array.from(name.querySelectorAll('span'), (part) => part.textContent)).toEqual(['anotoki_', 'translations/', '003_', 'sign_', 'in_', 'words.sql']);
+    expect(Array.from(name.children, (part) => part.localName).join(' ')).toBe('span wbr span wbr span wbr span wbr span wbr span');
+
+    // The sentences of an Apply name the files the same way.
+    await apply(
+      (request) =>
+        request.flush({
+          applied: [
+            { set: 'academy', name: '006_exam_attempts.sql' },
+            { set: 'anotoki_translations', name: '003_sign_in_words.sql' },
+          ],
+          failed: null,
+          error: null,
+          note: null,
+        }),
+      { sets: ['academy', 'anotoki_translations'], applied: [], pending: [], missing: [] },
+    );
+    const sentence = host.querySelector('[data-result] .anotoki-migrations-page__result-text')!;
+    expect(sentence.textContent?.trim()).toBe('Applied: 006_exam_attempts.sql, anotoki_translations/003_sign_in_words.sql.');
+    // 006_exam_attempts.sql: 2 breaks; anotoki_translations/003_sign_in_words.sql: 5.
+    expect(sentence.querySelectorAll('wbr')).toHaveLength(7);
+  });
+
+  it('a site with no set of its own read: a record of no set is its name', async () => {
+    setUp();
+    await load({
+      sets: ['anotoki_translations'],
+      applied: [{ set: 'anotoki_translations', name: '001_languages_and_strings.sql', applied_at: '2026-01-02T00:00:00Z' }],
+      pending: [],
+      missing: [{ set: '', name: '001_initial.sql', applied_at: '2026-01-01T00:00:00Z' }],
+    });
+
+    expect(rows('[data-applied]')).toEqual(['anotoki_translations/001_languages_and_strings.sql on 2026-01-02 View']);
+    expect(rows('[data-missing]')).toEqual(['001_initial.sql']);
   });
 
   it('Missing: listed only when a recorded file is not here', async () => {

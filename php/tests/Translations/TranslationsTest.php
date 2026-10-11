@@ -407,8 +407,13 @@ final class TranslationsTest extends DatabaseTestCase
 
         self::assertSame(['languages' => [], 'count' => 0, 'keys' => []], $words->import('en', ['common.save' => ''], null), 'English too');
         self::assertSame('unknown_key', $words->import('sk', ['no.such' => ''], null)->code, 'a key the site does not have, empty or not');
-        self::assertSame('invalid_value', $words->import('sk', ['a', 'b'], null)->code);
+        // A list, or an object whose keys are numbers ({"0": …}, a list once PHP has it): keys the site does not have.
+        $numbered = $words->import('sk', ['a', 'b'], null);
+        self::assertSame(['unknown_key', ['0', '1']], [$numbered->code, $numbered->extra['keys']]);
+        self::assertSame('unknown_key', $words->import('sk', [0 => 'Uložiť'], null)->code);
+        self::assertSame('unknown_key', $words->import('sk', [0 => ''], null)->code, 'empty or not');
         self::assertSame('invalid_value', $words->import('sk', null, null)->code);
+        self::assertSame('invalid_value', $words->import('sk', 'text', null)->code);
         self::assertSame('invalid_value', $words->import('sk', ['common.save' => ['x']], null)->code);
         self::assertSame('not_found', $words->import('de', [], null)->code);
     }
@@ -451,8 +456,8 @@ final class TranslationsTest extends DatabaseTestCase
         $this->pdo->exec("UPDATE translations SET value = 'Ahoj, {meno}' WHERE key_name = 'test.hello' AND language_code = 'sk'");
 
         self::assertSame([
-            ['key' => 'anotoki.language.button', 'language' => 'en', 'code' => 'placeholder_changed', 'message' => 'The English string of "anotoki.language.button" must keep {code}: the page puts a value there'],
-            ['key' => 'test.hello', 'language' => 'sk', 'code' => 'unknown_placeholder', 'message' => 'The Slovak string of "test.hello" uses {meno}, which its English string does not have'],
+            ['key' => 'anotoki.language.button', 'language' => 'en', 'code' => 'placeholder_changed', 'message' => 'The English string of "anotoki.language.button" must keep {code}: the page puts a value there.'],
+            ['key' => 'test.hello', 'language' => 'sk', 'code' => 'unknown_placeholder', 'message' => 'The Slovak string of "test.hello" uses {meno}, which its English string does not have.'],
         ], $this->words()->storedRefusals());
         self::assertSame(['common.close'], $this->words()->keysWithout('sk'), 'the one key Slovak has no string for');
         self::assertContains('common.save', $this->words()->keyNames());

@@ -78,6 +78,12 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
     expect(host.querySelector('[data-translations-link]')?.getAttribute('href')).toBe('/admin/translations');
   });
 
+  it('takes the width the site’s panel gives it, as the Translations page does: no cap of its own', async () => {
+    await open();
+    const page = host.querySelector<HTMLElement>('.anotoki-translations-admin__page')!;
+    expect(['', 'none']).toContain(getComputedStyle(page).getPropertyValue('max-width'));
+  });
+
   describe('a row', () => {
     it('saves only what changed of its names and its place - Undo puts them back - and the site reads its languages again', async () => {
       await open();
@@ -247,6 +253,12 @@ describe('<anotoki-languages-page>: the languages the site can be read in', () =
           .find((element) => words(element.querySelector('label')) === label)!
           .querySelector<HTMLInputElement>('input')!;
       const add = () => host.querySelector<HTMLButtonElement>('[data-add]')!;
+
+      // The hint as the check reads a code: a region after a dash, as its own example has.
+      expect(words(form.querySelector('.anotoki-field__hint'))).toBe('Two small letters, a region after a dash if needed: cs, de, pt-br');
+      type(input('Code'), 'pt-br');
+      await settle(fixture);
+      expect(form.querySelector('.anotoki-field__error')).toBeNull();
 
       type(input('Code'), 'German');
       type(input('Name in English'), 'German');

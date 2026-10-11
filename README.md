@@ -602,10 +602,14 @@ provideAppInitializer(() => inject(SiteStatus).check()),   // early in the boot;
   buttons (the quiet Sign in: a link button, 44 px high).
 - `<anotoki-update-banner>` - the IAM's one line for its administrators.
 - `<anotoki-migrations-page>` (`@anotoki/lib/migrations/page`) - the admin page
-  (English; for the site's ADMIN only), drawn with the kit: Pending (with
-  drafts; with more than one set, each headed by its name - `iam`,
-  `anotoki_translations` - never a folder), Applied (with each file's SQL in a
-  dialog), Missing, and "Apply pending" behind a question whose focus starts on Cancel.
+  (English; for the site's ADMIN only), drawn with the kit: Pending (in the
+  order they run, with drafts), Applied (with each file's SQL in a dialog),
+  Missing, and "Apply pending" behind a question whose focus starts on Cancel.
+  Every file is named as its set's records name it, the same in every card and
+  in what an Apply did: the site's one set's by the file's name alone, every
+  other with its set (`anotoki_translations/003_sign_in_words.sql`; genshin's
+  two sets, `users/041_news.sql`). A name breaks after its slash or between its
+  words (`<wbr>`, which adds nothing to its text), never inside a word.
 
 A site that does not block while an update waits (the IAM, `blockWhilePending:
 false`) puts **no** gate around its outlet and does not ask at boot: the status
@@ -724,16 +728,27 @@ of the Migrations page; everything else is new.
      its full wordmark still fits and passes it, and keeps "anotoki <area>" above.
      No site passes one below its `phoneMax` today, so nothing moves by itself.
    - A field takes `invalid` (aria-invalid and the edge, no message).
-   - The Migrations page heads each set by its name: a spec that reads
-     `migrations/<set>/` in `[data-pending] h3` reads `<set>`.
+   - The Migrations page names a file as its set's records do, in Pending as in
+     Applied: Pending is one list in the order the files run, with no heading for
+     a set (`[data-pending] h3` is gone), and a file of any set but the site's one
+     reads `<set>/<file>` there too (`anotoki_translations/003_sign_in_words.sql`).
+     A spec that reads a name by its `textContent` reads it whole.
    - The translations admin pages: `admin.allows.importStrings`, `addLanguages`
      and `deleteLanguages`, each as its page's permission unless the site says
      otherwise (the survey: `deleteLanguages: () => auth.isAdmin()`); the
      Translations page's note about what is typed no longer mentions signing out;
-     no `beforeunload` question once nobody is signed in.
+     no `beforeunload` question once nobody is signed in. The Languages page
+     takes the width the site's panel gives it (it stopped at 60rem), and its
+     code's hint reads "Two small letters, a region after a dash if needed: cs,
+     de, pt-br".
    - The PHP half's `invalid_placeholder` for a key with no placeholders reads
      "… has a { or }, and its English string has no placeholders: a brace belongs
      only around a placeholder, so take it out." (a test reading the message).
+   - The PHP half's refusals end with a full stop, as the family's others do
+     (`StringCheck`'s, `Translations`' and `RequiredPlaceholders`'): a test that
+     reads a whole message adds it. An import or a save whose keys are numbers - a
+     JSON list, `{"0": "…"}` - is refused `unknown_key` naming them, as any key the
+     site does not have; it was `invalid_value`.
 
 ## Translations (0.3.0)
 
@@ -833,13 +848,15 @@ TranslationsRoutes::languages($app, '/api/admin', $translations, $error, $audit)
   `FOR UPDATE`; its strings cascade), `grid()`, `save($values, $userId)` (one
   transaction; a string sent as it is keeps its writer and time; a blank one in
   another language goes; the IAM's audit summary), `export()`, `import()` (a flat
-  `{key: text}`; a blank is passed over, an unknown key refused),
+  `{key: text}`; a blank is passed over, an unknown key refused - a number too,
+  as a JSON list's items or `{"0": …}` come: `unknown_key`),
   `forgetWriter($id)`, `storedRefusals()`, `keyNames()`, `keysWithout($code)`.
   None of them throws for a refusal: they answer a `Support\Refusal` (status,
   code, message, extra).
 - `StringCheck::changes()` - the IAM's checks in the IAM's order, the changes
   sorted by key and language (one lock order for every save): `invalid_value`,
-  `unknown_key` (+ `keys`), `unknown_language`, `fallback_required`,
+  `unknown_key` (+ `keys`; a key is read as a name, so a number PHP made of one
+  is a key the site does not have), `unknown_language`, `fallback_required`,
   `invalid_placeholder`, `placeholder_changed`, `unknown_placeholder`, and what a
   site's rules add. Text is measured as the browser does (`Text`: its `trim()`
   set, blank when nothing is to be seen, code points); a run of a million spaces

@@ -248,8 +248,16 @@ final class CliTest extends TestCase
         self::assertSame(['a.b' => 'x'], TranslationFile::read("{$this->root}/sk.json"));
         $this->write('bom.json', "\u{FEFF}{\"a.b\": \"y\"}");
         self::assertSame(['a.b' => 'y'], TranslationFile::read("{$this->root}/bom.json"), 'a byte-order mark is passed over');
+        // Keys that are numbers - an object's, a list's items - are judged where the strings are kept (unknown_key).
+        $this->write('numbers.json', '{"0": "x", "1": "y"}');
+        self::assertSame([0 => 'x', 1 => 'y'], TranslationFile::read("{$this->root}/numbers.json"));
+        $this->write('list.json', '["a", "b"]');
+        self::assertSame([0 => 'a', 1 => 'b'], TranslationFile::read("{$this->root}/list.json"));
+        $this->write('empty.json', '{}');
+        self::assertSame([], TranslationFile::read("{$this->root}/empty.json"));
 
-        foreach (['nothing.json' => null, 'broken.json' => '{', 'list.json' => '["a"]'] as $name => $content) {
+        $shapes = ['nothing.json' => null, 'broken.json' => '{', 'empty-list.json' => '[]', 'text.json' => '"a"', 'number.json' => '12', 'null.json' => 'null'];
+        foreach ($shapes as $name => $content) {
             if ($content !== null) {
                 $this->write($name, $content);
             }

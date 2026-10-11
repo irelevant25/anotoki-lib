@@ -297,6 +297,19 @@ export function createAuthClient(options: AnotokiAuthOptions, environment: Anoto
     return location.origin === target.origin && location.pathname === target.pathname && params.has('state') && (params.has('code') || params.has('error'));
   }
 
+  /**
+   * The sign-in this callback finishes, read and left in place (its own part takes it): whether it was the hint's
+   * silent hop, and where it was to go back to. Null where there is none to read.
+   */
+  function pendingOf(state: string): PendingSignIn | null {
+    try {
+      const pending = JSON.parse(sessionStorage.getItem(pendingPrefix + state) ?? 'null') as PendingSignIn | null;
+      return pending && typeof pending === 'object' ? pending : null;
+    } catch {
+      return null;
+    }
+  }
+
   // ── the public surface ─────────────────────────────────────────────────────
 
   async function init(): Promise<AnotokiInitResult> {
@@ -305,7 +318,14 @@ export function createAuthClient(options: AnotokiAuthOptions, environment: Anoto
       try {
         result = await (await sessionParts()).finishCallback(parts);
       } catch {
-        result = { returnTo: '/', error: authError('network', 'The sign-in could not be finished: a part of the page did not load'), silent: false };
+        // The part that finishes it did not load. The hint's silent hop stays silent - a visitor is never shown
+        // a failure of a sign-in they did not ask for - and either goes back where it came from.
+        const pending = pendingOf(new URLSearchParams(location.search).get('state') ?? '');
+        result = {
+          returnTo: safeReturnTo(pending?.returnTo),
+          error: authError('network', 'The sign-in could not be finished: a part of the page did not load'),
+          silent: pending?.silent === true,
+        };
       }
       // The code and state are spent; they should not sit in the address bar, the history or a bookmark.
       history.replaceState(null, '', result.returnTo);

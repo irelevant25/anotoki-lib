@@ -65,6 +65,31 @@ describe('createAuthClient: a later part that does not load', () => {
     const result = await client.init();
 
     expect(result.error?.code).toBe('network');
+    expect(result.silent).toBe(false);
+    expect(location.pathname + location.search).toBe('/');
+  });
+
+  it("a callback of the hint's silent hop: silent still - a visitor sees no failure - and back where it was", async () => {
+    const pending = JSON.stringify({ verifier: 'v', nonce: 'n', returnTo: '/learn?lesson=4', createdAt: Date.now(), silent: true });
+    sessionStorage.setItem('anotoki-auth:site:login:s', pending);
+    history.replaceState(null, '', '/auth/callback?code=c&state=s');
+    client = createAuthClient({ issuer: ISSUER, clientId: 'site', redirectUri: `${location.origin}/auth/callback` }, { fetch: vi.fn() });
+
+    const result = await client.init();
+
+    expect(result).toMatchObject({ silent: true, returnTo: '/learn?lesson=4', error: { code: 'network' } });
+    expect(location.pathname + location.search).toBe('/learn?lesson=4');
+    expect(sessionStorage.getItem('anotoki-auth:site:login:s')).toBe(pending);
+  });
+
+  it('a callback of a sign-in somebody asked for: the failure said, and back to a page of the site only', async () => {
+    sessionStorage.setItem('anotoki-auth:site:login:s', JSON.stringify({ verifier: 'v', nonce: 'n', returnTo: '//evil.test/path', createdAt: Date.now() }));
+    history.replaceState(null, '', '/auth/callback?code=c&state=s');
+    client = createAuthClient({ issuer: ISSUER, clientId: 'site', redirectUri: `${location.origin}/auth/callback` }, { fetch: vi.fn() });
+
+    const result = await client.init();
+
+    expect(result).toMatchObject({ silent: false, returnTo: '/', error: { code: 'network' } });
     expect(location.pathname + location.search).toBe('/');
   });
 });

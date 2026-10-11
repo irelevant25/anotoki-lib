@@ -35,7 +35,7 @@
                     } @else {
                         @for (group of groups(); track group.set) {
                             @if (manySets()) {
-                                <h3 class="anotoki-migrations-page__set">migrations/{{ group.set }}/</h3>
+                                <h3 class="anotoki-migrations-page__set">{{ group.set }}</h3>
                             }
                             <ol class="anotoki-migrations-page__files">
                                 @for (file of group.files; track file.name) {

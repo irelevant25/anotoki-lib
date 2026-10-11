@@ -7,8 +7,13 @@
 /// warning-text (5.1:1 and 5.3:1 on success-soft / warning-soft), and
 /// border-strong, the edge of every control, at 3:1 on every ground in both
 /// themes (WCAG 1.4.11; the decorative `border` of cards and separators stays
-/// light). A site changes any colour, light and dark, and its font through
-/// root()'s options; everything it leaves alone keeps the family's value.
+/// light). danger-text is the ink of words that say something went wrong - a
+/// field's error, a refusal, a danger badge - at 4.5:1 at least on every ground
+/// and on danger-soft, in both themes (light 5.4:1, dark 5.2:1 at the least):
+/// `danger` is a fill (a button under white words), and a site's own red fill
+/// must not take its error words down to 3:1 with it. A site changes any
+/// colour, light and dark, and its font through root()'s options; everything
+/// it leaves alone keeps the family's value.
 ///
 /// The kit's components read every token through token(), whose fallback is
 /// the family's own value on light-dark(): a page that writes no tokens at all
@@ -45,6 +50,8 @@ $light: (
   danger-contrast: #ffffff,
   danger-soft: #fbeaec,
   danger-border: #f1c3c8,
+  // Words that say something went wrong: 5.4:1 on danger-soft, 5.7:1 on surface-3, more on the rest.
+  danger-text: #b42833,
   success: #177f4d,
   success-text: #147446,
   success-soft: #e6f4ec,
@@ -102,6 +109,8 @@ $dark: (
   danger-contrast: #1f0609,
   danger-soft: rgb(255 107 117 / 12%),
   danger-border: rgb(255 107 117 / 35%),
+  // 5.2:1 on surface-3, 5.5:1 on danger-soft, more on the rest.
+  danger-text: #ff6b75,
   success: #4cc38a,
   success-text: #4cc38a,
   success-soft: rgb(76 195 138 / 12%),

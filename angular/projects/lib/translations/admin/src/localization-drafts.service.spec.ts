@@ -100,4 +100,20 @@ describe('LocalizationDrafts: what the admin pages hold until it is saved', () =
     // Mirrored as the page goes, before it draws again.
     expect(stored()?.strings).toEqual({ 'theme.label': { sk: 'Farba' } });
   });
+
+  it('asks nothing once nobody is signed in: the page is on its way to the sign-in, and the drafts wait in the tab', () => {
+    const kept = drafts();
+    kept.strings.set({ 'theme.label': { sk: 'Farba' } });
+    person.set(null);
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(false);
+    expect(stored()).toEqual({ owner: '7', strings: { 'theme.label': { sk: 'Farba' } }, languages: {} });
+
+    // The same person back: asked again, before the tab closes.
+    person.set('7');
+    const asking = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(asking);
+    expect(asking.defaultPrevented).toBe(true);
+  });
 });

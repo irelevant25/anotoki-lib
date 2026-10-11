@@ -3,7 +3,7 @@
     <div
         class="anotoki-code-input__code"
         [class.anotoki-code-input__code--focused]="focused()"
-        [class.anotoki-code-input__code--invalid]="!!error()"
+        [class.anotoki-code-input__code--invalid]="isInvalid()"
         [class.anotoki-code-input__code--disabled]="disabled()">
         <div class="anotoki-code-input__cells" aria-hidden="true">
             @for (cell of cells(); track $index) {
@@ -27,7 +27,7 @@
             [value]="value()"
             [required]="required()"
             [disabled]="disabled()"
-            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
             [attr.aria-describedby]="describedBy()"
             (input)="onInput($event)"
             (focus)="onFocus()"

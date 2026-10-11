@@ -48,7 +48,7 @@
 
 :host([data-tone="danger"]) {
   --_bg: #{kit.token(danger-soft)};
-  --_fg: #{kit.token(danger)};
+  --_fg: #{kit.token(danger-text)};
   --_border: #{kit.token(danger-border)};
 }
 

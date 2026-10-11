@@ -5,7 +5,7 @@
             <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
         }
     </label>
-    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="!!error()" [class.anotoki-field__control--disabled]="disabled()">
+    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
         <textarea
             #control
             class="anotoki-field__input anotoki-textarea__multiline"
@@ -16,7 +16,7 @@
             [attr.maxlength]="maxlength()"
             [attr.placeholder]="placeholder() || null"
             [attr.spellcheck]="spellcheck()"
-            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
             [attr.aria-describedby]="describedBy()"
             [required]="required()"
             [readOnly]="readonly()"

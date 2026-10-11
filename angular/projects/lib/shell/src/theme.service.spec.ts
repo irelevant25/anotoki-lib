@@ -169,6 +169,39 @@ describe('ThemeService: light, dark or as the device is set - the account’s wh
     expect(theme.refused()).toBe(false);
   });
 
+  it('no note when the account went while the choice was on its way: signed out, or nobody signed in any more', async () => {
+    deviceScheme(false);
+    site.account.set('light');
+    const held = heldSaves();
+    const theme = service();
+
+    // Signed out (here, or in another tab) before the account answered: the save fails, and nobody refused it.
+    theme.set('dark');
+    site.account.set(null);
+    await settle();
+    held[0].reject();
+    await settle();
+    expect(theme.refused()).toBe(false);
+    expect(theme.mode()).toBe('dark');
+
+    // The account still on the page, but the save already says nobody is signed in (AnotokiAuth's login_required).
+    site.account.set('light');
+    await settle();
+    site.save.mockRejectedValueOnce(Object.assign(new Error('Nobody whose page this is is signed in'), { code: 'login_required' }));
+    theme.set('dark');
+    await settle();
+    expect(theme.refused()).toBe(false);
+    expect(theme.mode()).toBe('dark');
+
+    // A refusal said while the account is there goes with it, as soon as it goes.
+    site.save.mockRejectedValueOnce(Object.assign(new Error('refused'), { code: 'invalid_request' }));
+    theme.set('auto');
+    await settle();
+    expect(theme.refused()).toBe(true);
+    site.account.set(null);
+    expect(theme.refused()).toBe(false);
+  });
+
   it('a refused choice a later one has overtaken is not said', async () => {
     deviceScheme(false);
     site.account.set('light');

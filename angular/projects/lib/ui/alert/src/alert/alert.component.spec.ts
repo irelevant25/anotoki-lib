@@ -43,4 +43,15 @@ describe('<anotoki-alert>', () => {
     expect(alert.getAttribute('role')).toBe('status');
     fixture.nativeElement.remove();
   });
+
+  it('a heading that names a file longer than a phone is wide breaks, like the text under it', async () => {
+    TestBed.configureTestingModule({ providers: kitProviders() });
+    const fixture = await draw(AlertPageComponent);
+    fixture.componentInstance.heading.set('Stopped at anotoki_translations/003_sign_in_words_and_a_very_long_name.sql');
+    await settle(fixture);
+    const heading = fixture.nativeElement.querySelector('.anotoki-alert__heading') as HTMLElement;
+    expect(getComputedStyle(heading).getPropertyValue('overflow-wrap')).toBe('anywhere');
+    expect(getComputedStyle(fixture.nativeElement.querySelector('.anotoki-alert__text')).getPropertyValue('overflow-wrap')).toBe('anywhere');
+    fixture.nativeElement.remove();
+  });
 });

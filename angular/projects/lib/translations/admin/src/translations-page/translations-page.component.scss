@@ -419,7 +419,7 @@ $topbar: kit.token(topbar-height);
   display: inline-flex;
   align-items: flex-start;
   gap: 0.35rem;
-  color: kit.token(danger);
+  color: kit.token(danger-text);
 
   anotoki-icon {
     flex: none;

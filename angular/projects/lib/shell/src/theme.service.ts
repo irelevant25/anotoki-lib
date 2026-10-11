@@ -22,7 +22,11 @@ export type ResolvedTheme = 'light' | 'dark';
  * made here is being saved, when the account still answers with the earlier
  * one. A choice is shown at once and saved to the account, one save at a time
  * and the latest last (latestChoiceSaver); a refusal puts the account's theme
- * back and sets `refused` (the theme switch says so under itself).
+ * back and sets `refused` (the theme switch says so under itself) - only while
+ * there is an account: a save that fails because the account went meanwhile
+ * (signed out here or in another tab, the page's session ended: no account
+ * any more, or `login_required`, AnotokiAuth's word for nobody signed in) was
+ * refused by nobody, and the choice stays shown, this device's now.
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -43,19 +47,21 @@ export class ThemeService {
     const mode = this._mode();
     return mode === 'auto' ? (this.systemDark() ? 'dark' : 'light') : mode;
   });
-  /** The account did not take the last choice (its theme is shown again). */
-  readonly refused = this._refused.asReadonly();
+  /** The account did not take the last choice (its theme is shown again) - said only while there is an account. */
+  readonly refused = computed(() => this._refused() && this.account() !== null);
 
   private readonly save = latestChoiceSaver<AnotokiThemeMode>(
     (mode) => {
       const account = untracked(this.account);
       return account === null || account === mode || !this.config?.save ? Promise.resolve() : this.config.save(mode);
     },
-    () => {
+    (error) => {
       const account = untracked(this.account);
-      if (account) {
-        this.show(account);
+      if (account === null || (error as { code?: unknown } | null)?.code === 'login_required') {
+        // The account went while the choice was on its way: nobody refused it, and it stays shown.
+        return;
       }
+      this.show(account);
       this._refused.set(true);
     },
   );

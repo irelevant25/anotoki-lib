@@ -47,9 +47,12 @@
   min-width: 0;
 }
 
+// A heading may name a file ("Stopped at anotoki_translations/003_sign_in_words.sql"): one word longer than a
+// phone is wide breaks where it must, like the text under it, instead of pushing the page sideways.
 .anotoki-alert__heading {
   margin: 0;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .anotoki-alert__text {

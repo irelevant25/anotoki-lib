@@ -19,6 +19,10 @@
 //   brings words weighs neither on the kit's first loads nor on the translations module's.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
+// - Text, never markup: no bundle names one of the ways to put a string into a page as HTML, or to switch Angular's
+//   sanitizer off (HTML_SINK) - any spelling, on any line, a comment's too. The kit draws the sites' strings, which
+//   their administrators reword, and the IAM's deploy check refuses a release of the library whose bundles name one;
+//   this refuses it first, the same way.
 // - Floors: an entry point nothing is used of leaves nothing in a site's bundle. A site's build keeps a top-level call
 //   or `new` it is not told is pure - the Angular CLI marks them so in @angular/* alone - and everything it reads: the
 //   call is marked /* @__PURE__ */.
@@ -31,7 +35,7 @@
 // Run by `bun run build` (and so by CI and the release); exits 1 when a limit, a boundary, a floor or a first load is
 // broken.
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -307,6 +311,24 @@ for (const { name, file } of entries) {
 problems.push(...invalid);
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Text, never markup: every bundle the package ships (fesm2022/*.mjs, as the IAM's deploy check reads them), line by
+// line as it is - comments too - against the IAM's own pattern. The fix is code that draws text, never a spelling or
+// a comment that slips past this.
+
+const HTML_SINK = /innerHTML|outerHTML|insertAdjacentHTML|bypassSecurityTrust/i;
+const bundles = join(dist, "fesm2022");
+for (const bundleName of readdirSync(bundles).filter((file) => file.endsWith(".mjs"))) {
+    readFileSync(join(bundles, bundleName), "utf8")
+        .split(/\r?\n/)
+        .forEach((text, index) => {
+            const found = HTML_SINK.exec(text);
+            if (found) {
+                problems.push(`fesm2022/${bundleName}:${index + 1} names ${found[0]}: the library puts no string into a page as HTML and never switches Angular's sanitizer off (the IAM's deploy check refuses such a release).`);
+            }
+        });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Floors and first loads: the package as a site's production build takes it.
 const { JavaScriptTransformer } = require("@angular/build/private");
 if (typeof JavaScriptTransformer !== "function") {
@@ -458,4 +480,4 @@ if (problems.length) {
     console.error("\n" + problems.map((problem) => "check-package: " + problem).join("\n"));
     process.exit(1);
 }
-console.log("\ncheck-package: every entry point within its limits and boundaries, its CSS valid, nothing kept that is not used, every first load within its own.");
+console.log("\ncheck-package: every entry point within its limits and boundaries, its CSS valid, its strings text, nothing kept that is not used, every first load within its own.");

@@ -14,21 +14,22 @@ import { TextareaComponent } from './textarea/textarea.component';
   selector: 'anotoki-test-form',
   imports: [TextFieldComponent, TextareaComponent, PasswordFieldComponent, SelectComponent, CheckboxComponent, SwitchComponent, RadioGroupComponent, CodeInputComponent],
   template: `
-    <anotoki-text-field id="name" label="Name" [(value)]="name" name="name" autocomplete="name" [hint]="hint()" [error]="error()" required [optional]="optional()">
+    <anotoki-text-field id="name" label="Name" [(value)]="name" name="name" autocomplete="name" [hint]="hint()" [error]="error()" [invalid]="invalid()" required [optional]="optional()">
       <span fieldSuffix id="suffix">kg</span>
     </anotoki-text-field>
-    <anotoki-textarea id="bio" label="About you" [(value)]="bio" [disabled]="disabled()" [readonly]="true" required />
-    <anotoki-password-field id="password" label="Password" autocomplete="current-password" [(value)]="password">
+    <anotoki-textarea id="bio" label="About you" [(value)]="bio" [disabled]="disabled()" [readonly]="true" [invalid]="invalid()" required />
+    <anotoki-password-field id="password" label="Password" autocomplete="current-password" [(value)]="password" [invalid]="invalid()">
       <a labelAside href="/forgot" id="forgot">Forgot your password?</a>
     </anotoki-password-field>
-    <anotoki-select id="pick" label="Language" [options]="options" placeholder="Choose…" [(value)]="picked" hideLabel />
+    <anotoki-select id="pick" label="Language" [options]="options" placeholder="Choose…" [(value)]="picked" [invalid]="invalid()" hideLabel />
     <anotoki-checkbox id="keep" [(checked)]="keep" hint="On this browser only">Keep me signed in</anotoki-checkbox>
     <anotoki-switch id="mail" [(checked)]="mail" [busy]="busy()">News by mail</anotoki-switch>
     <anotoki-radio-group id="plan" label="Plan" [options]="plans" [(value)]="plan" />
-    <anotoki-code-input id="code" label="Code" [(value)]="code" (complete)="completed.push($event)" autofocus />
+    <anotoki-code-input id="code" label="Code" [(value)]="code" [invalid]="invalid()" (complete)="completed.push($event)" autofocus />
   `,
 })
 class FormComponent {
+  readonly invalid = signal(false);
   readonly name = signal('');
   readonly bio = signal('Hello');
   readonly password = signal('');
@@ -105,6 +106,33 @@ describe('@anotoki/lib/ui/forms: the fields', () => {
       expect(name.getAttribute('aria-invalid')).toBe('true');
       expect(name.getAttribute('aria-describedby')).toBe(error.id);
       expect(field('name').querySelector('.anotoki-field__hint')).toBeNull();
+    });
+
+    it('marked invalid without a message: aria-invalid and the edge, no error under it, the hint still tied to it', async () => {
+      const name = input('name');
+      expect(name.getAttribute('aria-invalid')).toBeNull();
+      expect(field('name').querySelector('.anotoki-field__control')?.classList).not.toContain('anotoki-field__control--invalid');
+
+      form.invalid.set(true);
+      await settle(fixture);
+      expect(name.getAttribute('aria-invalid')).toBe('true');
+      expect(field('name').querySelector('.anotoki-field__control')?.classList).toContain('anotoki-field__control--invalid');
+      expect(field('name').querySelector('.anotoki-field__error')).toBeNull();
+      expect(field('name').querySelector('[role="alert"]')).toBeNull();
+      expect(words(document.getElementById(name.getAttribute('aria-describedby')!))).toBe('As people see it');
+
+      // Every field with a control box takes it: the textarea, the password field, the select, the code input.
+      for (const id of ['bio', 'password', 'pick', 'code']) {
+        expect(input(id).getAttribute('aria-invalid'), id).toBe('true');
+        expect(field(id).querySelector('.anotoki-field__control--invalid, .anotoki-code-input__code--invalid'), id).not.toBeNull();
+        expect(field(id).querySelector('.anotoki-field__error'), id).toBeNull();
+      }
+
+      form.invalid.set(false);
+      form.error.set('Write a name.');
+      await settle(fixture);
+      expect(name.getAttribute('aria-invalid')).toBe('true');
+      expect(input('bio').getAttribute('aria-invalid')).toBeNull();
     });
 
     it('"optional" after the label, in the page language', async () => {

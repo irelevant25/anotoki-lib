@@ -120,7 +120,10 @@ type Waiting = 'signIn' | 'signOut' | null;
  * only the person's name gives way (hidden below `nameMin`). Each site
  * measures its own `phoneMax` with its real labels, in English and Slovak
  * plus a scrollbar; in development the bar warns when its row overflows above
- * it (a reminder to measure again).
+ * it (a reminder to measure again). A site whose bar folds wide (Piano
+ * Academy's at 1320 px) keeps the full wordmark in the folded bar down to
+ * where it fits - its measured `shortBrandMax` - and the bar warns as well
+ * when the folded row overflows with it.
  *
  * Its menus are the kit's (@anotoki/lib/ui/menu), with all of the family's
  * rules: the focus in, the arrows, Home and End, Escape back to the button,
@@ -181,7 +184,12 @@ export class TopBarComponent {
   readonly phoneMax = input(760);
   /** From this width (px) the person's name shows beside the initial; phoneMax + 201 by default. */
   readonly nameMin = input<number | null>(null);
-  /** Up to this width (px) the brand is short ("survey" with "admin panel" under it); phoneMax by default. */
+  /**
+   * Up to this width (px) the brand is short ("survey" with "admin panel" under it); phoneMax by default. Given, it
+   * alone decides: above phoneMax (the survey's admin panel, short up to 960 with its links still in the row), or
+   * below it - a folded bar with the full wordmark down to where "anotoki Piano Academy" still fits beside the
+   * language, the theme and the menu button (the site measures it, as it measures phoneMax).
+   */
   readonly shortBrandMax = input<number | null>(null);
   /** The row's width: 84rem, or 49rem for narrow pages; --anotoki-topbar-max-width overrides. */
   readonly width = input<'wide' | 'narrow'>('wide');
@@ -196,8 +204,8 @@ export class TopBarComponent {
   readonly phone: Signal<boolean> = mediaQuery(() => `(max-width: ${this.phoneMax()}px)`);
   /** Too narrow for the person's name: the initial alone. */
   protected readonly nameless = mediaQuery(() => `(max-width: ${(this.nameMin() ?? this.phoneMax() + 201) - 1}px)`);
-  private readonly shortBrandWidth = mediaQuery(() => `(max-width: ${this.shortBrandMax() ?? this.phoneMax()}px)`);
-  protected readonly shortBrand = computed(() => this.phone() || this.shortBrandWidth());
+  /** The brand short: up to shortBrandMax where the site gives it - above or below phoneMax - else up to phoneMax. */
+  protected readonly shortBrand = mediaQuery(() => `(max-width: ${this.shortBrandMax() ?? this.phoneMax()}px)`);
   protected readonly brandArea = computed(() => (this.shortBrand() ? (this.brand().short ?? this.brand().area) : this.brand().area));
 
   protected readonly initial = computed(() => ([...(this.person()?.name.trim() ?? '')][0] ?? '?').toUpperCase());
@@ -316,11 +324,18 @@ export class TopBarComponent {
         return;
       }
       const observer = new ResizeObserver(() => {
-        if (!warned && !untracked(this.phone) && row.scrollWidth > row.clientWidth + 1) {
-          warned = true;
-          const width = this.element.ownerDocument.documentElement.clientWidth;
-          console.warn(`<anotoki-top-bar>: the row overflows at ${width} px, above phoneMax (${untracked(this.phoneMax)} px). Measure the site's PHONE_BAR_MAX again with its real labels.`);
+        // The phone's bar with the short brand is what a narrow window gets: nothing to measure there.
+        const folded = untracked(this.phone);
+        if (warned || (folded && untracked(this.shortBrand)) || row.scrollWidth <= row.clientWidth + 1) {
+          return;
         }
+        warned = true;
+        const width = this.element.ownerDocument.documentElement.clientWidth;
+        console.warn(
+          folded
+            ? `<anotoki-top-bar>: the folded row overflows at ${width} px with the full wordmark, above shortBrandMax (${untracked(this.shortBrandMax)} px). Measure the site's shortBrandMax again with its real labels.`
+            : `<anotoki-top-bar>: the row overflows at ${width} px, above phoneMax (${untracked(this.phoneMax)} px). Measure the site's PHONE_BAR_MAX again with its real labels.`,
+        );
       });
       observer.observe(row);
       destroyRef.onDestroy(() => observer.disconnect());

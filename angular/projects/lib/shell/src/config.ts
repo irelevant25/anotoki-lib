@@ -24,7 +24,10 @@ export interface AnotokiShellConfig {
      * IAM before the preferences: then the device's choice is shown and nothing is saved.
      */
     account?: () => AnotokiThemeMode | null;
-    /** Saves a choice to the account (the SDK's savePreferences({ theme }), the IAM's own API); rejects when the account refuses it. */
+    /**
+     * Saves a choice to the account (the SDK's savePreferences({ theme }), the IAM's own API); rejects when the account
+     * refuses it. A rejection whose `code` is `login_required` - nobody signed in any more - is no refusal: no note.
+     */
     save?: (mode: AnotokiThemeMode) => Promise<unknown>;
     /** <meta name="theme-color"> per theme shown; the family's page backgrounds by default. */
     themeColor?: { light: string; dark: string };

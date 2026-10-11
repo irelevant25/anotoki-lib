@@ -5,7 +5,7 @@
             <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
         }
     </label>
-    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="!!error()" [class.anotoki-field__control--disabled]="disabled()">
+    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
         <ng-content select="[fieldPrefix]" />
         <input
             #control
@@ -24,7 +24,7 @@
             [attr.pattern]="pattern() || null"
             [attr.spellcheck]="spellcheck()"
             [attr.autocapitalize]="autocapitalize() || null"
-            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
             [attr.aria-describedby]="describedBy()"
             [required]="required()"
             [readOnly]="readonly()"

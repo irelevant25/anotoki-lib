@@ -351,7 +351,8 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
       missing: [],
     });
 
-    expect(Array.from(host.querySelectorAll('[data-pending] h3')).map(words)).toEqual(['migrations/users/', 'migrations/genshin_impact/']);
+    // Each set by its name - the name its files are recorded under - never a folder: a site's folder is not its set's name.
+    expect(Array.from(host.querySelectorAll('[data-pending] h3')).map(words)).toEqual(['users', 'genshin_impact']);
     expect(rows('[data-pending]')).toEqual(['041_news.sql pending', '052_weapons.sql pending']);
     expect(rows('[data-applied]')).toEqual(['users/001_initial_schema.sql on 2026-01-01 View', 'genshin_impact/001_initial_schema.sql on 2026-01-02 View']);
 

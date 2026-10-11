@@ -434,6 +434,26 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       expect(host.querySelector('.anotoki-brand__wordmark')?.classList).toContain('anotoki-brand__wordmark--has-panel');
     });
 
+    it('shortBrandMax below phoneMax: the folded bar keeps the full wordmark down to it (a bar that folds wide, Piano Academy’s)', async () => {
+      await draw(600);
+      page.brand.set({ ...SURVEY, area: 'Piano Academy', short: 'Piano' });
+      page.shortBrandMax.set(480);
+      await settle(fixture);
+      expect(phoneButton()).not.toBeNull();
+      expect(host.querySelector('.anotoki-top-bar__nav')).toBeNull();
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['anotoki', 'Piano Academy']);
+      expect(host.querySelector('.anotoki-brand__wordmark')?.classList).not.toContain('anotoki-brand__wordmark--short');
+
+      window.resize(480);
+      await settle(fixture);
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['Piano']);
+      page.shortBrandMax.set(null);
+      window.resize(600);
+      await settle(fixture);
+      // phoneMax by default: short whenever the bar is folded.
+      expect(parts('anotoki-brand .anotoki-brand__wordmark > span')).toEqual(['Piano']);
+    });
+
     it('holds the links, a separator and the person’s menu: the focus in, the arrows, Home, Escape back to its button', async () => {
       await draw(360);
       await at('/admin/translations');
@@ -612,6 +632,37 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     report!();
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0][0])).toContain('phoneMax (760 px)');
+    warn.mockRestore();
+  });
+
+  it('in development, says once when the folded row overflows with the full wordmark - never for the short one', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const reports: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          reports.push(callback);
+        }
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+    await draw(390);
+    const overflowing = (): void => {
+      const row = host.querySelector<HTMLElement>('.anotoki-top-bar__row')!;
+      Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 420 });
+      Object.defineProperty(row, 'clientWidth', { configurable: true, value: 380 });
+      reports.forEach((report) => report());
+    };
+    overflowing();
+    expect(warn).not.toHaveBeenCalled();
+
+    page.shortBrandMax.set(360);
+    await settle(fixture);
+    overflowing();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('above shortBrandMax (360 px)');
     warn.mockRestore();
   });
 });

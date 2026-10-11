@@ -81,7 +81,11 @@ function storedDrafts(text: string | null): StoredDrafts | null {
  * them. With no way to tell who is signed in, they are kept for the tab.
  *
  * The one `beforeunload` question for both pages is asked here: closing the
- * tab loses the drafts, whichever page is showing - or none.
+ * tab loses the drafts, whichever page is showing - or none. Never once nobody
+ * is signed in (`account.userKey()` null), as the pages' route guard: the page
+ * then leaves for the IAM's sign-in - the session ended, or the person signed
+ * out - and the drafts are in the tab's storage already, for the same person
+ * signing in again; a question there would only stand between them and it.
  */
 @Injectable({ providedIn: 'root' })
 export class LocalizationDrafts {
@@ -129,7 +133,7 @@ export class LocalizationDrafts {
     const leaving = (): void => this.mirror();
     const warn = (event: BeforeUnloadEvent): void => {
       this.mirror();
-      if (this.count() > 0) {
+      if (this.count() > 0 && untracked(this.person) !== null) {
         event.preventDefault();
         event.returnValue = '';
       }

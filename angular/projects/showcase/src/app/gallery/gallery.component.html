@@ -62,6 +62,9 @@
                 </div>
             </anotoki-alert>
             <anotoki-alert tone="danger" heading="Signing in did not work">The password does not match this address.</anotoki-alert>
+            <anotoki-alert tone="danger" heading="Stopped at anotoki_translations/003_sign_in_words_and_their_descriptions.sql">
+                Applied first: 012_people.sql. The failed file was rolled back as a whole.
+            </anotoki-alert>
             <div class="grid-2">
                 <anotoki-card>
                     <anotoki-empty-state icon="users" heading="Nobody here yet" text="People appear as they answer.">
@@ -141,6 +144,15 @@
                 <span fieldSuffix class="unit">EUR</span>
             </anotoki-text-field>
         </div>
+        <!-- Two fields marked invalid with one message for both: the edge and aria-invalid, the words once, under the pair. -->
+        <fieldset class="range" aria-describedby="range-error">
+            <legend class="range-legend">Open</legend>
+            <div class="range-fields">
+                <anotoki-text-field label="From" type="date" value="2026-10-12" [invalid]="true" />
+                <anotoki-text-field label="Until" type="date" value="2026-10-01" [invalid]="true" />
+            </div>
+            <p class="range-error" id="range-error" role="alert">The survey closes before it opens: move one of the dates.</p>
+        </fieldset>
         <div class="cluster wide">
             <anotoki-checkbox [(checked)]="keep" hint="On this browser only">Keep me signed in</anotoki-checkbox>
             <anotoki-switch [(checked)]="news" hint="A mail when there is something new">News by mail</anotoki-switch>
@@ -223,6 +235,17 @@
             [person]="{ name: 'Mira Nováková', email: 'mira@example.test', role: 'Administrator' }"
             [phoneMax]="760"
             [shortBrandMax]="960" />
+    </section>
+
+    <section class="section admin-bar" aria-labelledby="folded-title">
+        <h2 class="section-title" id="folded-title">A bar that folds wide, its full wordmark kept</h2>
+        <!-- Folded up to 1320 px (Piano Academy's), "anotoki Piano Academy" down to 480 px, "Piano" under it. -->
+        <anotoki-top-bar
+            [brand]="{ area: 'Piano Academy', short: 'Piano', link: '/', label: 'anotoki Piano Academy: practise' }"
+            [links]="adminLinks"
+            [person]="{ name: 'Mira Nováková', email: 'mira@example.test' }"
+            [phoneMax]="1320"
+            [shortBrandMax]="480" />
     </section>
 </div>
 

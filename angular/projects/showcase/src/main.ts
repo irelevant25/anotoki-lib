@@ -2,13 +2,17 @@ import { HttpInterceptorFn, HttpResponse, provideHttpClient, withInterceptors } 
 import { inject, provideAppInitializer, provideZonelessChangeDetection, signal } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { AnotokiAuth } from '@anotoki/lib/auth';
 import { provideAnotokiMigrations, siteStatusInterceptor } from '@anotoki/lib/migrations';
+import { provideAnotokiPeople } from '@anotoki/lib/people';
 import { AnotokiThemeMode, ThemeService, provideAnotokiShell } from '@anotoki/lib/shell';
 import { TranslationService, anotokiUnsavedChangesGuard, provideAnotokiTranslations, siteStatusWords } from '@anotoki/lib/translations';
 import { provideAnotokiUi } from '@anotoki/lib/ui';
 import { iconLanguages, iconTrash, iconUsers } from '@anotoki/lib/ui/icons';
 import { delay, of } from 'rxjs';
 import { AppComponent } from './app/app.component';
+import { peopleServer } from './app/people-server';
+import { SignInDemoComponent, signInDemoProviders } from './app/sign-in-demo/sign-in-demo.component';
 import { SHOWCASE_GROUPS, wordsServer } from './app/words-server';
 
 /** The query, read before the translations take ?lang=sk out of the address (it holds for the tab then). */
@@ -20,17 +24,23 @@ const admin = signal(!params.get('visitor'));
 /** The account's theme: ?account=1 makes somebody signed in whose account refuses a choice (the refusal note). */
 const account = signal<AnotokiThemeMode | null>(params.get('account') ? 'light' : null);
 
+/** ?editor=1: the admin pages for somebody the site lets change its words and languages, but not delete or import (the survey's EDITORs). */
+const editor = signal(!!params.get('editor'));
+
 const MIGRATIONS = {
-  sets: ['site'],
+  sets: ['site', 'anotoki_translations'],
   applied: [
     { set: 'site', name: '001_initial_schema.sql', applied_at: '2026-09-28T10:00:00Z' },
     { set: 'site', name: '002_translations.sql', applied_at: '2026-09-30T18:12:00Z' },
     { set: 'site', name: '003_languages.sql', applied_at: '2026-10-02T08:40:00Z' },
+    { set: 'anotoki_translations', name: '001_languages_and_strings.sql', applied_at: '2026-10-11T07:30:00Z' },
+    { set: 'anotoki_translations', name: '002_library_words.sql', applied_at: '2026-10-11T07:30:00Z' },
   ],
   pending: [
     { set: 'site', name: '004_announcements.sql', ready: true, blocked: false },
     { set: 'site', name: '005_account_deletion.sql', ready: false, blocked: false },
     { set: 'site', name: '006_sign_in_devices.sql', ready: true, blocked: true },
+    { set: 'anotoki_translations', name: '003_sign_in_words.sql', ready: true, blocked: true },
   ],
   missing: [{ set: 'site', name: '000_bootstrap.sql', applied_at: '2026-09-01T00:00:00Z' }],
 };
@@ -53,26 +63,55 @@ const fixtures: HttpInterceptorFn = (request, next) => {
 };
 
 /** The showcase's admin pages: English, whatever the page is read in. */
-const ENGLISH_AREAS = /^\/(migrations|translations|languages)(\/|\?|#|$)/;
+const ENGLISH_AREAS = /^\/(migrations|translations|languages|people)(\/|\?|#|$)/;
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
-    // The translations' routes (words-server.ts) answer from memory, before the rest of the imagined server.
-    provideHttpClient(withInterceptors([wordsServer, fixtures, siteStatusInterceptor])),
+    // The translations' routes (words-server.ts) and the people's (people-server.ts) answer from memory, before the
+    // rest of the imagined server.
+    provideHttpClient(withInterceptors([wordsServer, peopleServer, fixtures, siteStatusInterceptor])),
     provideRouter([
       { path: '', loadComponent: () => import('./app/gallery/gallery.component').then((m) => m.GalleryComponent) },
       { path: 'migrations', loadComponent: () => import('./app/migrations-demo/migrations-demo.component').then((m) => m.MigrationsDemoComponent) },
       { path: 'translations', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.TranslationsPageComponent) },
       { path: 'languages', canDeactivate: [anotokiUnsavedChangesGuard], loadComponent: () => import('@anotoki/lib/translations/admin').then((m) => m.LanguagesPageComponent) },
+      // The People page, against the imagined server (?people=unready, ?people=down for its other states).
+      { path: 'people', loadComponent: () => import('@anotoki/lib/people/page').then((m) => m.PeoplePageComponent) },
+      // The sign-in failure's screen on a route of its own (?code=state_mismatch, ..., unavailable): the auth module is the route's.
+      {
+        path: 'sign-in',
+        providers: signInDemoProviders(),
+        canActivate: [
+          () =>
+            inject(AnotokiAuth)
+              .init()
+              .then(() => true),
+        ],
+        component: SignInDemoComponent,
+      },
       { path: '**', redirectTo: '' },
     ]),
+    // The People page: the reader is Mira (7); the site deletes what it keeps of a person, in its own words.
+    provideAnotokiPeople(() => ({
+      me: () => (admin() ? '7' : null),
+      isAdmin: admin,
+      lead: 'Everybody who signed in and whom the showcase keeps anything of, the most recently seen first: their notes, their time zone, their last import.',
+      delete: { label: 'Delete their progress', allowed: (person) => person.anonymized_at === null || person['notes'] !== null },
+      visitorsLine: (visitors) => `${visitors.count} visitors - people practising without signing in - with ${visitors['sessions']} rounds. A visitor is deleted 30 days after their last visit.`,
+      migrationsRoute: '/migrations',
+    })),
     // The words: the bundle's language (?lang=sk, a choice in the bar), the database's strings over the library's.
     provideAnotokiTranslations(() => ({
       storagePrefix: 'anotoki-showcase',
       englishOnly: (url) => ENGLISH_AREAS.test(url),
       admin: {
-        allows: { strings: () => admin(), languages: () => admin() },
+        allows: {
+          strings: () => admin(),
+          importStrings: () => admin() && !editor(),
+          languages: () => admin(),
+          deleteLanguages: () => admin() && !editor(),
+        },
         routes: { translations: '/translations', languages: '/languages', migrations: '/migrations' },
         siteName: 'the showcase',
         groups: SHOWCASE_GROUPS,

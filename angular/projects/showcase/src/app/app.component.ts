@@ -31,6 +31,7 @@ export class AppComponent {
     { id: 'translations', label: 'Translations', path: '/translations', lang: 'en' },
     { id: 'languages', label: 'Languages', path: '/languages', lang: 'en' },
     { id: 'migrations', label: 'Migrations', path: '/migrations', lang: 'en' },
+    { id: 'people', label: 'People', path: '/people', lang: 'en' },
     { id: 'reviews', label: this.i18n.t('nav.reviews'), path: '/reviews', badge: 12 },
   ]);
   protected readonly person = computed(() => ({ name: 'Mira Nováková', email: 'mira@example.test', role: this.words.t('topbar.roleAdmin') }));

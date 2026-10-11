@@ -5,7 +5,7 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## 0.5.0 - unreleased
+## 0.5.0 - 2026-10-11
 
 A minor version, not 0.4.2: it changes what a site's hooks are given and may do (the People delete, the
 restore's hooks, sealed backups, `AdminContext`'s addresses), and `^0.4.1` would take a patch by itself. README.md,

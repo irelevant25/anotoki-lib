@@ -9,7 +9,7 @@ version:
 | PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/`, `php/testing/` |
 | Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
 
-Version 0.4.1 holds:
+Version 0.5.0 holds:
 
 - **migrations** - the engine that brings a site's database up to date, with
   the library's own migration sets beside a site's, and one behaviour for every
@@ -27,7 +27,8 @@ Version 0.4.1 holds:
   section "People");
 - **the admin tools** (both halves) - the error log, the audit log, feedback,
   backups and the file explorer, each an admin page, and the visitors' feedback
-  form in their language (the section "Admin tools").
+  form in their language - and the pages' own errors reported to the error log
+  (`@anotoki/lib/error-report`) (the section "Admin tools").
 
 ## The behaviour
 

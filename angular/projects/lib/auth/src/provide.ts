@@ -1,7 +1,6 @@
 import { EnvironmentProviders, inject, makeEnvironmentProviders, provideEnvironmentInitializer } from '@angular/core';
-import { provideLibraryWords } from '@anotoki/lib/ui/config';
-import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
-import { ANOTOKI_AUTH_CONFIG, AnotokiAuthConfig } from './config';
+import { ANOTOKI_AUTH_CONFIG, AnotokiAuthConfig, SignInSession, provideSignInWords } from '@anotoki/lib/auth/core';
+import { AnotokiAuth } from './auth.service';
 import { AccountPreferences } from './preferences';
 
 /**
@@ -18,7 +17,9 @@ import { AccountPreferences } from './preferences';
 export function provideAnotokiAuth(factory: () => AnotokiAuthConfig): EnvironmentProviders {
   return makeEnvironmentProviders([
     { provide: ANOTOKI_AUTH_CONFIG, useFactory: factory },
-    provideLibraryWords(SIGN_IN_LIBRARY_WORDS),
+    provideSignInWords(),
+    // The screens (@anotoki/lib/auth/screens) ask the session through its port, never the service itself.
+    { provide: SignInSession, useExisting: AnotokiAuth },
     provideEnvironmentInitializer(() => {
       if (inject(ANOTOKI_AUTH_CONFIG).preferences) {
         inject(AccountPreferences);

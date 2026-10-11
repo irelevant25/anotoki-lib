@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { AnotokiPreferences } from './client/types';
+import { AnotokiPreferences, SitePreferences } from '@anotoki/lib/auth/core';
 import { AnotokiAuth } from './auth.service';
-import { SitePreferences } from './config';
 import { AccountPreferences } from './preferences';
 import { SpecSite, provideSpecAuth, settle, specSite, user } from './testing';
 

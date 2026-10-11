@@ -3,7 +3,7 @@ import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http
 import { HttpTestingController } from '@angular/common/http/testing';
 import { firstValueFrom } from 'rxjs';
 import { AnotokiAuth } from './auth.service';
-import { AnotokiAuthConfig, VisitorKeyStore } from './config';
+import { AnotokiAuthConfig, VisitorKeyStore } from '@anotoki/lib/auth/core';
 import { apiPath } from './auth.interceptor';
 import { CARRIES_VISITOR_KEY, issuedAs } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';

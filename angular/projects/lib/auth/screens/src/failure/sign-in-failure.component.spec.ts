@@ -2,11 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { Component, EnvironmentProviders, Provider } from '@angular/core';
 import { Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { AnotokiAuth } from '../auth.service';
-import { authError } from '../client/oidc-client';
-import { AnotokiAuthConfig } from '../config';
-import { personGuard } from '../guards';
-import { SpecSite, provideSpecAuth, settle, specSite } from '../testing';
+import { AnotokiAuth, personGuard } from '@anotoki/lib/auth';
+import { AnotokiAuthConfig, authError } from '@anotoki/lib/auth/core';
+import { SpecSite, provideSpecAuth, settle, specSite } from '../../../src/testing';
 import { SignInFailureComponent } from './sign-in-failure.component';
 
 @Component({ selector: 'anotoki-spec-page', template: 'page' })

@@ -9,8 +9,8 @@ import { EnvironmentProviders, Provider, provideZonelessChangeDetection } from '
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Routes, provideRouter } from '@angular/router';
-import { AuthBrowser, ANOTOKI_AUTH_BROWSER } from './browser';
 import {
+  ANOTOKI_AUTH_BROWSER,
   AnotokiAuthClient,
   AnotokiAuthEnvironment,
   AnotokiAuthOptions,
@@ -20,9 +20,12 @@ import {
   AnotokiPreferences,
   AnotokiSavedPreferences,
   AnotokiUser,
+  AnotokiAuthConfig,
+  AuthBootConfig,
+  AuthBrowser,
   StoredSession,
-} from './client/types';
-import { ANOTOKI_AUTH_CLIENT_FACTORY, AnotokiAuthConfig, AuthBootConfig } from './config';
+} from '@anotoki/lib/auth/core';
+import { ANOTOKI_AUTH_CLIENT_FACTORY } from './config';
 import { provideAnotokiAuth } from './provide';
 import { anotokiAuthInterceptor } from './auth.interceptor';
 

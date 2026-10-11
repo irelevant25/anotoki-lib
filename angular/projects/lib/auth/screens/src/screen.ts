@@ -1,7 +1,5 @@
 import { DOCUMENT, DestroyRef, EnvironmentInjector, Signal, computed, inject, runInInjectionContext } from '@angular/core';
-import { AnotokiAuth, SignInFailure } from './auth.service';
-import { ANOTOKI_AUTH_CONFIG } from './config';
-import { SignInWords, signInWords } from './words';
+import { ANOTOKI_AUTH_CONFIG, SignInFailure, SignInSession, SignInWords, signInWords } from '@anotoki/lib/auth/core';
 
 /*
  * What the module's two screens share - the callback page (<anotoki-auth-callback>) and the failure's screen
@@ -23,7 +21,7 @@ export function signInText(): Signal<{ lang: string; words: SignInWords }> {
 }
 
 /** What went wrong, to show: a failure of the sign-in, or a sign-in that cannot be set up at all; null while there is none. */
-export function shownFailure(auth: AnotokiAuth = inject(AnotokiAuth)): Signal<SignInFailure | null> {
+export function shownFailure(auth: SignInSession = inject(SignInSession)): Signal<SignInFailure | null> {
   return computed(() => (auth.state() === 'unavailable' ? { code: 'unavailable', returnTo: null } : auth.signInFailure()));
 }
 

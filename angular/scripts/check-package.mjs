@@ -11,7 +11,9 @@
 //   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
 //   Languages pages into the translations module's. The auth module imports the core's pieces and the migrations
-//   module (whether the site is blocked), and nothing imports it but its testing helper. The People page imports the
+//   module (whether the site is blocked), and nothing imports it but its testing helper; its parts loaded later - the
+//   screens (auth/screens) and the client's token requests (auth/session, which it imports by import() alone) - import
+//   its shared part (auth/core), never the module itself. The People page imports the
 //   kit and its configuration's small entry point, which imports nothing. The admin tools' pages import their
 //   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
 //   the feedback form imports its configuration and the kit's fields.
@@ -59,9 +61,11 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * kit's words alone - each other module's are an entry point of their own, @anotoki/lib/words/<namespace>). Room to
  * grow a little; a limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
  *
- * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences, the
- * callback page and the failure's screen - 14.9 at 0.4.0 before the screen. Every site that signs in loads it on its
- * first page, as it loads the SDK and its wrappers today.
+ * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences - 14.9
+ * at 0.4.0 before the screen, 15.3 with it. Every site that signs in loads it on its first page, with its shared part
+ * (auth/core: the client's types and helpers, the configuration, the built-in words, the screens' port). Since 0.4.2
+ * what runs only at a moment is loaded then: the client's token requests (auth/session, by import()) and the callback
+ * page and the failure's screen (auth/screens, on lazy routes) - 34.4 kB raw of a site's first load at 0.4.1.
  *
  * people: the People page's configuration and the shape of its API, in a site's app.config - a token and a function
  * (the page itself is people/page, on a lazy admin route).
@@ -77,7 +81,8 @@ const LIMITS = {
     "@anotoki/lib/shell": 14,
     "@anotoki/lib/migrations": 7,
     "@anotoki/lib/translations": 8,
-    "@anotoki/lib/auth": 16,
+    "@anotoki/lib/auth": 12,
+    "@anotoki/lib/auth/core": 3.5,
     "@anotoki/lib/people": 0.5,
     "@anotoki/lib/admin": 1.5,
     "@anotoki/lib/feedback": 1.5,
@@ -125,7 +130,12 @@ const MAY_IMPORT = {
     "@anotoki/lib/translations": PIECES,
     "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
-    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/words/sign-in"],
+    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/auth/core", "@anotoki/lib/auth/session", "@anotoki/lib/auth/screens"],
+    // The auth module's shared part, and its parts loaded later: never the module itself (it names them, by import()
+    // the session part - a site's build puts that in a chunk of its own).
+    "@anotoki/lib/auth/core": ["@anotoki/lib/ui/config", "@anotoki/lib/words/sign-in"],
+    "@anotoki/lib/auth/session": ["@anotoki/lib/auth/core"],
+    "@anotoki/lib/auth/screens": ["@anotoki/lib/auth/core", ...PIECES],
     "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
     // The People page's configuration needs nothing of the package; the page takes the kit (never the auth module: who
     // reads it is the site's to say, `me`) and is never pulled back into it.
@@ -160,8 +170,9 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * one). "the gate": genshin's and the build analyzer's whole use (the status page, its buttons, the kit's and the
  * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, with the
  * kit's words alone - a module's arrive with the module, by its registration; "a button": one piece alone; "the
- * sign-in": the gate and the auth module's every eager part, the callback page and the failure's screen routed with
- * the first page (they are in the gate's company on every site that signs in); "the badge": the admin tools'
+ * sign-in": the gate and the auth module's every eager part, its callback page and failure's screen routed with the
+ * first page - since 0.4.2 each route loads its screen as it is shown (auth/screens), and the client its token
+ * requests as they are made (auth/session); "the badge": the admin tools'
  * configuration and the unread feedback count of a site's admin navigation - no words; "the words + feedback": a
  * site's translations with the feedback form's configuration, which registers the form's words - the form itself
  * (@anotoki/lib/feedback/form, the kit's fields) is loaded as it is opened: in a first load it would share ui/forms
@@ -409,7 +420,7 @@ async function transform(file) {
 }
 
 /** Bundles `modules` (name -> code) as the CLI does for production, Angular and rxjs left outside. */
-async function bundle(modules, { forced = null } = {}) {
+async function bundle(modules, { forced = null, later = true } = {}) {
     return esbuild.build({
         entryPoints: Object.keys(modules).map((name) => "page:" + name),
         bundle: true,
@@ -431,7 +442,12 @@ async function bundle(modules, { forced = null } = {}) {
                     build.onResolve({ filter: /^page:/ }, (args) => ({ path: args.path.slice(5), namespace: "page" }));
                     build.onLoad({ filter: /.*/, namespace: "page" }, (args) => ({ contents: modules[args.path], loader: "js", resolveDir: dist }));
                     build.onResolve({ filter: /^@anotoki\/lib(\/.*)?$/ }, (args) =>
-                        fileOf.has(args.path) ? { path: fileOf.get(args.path), sideEffects: args.path === forced } : { errors: [{ text: `no entry point ${args.path}` }] },
+                        // `later` false: a part an entry point loads by import() stays out (a floor counts what is kept up front).
+                        !later && args.kind === "dynamic-import"
+                            ? { path: args.path, external: true }
+                            : fileOf.has(args.path)
+                              ? { path: fileOf.get(args.path), sideEffects: args.path === forced }
+                              : { errors: [{ text: `no entry point ${args.path}` }] },
                     );
                     build.onResolve({ filter: /^(@angular\/|rxjs|tslib)/ }, (args) => ({ path: args.path, external: true }));
                     build.onLoad({ filter: /\.mjs$/ }, async (args) => ({ contents: await transform(args.path), loader: "js" }));
@@ -481,7 +497,7 @@ const firstLoadRows = [];
 try {
     // Floors: an entry point taken for nothing - its module kept, nothing of it used - leaves no code.
     for (const { name } of entries) {
-        const result = await bundle({ floor: `import "${name}";` }, { forced: name });
+        const result = await bundle({ floor: `import "${name}";` }, { forced: name, later: false });
         const left = withoutImports(result.outputFiles.map((output) => output.text).join(""));
         if (left !== "") {
             problems.push(`${name} leaves ${Buffer.byteLength(left)} bytes in a bundle that uses nothing of it - top-level code a site's build keeps: ${left.slice(0, 160)}`);

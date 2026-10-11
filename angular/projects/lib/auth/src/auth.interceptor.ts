@@ -2,8 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpReq
 import { inject } from '@angular/core';
 import { Observable, catchError, defer, finalize, from, switchMap, tap, throwError } from 'rxjs';
 import { AnotokiAuth } from './auth.service';
-import { ANOTOKI_AUTH_BROWSER } from './browser';
-import { ANOTOKI_AUTH_CONFIG, AnotokiAuthConfig, DEFAULT_PREFIXES, DEFAULT_SKIP, VisitorKeyStore } from './config';
+import { ANOTOKI_AUTH_BROWSER, ANOTOKI_AUTH_CONFIG, AnotokiAuthConfig, DEFAULT_PREFIXES, DEFAULT_SKIP, VisitorKeyStore } from '@anotoki/lib/auth/core';
 import { CARRIES_VISITOR_KEY, Caller, ISSUED_AS, VISITOR_KEY_HEADER } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';
 

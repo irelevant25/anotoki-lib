@@ -1,15 +1,6 @@
 import { ChangeDetectionStrategy, Component, EnvironmentProviders, Provider, inject } from '@angular/core';
-import {
-  ANOTOKI_AUTH_BROWSER,
-  ANOTOKI_AUTH_CLIENT_FACTORY,
-  AnotokiAuth,
-  AnotokiAuthEnvironment,
-  AnotokiAuthError,
-  AnotokiAuthOptions,
-  AuthBrowser,
-  SignInFailureComponent,
-  provideAnotokiAuth,
-} from '@anotoki/lib/auth';
+import { ANOTOKI_AUTH_BROWSER, ANOTOKI_AUTH_CLIENT_FACTORY, AnotokiAuth, AnotokiAuthEnvironment, AnotokiAuthError, AnotokiAuthOptions, AuthBrowser, provideAnotokiAuth } from '@anotoki/lib/auth';
+import { SignInFailureComponent } from '@anotoki/lib/auth/screens';
 import { FakeAuthClient } from '@anotoki/lib/auth/testing';
 import { TranslationService } from '@anotoki/lib/translations';
 

@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { provideAnotokiMigrations, SiteStatus } from '@anotoki/lib/migrations';
 import { AnotokiAuth } from './auth.service';
-import { authError } from './client/oidc-client';
+import { authError } from '@anotoki/lib/auth/core';
 import { adminGuard, personGuard, personOrVisitorGuard, staffGuard } from './guards';
 import { SpecSite, provideSpecAuth, settle, specSite, user } from './testing';
 

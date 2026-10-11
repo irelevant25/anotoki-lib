@@ -7,9 +7,17 @@
  * package anotoki/lib (Anotoki\Lib\Auth).
  *
  * Eager (every page of a site that signs in reads it). It imports the kit's
- * pieces from their own entry points (the callback's button, the library's
- * words in ui/config) and the migrations module (whether the site is blocked),
- * never @anotoki/lib/ui; a spec's stand-in is @anotoki/lib/auth/testing.
+ * pieces from their own entry points (the library's words in ui/config) and the
+ * migrations module (whether the site is blocked), never @anotoki/lib/ui; a
+ * spec's stand-in is @anotoki/lib/auth/testing.
+ *
+ * What runs only at a moment is loaded then (0.4.2): the client's token
+ * requests - a callback's code exchanged, a refresh, a preferences save - are
+ * @anotoki/lib/auth/session, which the client loads the first time it needs
+ * them; the callback page and the failure's screen are
+ * @anotoki/lib/auth/screens. AuthCallbackComponent and SignInFailureComponent
+ * here are what a route names, as before: each loads its screen as the route
+ * is shown, so neither screen's code is in the first load.
  */
 
 export type {
@@ -27,15 +35,18 @@ export type {
   AnotokiTimeFormat,
   AnotokiUser,
   StoredSession,
-} from './src/client/types';
-export { createAuthClient, safeReturnTo } from './src/client/oidc-client';
-export type { AnotokiAuthConfig, AuthBootConfig, SitePreferences, VisitorKeyStore } from './src/config';
-export { ANOTOKI_AUTH_CLIENT_FACTORY, ANOTOKI_AUTH_CONFIG } from './src/config';
+} from '@anotoki/lib/auth/core';
+export { safeReturnTo } from '@anotoki/lib/auth/core';
+export { createAuthClient } from './src/client/oidc-client';
+export type { AnotokiAuthConfig, AuthBootConfig, SitePreferences, VisitorKeyStore } from '@anotoki/lib/auth/core';
+export { ANOTOKI_AUTH_CONFIG } from '@anotoki/lib/auth/core';
+export { ANOTOKI_AUTH_CLIENT_FACTORY } from './src/config';
 export { provideAnotokiAuth } from './src/provide';
-export type { AuthState, SignInFailure, SignInOptions } from './src/auth.service';
+export type { AuthState, SignInFailure, SignInOptions } from '@anotoki/lib/auth/core';
+export { SignInSession } from '@anotoki/lib/auth/core';
 export { AnotokiAuth } from './src/auth.service';
-export type { AuthBrowser } from './src/browser';
-export { ANOTOKI_AUTH_BROWSER } from './src/browser';
+export type { AuthBrowser } from '@anotoki/lib/auth/core';
+export { ANOTOKI_AUTH_BROWSER } from '@anotoki/lib/auth/core';
 export { anotokiAuthInterceptor } from './src/auth.interceptor';
 export type { Caller } from './src/issued-as';
 export { CARRIES_VISITOR_KEY, ISSUED_AS, VISITOR_KEY_HEADER, issuedAs } from './src/issued-as';
@@ -45,7 +56,7 @@ export type { AccountPreference, PreferenceSave, ShownPreferences } from './src/
 export { AccountPreferences } from './src/preferences';
 export type { HintMarker } from './src/hint';
 export { HINT_SHAPE, readHint } from './src/hint';
-export type { SignInWords } from './src/words';
-export { SIGN_IN_WORD_NAMES, failureText, signInKey, signInWords } from './src/words';
-export { AuthCallbackComponent } from './src/callback/auth-callback.component';
-export { SignInFailureComponent } from './src/failure/sign-in-failure.component';
+export type { SignInWords } from '@anotoki/lib/auth/core';
+export { SIGN_IN_WORD_NAMES, failureText, signInKey, signInWords } from '@anotoki/lib/auth/core';
+export { AuthCallbackComponent } from './src/routes/callback-route.component';
+export { SignInFailureComponent } from './src/routes/failure-route.component';

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AnotokiAuth } from '../auth.service';
+import { SignInSession } from '@anotoki/lib/auth/core';
 import { SignInFailureComponent } from '../failure/sign-in-failure.component';
 import { noIndexWhileShown, shownFailure, signInText } from '../screen';
 
@@ -30,7 +30,7 @@ import { noIndexWhileShown, shownFailure, signInText } from '../screen';
   host: { class: 'anotoki-auth-callback', '[class.anotoki-auth-callback--failed]': 'failed()' },
 })
 export class AuthCallbackComponent implements OnInit {
-  private readonly auth = inject(AnotokiAuth);
+  private readonly auth = inject(SignInSession);
   private readonly router = inject(Router);
 
   protected readonly text = signInText();

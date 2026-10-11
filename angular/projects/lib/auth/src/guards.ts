@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateChildFn, CanActivateFn, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { ANOTOKI_MIGRATIONS_CONFIG, SiteStatus } from '@anotoki/lib/migrations';
 import { AnotokiAuth } from './auth.service';
-import { ANOTOKI_AUTH_CONFIG, DEFAULT_REDIRECT_PATH } from './config';
+import { ANOTOKI_AUTH_CONFIG, DEFAULT_REDIRECT_PATH } from '@anotoki/lib/auth/core';
 
 /**
  * A page for somebody signed in (canActivate and canActivateChild - on the

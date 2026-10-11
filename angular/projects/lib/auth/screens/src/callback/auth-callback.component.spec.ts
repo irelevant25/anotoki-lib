@@ -3,10 +3,9 @@ import { Component, EnvironmentProviders, Provider, inject } from '@angular/core
 import { Router } from '@angular/router';
 import { TranslationService } from '@anotoki/lib/translations';
 import { provideTestTranslations } from '@anotoki/lib/translations/testing';
-import { AnotokiAuth } from '../auth.service';
-import { authError } from '../client/oidc-client';
-import { AnotokiAuthConfig } from '../config';
-import { SpecSite, provideSpecAuth, settle, specSite } from '../testing';
+import { AnotokiAuth } from '@anotoki/lib/auth';
+import { AnotokiAuthConfig, authError } from '@anotoki/lib/auth/core';
+import { SpecSite, provideSpecAuth, settle, specSite } from '../../../src/testing';
 import { AuthCallbackComponent } from './auth-callback.component';
 
 @Component({ selector: 'anotoki-spec-home', template: 'home' })

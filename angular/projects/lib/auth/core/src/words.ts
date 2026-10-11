@@ -1,3 +1,5 @@
+import { Provider } from '@angular/core';
+import { provideLibraryWords } from '@anotoki/lib/ui/config';
 import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
 
 /**
@@ -56,6 +58,14 @@ export const BUILT_IN_WORDS: Readonly<Record<'en' | 'sk', SignInWords>> = {
   en: /* @__PURE__ */ builtIn('en'),
   sk: /* @__PURE__ */ builtIn('sk'),
 };
+
+/**
+ * The sign-in page's words, registered with the translations module (provideLibraryWords) - among
+ * provideAnotokiAuth()'s providers: they reach a site's words with the auth module, and with nothing else.
+ */
+export function provideSignInWords(): Provider {
+  return provideLibraryWords(SIGN_IN_LIBRARY_WORDS);
+}
 
 /** The library's key of a word, as a site's database holds it. */
 export function signInKey(name: keyof SignInWords): string {

@@ -2,8 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { provideAnotokiMigrations, SiteStatus } from '@anotoki/lib/migrations';
 import { AnotokiAuth } from './auth.service';
-import { authError } from './client/oidc-client';
-import { AnotokiAuthConfig } from './config';
+import { AnotokiAuthConfig, authError } from '@anotoki/lib/auth/core';
 import { HINT_BREAKER_MS, HINT_FAILED_WAIT_MS, markerKey, readMarker } from './hint';
 import { CLIENT_ID, HINT_A, HINT_B, SpecSite, provideSpecAuth, settled, specSite, user } from './testing';
 

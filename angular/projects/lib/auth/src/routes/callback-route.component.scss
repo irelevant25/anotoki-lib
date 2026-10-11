@@ -1,0 +1,4 @@
+// The route's box is the screen's: nothing of its own.
+:host {
+  display: contents;
+}

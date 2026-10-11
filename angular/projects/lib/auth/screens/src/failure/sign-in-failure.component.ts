@@ -1,11 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonComponent } from '@anotoki/lib/ui/button';
-import { AnotokiAuth } from '../auth.service';
-import { ANOTOKI_AUTH_BROWSER } from '../browser';
-import { ANOTOKI_AUTH_CONFIG, DEFAULT_REDIRECT_PATH } from '../config';
+import { ANOTOKI_AUTH_BROWSER, ANOTOKI_AUTH_CONFIG, DEFAULT_REDIRECT_PATH, SignInSession, failureText } from '@anotoki/lib/auth/core';
 import { noIndexWhileShown, shownFailure, signInText } from '../screen';
-import { failureText } from '../words';
 
 let nextId = 0;
 
@@ -23,7 +20,8 @@ let nextId = 0;
  * callback route, or a route a site that lets visitors in sends a visitor to
  * when `signInFailure()` says a sign-in of theirs failed:
  *
- *   { path: 'sign-in-failed', component: SignInFailureComponent }      // provideAnotokiAuth: failureRoute: '/sign-in-failed'
+ *   { path: 'sign-in-failed', loadComponent: () => import('@anotoki/lib/auth/screens').then((m) => m.SignInFailureComponent) },
+ *   // provideAnotokiAuth: failureRoute: '/sign-in-failed'
  *
  * With nothing to say - opened by hand, or the failure put away - it goes on to
  * the home page. Search engines are asked not to index it while it shows.
@@ -39,7 +37,7 @@ let nextId = 0;
   host: { class: 'anotoki-sign-in-failure' },
 })
 export class SignInFailureComponent implements OnInit {
-  private readonly auth = inject(AnotokiAuth);
+  private readonly auth = inject(SignInSession);
   private readonly config = inject(ANOTOKI_AUTH_CONFIG);
   private readonly router = inject(Router);
   private readonly browser = inject(ANOTOKI_AUTH_BROWSER);

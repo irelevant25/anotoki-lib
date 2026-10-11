@@ -1,7 +1,6 @@
 import { EnvironmentInjector, Injectable, computed, effect, inject, runInInjectionContext, signal, untracked } from '@angular/core';
+import { ANOTOKI_AUTH_CONFIG, AnotokiPreferenceChanges, AnotokiPreferences, SitePreferences } from '@anotoki/lib/auth/core';
 import { AnotokiAuth } from './auth.service';
-import { AnotokiPreferenceChanges, AnotokiPreferences } from './client/types';
-import { ANOTOKI_AUTH_CONFIG, SitePreferences } from './config';
 
 /** A preference the anotoki account keeps for every anotoki site. */
 export type AccountPreference = keyof AnotokiPreferenceChanges;

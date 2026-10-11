@@ -1,5 +1,5 @@
-import { createAuthClient, decodeJwtPayload, preferencesFrom, safeReturnTo } from './oidc-client';
-import { AnotokiAuthClient, StoredSession } from './types';
+import { AnotokiAuthClient, StoredSession, decodeJwtPayload, preferencesFrom, safeReturnTo } from '@anotoki/lib/auth/core';
+import { createAuthClient } from './oidc-client';
 
 const ISSUER = 'https://iam.test';
 const CLIENT = 'japanese-academy';

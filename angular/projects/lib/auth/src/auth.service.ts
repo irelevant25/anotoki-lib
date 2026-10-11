@@ -3,38 +3,28 @@ import { HttpClient } from '@angular/common/http';
 import { EnvironmentInjector, Injectable, computed, inject, runInInjectionContext, signal } from '@angular/core';
 import { ANOTOKI_MIGRATIONS_CONFIG, SiteStatus } from '@anotoki/lib/migrations';
 import { firstValueFrom } from 'rxjs';
-import { ANOTOKI_AUTH_BROWSER } from './browser';
-import { AnotokiAuthClient, AnotokiInitResult, AnotokiPreferenceChanges, AnotokiSavedPreferences, AnotokiUser, StoredSession } from './client/types';
-import { ANOTOKI_AUTH_CLIENT_FACTORY, ANOTOKI_AUTH_CONFIG, AuthBootConfig, DEFAULT_HINT_COOKIE, DEFAULT_REDIRECT_PATH, VisitorKeyStore } from './config';
+import {
+  ANOTOKI_AUTH_BROWSER,
+  ANOTOKI_AUTH_CONFIG,
+  AnotokiAuthClient,
+  AnotokiInitResult,
+  AnotokiPreferenceChanges,
+  AnotokiSavedPreferences,
+  AnotokiUser,
+  AuthBootConfig,
+  AuthState,
+  DEFAULT_HINT_COOKIE,
+  DEFAULT_REDIRECT_PATH,
+  SignInFailure,
+  SignInOptions,
+  SignInSession,
+  StoredSession,
+  VisitorKeyStore,
+} from '@anotoki/lib/auth/core';
+import { ANOTOKI_AUTH_CLIENT_FACTORY } from './config';
 import { HINT_PROBE_MS, hintMayHop, readHint, readMarker, writeMarker } from './hint';
 import { Caller, VISITOR_KEY_HEADER } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';
-
-/**
- * What the page is, as far as signing in goes:
- *   starting     the boot configuration is being read, a callback finished, a session restored
- *   signed-in    somebody is signed in, and the page is theirs
- *   visitor      nobody is signed in, and the site lets visitors in (login_required off)
- *   signed-out   nobody is signed in where somebody must be: on the way to the IAM (personGuard), or
- *                the session ended while the page was open
- *   unavailable  the sign-in cannot be set up: the boot configuration could not be read, or names no IAM
- */
-export type AuthState = 'starting' | 'signed-in' | 'visitor' | 'signed-out' | 'unavailable';
-
-/** A sign-in that came back without one, or could not start: its code (never the IAM's sentence), and where it started. */
-export interface SignInFailure {
-  code: string;
-  returnTo: string | null;
-}
-
-export interface SignInOptions {
-  /** A path on this site to come back to; by default where the last failed sign-in started, else the page. */
-  returnTo?: string;
-  /** login: ask again even with a session at the IAM ("switch account"); create: open on the registration form. */
-  prompt?: 'login' | 'create';
-  /** The longest ago the person may have signed in at the IAM, in seconds (a backup restore asks for a recent one). */
-  maxAge?: number;
-}
 
 /** How long the boot waits for the refresh that follows the IAM before the page is drawn anyway. */
 export const FOLLOW_WAIT_MS = 5_000;
@@ -66,7 +56,7 @@ export const FOLLOW_WAIT_MS = 5_000;
  * (the server reads its own from the access token); MEMBER is everybody.
  */
 @Injectable({ providedIn: 'root' })
-export class AnotokiAuth {
+export class AnotokiAuth implements SignInSession {
   private readonly config = inject(ANOTOKI_AUTH_CONFIG);
   private readonly createClient = inject(ANOTOKI_AUTH_CLIENT_FACTORY);
   private readonly browser = inject(ANOTOKI_AUTH_BROWSER);

@@ -10,12 +10,13 @@ said here, with what a site must do.
 Two modules, both halves: **auth** - signing in through the anotoki IAM, the IAM's SDKs moved into the
 library, and the sign-in hint (the owner's decisions of 2026-10-07) - and **people** - each site's
 record of the accounts that use it, and the scrub of the accounts the IAM deleted (the Angular People
-page comes with the UI kit); and the PHP half of the **admin tools** every site's panel shares (the
+page comes with the UI kit); and the **admin tools** every site's panel shares, both halves (the
 owner's request of 2026-10-07, step 4): the error log, the audit log, feedback, backups and the file
-explorer - for the site's ADMIN alone (the owner's decision: EDITORs see none of them). The admin tools'
-Angular pages come later, on the UI kit. Nothing a site's code uses of 0.3.0 changes; each module is
-taken when the site adopts it (README.md: "Auth", "People", "Admin tools"). A site on the translations
-module gets one more library migration to apply (`anotoki_translations/003`, the sign-in page's words).
+explorer - for the site's ADMIN alone (the owner's decision: EDITORs see none of them), each an admin
+page of its own on a lazy route - and the visitors' feedback form, in their language. Nothing a site's
+code uses of 0.3.0 changes; each module is taken when the site adopts it (README.md: "Auth", "People",
+"Admin tools"). A site on the translations module gets two more library migrations to apply
+(`anotoki_translations/003`, the sign-in page's words; `004`, the feedback form's).
 The library's words are generated a namespace at a time: `LIBRARY_WORDS` is `@anotoki/lib/words`' now
 (it was `@anotoki/lib/ui/config`'s), a module's words come with the module (its `provide*()` registers
 them), and the kit's first loads and the translations module's carry the kit's words alone (README.md,
@@ -57,9 +58,10 @@ PHP, the admin tools:
 - `ErrorLog` - JSON lines in `storage/logs`, UTC days, parts past 4 MB, 30 days, 64 MB in all,
   redacted, traces without arguments, an HMAC of the address bucket instead of an address;
   `wrapHandler()`, `ErrorLogMiddleware::outer()/inner()`, `installPhpHandlers()` (fatals, chained
-  warnings); `ErrorLogReader` (genshin's report, its own lines read too); `Http\ErrorLogRoutes`
-  (`admin()`, `client()` for the pages' errors, `openPaths()`). By default every 5xx and 404, 405,
-  413, 415, 429 are written.
+  warnings); `ErrorLogReader` (genshin's report, its own lines read too; `clear($before)` - every day,
+  or the UTC days before one); `Http\ErrorLogRoutes` (`admin()` - `DELETE ?before=YYYY-MM-DD` for the
+  days before one, `422 date_invalid` for anything else; `client()` for the pages' errors;
+  `openPaths()`). By default every 5xx and 404, 405, 413, 415, 429 are written.
 - `Audit\AuditLog` (`AuditRecorder`) - never throws, a savepoint inside the caller's transaction,
   a pending file while the table is missing (`flushPending()` after every Apply), the request's
   actor held by `AuditContextMiddleware`, `withScope()`, `page()`/`facets()`, `scrubPeople()`
@@ -157,9 +159,71 @@ words weigh neither on the kit's first loads nor on the translations module's:
   page's too). The generated files are left alone by prettier (`bun run format` would rewrite what `bun
   run words --check` holds byte for byte).
 
+Angular, the admin tools (`@anotoki/lib/admin` and a page each - `/admin/errors`, `/admin/audit`,
+`/admin/feedback`, `/admin/backups`, `/admin/files`; README.md, "The pages"):
+- `provideAnotokiAdmin(() => config)` - `isAdmin` (a signal is followed), and as the site needs:
+  `signInAgain` (the sites' proof), `personLink`, `migrationsRoute`, `apiBase` / `paths` (where the
+  routes are), `resolveUrl` (an API on another origin), `formatDate`, `failureText` (the site's words for
+  a refusal), `siteName`, `feedbackFields`, `restoreOffText`; and `FeedbackUnread`, the new feedback
+  beside a site's admin navigation (asked for the ADMIN alone, the latest ask winning; the Feedback page
+  keeps it in step). Eager where a site wants it: 0.9 kB.
+- Each page an entry point of its own on a lazy route: English, for the site's ADMIN alone (anybody
+  else is told whose it is, and nothing is asked), drawn with the kit's pieces from their own entry
+  points, answering to its own width - a table a card a row at 390 px. A refusal is read whatever the
+  site's error body (`{code, message}`, the IAM's `{error, code}`) and said in the page's words or the
+  site's.
+- The error log: the range, level, status and a search; a chart by day; the failures grouped by
+  fingerprint, each with its facts, its trace and every occurrence; Clear - everything before today,
+  older than a week, or everything.
+- The audit log: who, the action or a family of them, what it is about, a date range - in the address;
+  the server's facets; each field before and after (genshin's three shapes of details read alike);
+  "Apply the pending database update first" while its table waits.
+- Feedback: by status (each counted), kind, section and a search; a message opened in a dialog (the
+  server marks it read), marked at once, deleted after a question; the site's extra fields by name.
+- Backups: the status and the list; Back up now, Download (a single-use link the page opens) and
+  Delete behind the site's proof - the IAM's password in a dialog, the sites' recent sign-in with "Sign
+  in again"; Restore with what it would take away, the backup's last six characters typed, the proof
+  and a 30-second wait; a restore whose answer was lost (502, 504, 524, the network) said to be maybe
+  still running, and the list read again. The IAM's: encrypted, restoring off, its reason said.
+- The file explorer: the roots, the folder as a path of links, a search, a grid or a list; uploads by
+  the button or dropped, with a progress bar - what the root does not take refused before it is sent,
+  the server's refusals file by file; a new folder, rename and move, delete into the trash with an
+  Undo, the trash; previews from the signed links (pictures, sound, video, text as text; the rest a
+  download).
+- `@anotoki/lib/admin/parts`, the library's own: what the pages share - their requests and refusals,
+  dates and sizes, a question dialog, the icons the kit lacks (folder, upload, music, film, file,
+  archive, maximize), their styles' block - in one entry point, so a site's build places it once.
+- Gzipped: errors 16.3 kB, audit 9.0, feedback 8.4, backups 15.2, files 23.5, parts 4.0.
+
+Angular, the visitors' feedback form (`@anotoki/lib/feedback`, `@anotoki/lib/feedback/form`; README.md,
+"The visitors' feedback form"):
+- `provideAnotokiFeedback(() => config)` - `language`, `translate`, `sections`, `fields`, `signedIn`,
+  `email`, and `kinds`, `subjectRequiredFor`, `words`, `endpoint`, `page`, `honeypot` as the site's
+  server has them - registers the form's words with the translations module (0.9 kB).
+- `<anotoki-feedback-form>` (`heading`, `headingLevel`, `closable`; `sent`, `closed`): the kinds, a
+  section, a subject, the message, the site's extra fields by kind, "send it without my name" for
+  somebody signed in, their address written in; checked before it is sent as the server checks; the
+  server's refusals said kindly - too many (in the hour or today, from `retry_after`), not taking
+  messages, too long, the network; a honeypot off the screen and out of the tab order; the thanks
+  focused. Loaded where it is opened (5.9 kB): in a first load it would bring the kit's fields.
+- Its words are library words, `anotoki.feedback.*` - 31, English and informal Slovak, in
+  `php/resources/library-words.json`, generated into `@anotoki/lib/words/feedback` (1.4 kB): the
+  site's database's through `translate`, then the site's `words`, then the built-in ones
+  (`feedbackWords()`).
+
+`scripts/check-package.mjs`: the new entry points' boundaries (a page imports its configuration, the
+shared parts and the kit's lazy pieces, and nothing imports a page; the form imports its configuration
+and the kit's fields); limits for the two eager ones (`admin` and `feedback`, 1.5 kB each); two more
+first loads - "the badge" (the admin tools' configuration and `FeedbackUnread`, no words: 0.6 kB, 1 at
+most) and "the words + feedback" (the translations module and the form's configuration, the kit's
+words and the form's: 8.3 kB, 9 at most); a module's name holds no white space, so a page's own words
+after `from` (the audit log's date filters) are never read as an import. The first loads before are as
+they were.
+
 PHP, translations: the library's set `anotoki_translations` gains `003_sign_in_words.sql` - the sign-in
 page's eight keys, by 002's rule (descriptions the library's; strings only for a key that has none; a
-gate on English). A site that applies the set gets it as any migration: the upload waits for Apply.
+gate on English) - and `004_feedback_words.sql`, the feedback form's 31 keys by the same rule. A site
+that applies the set gets them as any migration: the upload waits for Apply.
 
 What a site must do - auth and people (README.md, "Adopting auth and people, site by site"):
 `anotoki/lib ^0.4` and the 0.4.0 tarball together; a migration of its own adding
@@ -177,7 +241,11 @@ check (the file and raw routes outside it); `ErrorLogRoutes::openPaths()` and
 `BackupsRoutes::openPaths()` in its gate's open paths; `flushPending()` in its migrations' `afterApply`;
 `dailyIfDue()` on requests and `beforeApplyHook()` in its Migrator. The IAM: `AfterResponse` after
 `$app->run()`, its backups encrypted with restore off, and its `audit_log` moved into the library's
-table by a migration of its own (`AuditLog`'s `ready` holds entries back until it ran).
+table by a migration of its own (`AuditLog`'s `ready` holds entries back until it ran). In its
+Angular half: `provideAnotokiAdmin()` from its auth (the IAM: `siteName`, `failureText` and
+`restoreOffText` too), the pages on lazy routes under its ADMIN guard, `FeedbackUnread` beside its
+navigation's Feedback; where visitors write: `provideAnotokiFeedback()`, the form loaded as it is
+opened, and `anotoki_translations/004` applied.
 
 The order of the library's sets in a site's list: `[Admin\Schema::migrationSet(), ...$siteSets,
 Translations\Schema::migrationSet(), People\Schema::migrationSet()]` - the admin set first, the others

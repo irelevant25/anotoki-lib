@@ -24,8 +24,9 @@ Version 0.3.0 holds:
 Unreleased (0.4.0, CHANGELOG.md): **auth** - signing in through the anotoki IAM,
 both halves, with the sign-in hint - and **people** - each site's record of the
 accounts that use it, and the scrub of the accounts the IAM deleted (the
-sections "Auth" and "People"); and the PHP half of the **admin tools** - error
-log, audit log, feedback, backups, file explorer (the section "Admin tools").
+sections "Auth" and "People"); and the **admin tools**, both halves - the error
+log, the audit log, feedback, backups and the file explorer, each an admin page,
+and the visitors' feedback form in their language (the section "Admin tools").
 
 ## The behaviour
 
@@ -213,7 +214,12 @@ uses is in the first load again.
 | `@anotoki/lib/translations/testing` | `provideTestTranslations()`, a stand-in for a site's specs | a site's specs |
 | `@anotoki/lib/auth` (0.4.0) | signing in through the IAM: its browser client, `AnotokiAuth`, the interceptor, the guards, `AccountPreferences`, the callback page ("Auth" below) | yes (every page of a site that signs in) |
 | `@anotoki/lib/auth/testing` (0.4.0) | `provideTestAnotokiAuth()`, `FakeAuthClient`: the module without an IAM, for a site's specs | a site's specs |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's) | with its module, which alone imports it and registers it with the translations module |
+| `@anotoki/lib/admin` (0.4.0) | the admin tools' configuration (`provideAnotokiAdmin`) and `FeedbackUnread`, the new feedback beside a site's admin navigation ("Admin tools" below) | where the admin navigation is |
+| `@anotoki/lib/admin/errors`, `/audit`, `/feedback`, `/backups`, `/files` (0.4.0) | the admin tools' pages, one each | lazy admin routes |
+| `@anotoki/lib/admin/parts` (0.4.0) | what those pages share - their requests, failures, dates, question dialog and styles; the library's own, a site imports nothing of it | with the first of them |
+| `@anotoki/lib/feedback` (0.4.0) | the visitors' feedback form's configuration (`provideAnotokiFeedback`, which registers its words) and its words | yes, beside the translations module |
+| `@anotoki/lib/feedback/form` (0.4.0) | `<anotoki-feedback-form>`, on the kit's fields | loaded when the person opens it |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's) | with its module, which alone imports it and registers it with the translations module |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -684,8 +690,9 @@ of the Migrations page; everything else is new.
    words: `provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)` (from
    `@anotoki/lib/ui/config` and `@anotoki/lib/words/site-status`).
 3. A site on the translations module applies `anotoki_translations/003` (the
-   sign-in page's words) as any migration; the modules 0.4.0 brings are taken
-   when the site adopts them ("Auth", "People", "Admin tools").
+   sign-in page's words) and `004` (the feedback form's) as any migration; the
+   modules 0.4.0 brings are taken when the site adopts them ("Auth", "People",
+   "Admin tools").
 
 ## Translations (0.3.0)
 
@@ -733,6 +740,10 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
 - `003_sign_in_words.sql` (0.4.0) adds the auth module's sign-in page's words
   (`anotoki.signIn.*`: "Signing you in…", why a sign-in came back without one,
   Try again, Back), 8 keys in English and Slovak, by 002's rule.
+- `004_feedback_words.sql` (0.4.0) adds the visitors' feedback form's words
+  (`anotoki.feedback.*`: its title, the kinds, the fields and their hints, Send,
+  the thanks, every refusal it says), 31 keys in English and informal Slovak, by
+  002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -849,11 +860,13 @@ import it:
   the kit reads (`AnotokiWords`), and the translations module too;
 - every other namespace in an entry point of its own,
   `angular/projects/lib/words/<namespace>/` - `@anotoki/lib/words/site-status`
-  (the status page's), `@anotoki/lib/words/sign-in` (the sign-in page's) - which
-  its module alone imports, and registers with the translations module from its
-  `provide*()` function: `provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)` in
+  (the status page's), `@anotoki/lib/words/sign-in` (the sign-in page's),
+  `@anotoki/lib/words/feedback` (the feedback form's) - which its module alone
+  imports, and registers with the translations module from its `provide*()`
+  function: `provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)` in
   `provideAnotokiMigrations()`, `provideLibraryWords(SIGN_IN_LIBRARY_WORDS)` in
-  `provideAnotokiAuth()` (the multi provider `ANOTOKI_LIBRARY_WORDS` of
+  `provideAnotokiAuth()`, `provideLibraryWords(FEEDBACK_LIBRARY_WORDS)` in
+  `provideAnotokiFeedback()` (the multi provider `ANOTOKI_LIBRARY_WORDS` of
   `@anotoki/lib/ui/config`);
 - `@anotoki/lib/words` (`angular/projects/lib/words/`): `LIBRARY_WORDS`, every
   namespace's, for a site's specs and the showcase - no module imports it.
@@ -865,7 +878,8 @@ rewrite what `--check` holds byte for byte). So a page has the library's words
 while the database cannot be reached, and never shows a key of the kit's or of a
 module it uses as a key - and a first load carries the words its page says: the
 kit's (a button, the bar, the translations module), the status page's beside
-them (the gate), the sign-in page's with the auth module. A module that brings
+them (the gate), the sign-in page's with the auth module, the feedback form's
+with its configuration. A module that brings
 words brings a namespace, an entry point of its own and its registration:
 `scripts/check-package.mjs` derives the entry point's boundaries, holds every
 first load to the namespaces its page says, and refuses a module that imports
@@ -1382,14 +1396,17 @@ survive: the storage keys are the same.
 | build analyzer | `name`, `created_at`, no last-seen (or `last_seen_at`: its CHECK allows it), `updatedAt: 'updated_at'`, `nameFallback: "user $sub"` | `sync_runs.log`: "by {former}" → "by a deleted person" | `src/Support/Iam/*`, `SignInPolicy`, `IamSignInPolicy`, `UserProvisioner`, `core/iam/*`, its fake IAM | `/api/meta` carries `AuthRoutes::configBody()`; a bad token now answers `invalid_token`; the hint acts here; `robots.txt` `Disallow: /auth/` |
 | genshin | `username`, `created_at`, no last-seen, `nameFallback: "user$sub"` | `feedback`: `username` → `deleted-{sub}`, `email`, `ip`, `user_agent` → NULL (the words stay) | `api/anotoki_iam.php`, `shared/local-lib/iam/*` | its migration is `users/050_people.sql`; `users.email` and `feedback.email` go once nothing reads them; `SignInGate` with its open prefixes; the library's routes in `SKIP_PREFIXES`; the hint acts here; `robots.txt` `Disallow: /auth/` |
 
-## Admin tools (unreleased, 0.4.0: the PHP half)
+## Admin tools (unreleased, 0.4.0)
 
 Five tools every site's admin panel shares, for the site's **ADMIN alone**
 (EDITORs see none of them - the owner's decision of 2026-10-07). The library
 decides nobody's permissions: each `*Routes::admin()` returns its route group
 and the site adds its own ADMIN check (the IAM: `requireSession()` +
 `requireAdmin()`, and its CSRF header on every write, as on every first-party
-write). The Angular pages come later, on the UI kit.
+write). Each has its page in the Angular half, an entry point of its own on a
+lazy admin route, in English as every admin page ("The pages" below); the
+visitors' side of feedback is a form in their language ("The visitors' feedback
+form").
 
 | tool | namespace | kept in | sites |
 | --- | --- | --- | --- |
@@ -1495,8 +1512,10 @@ ErrorLogRoutes::client($app, '/api/client-errors', $errorLog, $context); // the 
 - `GET $base` (`days`, `level`, `status`, `search`) answers genshin's report -
   `{total, errors, warnings, notices, distinct, truncated, days, daily,
   statuses, groups, dropped}`, the newest 2,000 lines grouped by fingerprint;
-  `GET $base/{fingerprint}` every occurrence; `DELETE $base` clears it
-  (audited `errors.cleared`). The log's own routes are never logged.
+  `GET $base/{fingerprint}` every occurrence; `DELETE $base` clears it, and
+  `DELETE $base?before=YYYY-MM-DD` the UTC days before that one (`{deleted}`,
+  the files gone; audited `errors.cleared`). The log's own routes are never
+  logged.
 - The client route: `POST {type?, message, page?, stack?, status?}` -> 204,
   8 KB at most, 20 an hour from one address bucket and 500 a day in all
   (`429 too_many`), each redacted, `source: client`.
@@ -1672,9 +1691,120 @@ FilesRoutes::raw($app, '/api/admin/files/raw', $explorer, $context);          //
   files), `/folder`, `/move`; `DELETE $base/{root}?path=` (to
   `storage/trash/<root>/`); `GET|DELETE $base/{root}/trash`,
   `POST $base/{root}/trash/restore`. Previews: links signed for five minutes;
-  inline only raster pictures, sound and text up to 64 KB, everything else (SVG
-  among it) a download; CSP `sandbox`, `nosniff`, same-origin, `no-store`, byte
-  ranges.
+  inline only raster pictures, sound, video and text up to 64 KB, everything
+  else (SVG among it) a download; CSP `sandbox`, `nosniff`, same-origin,
+  `no-store`, byte ranges.
+
+### The pages (Angular)
+
+```ts
+// app.config.ts
+provideAnotokiAdmin(() => {
+  const auth = inject(AnotokiAuth);                         // the factory runs in an injection context
+  return {
+    isAdmin: () => auth.isAdmin(),                          // anybody else is told whose the page is, and nothing is asked
+    signInAgain: () => auth.signIn({ prompt: 'login' }),    // the sites' proof before a backup is made, downloaded, deleted or restored
+    personLink: (id) => ['/admin/people', id],              // a person the logs name, as a link (optional)
+    migrationsRoute: '/admin/migrations',                   // offered while a tool's table waits for an update
+    // apiBase: '/api/admin', paths: { files: '/api/admin/explorer' }, resolveUrl: (path) => apiOrigin + path,
+    // siteName: 'the IAM', failureText: (failure) => adminErrorText(failure), formatDate: (iso) => ...,
+    // feedbackFields: { steps: 'Steps to reproduce' }, restoreOffText: '...',
+  };
+}),
+
+// the admin panel's routes, under its ADMIN guard
+{ path: 'errors', loadComponent: () => import('@anotoki/lib/admin/errors').then((m) => m.ErrorLogPageComponent) },
+{ path: 'audit', loadComponent: () => import('@anotoki/lib/admin/audit').then((m) => m.AuditLogPageComponent) },
+{ path: 'feedback', loadComponent: () => import('@anotoki/lib/admin/feedback').then((m) => m.FeedbackPageComponent) },
+{ path: 'backups', loadComponent: () => import('@anotoki/lib/admin/backups').then((m) => m.BackupsPageComponent) },
+{ path: 'files', loadComponent: () => import('@anotoki/lib/admin/files').then((m) => m.FilesPageComponent) },
+
+// the admin navigation: the new feedback beside "Feedback"
+protected readonly unread = inject(FeedbackUnread);       // void this.unread.refresh() once; the Feedback page keeps it in step
+{ id: 'feedback', label: 'Feedback', path: '/admin/feedback', badge: this.unread.count() || null }
+```
+
+- Each page is drawn with the kit's pieces, in whatever frame the site gives it:
+  it answers to its own width, not the window's (a side navigation beside it is
+  fine), and at 390 px a table becomes a card a row, each cell saying its
+  column. English, as every admin page (the translations module keeps `/admin`
+  English). The site's ADMIN alone: for anybody else a page says whose it is and
+  asks the server nothing. The requests go through the site's `HttpClient`, so
+  its interceptors apply (the auth module's Bearer, the IAM's CSRF header); a
+  refusal is read whatever the site's error body is (the library's `{code,
+  message}`, the IAM's `{error, code}`) and said in the page's words, or the
+  site's (`failureText`).
+- **Error log**: the range (today, 7, 14 or 30 days), the level, the status and
+  a search; the counts and a chart by day (its numbers in words for screen
+  readers); the failures grouped by fingerprint, 20 a page, a row opening its
+  details - the facts, its path and route each a search, the trace (copied in
+  one press), every occurrence. "Clear" asks what goes: everything before today,
+  everything older than a week, or everything.
+- **Audit log**: who, the action (or a family of them, `backup.*`), what it is
+  about and its id, a date range - kept in the address, so a link to a filtered
+  log works; the choices the server's facets give; 50 a page; an entry opened
+  shows each field before and after (genshin's `{field: {old, new}}`, `{before,
+  after}` and `{from, to}` read alike), the session, the address where the site
+  keeps it, the details whole. While the table waits for an update: "Apply the
+  pending database update first", and the Migrations page.
+- **Feedback**: by status (new, read, resolved, spam, each counted), kind,
+  section and a search; a message opens in a dialog (the server marks it read):
+  the visitor's words as text, never markup, the site's extra fields
+  (`feedbackFields` names them), who sent it (`personLink`), where to answer,
+  the page, the language, the browser; "Mark as" saves at once; Delete asks
+  first. `FeedbackUnread` follows every change.
+- **Backups**: how many and how much, the last daily, encryption, and why a
+  backup or a restore cannot run here (the folder not writable, the server's PHP
+  without COPY, restoring switched off - `restoreOffText` adds the site's
+  reason); the list with each backup's kind, size, tables and maker. Back up
+  now, Download (a single-use link, opened by the page) and Delete are each
+  behind the site's proof: the IAM's password, asked in a dialog that says a
+  wrong one and too many; the sites' recent sign-in, whose refusal offers "Sign
+  in again" (`signInAgain`). Restore says what it would take away (the rows now
+  and after), wants the backup's last six characters typed and the proof, and
+  waits 30 seconds before it can be pressed; a restore whose answer was lost (a
+  proxy's 502, 504 or 524, the network) is said to be maybe still running, and
+  the list is read again.
+- **File explorer**: the roots as tabs, the folder as a path of links, a search,
+  a grid or a list; uploading by the button or by dropping files, with a
+  progress bar - what the root does not take (its extensions, its size) refused
+  before it is sent, the server's refusals said file by file; a new folder;
+  rename and move; delete into the trash with an Undo, and the trash (put back,
+  empty); a preview from the signed link - a picture, sound or video in its own
+  element, text as text, everything else a download.
+
+### The visitors' feedback form (Angular)
+
+```ts
+// app.config.ts - beside the translations module; it registers the form's words (anotoki.feedback.*)
+provideAnotokiFeedback(() => {
+  const i18n = inject(TranslationService), auth = inject(AnotokiAuth);
+  return {
+    language: () => i18n.language(),                       // the form's words, and the message kept with it ('en' and 'sk' built in)
+    translate: (key) => i18n.libraryWord(key),             // an owner's rewording in the site's database
+    sections: () => [{ value: 'Characters', label: i18n.t('nav.characters') }],
+    fields: () => [{ name: 'steps', label: i18n.t('feedback.steps'), kinds: ['bug'], max: 5000 }],
+    signedIn: () => auth.signedIn(),                       // "send it without my name" is offered
+    email: () => auth.user()?.email ?? null,               // written in until they type their own
+    // endpoint: '/api/feedback', kinds: () => [...], subjectRequiredFor: ['bug'], words: { de: {...} }, honeypot: 'website',
+  };
+}),
+
+// where it is opened - loaded then, so no first load carries the kit's fields
+const { FeedbackFormComponent } = await import('@anotoki/lib/feedback/form');
+// <anotoki-feedback-form [heading]="null" closable (sent)="..." (closed)="close()" />
+```
+
+- The kinds, a section, a subject, the message, the site's extra fields for the
+  kind; checked as the server checks them before it is sent (a message, the
+  lengths, an address) and every refusal said kindly, in the visitor's language:
+  too many (within the hour, or today, from `retry_after`), not taking messages
+  now (`503`), too long (the field and its most), the network. The robots' field
+  (`honeypot`) is off the screen, out of the tab order and hidden from screen
+  readers. Sent, the thanks take the focus, with "Send another".
+- Its words: the site's database's (`translate`), then the site's own (`words`),
+  then the built-in English and informal Slovak (`feedbackWords()`); a language
+  with none of them reads English, and the form says `lang="en"`.
 
 ### What else a site adds
 
@@ -1715,13 +1845,17 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 bun install
 bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs: each entry point's
                         # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
-                        # build keeps of an entry point nothing is used of (nothing); and five first loads - the
-                        # gate, the bar, the words, a button, the sign-in - beside lazy pages that use the rest (no
-                        # file of theirs, under a limit), each file through Angular's own linker and the CLI's esbuild
+                        # build keeps of an entry point nothing is used of (nothing); and seven first loads - the
+                        # gate, the bar, the words, a button, the sign-in, the badge, the words + feedback - beside
+                        # lazy pages that use the rest (no file of theirs, under a limit), each file through
+                        # Angular's own linker and the CLI's esbuild
 bun run test            # ng test lib --watch=false (Vitest, jsdom)
 bun run showcase        # projects/showcase on http://localhost:4320: every piece and the bar, from the source
                         # (?theme=dark, ?lang=sk, ?account=1 for a refused theme, ?frame=88rem for the frame's
-                        # maxWidth; /migrations, /translations, /languages against an imagined server; never published)
+                        # maxWidth; /migrations, /translations, /languages, the admin tools' /admin/errors, /audit,
+                        # /feedback, /backups, /files and the visitors' /feedback against an imagined server -
+                        # ?visitor=1 for anybody but the ADMIN, ?iam=1 for the IAM's backups, ?proof=password for a
+                        # password as the proof ("secret"), ?signedin=1 for the form; never published)
 bun run build:showcase  # the same, built into angular/dist/showcase
 bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)
 ```

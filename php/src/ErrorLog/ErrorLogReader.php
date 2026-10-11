@@ -102,17 +102,45 @@ final class ErrorLogReader
         return $this->read(self::filter($filter, $this->days), $fingerprint)[0];
     }
 
-    /** Deletes every file of the log (and its count of dropped lines); answers how many files went. */
-    public function clear(): int
+    /**
+     * Deletes the log's files - every one (and the count of dropped lines), or with $before (a UTC
+     * date, 'Y-m-d') only the days before it, so the newest stay: "older than today". Answers how
+     * many files went; a $before that is no date deletes nothing (-1).
+     */
+    public function clear(?string $before = null): int
     {
+        if ($before !== null && !self::isDay($before)) {
+            return -1;
+        }
         $gone = 0;
-        foreach (array_merge(glob($this->directory . '/errors-*.jsonl') ?: [], [$this->directory . '/errors-dropped.json']) as $file) {
+        foreach (glob($this->directory . '/errors-*.jsonl') ?: [] as $file) {
+            if ($before !== null && (preg_match('/^errors-(\d{4}-\d{2}-\d{2})[.]/', basename($file), $match) !== 1 || $match[1] >= $before)) {
+                continue;
+            }
             if (is_file($file) && @unlink($file)) {
-                $gone += str_ends_with($file, '.jsonl') ? 1 : 0;
+                $gone++;
+            }
+        }
+
+        $dropped = $this->directory . '/errors-dropped.json';
+        if ($before === null) {
+            @unlink($dropped);
+        } elseif (is_file($dropped)) {
+            $kept = array_filter($this->dropped(), static fn (string $day): bool => $day >= $before, ARRAY_FILTER_USE_KEY);
+            if ($kept === []) {
+                @unlink($dropped);
+            } else {
+                @file_put_contents($dropped, (string) json_encode($kept), LOCK_EX);
             }
         }
 
         return $gone;
+    }
+
+    /** A UTC date as the log's files are named: 'Y-m-d', a real one. */
+    public static function isDay(string $day): bool
+    {
+        return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $day, $parts) === 1 && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
     }
 
     /** @return array<string, int> lines dropped because the log was full, by UTC date */

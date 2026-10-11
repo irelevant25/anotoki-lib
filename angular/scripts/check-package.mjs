@@ -58,6 +58,9 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
 const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16 };
 const UI_AND_SHELL = 28;
 
+/** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
+const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs"];
+
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
     "@anotoki/lib": [],
@@ -95,6 +98,18 @@ const MAY_IMPORT = {
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
     "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/words/sign-in"],
     "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
+    // The admin tools: their configuration (and the unread feedback count, beside a site's admin navigation) imports
+    // nothing of the package; their shared parts and their five pages, each on a lazy route, the kit's pieces.
+    "@anotoki/lib/admin": [],
+    "@anotoki/lib/admin/parts": ["@anotoki/lib/admin", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/icons"],
+    "@anotoki/lib/admin/errors": ADMIN_PAGE,
+    "@anotoki/lib/admin/audit": ADMIN_PAGE,
+    "@anotoki/lib/admin/feedback": ADMIN_PAGE,
+    "@anotoki/lib/admin/backups": ADMIN_PAGE,
+    "@anotoki/lib/admin/files": [...ADMIN_PAGE, "@anotoki/lib/ui/menu"],
+    // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
+    "@anotoki/lib/feedback": ["@anotoki/lib/ui/config", "@anotoki/lib/words/feedback"],
+    "@anotoki/lib/feedback/form": ["@anotoki/lib/feedback", ...PIECES, "@anotoki/lib/ui/forms"],
     // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;

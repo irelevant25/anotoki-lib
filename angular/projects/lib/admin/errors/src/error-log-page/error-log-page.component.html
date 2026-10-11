@@ -1,0 +1,377 @@
+@if (!tools.isAdmin()) {
+    <p class="anotoki-admin__notice">The error log is for the administrators of {{ tools.siteName }}.</p>
+} @else {
+    <div class="anotoki-admin__page">
+        <anotoki-page-header
+            heading="Error log"
+            lead="Every request the server could not answer, and what PHP itself warned about - kept in files for 30 days, so an outage is something it can report. Repeats are grouped: one row, one count."
+            [headingId]="id + '-title'">
+            @if (report(); as data) {
+                <p pageMeta class="anotoki-admin__counts" data-counts>
+                    <span>
+                        <strong>{{ formatCount(data.errors) }}</strong>
+                        {{ data.errors === 1 ? "error" : "errors" }}
+                    </span>
+                    <span>
+                        <strong>{{ formatCount(data.warnings) }}</strong>
+                        {{ data.warnings === 1 ? "warning" : "warnings" }}
+                    </span>
+                    @if (data.notices) {
+                        <span>
+                            <strong>{{ formatCount(data.notices) }}</strong>
+                            {{ data.notices === 1 ? "notice" : "notices" }}
+                        </span>
+                    }
+                    <span>
+                        <strong>{{ formatCount(data.distinct) }}</strong>
+                        {{ data.distinct === 1 ? "cause" : "causes" }}
+                    </span>
+                </p>
+            }
+            <button anotokiButton data-reload [loading]="loading()" (click)="load()">
+                <anotoki-icon name="refresh" [size]="16" />
+                Read again
+            </button>
+            <button anotokiButton variant="danger" data-clear [disabled]="!report() || report()!.days.length === 0" (click)="askToClear()">
+                <anotoki-icon name="trash" [size]="16" />
+                Clear the log
+            </button>
+        </anotoki-page-header>
+
+        <p class="anotoki-admin__happened" data-happened role="status">{{ happened() }}</p>
+
+        <form class="anotoki-admin__filters anotoki-error-log-page__filters" role="search" aria-label="Filter the error log" (submit)="$event.preventDefault(); applySearch()">
+            <div class="anotoki-error-log-page__range">
+                <span class="anotoki-error-log-page__label" aria-hidden="true">Range</span>
+                <anotoki-segmented label="Range" data-range [options]="ranges" [value]="'' + filter().days" (valueChange)="setRange($event)" />
+            </div>
+            <anotoki-select label="Level" data-level placeholder="Any level" [options]="levels" [value]="filter().level" (valueChange)="setLevel($event)" />
+            <anotoki-select label="Status" data-status placeholder="Any status" [options]="statusOptions()" [value]="filter().status" (valueChange)="setStatus($event)" />
+            <anotoki-text-field
+                class="anotoki-admin__filter--wide"
+                data-search
+                type="search"
+                label="Search"
+                placeholder="Message, path, route or type"
+                autocomplete="off"
+                [maxlength]="200"
+                [value]="searchText()"
+                (valueChange)="searchText.set($event)" />
+            <div class="anotoki-admin__filter-actions">
+                <button anotokiButton type="submit" data-search-button>
+                    <anotoki-icon name="search" [size]="16" />
+                    Search
+                </button>
+                @if (filtered()) {
+                    <button anotokiButton variant="ghost" data-reset (click)="reset()">Show all</button>
+                }
+            </div>
+        </form>
+
+        @if (loadError(); as message) {
+            <anotoki-error-state heading="The error log could not be read" retryLabel="Try again" [message]="message" (retry)="load()" />
+        } @else if (report(); as data) {
+            @if (dropped().length) {
+                <anotoki-alert data-dropped tone="warning" heading="The log was full">
+                    <p class="anotoki-admin__text">Past its size the log keeps counting, not writing. Lines that were not written: {{ dropped().join(", ") }}. Clear the old days to make room.</p>
+                </anotoki-alert>
+            }
+
+            @if (quiet()) {
+                <anotoki-empty-state
+                    data-quiet
+                    icon="checkCircle"
+                    heading="Nothing has gone wrong"
+                    [text]="'Not one failure in ' + (filter().days === 1 ? 'today' : 'the last ' + filter().days + ' days') + '.'" />
+            } @else {
+                <section class="anotoki-error-log-page__chart" [attr.aria-labelledby]="id + '-chart'">
+                    <div class="anotoki-error-log-page__chart-head">
+                        <h2 class="anotoki-admin__section-title" [id]="id + '-chart'">By day</h2>
+                        <p class="anotoki-error-log-page__legend" aria-hidden="true">
+                            <span class="anotoki-error-log-page__key anotoki-error-log-page__key--error"></span>
+                            errors
+                            <span class="anotoki-error-log-page__key anotoki-error-log-page__key--warning"></span>
+                            warnings
+                            <span class="anotoki-error-log-page__key anotoki-error-log-page__key--notice"></span>
+                            notices
+                        </p>
+                    </div>
+                    <ol class="anotoki-error-log-page__bars" data-chart>
+                        @for (bar of bars(); track bar.day) {
+                            <li class="anotoki-error-log-page__day" [attr.title]="bar.text">
+                                <span class="anotoki-error-log-page__count" aria-hidden="true">{{ bar.total || "" }}</span>
+                                <span class="anotoki-error-log-page__stack" aria-hidden="true">
+                                    <span class="anotoki-error-log-page__bar anotoki-error-log-page__bar--notice" [style.height.%]="bar.noticeHeight"></span>
+                                    <span class="anotoki-error-log-page__bar anotoki-error-log-page__bar--warning" [style.height.%]="bar.warningHeight"></span>
+                                    <span class="anotoki-error-log-page__bar anotoki-error-log-page__bar--error" [style.height.%]="bar.errorHeight"></span>
+                                </span>
+                                <span class="anotoki-error-log-page__day-label" aria-hidden="true" [class.anotoki-error-log-page__day-label--hidden]="!bar.showLabel">{{ bar.label }}</span>
+                                <span class="anotoki-visually-hidden">{{ bar.text }}</span>
+                            </li>
+                        }
+                    </ol>
+                </section>
+
+                @if (data.truncated) {
+                    <p class="anotoki-admin__notice" data-truncated>Only the newest 2,000 lines are read: a shorter range or a filter shows the ones before them.</p>
+                }
+
+                @if (groups().length === 0) {
+                    <anotoki-empty-state data-nothing icon="search" heading="Nothing matches" text="No failure in this range is of that kind.">
+                        <button anotokiButton (click)="reset()">Show all</button>
+                    </anotoki-empty-state>
+                } @else {
+                    <div class="anotoki-admin__table-wrap">
+                        <table class="anotoki-admin__table anotoki-error-log-page__table" data-groups>
+                            <caption class="anotoki-visually-hidden">What went wrong, the most frequent first</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="anotoki-admin__num">Seen</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">What happened</th>
+                                    <th scope="col">Where</th>
+                                    <th scope="col">Last seen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (group of shownGroups(); track group.fingerprint) {
+                                    <tr class="anotoki-error-log-page__row" [class.anotoki-error-log-page__row--open]="open() === group.fingerprint" [attr.data-fingerprint]="group.fingerprint">
+                                        <td class="anotoki-admin__num" data-label="Seen">
+                                            <strong class="anotoki-error-log-page__seen">{{ formatCount(group.count) }}</strong>
+                                        </td>
+                                        <td data-label="Status">
+                                            <anotoki-badge [tone]="levelTones[group.level] ?? 'neutral'" [attr.data-level]="group.level">{{ statusOf(group) }}</anotoki-badge>
+                                        </td>
+                                        <td data-label="What happened">
+                                            <button
+                                                type="button"
+                                                class="anotoki-error-log-page__toggle"
+                                                data-toggle
+                                                [attr.aria-expanded]="open() === group.fingerprint"
+                                                [attr.aria-controls]="id + '-detail-' + group.fingerprint"
+                                                (click)="toggle(group)">
+                                                <anotoki-icon class="anotoki-error-log-page__chevron" name="chevronRight" [size]="15" />
+                                                <span class="anotoki-error-log-page__what">
+                                                    <span class="anotoki-error-log-page__type">
+                                                        {{ shortType(group.type) }}
+                                                        @if (group.code) {
+                                                            <code>{{ group.code }}</code>
+                                                        }
+                                                    </span>
+                                                    <span class="anotoki-error-log-page__message">{{ group.message || "(no message)" }}</span>
+                                                </span>
+                                            </button>
+                                        </td>
+                                        <td data-label="Where">
+                                            <code class="anotoki-error-log-page__where">{{ whereOf(group) || "-" }}</code>
+                                            @if (group.paths.length > 1) {
+                                                <span class="anotoki-error-log-page__more">and {{ group.paths.length - 1 }} more {{ group.paths.length === 2 ? "path" : "paths" }}</span>
+                                            }
+                                        </td>
+                                        <td class="anotoki-admin__nowrap" data-label="Last seen">
+                                            <time [attr.datetime]="group.last_at">{{ tools.date(group.last_at) }}</time>
+                                        </td>
+                                    </tr>
+                                    @if (open() === group.fingerprint) {
+                                        <tr class="anotoki-error-log-page__detail-row">
+                                            <td colspan="5" class="anotoki-admin__cell--whole">
+                                                <div class="anotoki-error-log-page__detail" data-detail [id]="id + '-detail-' + group.fingerprint">
+                                                    <dl class="anotoki-admin__facts">
+                                                        <div>
+                                                            <dt>First seen</dt>
+                                                            <dd>{{ tools.date(group.first_at, true) }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>Last seen</dt>
+                                                            <dd>{{ tools.date(group.last_at, true) }}</dd>
+                                                        </div>
+                                                        @if (group.latest.path) {
+                                                            <div>
+                                                                <dt>Request</dt>
+                                                                <dd>
+                                                                    <code>{{ group.latest.method }} {{ group.latest.path }}</code>
+                                                                </dd>
+                                                            </div>
+                                                        }
+                                                        @if (group.route) {
+                                                            <div>
+                                                                <dt>Route</dt>
+                                                                <dd>
+                                                                    <code>{{ group.route }}</code>
+                                                                </dd>
+                                                            </div>
+                                                        }
+                                                        @if (thrownAt(group.latest); as where) {
+                                                            <div>
+                                                                <dt>Thrown at</dt>
+                                                                <dd>
+                                                                    <code>{{ where }}</code>
+                                                                </dd>
+                                                            </div>
+                                                        }
+                                                        <div>
+                                                            <dt>From</dt>
+                                                            <dd>{{ sourceOf(group.source) }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>Signed in as</dt>
+                                                            <dd>
+                                                                @if (group.latest.user_id === null) {
+                                                                    nobody
+                                                                } @else if (tools.personLink(group.latest.user_id); as link) {
+                                                                    <a [routerLink]="link">person {{ group.latest.user_id }}</a>
+                                                                } @else {
+                                                                    person {{ group.latest.user_id }}
+                                                                }
+                                                            </dd>
+                                                        </div>
+                                                        @if (group.latest.client) {
+                                                            <div>
+                                                                <dt>Connection</dt>
+                                                                <dd>
+                                                                    <code [attr.title]="'A keyed hash of the address - the same for one address, never the address'">{{ group.latest.client }}</code>
+                                                                </dd>
+                                                            </div>
+                                                        }
+                                                        @if (group.latest.ip) {
+                                                            <div>
+                                                                <dt>Address (an old line)</dt>
+                                                                <dd>{{ group.latest.ip }}</dd>
+                                                            </div>
+                                                        }
+                                                        <div>
+                                                            <dt>Fingerprint</dt>
+                                                            <dd>
+                                                                <code>{{ group.fingerprint }}</code>
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+
+                                                    @if (group.paths.length > 1) {
+                                                        <div class="anotoki-error-log-page__block">
+                                                            <h3 class="anotoki-admin__section-title">Reached through</h3>
+                                                            <ul class="anotoki-error-log-page__paths">
+                                                                @for (path of group.paths; track path) {
+                                                                    <li>
+                                                                        <button
+                                                                            type="button"
+                                                                            class="anotoki-error-log-page__path"
+                                                                            data-path
+                                                                            [attr.aria-label]="'Search for ' + path"
+                                                                            (click)="searchFor(path)">
+                                                                            <code>{{ path }}</code>
+                                                                        </button>
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+
+                                                    <div class="anotoki-error-log-page__block">
+                                                        <div class="anotoki-error-log-page__block-head">
+                                                            <h3 class="anotoki-admin__section-title">Trace</h3>
+                                                            @if (traceText(group.latest); as trace) {
+                                                                <anotoki-copy-button label="Copy the trace" [text]="group.message + '\n' + trace" />
+                                                            }
+                                                        </div>
+                                                        @if (traceText(group.latest); as trace) {
+                                                            <pre class="anotoki-admin__code" data-trace tabindex="0" role="region" [attr.aria-label]="'The trace of ' + shortType(group.type)">{{
+                                                                trace
+                                                            }}</pre>
+                                                            <p class="anotoki-admin__notice anotoki-error-log-page__small">
+                                                                The newest occurrence's: where each call was made, never what it was handed - no argument is ever written down.
+                                                            </p>
+                                                        } @else {
+                                                            <p class="anotoki-admin__notice">No trace was written: an answer the server gave, not something it threw.</p>
+                                                        }
+                                                    </div>
+
+                                                    <div class="anotoki-error-log-page__block">
+                                                        @if (occurrences(); as shown) {
+                                                            <h3 class="anotoki-admin__section-title">Every occurrence</h3>
+                                                            <div class="anotoki-admin__table-wrap">
+                                                                <table class="anotoki-admin__table" data-occurrences>
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th scope="col">When</th>
+                                                                            <th scope="col">Request</th>
+                                                                            <th scope="col">Signed in as</th>
+                                                                            <th scope="col">Connection</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @for (entry of shown.entries; track $index) {
+                                                                            <tr>
+                                                                                <td class="anotoki-admin__nowrap" data-label="When">
+                                                                                    <time [attr.datetime]="entry.at">{{ tools.date(entry.at, true) }}</time>
+                                                                                </td>
+                                                                                <td data-label="Request">
+                                                                                    <code>{{ entry.method }} {{ entry.path || "-" }}</code>
+                                                                                </td>
+                                                                                <td data-label="Signed in as">{{ entry.user_id ?? "nobody" }}</td>
+                                                                                <td data-label="Connection">
+                                                                                    <code>{{ entry.client || entry.ip || "-" }}</code>
+                                                                                </td>
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            @if (shown.entries.length < group.count) {
+                                                                <p class="anotoki-admin__notice anotoki-error-log-page__small">
+                                                                    The newest {{ formatCount(shown.entries.length) }} of {{ formatCount(group.count) }}.
+                                                                </p>
+                                                            }
+                                                        } @else {
+                                                            <button anotokiButton size="sm" data-occurrences-button [loading]="occurrencesLoading()" (click)="showOccurrences(group)">
+                                                                {{ group.count === 1 ? "Show the occurrence" : "Show all " + formatCount(group.count) + " occurrences" }}
+                                                            </button>
+                                                            @if (occurrencesError(); as message) {
+                                                                <p class="anotoki-admin__field-error" role="alert">
+                                                                    <anotoki-icon name="alert" [size]="15" />
+                                                                    <span>{{ message }}</span>
+                                                                </p>
+                                                            }
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (groups().length > pageSize) {
+                        <anotoki-pagination [page]="page()" [pageSize]="pageSize" [total]="groups().length" (pageChange)="setPage($event)" />
+                    }
+                }
+            }
+        } @else {
+            <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the error log" [showLabel]="true" /></div>
+        }
+    </div>
+
+    @if (clearing()) {
+        <anotoki-dialog
+            data-clear-dialog
+            size="sm"
+            heading="Clear the error log"
+            description="What goes is gone for good - there is no undo. The log fills again with the next failure."
+            [busy]="clearBusy()"
+            (dismiss)="cancelClear()">
+            <anotoki-radio-group label="What goes" [options]="clearChoices" [value]="clearChoice()" (valueChange)="clearChoice.set($any($event))" />
+            @if (clearError(); as message) {
+                <p class="anotoki-admin__field-error anotoki-error-log-page__dialog-error" role="alert">
+                    <anotoki-icon name="alert" [size]="15" />
+                    <span>{{ message }}</span>
+                </p>
+            }
+            <div dialogFooter>
+                <button anotokiButton autofocus data-clear-cancel [disabled]="clearBusy()" (click)="cancelClear()">Cancel</button>
+                <button anotokiButton variant="danger" data-clear-confirm [loading]="clearBusy()" (click)="clear()">Clear</button>
+            </div>
+        </anotoki-dialog>
+    }
+}

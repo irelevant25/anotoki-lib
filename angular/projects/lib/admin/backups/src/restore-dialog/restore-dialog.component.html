@@ -1,0 +1,131 @@
+<anotoki-dialog data-restore size="lg" [heading]="'Restore the backup of ' + tools.date(backup().created_at)" [description]="'Its name: ' + backup().id" [busy]="restoring()" (dismiss)="dismiss()">
+    <div class="anotoki-backup-restore-dialog__body">
+        <anotoki-alert data-danger tone="danger" heading="This replaces what the database holds now">
+            <p class="anotoki-backup-restore-dialog__text">
+                Everything added, changed or deleted since it was made ({{ age() }}) is gone - but for a backup of what is there now, made a moment before it happens: that is the way back.
+            </p>
+        </anotoki-alert>
+
+        @if (previewError(); as message) {
+            <div class="anotoki-backup-restore-dialog__problem" role="alert" data-preview-error>
+                <p class="anotoki-backup-restore-dialog__text">What it would change could not be read. {{ message }}</p>
+                <button anotokiButton size="sm" (click)="loadPreview()">
+                    <anotoki-icon name="refresh" [size]="15" />
+                    Try again
+                </button>
+            </div>
+        } @else if (preview(); as info) {
+            <div class="anotoki-backup-restore-dialog__balance" data-balance>
+                <div class="anotoki-backup-restore-dialog__side">
+                    <span class="anotoki-backup-restore-dialog__side-label">In the database now</span>
+                    <strong class="anotoki-backup-restore-dialog__rows">{{ formatCount(info.live.rows) }}</strong>
+                    <span class="anotoki-backup-restore-dialog__side-label">rows in {{ info.live.tables }} {{ info.live.tables === 1 ? "table" : "tables" }}</span>
+                </div>
+                <anotoki-icon class="anotoki-backup-restore-dialog__arrow" name="chevronRight" [size]="22" />
+                <div class="anotoki-backup-restore-dialog__side">
+                    <span class="anotoki-backup-restore-dialog__side-label">After restoring</span>
+                    <strong class="anotoki-backup-restore-dialog__rows">{{ formatCount(info.backup.rows) }}</strong>
+                    <span class="anotoki-backup-restore-dialog__side-label">rows in {{ info.backup.tables }} {{ info.backup.tables === 1 ? "table" : "tables" }}</span>
+                </div>
+            </div>
+
+            @if (!info.restorable) {
+                <anotoki-alert data-reasons tone="warning" heading="It cannot be restored here">
+                    <ul class="anotoki-backup-restore-dialog__reasons">
+                        @for (reason of info.reasons; track reason) {
+                            <li>{{ reason }}</li>
+                        }
+                    </ul>
+                </anotoki-alert>
+            }
+
+            @if (losses().length) {
+                <section class="anotoki-backup-restore-dialog__section anotoki-backup-restore-dialog__section--loss" data-losses>
+                    <h3 class="anotoki-backup-restore-dialog__section-title">{{ rows(info.lost) }} would go, from {{ losses().length }} {{ losses().length === 1 ? "table" : "tables" }}</h3>
+                    <ul class="anotoki-backup-restore-dialog__tables">
+                        @for (table of losses(); track table.name) {
+                            <li>
+                                <code class="anotoki-backup-restore-dialog__table">{{ table.name }}</code>
+                                <span class="anotoki-backup-restore-dialog__change">{{ formatCount(table.live) }} → {{ formatCount(table.backup ?? 0) }}</span>
+                                <span class="anotoki-backup-restore-dialog__delta">−{{ formatCount(table.delta) }}</span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            } @else if (info.restorable && info.differences.length === 0) {
+                <p class="anotoki-backup-restore-dialog__text anotoki-backup-restore-dialog__quiet" data-unchanged>Nothing has changed since it was made: restoring it leaves the database as it is.</p>
+            } @else if (info.restorable) {
+                <p class="anotoki-backup-restore-dialog__text anotoki-backup-restore-dialog__quiet">No row would go: nothing was added since it was made.</p>
+            }
+
+            @if (gains().length) {
+                <section class="anotoki-backup-restore-dialog__section" data-gains>
+                    <h3 class="anotoki-backup-restore-dialog__section-title">{{ gains().length }} {{ gains().length === 1 ? "table gets" : "tables get" }} rows back</h3>
+                    <ul class="anotoki-backup-restore-dialog__tables">
+                        @for (table of gains(); track table.name) {
+                            <li>
+                                <code class="anotoki-backup-restore-dialog__table">{{ table.name }}</code>
+                                <span class="anotoki-backup-restore-dialog__change">{{ formatCount(table.live) }} → {{ formatCount(table.backup ?? 0) }}</span>
+                                <span class="anotoki-backup-restore-dialog__delta anotoki-backup-restore-dialog__delta--gain">+{{ formatCount(-table.delta) }}</span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+
+            <ul class="anotoki-backup-restore-dialog__also">
+                <li>It runs as one transaction: if anything fails, the database stays exactly as it is now.</li>
+                @if (info.kept.length) {
+                    <li>
+                        Never restored, kept as they are:
+                        @for (table of info.kept; track table; let last = $last) {
+                            <code>{{ table }}</code>
+                            {{ last ? "" : ", " }}
+                        }
+                        - the record of the updates, and the audit log, this restore's own entry too.
+                    </li>
+                }
+                <li>Whoever uses the site meanwhile may meet an error for a moment.</li>
+            </ul>
+
+            @if (failure(); as refused) {
+                <anotoki-alert data-failure tone="danger" [heading]="refused.heading" [announce]="true">
+                    <p class="anotoki-backup-restore-dialog__text">{{ refused.text }}</p>
+                </anotoki-alert>
+            }
+
+            <div class="anotoki-backup-restore-dialog__gate">
+                <anotoki-text-field
+                    data-confirm-word
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocapitalize="none"
+                    [label]="'Type ' + word() + ' to confirm'"
+                    [hint]="'The last six characters of its name.'"
+                    [maxlength]="40"
+                    [disabled]="!info.restorable || restoring()"
+                    [error]="typedError()"
+                    [value]="typed()"
+                    (valueChange)="setTyped($event)" />
+                <anotoki-backup-proof
+                    [kind]="proofKind()"
+                    [signInNeeded]="signInNeeded()"
+                    [disabled]="restoring()"
+                    [error]="passwordError()"
+                    [password]="password()"
+                    (passwordChange)="setPassword($event)" />
+            </div>
+        } @else {
+            <div class="anotoki-backup-restore-dialog__loading"><anotoki-spinner label="Reading what it would change" [showLabel]="true" /></div>
+        }
+    </div>
+    <div dialogFooter>
+        @if (waitingFor(); as text) {
+            <span class="anotoki-backup-restore-dialog__waiting" role="timer" data-waiting>{{ text }}</span>
+        }
+        <button anotokiButton autofocus data-restore-cancel [disabled]="restoring()" (click)="dismiss()">Cancel</button>
+        <button anotokiButton variant="danger" data-restore-confirm [disabled]="!canRestore()" [loading]="restoring()" (click)="restore()">
+            {{ restoring() ? "Restoring…" : "Restore" }}
+        </button>
+    </div>
+</anotoki-dialog>

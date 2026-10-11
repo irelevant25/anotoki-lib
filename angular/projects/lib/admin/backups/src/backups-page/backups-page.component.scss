@@ -1,0 +1,143 @@
+@use "../../../../sass/kit";
+@use "../../../parts/src/page";
+
+@include page.styles;
+
+.anotoki-backups-page__note {
+  margin-top: 0.4rem;
+  color: kit.token(muted);
+}
+
+.anotoki-backups-page__problems {
+  margin: 0;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+}
+
+// What this server can do, at a glance: a tile a fact.
+.anotoki-backups-page__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.anotoki-backups-page__stat {
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+
+  dt {
+    color: kit.token(muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.3rem 0 0;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+  }
+}
+
+.anotoki-backups-page__id {
+  display: block;
+  margin-top: 0.15rem;
+  color: kit.token(muted);
+  font-size: 0.75rem;
+}
+
+.anotoki-backups-page__kind {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  color: kit.token(muted);
+}
+
+// The count of tables, opening the list of them.
+.anotoki-backups-page__tables-button {
+  @include kit.button-reset;
+  min-height: 24px;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(link);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  @include kit.focus-ring;
+}
+
+.anotoki-backups-page__rows {
+  display: block;
+  color: kit.token(muted);
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+
+.anotoki-backups-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.anotoki-backups-page__detail-row > td {
+  background: kit.token(surface-2);
+}
+
+.anotoki-backups-page__table-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.3rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  span {
+    color: kit.token(muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+.anotoki-backups-page__guarded {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.anotoki-backups-page__elapsed {
+  flex: 1 1 auto;
+  align-self: center;
+  margin-right: auto;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@container (max-width: 640px) {
+  .anotoki-backups-page__actions {
+    justify-content: flex-start;
+  }
+
+  .anotoki-backups-page__tables-button {
+    text-align: left;
+  }
+}

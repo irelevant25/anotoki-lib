@@ -1,0 +1,31 @@
+@if (signInNeeded()) {
+    <anotoki-alert data-sign-in-needed tone="warning" heading="Sign in again first" [announce]="true">
+        <p class="anotoki-backup-proof__text">
+            This needs a sign-in of the last few minutes, and yours is older. Sign in again - you come back to this page, and do it once more. Nothing has changed.
+        </p>
+        @if (canSignIn) {
+            <div alertActions>
+                <button anotokiButton size="sm" variant="primary" data-sign-in (click)="signIn()">
+                    <anotoki-icon name="logIn" [size]="15" />
+                    Sign in again
+                </button>
+            </div>
+        }
+    </anotoki-alert>
+} @else if (kind() === "password") {
+    <anotoki-password-field
+        data-password
+        label="Your password"
+        autocomplete="current-password"
+        hint="It proves it is you: a backup holds everybody's data."
+        [required]="true"
+        [disabled]="disabled()"
+        [error]="error()"
+        [value]="password()"
+        (valueChange)="password.set($event)" />
+} @else if (kind() === "recent_sign_in") {
+    <p class="anotoki-backup-proof__note" data-recent-sign-in>
+        <anotoki-icon name="lock" [size]="15" />
+        <span>Your sign-in proves it is you, when it is from the last few minutes.</span>
+    </p>
+}

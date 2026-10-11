@@ -63,6 +63,11 @@ export class AdminTools {
     return firstValueFrom(this.http.get<T>(url, { params: query(params) }));
   }
 
+  /** A text file's words, as text: shown as such, never read as markup. */
+  text(url: string): Promise<string> {
+    return firstValueFrom(this.http.get(url, { responseType: 'text' }));
+  }
+
   post<T>(url: string, body: unknown = {}): Promise<T> {
     return firstValueFrom(this.http.post<T>(url, body));
   }

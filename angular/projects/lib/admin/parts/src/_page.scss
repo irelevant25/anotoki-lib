@@ -245,8 +245,11 @@
     }
   }
 
-  // ── Code and facts ───────────────────────────────────────────────────────
+  @include details;
+}
 
+/// A block of code, a list of facts, a section's title, code and links in the text: the pages' and their dialogs'.
+@mixin details {
   .anotoki-admin__code {
     box-sizing: border-box;
     max-height: 22rem;

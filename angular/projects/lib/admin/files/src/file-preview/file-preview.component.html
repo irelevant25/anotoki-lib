@@ -1,0 +1,82 @@
+<anotoki-dialog data-preview size="lg" [heading]="file().name" [description]="file().folder ? 'In ' + file().folder : null" (dismiss)="dismissed.emit()">
+    <div class="anotoki-file-preview__stage" [class.anotoki-file-preview__stage--actual]="!fit()" data-stage>
+        @if (url(); as link) {
+            @switch (file().preview) {
+                @case ("image") {
+                    @if (failed()) {
+                        <p class="anotoki-file-preview__note" role="alert">This picture could not be shown: it may be damaged, or gone since.</p>
+                    } @else {
+                        <img class="anotoki-file-preview__image" data-image [src]="link" [alt]="file().name" (load)="onImageLoad($event)" (error)="failed.set(true)" />
+                    }
+                }
+                @case ("audio") {
+                    <div class="anotoki-file-preview__sound">
+                        <anotoki-icon name="music" [size]="40" />
+                        <audio class="anotoki-file-preview__player" data-audio controls preload="metadata" [src]="link">This browser cannot play it: download it instead.</audio>
+                    </div>
+                }
+                @case ("video") {
+                    <video class="anotoki-file-preview__video" data-video controls preload="metadata" [src]="link">This browser cannot play it: download it instead.</video>
+                }
+                @case ("text") {
+                    @if (text() !== null) {
+                        <pre class="anotoki-file-preview__text" data-text tabindex="0" role="region" [attr.aria-label]="'The words of ' + file().name">{{ text() }}</pre>
+                    } @else if (textError(); as message) {
+                        <p class="anotoki-file-preview__note" role="alert">Its words could not be read. {{ message }}</p>
+                    } @else {
+                        <anotoki-spinner label="Reading it" [showLabel]="true" />
+                    }
+                }
+                @default {
+                    <p class="anotoki-file-preview__note" data-no-preview>
+                        <anotoki-icon name="file" [size]="20" />
+                        <span>.{{ file().extension }} files are not shown here: it is downloaded as it is.</span>
+                    </p>
+                }
+            }
+        } @else {
+            <p class="anotoki-file-preview__note" role="alert">The server gave no link this page can open.</p>
+        }
+    </div>
+
+    <dl class="anotoki-admin__facts anotoki-file-preview__facts" data-facts>
+        <div>
+            <dt>Path</dt>
+            <dd>
+                <code>{{ file().path }}</code>
+            </dd>
+        </div>
+        <div>
+            <dt>Size</dt>
+            <dd>{{ formatBytes(file().size) }}</dd>
+        </div>
+        @if (dimensions(); as size) {
+            <div>
+                <dt>Picture</dt>
+                <dd>{{ size }}</dd>
+            </div>
+        }
+        @if (file().modified; as modified) {
+            <div>
+                <dt>Changed</dt>
+                <dd>{{ tools.date(modified) }}</dd>
+            </div>
+        }
+    </dl>
+
+    <div dialogFooter>
+        @if (file().preview === "image" && !failed() && url()) {
+            <button anotokiButton variant="ghost" data-fit [attr.aria-pressed]="!fit()" (click)="fit.set(!fit())">
+                <anotoki-icon name="maximize" [size]="15" />
+                {{ fit() ? "Its own size" : "Fit the window" }}
+            </button>
+        }
+        @if (url(); as link) {
+            <a anotokiButton data-download [href]="link" download rel="noopener noreferrer">
+                <anotoki-icon name="download" [size]="15" />
+                Download
+            </a>
+        }
+        <button anotokiButton autofocus data-close (click)="dismissed.emit()">Close</button>
+    </div>
+</anotoki-dialog>

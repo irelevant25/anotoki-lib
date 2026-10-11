@@ -1,0 +1,82 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: contents;
+}
+
+.anotoki-file-trash__happened {
+  margin: 0 0 0.75rem;
+  color: kit.token(success-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.anotoki-file-trash__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  color: kit.token(danger);
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+
+  anotoki-icon {
+    flex: none;
+    margin-top: 0.1rem;
+  }
+}
+
+.anotoki-file-trash__loading {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+.anotoki-file-trash__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anotoki-file-trash__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+}
+
+.anotoki-file-trash__what {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.anotoki-file-trash__name {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-file-trash__where {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-file-trash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}

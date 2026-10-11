@@ -1769,9 +1769,9 @@ protected readonly unread = inject(FeedbackUnread);       // void this.unread.re
   a grid or a list; uploading by the button or by dropping files, with a
   progress bar - what the root does not take (its extensions, its size) refused
   before it is sent, the server's refusals said file by file; a new folder;
-  rename and move; delete into the trash with an Undo, and the trash (put back,
-  empty); a preview from the signed link - a picture, sound or video in its own
-  element, text as text, everything else a download.
+  rename and move; delete into the trash after a question, with an Undo, and
+  the trash (put back, empty); a preview from the signed link - a picture, sound
+  or video in its own element, text as text, everything else a download.
 
 ### The visitors' feedback form (Angular)
 

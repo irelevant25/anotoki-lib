@@ -187,9 +187,9 @@ Angular, the admin tools (`@anotoki/lib/admin` and a page each - `/admin/errors`
   still running, and the list read again. The IAM's: encrypted, restoring off, its reason said.
 - The file explorer: the roots, the folder as a path of links, a search, a grid or a list; uploads by
   the button or dropped, with a progress bar - what the root does not take refused before it is sent,
-  the server's refusals file by file; a new folder, rename and move, delete into the trash with an
-  Undo, the trash; previews from the signed links (pictures, sound, video, text as text; the rest a
-  download).
+  the server's refusals file by file; a new folder, rename and move, delete into the trash after a
+  question, with an Undo, the trash; previews from the signed links (pictures, sound, video, text as
+  text; the rest a download).
 - `@anotoki/lib/admin/parts`, the library's own: what the pages share - their requests and refusals,
   dates and sizes, a question dialog, the icons the kit lacks (folder, upload, music, film, file,
   archive, maximize), their styles' block - in one entry point, so a site's build places it once.

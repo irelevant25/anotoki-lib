@@ -166,6 +166,14 @@ final class AuditLogTest extends DatabaseTestCase
         self::assertSame(1, $audit->page(['from' => '2026-10-05T12:00:00+02:00', 'to' => '2026-10-06T00:00:00Z'])['total']);
         self::assertSame(6, $audit->page(['from' => 'yesterday-ish'])['total'], 'what is no time filters nothing');
 
+        // The action's beginning with every other filter after it: the placeholders behind the LIKE (0.4.0's
+        // ESCAPE '\' clause could hide them from PDO before PHP 8.4 - SqlLiteralsTest keeps any such clause out).
+        $every = ['actor' => '1', 'action' => 'account.', 'target_type' => 'user', 'target_id' => '1', 'from' => '2026-10-02', 'to' => '2026-10-02'];
+        self::assertSame(['account.password_set'], array_column($audit->page($every)['items'], 'action'));
+        self::assertSame(1, $audit->page(['action' => 'content.', 'scope_type' => 'characters', 'scope_id' => '42', 'from' => '2026-10-04T00:00:00Z'])['total']);
+        self::assertSame(0, $audit->page(['action' => 'account\\', 'from' => '2026-10-01'])['total'], 'a backslash is itself');
+        self::assertSame(1, $audit->countSince(new \DateTimeImmutable('2026-10-06T00:00:00Z')));
+
         $paged = $audit->page([], 2, 4);
         self::assertSame([6, 2, 4], [$paged['total'], $paged['page'], $paged['pageSize']]);
         self::assertSame(['account.password_set', 'account.created'], array_column($paged['items'], 'action'));

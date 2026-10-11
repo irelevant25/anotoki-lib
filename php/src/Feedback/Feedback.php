@@ -260,7 +260,9 @@ final class Feedback
         }
         $search = is_string($filter['search'] ?? null) ? trim($filter['search']) : '';
         if ($search !== '') {
-            $where[] = "(subject ILIKE ? ESCAPE '\\' OR message ILIKE ? ESCAPE '\\' OR contact_email ILIKE ? ESCAPE '\\' OR details::text ILIKE ? ESCAPE '\\')";
+            // LIKE's escape character is the backslash already, so no ESCAPE '\' clause: before PHP 8.4, PDO's
+            // reading of the SQL takes the \' in such a literal for an escaped quote and misses every ? after it.
+            $where[] = '(subject ILIKE ? OR message ILIKE ? OR contact_email ILIKE ? OR details::text ILIKE ?)';
             $needle = '%' . addcslashes($search, '%_\\') . '%';
             array_push($parameters, $needle, $needle, $needle, $needle);
         }

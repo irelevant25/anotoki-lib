@@ -542,7 +542,9 @@ final class AuditLog implements AuditRecorder
         }
         $action = is_string($filter['action'] ?? null) ? trim($filter['action']) : '';
         if ($action !== '') {
-            $where[] = "action LIKE ? ESCAPE '\\'";
+            // LIKE's escape character is the backslash already, so no ESCAPE '\' clause: before PHP 8.4, PDO's
+            // reading of the SQL takes the \' in such a literal for an escaped quote and misses every ? after it.
+            $where[] = 'action LIKE ?';
             $parameters[] = addcslashes($action, '%_\\') . '%';
         }
         foreach (['target_type', 'target_id', 'scope_type', 'scope_id'] as $column) {

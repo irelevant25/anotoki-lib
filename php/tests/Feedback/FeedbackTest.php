@@ -55,9 +55,9 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(['ok' => true], $this->json($response), 'no id handed out');
         $row = $this->rows('SELECT * FROM anotoki_feedback')[0];
         self::assertSame(
-            ['bug', 'new', 'Characters', 'Wrong talent', "The numbers\nare off.", 'ana@example.com', 42, '/characters/raiden', 'sk', 'TestBrowser/1.0'],
+            ['bug', 'new', 'Characters', 'Wrong talent', "The numbers\nare off.", null, 42, '/characters/raiden', 'sk', 'TestBrowser/1.0'],
             [$row['kind'], $row['status'], $row['section'], $row['subject'], $row['message'], $row['contact_email'], $row['user_id'], $row['page'], $row['language'], $row['user_agent']],
-            'the id from the token, never the body; the account\'s address; the page without its query'
+            'the id from the token, never the body; no address the form did not send - never the account\'s filled in here; the page without its query'
         );
         self::assertSame(['steps' => 'Open it'], json_decode($row['details'], true));
         self::assertArrayNotHasKey('client_hash', $row, 'nothing of where it came from on the message: no address, no hash of one');
@@ -68,6 +68,10 @@ final class FeedbackTest extends DatabaseTestCase
         $this->post($app, ['kind' => 'idea', 'message' => 'Anonymous', 'email' => 'mine@example.com', 'anonymous' => true], person: ['id' => 42, 'email' => 'ana@example.com']);
         $row = $this->rows("SELECT user_id, contact_email FROM anotoki_feedback WHERE message = 'Anonymous'")[0];
         self::assertSame([null, null], [$row['user_id'], $row['contact_email']], 'without my name: no id and no address');
+
+        // The address the form sent - the account's as the page wrote it in, or one typed over it - and only that.
+        $this->post($app, ['kind' => 'idea', 'message' => 'Answer me', 'email' => 'ana@example.com'], person: ['id' => 42, 'email' => 'ana@example.com']);
+        self::assertSame('ana@example.com', $this->value("SELECT contact_email FROM anotoki_feedback WHERE message = 'Answer me'"));
     }
 
     public function testEveryRefusalHasItsCode(): void
@@ -152,17 +156,45 @@ final class FeedbackTest extends DatabaseTestCase
 
         self::assertFalse(in_array('client_hash', array_column($this->rows("SELECT column_name FROM information_schema.columns WHERE table_name = 'anotoki_feedback'"), 'column_name'), true), 'no column for it');
         $count = $this->limits();
-        self::assertSame(['v', 'sent'], array_keys($count), 'a keyed hash of each bucket and when - nothing else');
-        self::assertEqualsCanonicalizing([hash_hmac('sha256', '203.0.113.9', self::KEY), hash_hmac('sha256', '198.51.100.4', self::KEY)], array_keys($count['sent']));
+        self::assertSame(['v', 'visitors', 'accounts'], array_keys($count), 'a keyed hash of each sender and when - nothing else');
+        self::assertEqualsCanonicalizing([hash_hmac('sha256', '203.0.113.9', self::KEY), hash_hmac('sha256', '198.51.100.4', self::KEY)], array_keys($count['visitors']));
         $raw = (string) file_get_contents($this->path('storage/' . Feedback::LIMITS_FILE));
         self::assertStringNotContainsString('203.0.113.9', $raw);
         self::assertStringNotContainsString('one', $raw, 'nothing of a message');
         self::assertFileExists($this->path('storage/cache/.htaccess'), 'in a denied folder');
 
+        // A signed-in sender is counted by their account - a keyed hash of it too.
+        $this->post($app, ['kind' => 'idea', 'message' => 'mine'], person: ['id' => 42]);
+        self::assertSame([hash_hmac('sha256', 'account:42', self::KEY)], array_keys($this->limits()['accounts']));
+
         // A day later the times are gone with the next message: the count holds that message's alone.
         $this->ageLimits(86401);
         $this->post($app, ['kind' => 'idea', 'message' => 'three'], address: '198.51.100.5');
-        self::assertSame([hash_hmac('sha256', '198.51.100.5', self::KEY)], array_keys($this->limits()['sent']));
+        self::assertSame([hash_hmac('sha256', '198.51.100.5', self::KEY)], array_keys($this->limits()['visitors']));
+        self::assertSame([], $this->limits()['accounts']);
+    }
+
+    public function testSignedInSendersNeverSpendTheVisitorsBudget(): void
+    {
+        $app = $this->app(['limits' => ['perHour' => 3, 'perDay' => 10, 'allPerDay' => 2]]);
+
+        // A few networks spend the visitors' budget for the day.
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'a'], address: '2001:db8:1::1')->getStatusCode());
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'b'], address: '2001:db8:2::1')->getStatusCode());
+        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'c'], address: '2001:db8:3::1')->getStatusCode(), 'the visitors\' budget is spent');
+
+        // People with an account are counted by it, never against the visitors' budget - signed in "without my name" too.
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'd'], person: ['id' => 42], address: '2001:db8:3::1')->getStatusCode());
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'e', 'anonymous' => true], person: ['id' => 42])->getStatusCode());
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'f'], person: ['id' => 7])->getStatusCode());
+        self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'g'], person: ['id' => 42])->getStatusCode());
+        $own = $this->post($app, ['kind' => 'idea', 'message' => 'h'], person: ['id' => 42]);
+        self::assertSame([429, 'too_many'], [$own->getStatusCode(), $this->json($own)['code']], 'their own limit, three an hour here');
+        self::assertSame([null, null], $this->pdo->query("SELECT user_id, contact_email FROM anotoki_feedback WHERE message = 'e'")->fetch(PDO::FETCH_NUM), 'counted by the account, kept without it');
+
+        // A count 0.4.1 wrote (`sent`) is read as the visitors'.
+        file_put_contents($this->path('storage/' . Feedback::LIMITS_FILE), (string) json_encode(['v' => 1, 'sent' => [hash_hmac('sha256', '198.51.100.20', self::KEY) => [time() - 60, time() - 30]]]));
+        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'i'], address: '198.51.100.21')->getStatusCode(), 'two visitors already today');
     }
 
     public function testFeedbackNeedsTheStorageFolderToCountIn(): void
@@ -364,10 +396,12 @@ final class FeedbackTest extends DatabaseTestCase
     private function ageLimits(int $seconds, array $without = []): void
     {
         $count = $this->limits();
-        foreach ($count['sent'] as $bucket => $times) {
-            $count['sent'][$bucket] = array_map(static fn (int $at): int => $at - $seconds, $times);
+        foreach (['visitors', 'accounts'] as $kind) {
+            foreach ($count[$kind] as $sender => $times) {
+                $count[$kind][$sender] = array_map(static fn (int $at): int => $at - $seconds, $times);
+            }
+            $count[$kind] = (object) array_diff_key($count[$kind], array_flip($without));
         }
-        $count['sent'] = array_diff_key($count['sent'], array_flip($without));
         file_put_contents($this->path('storage/' . Feedback::LIMITS_FILE), (string) json_encode($count));
     }
 

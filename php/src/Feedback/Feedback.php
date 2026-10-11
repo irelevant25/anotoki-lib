@@ -28,15 +28,19 @@ use Throwable;
  * the token; no network address and no submitter hash is kept with a message;
  * no mail is sent. So:
  * - who: only from the token (the site's $person), never from the body; "send
- *   without my name" drops the id and the address; a signed-in sender who
- *   gives no address is answered at the account's;
- * - a message row holds nothing of where it came from. The limits - 5 an hour
- *   and 20 a day from one address bucket (the site's trusted proxy's header,
- *   never X-Forwarded-For from anybody), 300 a day from everybody - are counted
- *   apart: a keyed hash of the bucket and the time, in a file of the site's
- *   storage (never the database, so never a backup), each time gone once a day
- *   old - the limits look back a day at most. A message is kept under that
- *   file's lock, so two at once never both slip under a limit;
+ *   without my name" drops the id and the address; the address kept is the one
+ *   the form sent, never one the server fills in (the form writes the
+ *   account's in on the page, where the person sees it and may clear it);
+ * - a message row holds nothing of where it came from. The limits are counted
+ *   apart: 5 an hour and 20 a day from one sender - a signed-in person by their
+ *   account, a visitor by their address bucket (ClientAddress: the trusted
+ *   proxy's header from a trusted proxy alone, an IPv6 address as its /64) -
+ *   and 300 a day from all visitors together; people signed in never count
+ *   against the visitors' budget, so a few networks that spend it keep nobody
+ *   with an account out. A keyed hash of the sender and the time, in a file of
+ *   the site's storage (never the database, so never a backup), each time gone
+ *   once a day old. A message is kept under that file's lock, so two at once
+ *   never both slip under a limit;
  * - a honeypot field that a person never sees - filled, the answer is a kept
  *   message's, word for word, and nothing is kept; a body of at most 64 KB; the
  *   page as a path, never its query; an address with nothing in it a mail
@@ -103,7 +107,8 @@ final class Feedback
      * } $options
      *   - kinds: what a message can be (default bug, idea, other); sections: the site's places it can be about
      *     (none: no section kept); fields: the site's extra fields, name => most characters (into `details`)
-     *   - limits: perHour 5, perDay 20 from one address bucket; allPerDay 300 from everybody
+     *   - limits: perHour 5, perDay 20 from one sender (an account, or a visitor's address bucket); allPerDay
+     *     300 from all visitors together (people signed in are not counted in it)
      *   - honeypot: the hidden field's name ('website'; null: none)
      *   - key: the HMAC key of the buckets (a site's secret through Keys::derive()); default the installation's
      *     key from `storage`
@@ -207,8 +212,11 @@ final class Feedback
             return $row;
         }
         $row['user_agent'] = self::nullable(Utf8::prefix(trim($request->getHeaderLine('User-Agent')), 300));
+        // A signed-in sender is counted by their account (their message "without my name" too): never against the
+        // visitors' budget, which a few networks could spend.
+        $account = self::id($person['id'] ?? null);
 
-        $id = $this->withinLimits($clientKey, function () use ($row): int {
+        $id = $this->withinLimits($account !== null ? 'account:' . $account : null, $clientKey, function () use ($row): int {
             $statement = ($this->pdo)()->prepare(
                 'INSERT INTO ' . Schema::FEEDBACK_TABLE . ' (kind, section, subject, message, details, contact_email, user_id, page, language, user_agent)
                  VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?) RETURNING id'
@@ -485,12 +493,11 @@ final class Feedback
         }
 
         $anonymous = ($body['anonymous'] ?? false) === true;
+        // Only the address the form sent: the person saw it there (the form writes the account's in) and may
+        // have cleared it. The server never fills one in.
         $email = is_string($body['email'] ?? null) ? trim($body['email']) : '';
         if ($email !== '' && !self::plainAddress($email)) {
             return Refusal::invalid('email_invalid', 'That does not look like an e-mail address.', ['field' => 'email']);
-        }
-        if ($email === '' && !$anonymous && is_string($person['email'] ?? null) && self::plainAddress($person['email'])) {
-            $email = $person['email'];
         }
 
         $details = [];
@@ -528,11 +535,13 @@ final class Feedback
     /**
      * $keep run under the limits (see the class) - its answer, or 429 too_many with the seconds until one
      * more fits, or 503 when the count cannot be kept. Counted in a file of the site's storage under its
-     * lock: a keyed hash of each bucket that sent a message in the last day, and when, nothing else.
+     * lock: a keyed hash of each sender of the last day, and when, nothing else - the accounts' apart from
+     * the visitors', whose budget together is the visitors' alone.
      *
+     * @param ?string $account  a signed-in sender ('account:<id>'), null for a visitor
      * @param Closure(): int $keep
      */
-    private function withinLimits(string $clientKey, Closure $keep): int|Refusal
+    private function withinLimits(?string $account, string $clientKey, Closure $keep): int|Refusal
     {
         $unavailable = new Refusal(503, 'feature_unavailable', 'Feedback cannot be taken right now. Try again in a few minutes.');
         if (!GuardedDirectory::ensure(dirname($this->storage . '/' . self::LIMITS_FILE))) {
@@ -542,22 +551,20 @@ final class Feedback
         if ($handle === false) {
             return $unavailable;
         }
+        @chmod($this->storage . '/' . self::LIMITS_FILE, 0600);
         try {
             if (!flock($handle, LOCK_EX)) {
                 return $unavailable;
             }
             $now = time();
             $state = json_decode((string) stream_get_contents($handle), true);
-            $sent = [];
-            foreach (is_array($state['sent'] ?? null) ? $state['sent'] : [] as $bucket => $times) {
-                // A day old, a time gone; a time to come (a clock set back) is no time at all.
-                $recent = array_values(array_filter(is_array($times) ? $times : [], static fn (mixed $at): bool => is_int($at) && $at > $now - 86400 && $at <= $now));
-                if ($recent !== [] && preg_match('/^[0-9a-f]{64}$/D', (string) $bucket) === 1) {
-                    $sent[(string) $bucket] = $recent;
-                }
-            }
-            $bucket = hash_hmac('sha256', $clientKey, $this->key());
-            $mine = $sent[$bucket] ?? [];
+            $state = is_array($state) ? $state : [];
+            // 0.4.0 and 0.4.1 kept the visitors under `sent`.
+            $visitors = self::recent($state['visitors'] ?? ($state['sent'] ?? []), $now);
+            $accounts = self::recent($state['accounts'] ?? [], $now);
+
+            $sender = hash_hmac('sha256', $account ?? $clientKey, $this->key());
+            $mine = ($account !== null ? $accounts : $visitors)[$sender] ?? [];
             $lastHour = array_values(array_filter($mine, static fn (int $at): bool => $at > $now - 3600));
             if (count($lastHour) >= $this->limits['perHour']) {
                 return self::tooMany(min($lastHour) + 3600 - $now, 'That is a lot of messages in one hour. Try again later.');
@@ -565,16 +572,22 @@ final class Feedback
             if (count($mine) >= $this->limits['perDay']) {
                 return self::tooMany(min($mine) + 86400 - $now, 'That is a lot of messages in one day. Try again tomorrow.');
             }
-            $everybody = $sent === [] ? [] : array_merge(...array_values($sent));
-            if (count($everybody) >= $this->limits['allPerDay']) {
-                return self::tooMany(min($everybody) + 86400 - $now, 'The site has had a lot of messages today. Try again tomorrow.');
+            if ($account === null) {
+                $everybody = $visitors === [] ? [] : array_merge(...array_values($visitors));
+                if (count($everybody) >= $this->limits['allPerDay']) {
+                    return self::tooMany(min($everybody) + 86400 - $now, 'The site has had a lot of messages today. Try again tomorrow.');
+                }
             }
 
             $id = $keep();
-            $sent[$bucket][] = $now;
+            if ($account !== null) {
+                $accounts[$sender][] = $now;
+            } else {
+                $visitors[$sender][] = $now;
+            }
             ftruncate($handle, 0);
             rewind($handle);
-            fwrite($handle, (string) json_encode(['v' => 1, 'sent' => $sent]));
+            fwrite($handle, (string) json_encode(['v' => 2, 'visitors' => (object) $visitors, 'accounts' => (object) $accounts]));
             fflush($handle);
 
             return $id;
@@ -582,6 +595,24 @@ final class Feedback
             flock($handle, LOCK_UN);
             fclose($handle);
         }
+    }
+
+    /**
+     * The times of the last day, by sender: a day old, a time gone; a time to come (a clock set back) is no time.
+     *
+     * @return array<string, list<int>>
+     */
+    private static function recent(mixed $senders, int $now): array
+    {
+        $out = [];
+        foreach (is_array($senders) ? $senders : [] as $sender => $times) {
+            $kept = array_values(array_filter(is_array($times) ? $times : [], static fn (mixed $at): bool => is_int($at) && $at > $now - 86400 && $at <= $now));
+            if ($kept !== [] && preg_match('/^[0-9a-f]{64}$/D', (string) $sender) === 1) {
+                $out[(string) $sender] = $kept;
+            }
+        }
+
+        return $out;
     }
 
     private static function tooMany(int $seconds, string $message): Refusal

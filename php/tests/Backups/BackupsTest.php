@@ -40,14 +40,21 @@ final class BackupsTest extends BackupsTestCase
         $this->scramble();
         $this->pdo->exec("INSERT INTO anotoki_audit_log (action) VALUES ('kept.entry')");
         self::assertNotSame(array_diff_key($before, array_flip(self::KEPT)), array_diff_key($this->snapshot(), array_flip(self::KEPT)));
+        $scrambled = $this->sequences();
 
         $result = $backups->restore($backup['id'], 7);
 
         self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
         self::assertSame([$backup['id'], 4, null], [$result['restored'], $result['tables'], $result['after_restore_error']], 'people, notes, roles and the feedback; never the audit log or the bookkeeping');
         self::assertSame(array_diff_key($before, array_flip(self::KEPT)), array_diff_key($this->snapshot(), array_flip(self::KEPT)), 'every row as it was: updated_at untouched, no MEMBER row added by the trigger');
+        // Every sequence where the later of the backup and today leaves it: a value handed out since is never handed
+        // out again - the kept audit log may name it (and the kept tables' own are not touched at all).
         $keptSequences = array_flip(['anotoki_audit_log_id_seq', 'migrations_id_seq']);
-        self::assertSame(array_diff_key($sequences, $keptSequences), array_diff_key($this->sequences(), $keptSequences), 'every sequence as it was - but the kept tables\' own');
+        $restored = $this->sequences();
+        foreach (array_keys(array_diff_key($sequences, $keptSequences)) as $name) {
+            self::assertSame(max(self::nextOf($sequences[$name]), self::nextOf($scrambled[$name])), self::nextOf($restored[$name]), "$name never goes back");
+        }
+        self::assertSame(['anotoki_feedback_id_seq' => 1, 'notes_id_seq' => 501, 'people_id_seq' => 6, 'ticket_numbers' => 103], array_map(self::nextOf(...), array_intersect_key($restored, array_flip(['people_id_seq', 'ticket_numbers', 'notes_id_seq', 'anotoki_feedback_id_seq']))));
         self::assertGreaterThan(1, (int) $this->value('SELECT last_value FROM anotoki_audit_log_id_seq'), 'the audit log\'s ids go on');
         self::assertSame(['O', 'O'], $this->pdo->query("SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'people'::regclass AND NOT tgisinternal ORDER BY tgname")->fetchAll(PDO::FETCH_COLUMN), 'the triggers on again');
         self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'kept.entry'"), 'the audit log kept as it is');
@@ -57,7 +64,15 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame(['before-restore', 'manual'], array_column($backups->list(), 'kind'));
 
         $this->pdo->exec("INSERT INTO people (name) VALUES ('after the restore')");
-        self::assertSame(5, (int) $this->value("SELECT id FROM people WHERE name = 'after the restore'"), 'the next id follows the restored sequence');
+        self::assertSame(6, (int) $this->value("SELECT id FROM people WHERE name = 'after the restore'"), 'never 5 again: the person made since had it');
+    }
+
+    /** The value a sequence hands out next, from sequences()' "last_value:is_called". */
+    private static function nextOf(string $state): int
+    {
+        [$last, $called] = explode(':', $state);
+
+        return (int) $last + ($called === 'true' ? 1 : 0);
     }
 
     public function testTheIamsBackupIsUnreadableWithoutItsKeyAndAnyTamperingIsRefused(): void
@@ -75,6 +90,12 @@ final class BackupsTest extends BackupsTestCase
         }
         $header = Archive::header($file);
         self::assertSame([$backup['id'], 'aes-256-gcm', 'anotoki-lib/backup-chunks/v1'], [$header['id'], $header['cipher']['name'], $header['cipher']['info']], 'the header reads without the key');
+        self::assertTrue($backup['sealed']);
+        $sidecar = (string) file_get_contents($file . '.json');
+        unlink($file . '.json');
+        self::assertTrue($backups->get($backup['id'])['sealed'] ?? null, 'without its sidecar, sealed by its cipher alone');
+        self::assertFalse($this->backupsWith()->get($backup['id'])['sealed'] ?? null, 'a site without a key made no encrypted backup');
+        file_put_contents($file . '.json', $sidecar);
         $chunks = $this->chunks($bytes);
         self::assertGreaterThan(2, count($chunks), 'several chunks');
 
@@ -332,8 +353,75 @@ final class BackupsTest extends BackupsTestCase
 
         $listed = $backups->list()[0];
 
-        self::assertSame([$backup['id'], 'manual', 'unlisted', null], [$listed['id'], $listed['kind'], $listed['status'], $listed['description']]);
-        self::assertIsArray($backups->restore($backup['id']), 'it restores without one too');
+        self::assertSame([$backup['id'], 'manual', 'unlisted', null, false], [$listed['id'], $listed['kind'], $listed['status'], $listed['description'], $listed['sealed']]);
+        // Without its sealed sidecar it is a file somebody put there: listed, never restored here.
+        $refused = $backups->restore($backup['id']);
+        self::assertSame([422, 'archive_invalid'], [$refused->status ?? null, $refused->code ?? null]);
+        self::assertStringContainsString('no seal of this site', $refused->message ?? '');
+        self::assertContains('It carries no seal of this site\'s - it was not made here, or it was changed since - so it is not restored here: restore it offline (README).', $backups->preview($backup['id'])['reasons']);
+        self::assertSame($backup['id'], $backups->extractTo($backup['id'], $this->path('offline'))['id'], 'offline, its owner may still read it');
+    }
+
+    public function testAPlainBackupIsSealedAndAFileDroppedBesideItIsNeverRestored(): void
+    {
+        $this->fill();
+        $backups = $this->backupsWith();
+        $made = $backups->create();
+        self::assertIsArray($made);
+        self::assertTrue($made['sealed']);
+        self::assertArrayNotHasKey('seal', $made, 'the seal itself is never shown');
+
+        // Somebody drops a backup of their own making - a sidecar written to match - into the folder.
+        $forged = '20261001-000000Z-manual-' . str_repeat('f', 32);
+        $bytes = (string) file_get_contents($backups->path($made['id']));
+        file_put_contents($backups->path($forged), str_replace($made['id'], $forged, $bytes));
+        $sidecar = json_decode((string) file_get_contents($backups->path($made['id']) . '.json'), true);
+        $sidecar = ['id' => $forged, 'sha256' => hash_file('sha256', $backups->path($forged)), 'seal' => hash_hmac('sha256', $forged . "\n" . hash_file('sha256', $backups->path($forged)), 'a key that is not this site\'s')] + $sidecar;
+        file_put_contents($backups->path($forged) . '.json', (string) json_encode($sidecar));
+        $listed = array_column($backups->list(), 'sealed', 'id');
+        self::assertSame([true, false], [$listed[$made['id']], $listed[$forged]]);
+        self::assertSame('archive_invalid', $backups->restore($forged)->code ?? null);
+
+        // The sealed one restores; a byte of it changed, it does not.
+        self::assertIsArray($backups->restore($made['id']));
+        file_put_contents($backups->path($made['id']), substr_replace($bytes, 'X', -10, 1));
+        self::assertSame('archive_invalid', $backups->restore($made['id'])->code ?? null);
+    }
+
+    public function testInspectingReadsTheManifestAloneAndWritesNothing(): void
+    {
+        $this->fill(large: true);
+        $backups = $this->backupsWith(['encryption' => str_repeat('k', 32)]);
+        $made = $backups->create();
+        self::assertIsArray($made);
+        $temporary = glob(sys_get_temp_dir() . '/anotoki-backup-inspect-*') ?: [];
+
+        $manifest = $backups->manifest($made['id']);
+
+        self::assertSame($made['id'], $manifest['id']);
+        self::assertEquals(['people' => 4, 'notes' => 3500], array_intersect_key(array_column($manifest['tables'], 'rows', 'name'), ['people' => 1, 'notes' => 1]));
+        self::assertSame($temporary, glob(sys_get_temp_dir() . '/anotoki-backup-inspect-*') ?: [], 'no folder in the system\'s temp');
+        self::assertSame([], glob($this->backups . '/.tmp-*') ?: [], 'nor beside the backups');
+        $this->expectException(\RuntimeException::class);
+        $this->backupsWith(['encryption' => str_repeat('x', 32)])->manifest($made['id']);
+    }
+
+    public function testEveryFileAndFolderOfTheBackupsIsTheSitesAlone(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::markTestSkipped('Windows keeps no Unix modes.');
+        }
+        $this->fill();
+        $backups = $this->backupsWith();
+        $made = $backups->create();
+        self::assertIsArray($made);
+        $backups->ticket($made['id'], 7);
+        foreach ([$this->backups, $this->storage . '/cache', $this->storage . '/cache/backup-tickets'] as $folder) {
+            self::assertSame('700', substr(sprintf('%o', fileperms($folder)), -3), $folder);
+        }
+        foreach (array_merge([$backups->path($made['id']), $backups->path($made['id']) . '.json'], glob($this->storage . '/cache/backup-tickets/*.ticket') ?: []) as $file) {
+            self::assertSame('600', substr(sprintf('%o', fileperms($file)), -3), $file);
+        }
     }
 
     public function testTheDailyRunsOnceADayAfterTheAnswer(): void

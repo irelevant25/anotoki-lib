@@ -15,9 +15,11 @@ final class AtomicFile
 {
     /**
      * Writes $content to $path. With $exclusive, a file already at $path is
-     * left as it is (and false answered). Never throws, never warns.
+     * left as it is (and false answered). With $mode (0600 for what is the
+     * site's alone), the file has it before it is in its place. Never throws,
+     * never warns.
      */
-    public static function write(string $path, string $content, bool $exclusive = false): bool
+    public static function write(string $path, string $content, bool $exclusive = false, ?int $mode = null): bool
     {
         if ($exclusive && file_exists($path)) {
             return false;
@@ -32,6 +34,9 @@ final class AtomicFile
             @unlink($temporary);
 
             return false;
+        }
+        if ($mode !== null) {
+            @chmod($temporary, $mode);
         }
 
         for ($attempt = 0; $attempt < 8; $attempt++) {

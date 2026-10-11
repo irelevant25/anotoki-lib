@@ -10,6 +10,7 @@ use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Support\AfterResponse;
 use Anotoki\Lib\Support\AtomicFile;
 use Anotoki\Lib\Support\GuardedDirectory;
+use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Log;
 use Anotoki\Lib\Support\Redactor;
 use Anotoki\Lib\Support\Refusal;
@@ -63,10 +64,20 @@ use Throwable;
  * Downloads go by single-use tickets, good for `ticketSeconds` (60; Tickets).
  * The two files of fixed names the folder holds - the before-migration note
  * and the daily stamp - name no backup: a host that ignores .htaccess would
- * hand out both.
+ * hand out both. Every file and folder the backups write is the site's own
+ * user's alone (0600, 0700).
+ *
+ * A backup that is not encrypted is sealed: its sidecar carries an HMAC of
+ * its id and its SHA-256 under a key of this installation's (Keys) - so a file
+ * dropped into the folder, with a sidecar of its own or none, is listed as not
+ * sealed and never restored here (restored offline, from extractTo(), when its
+ * owner means it). An encrypted one is sealed by its own cipher.
  */
 final class Backups
 {
+    /** Why a backup without this installation's seal is not restored here. */
+    private const UNSEALED = 'It carries no seal of this site\'s - it was not made here, or it was changed since - so it is not restored here: restore it offline (README).';
+
     public const DAILY = 'daily';
     public const MANUAL = 'manual';
     public const BEFORE_MIGRATION = 'before-migration';
@@ -109,6 +120,7 @@ final class Backups
     private readonly Closure $onError;
     private readonly int $ticketSeconds;
     private readonly Tickets $tickets;
+    private ?string $sealKey = null;
 
     /**
      * @param Closure(): PDO $connect  a connection (PDO::ERRMODE_EXCEPTION) - opened with Copy::connect() where
@@ -424,6 +436,9 @@ final class Backups
         if (!$schema['equal']) {
             $reasons[] = 'The database\'s schema has changed since this backup: it is restored offline (README).';
         }
+        if (!$this->sealedOrEncrypted($info)) {
+            $reasons[] = self::UNSEALED;
+        }
         foreach ($this->restoreProblems($pdo, $live['shape']) as $problem) {
             $reasons[] = $problem;
         }
@@ -512,13 +527,15 @@ final class Backups
      * The file a ticket opens - used up whatever the answer - or null. With
      * $by ([the person asking]), only for the person it was issued to: a site
      * whose download route knows who asks (its session cookie) passes them.
+     * With $spend false (a HEAD, which a link checker or a scanner sends), the
+     * ticket is only looked at: the GET it is for still finds it.
      *
      * @param ?array{0: int|string|null} $by
      * @return ?array{path: string, size: int, filename: string}
      */
-    public function redeem(string $id, string $ticket, ?array $by = null): ?array
+    public function redeem(string $id, string $ticket, ?array $by = null, bool $spend = true): ?array
     {
-        if (!self::validId($id) || !$this->tickets->redeem($ticket, $id, $by)) {
+        if (!self::validId($id) || !($spend ? $this->tickets->redeem($ticket, $id, $by) : $this->tickets->good($ticket, $id, $by))) {
             return null;
         }
         $path = $this->path($id);
@@ -658,6 +675,44 @@ final class Backups
         }
 
         return $this->unpack($id, $info, $directory, spooled: false)[0];
+    }
+
+    /**
+     * A backup's manifest - its tables with their rows, its migrations, who made it - read from the start of
+     * the archive alone (an encrypted one decrypted no further than its first chunks), into memory: no row
+     * of the database is read, and nothing is written anywhere. What the command line's --inspect shows.
+     *
+     * @return array<string, mixed>
+     * @throws RuntimeException when it cannot be read (no such backup, another key, no manifest first)
+     */
+    public function manifest(string $id): array
+    {
+        $this->get($id) ?? throw new RuntimeException('There is no such backup.');
+        $json = '';
+        $read = false;
+        $enough = new RuntimeException('The manifest is read: the rest is not.');
+        try {
+            Archive::extract($this->path($id), $this->encryption, static function (string $name, int $size) use (&$json, &$read, $enough): Closure {
+                if ($read || $name !== 'manifest.json' || $size > 64 * 1048576) {
+                    throw $enough;
+                }
+                $read = true;
+
+                return static function (string $bytes) use (&$json): void {
+                    $json .= $bytes;
+                };
+            });
+        } catch (RuntimeException $e) {
+            if ($e !== $enough) {
+                throw $e;
+            }
+        }
+        $manifest = json_decode($json, true);
+        if (!$read || !is_array($manifest) || ($manifest['format'] ?? null) !== 'anotoki-backup-manifest' || ($manifest['id'] ?? null) !== $id) {
+            throw new RuntimeException('Its manifest is not readable.');
+        }
+
+        return $manifest;
     }
 
     /** A backup's file. */
@@ -807,9 +862,11 @@ final class Backups
                 'rows' => array_sum(array_column($tables, 'rows')),
                 'sequences' => count($sequences),
                 'duration_ms' => (int) round((microtime(true) - $started) * 1000),
+                // This installation's seal: the file was made here, and is as it was made (see the class).
+                'seal' => $this->seal($id, $written['sha256']),
             ];
             unset($info['cipher']);
-            AtomicFile::write($target . '.json', json_encode($info, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            AtomicFile::write($target . '.json', json_encode($info, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), mode: 0600);
 
             return $this->info($id) ?? $info;
         } finally {
@@ -830,6 +887,7 @@ final class Backups
         if ($handle === false) {
             return;
         }
+        @chmod($stampFile, 0600);
         try {
             // One process makes the day's backup; another finds the lock taken and leaves.
             if (!flock($handle, LOCK_EX | LOCK_NB)) {
@@ -921,7 +979,7 @@ final class Backups
         } finally {
             $this->release($held);
         }
-        AtomicFile::write($noteFile, (string) json_encode(['pending' => $pending, 'made' => $info['created_at']]));
+        AtomicFile::write($noteFile, (string) json_encode(['pending' => $pending, 'made' => $info['created_at']]), mode: 0600);
         $this->audit?->record(null, null, 'backup.created', 'backup', $info['id'], self::auditDetails($info));
         $this->prune();
 
@@ -966,6 +1024,10 @@ final class Backups
     private function unpack(string $id, array $info, string $work, bool $spooled): array
     {
         $file = $this->path($id);
+        // A restore here takes only what this installation made: a plain backup with its seal (the class).
+        if ($spooled && ($info['sealed'] ?? false) !== true) {
+            throw new RuntimeException(self::UNSEALED);
+        }
         if (isset($info['sha256']) && is_string($info['sha256']) && ($info['status'] ?? null) === 'complete') {
             if (!hash_equals($info['sha256'], (string) hash_file('sha256', $file))) {
                 throw new RuntimeException('Its checksum is not the one it was written with: it was changed or damaged.');
@@ -1103,8 +1165,15 @@ final class Backups
                 if ($sequence['owner'] !== null && isset($owners[$sequence['owner']])) {
                     continue;
                 }
-                $pdo->prepare('SELECT setval(CAST(? AS regclass), CAST(? AS bigint), CAST(? AS boolean))')
-                    ->execute([$shape->qualified((string) $sequence['name']), (string) $sequence['last_value'], $sequence['is_called'] ? 'true' : 'false']);
+                // Never backwards: the next value is the later of the backup's and today's. A value handed out
+                // since the backup was made may be named where a restore never reaches - the audit log kept, a
+                // site's generations of progress - and must never be handed out again.
+                $sequenceName = $shape->qualified((string) $sequence['name']);
+                $pdo->prepare(
+                    'SELECT setval(CAST(? AS regclass), GREATEST(CAST(? AS bigint) + CASE WHEN CAST(? AS boolean) THEN 1 ELSE 0 END,
+                                   s.last_value + CASE WHEN s.is_called THEN 1 ELSE 0 END), false)
+                       FROM ' . $sequenceName . ' s'
+                )->execute([$sequenceName, (string) $sequence['last_value'], $sequence['is_called'] ? 'true' : 'false']);
             }
             // The deferred keys checked now, while their tables are whole: ALTER TABLE refuses a table with checks pending.
             $pdo->exec('SET CONSTRAINTS ALL IMMEDIATE');
@@ -1228,8 +1297,28 @@ final class Backups
         }
         $info['stale'] = $info['kind'] === self::MANUAL && is_string($info['created_at'] ?? null)
             && strtotime($info['created_at']) < time() - $this->staleManualDays * 86400;
+        // Made here: encrypted under the site's key (its cipher refuses any other), or its sidecar sealed by this
+        // installation (the class). A site without a key made no encrypted backup.
+        $seal = $info['seal'] ?? null;
+        unset($info['seal']);
+        $info['sealed'] = (($info['encrypted'] ?? false) === true && $this->encryption !== null)
+            || (is_string($seal) && is_string($info['sha256'] ?? null) && hash_equals($this->seal($id, $info['sha256']), $seal));
 
         return $info;
+    }
+
+    /** This installation's seal of a backup: an HMAC of its id and its SHA-256, under a key of its own (Keys). */
+    private function seal(string $id, string $sha256): string
+    {
+        $this->sealKey ??= Keys::derive(Keys::installation($this->storage), 'backup-seal');
+
+        return hash_hmac('sha256', $id . "\n" . $sha256, $this->sealKey);
+    }
+
+    /** A backup to restore here: encrypted under the site's key, or sealed by this installation. @param array<string, mixed> $info */
+    private function sealedOrEncrypted(array $info): bool
+    {
+        return ($info['sealed'] ?? false) === true;
     }
 
     /** A lock file of the backups folder, so one backup or restore at a time; a refusal when another holds it. */
@@ -1242,6 +1331,7 @@ final class Backups
         if ($handle === false) {
             return new Refusal(500, 'storage_unavailable', 'The backups folder cannot be written.');
         }
+        @chmod($this->directory . '/.lock', 0600);
         if (!flock($handle, LOCK_EX | LOCK_NB)) {
             fclose($handle);
 

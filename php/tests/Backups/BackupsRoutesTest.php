@@ -139,6 +139,40 @@ final class BackupsRoutesTest extends BackupsTestCase
         }
     }
 
+    public function testAHeadOnlyLooksAtTheTicketAndTheGetStillHasIt(): void
+    {
+        $app = $this->app();
+        $id = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup']['id'];
+        $url = $this->json($this->send($app, 'POST', "/api/admin/backups/$id/ticket"))['url'];
+
+        // A link checker, a mail scanner, a browser looking ahead: a HEAD first.
+        $head = $this->send($app, 'HEAD', $url, admin: false);
+        self::assertSame(200, $head->getStatusCode());
+        self::assertSame((string) filesize($this->backups . "/$id.anotoki-backup"), $head->getHeaderLine('Content-Length'));
+        self::assertSame(['application/octet-stream', 'no-store'], [$head->getHeaderLine('Content-Type'), $head->getHeaderLine('Cache-Control')]);
+        self::assertSame('', (string) $head->getBody());
+        self::assertSame(200, $this->send($app, 'HEAD', $url, admin: false)->getStatusCode(), 'and again: nothing spent');
+
+        self::assertSame(200, $this->send($app, 'GET', $url, admin: false)->getStatusCode(), 'the download it is for still works');
+        self::assertSame(403, $this->send($app, 'HEAD', $url, admin: false)->getStatusCode(), 'spent by the GET');
+        self::assertSame(403, $this->send($app, 'HEAD', "/api/admin/backups/$id/file?ticket=" . str_repeat('A', 43), admin: false)->getStatusCode(), 'no ticket of it');
+    }
+
+    public function testABackupNamesItsMakerWhereTheSiteNamesPeopleAndAFileDroppedInIsNeverRestorable(): void
+    {
+        $app = $this->app($this->context(static fn (array $ids): array => array_intersect_key([7 => 'Ana Admin'], array_flip($ids))));
+        $made = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup'];
+        self::assertSame([7, 'Ana Admin'], [$made['created_by'], $made['created_by_name']]);
+        $listed = $this->json($this->send($app, 'GET', '/api/admin/backups'))['backups'][0];
+        self::assertSame([7, 'Ana Admin', true, true], [$listed['created_by'], $listed['created_by_name'], $listed['sealed'], $listed['restorable']]);
+        self::assertSame('Ana Admin', $this->json($this->send($app, 'GET', '/api/admin/backups/' . $made['id']))['backup']['created_by_name']);
+        self::assertNull($this->json($this->send($this->app(), 'GET', '/api/admin/backups'))['backups'][0]['created_by_name'], 'a site that names nobody: the page says "Person 7"');
+
+        unlink($this->backups . '/' . $made['id'] . '.anotoki-backup.json');
+        $dropped = $this->json($this->send($app, 'GET', '/api/admin/backups'))['backups'][0];
+        self::assertSame([false, false, null], [$dropped['sealed'], $dropped['restorable'], $dropped['created_by_name']], 'without its sealed sidecar: listed, never offered for a restore');
+    }
+
     public function testTheAdminRoutesAreTheAdminsAloneWithNoCheckOfTheSitesOnThem(): void
     {
         // app() adds nothing of the site's to the group: the library's own check is the only one.
@@ -247,12 +281,13 @@ final class BackupsRoutesTest extends BackupsTestCase
      * A site's context: X-Test-Actor says who acts, X-Test-Admin: yes makes them the site's ADMIN, X-Test-Auth-Time
      * when they signed in.
      */
-    private function context(): AdminContext
+    private function context(?\Closure $names = null): AdminContext
     {
         return new AdminContext(
             static fn (ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Actor')) ? (int) $request->getHeaderLine('X-Test-Actor') : null,
             AdminContext::recentSignIn(static fn (ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Auth-Time')) ? (int) $request->getHeaderLine('X-Test-Auth-Time') : null),
             isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+            names: $names,
         );
     }
 

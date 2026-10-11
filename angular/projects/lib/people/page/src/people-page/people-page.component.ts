@@ -11,7 +11,7 @@ import { EmptyStateComponent } from '@anotoki/lib/ui/empty-state';
 import { ErrorStateComponent } from '@anotoki/lib/ui/error-state';
 import { TextFieldComponent } from '@anotoki/lib/ui/forms';
 import { AnotokiIcons, IconComponent } from '@anotoki/lib/ui/icon';
-import { iconTrash, iconUsers } from '@anotoki/lib/ui/icons';
+import { iconUsers } from '@anotoki/lib/ui/icons';
 import { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
 import { PaginationComponent } from '@anotoki/lib/ui/pagination';
 import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
@@ -31,7 +31,7 @@ interface LoadProblem {
 }
 
 /** The icons the page draws beside the kit's own - each only where the site has none of that name. */
-const PAGE_ICONS: IconSet = { trash: iconTrash, users: iconUsers };
+const PAGE_ICONS: IconSet = { users: iconUsers };
 
 // Marked pure: a site's build keeps a top-level `new` it is not told is pure, whether the page is used or not.
 const DATE_FORMAT = /* @__PURE__ */ new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -50,12 +50,13 @@ let nextId = 0;
  *
  * - A search by name (any case, anywhere in it) or IAM id, as the typing rests
  *   or at Enter; paging.
- * - Each person: the name ("you" on the reader's own row), the IAM id, first
+ * - Each person: the name ("you" on the reader's own row) with what can be
+ *   done under it - "Open at the IAM", the account in the IAM's admin panel,
+ *   for the IAM's administrators, and, where the site has its delete hook,
+ *   Delete with a question in the site's words, its outcome said in the page -
+ *   never off the screen, however many columns the site has; the IAM id, first
  *   and last seen (a time no person on the page has is not drawn: a site
- *   without a last-seen column), the site's own columns (counts, text, times),
- *   "Open at the IAM" - the account in the IAM's admin panel, for the IAM's
- *   administrators - and, where the site has its delete hook, Delete with a
- *   question in the site's words, its outcome said in the page.
+ *   without a last-seen column), the site's own columns (counts, text, times).
  * - Accounts the IAM deleted are shown as such: muted, "Deleted at the IAM on
  *   {date}", under the IAM's placeholder name; the line about the scrub - when
  *   the IAM's deleted accounts were last checked, how many scrubbed here, or
@@ -118,6 +119,11 @@ export class PeoplePageComponent {
   protected readonly asking = signal<PeoplePerson | null>(null);
   protected readonly outcome = signal<Outcome | null>(null);
 
+  /** How many people the site has - said while no search narrows the list. */
+  protected readonly everybody = computed(() => {
+    const list = this.list();
+    return list !== null && this.searched() === '' ? { count: list.total } : null;
+  });
   protected readonly people = computed(() => this.list()?.people ?? []);
   protected readonly columns = computed(() => this.list()?.columns ?? []);
   protected readonly showsFirstSeen = computed(() => this.people().some((person) => person.first_seen_at !== null));

@@ -182,10 +182,9 @@
   }
 }
 
-// The name and what is said of the person: the row's header.
+// The name, what is said of the person, and what can be done: the row's first cell.
 .anotoki-people-page__who {
-  min-width: 11rem;
-  font-weight: 400;
+  min-width: 13rem;
 }
 
 .anotoki-people-page__name-line {
@@ -247,18 +246,18 @@
   color: kit.token(subtle);
 }
 
-.anotoki-people-page__actions-head {
-  width: 1%;
+// Under the name: links that are buttons, in the small type of the table - the kit's 24 px targets.
+.anotoki-people-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.1rem 0.9rem;
+  margin: 0.3rem 0 -0.15rem -0.125rem;
 }
 
-.anotoki-people-page__actions {
-  width: 1%;
-  white-space: nowrap;
-
-  // The two buttons side by side, at the row's end.
-  > * + * {
-    margin-left: 0.35rem;
-  }
+// What takes something away reads in the ink of what can go wrong: the kit's link, in danger-text.
+.anotoki-people-page__delete {
+  --anotoki-link: #{kit.token(danger-text)};
 }
 
 .anotoki-people-page__iam-note,
@@ -279,7 +278,7 @@
   @include kit.visually-hidden;
 }
 
-// A narrow page: each person a small card - the name, then each value under its label, then the buttons.
+// A narrow page: each person a small card - the name and what can be done, then each value under its label.
 @container (max-width: 640px) {
   .anotoki-people-page__table-box {
     overflow-x: visible;
@@ -332,20 +331,7 @@
 
   .anotoki-people-page__who {
     min-width: 0;
-    padding-bottom: 0.35rem;
-  }
-
-  .anotoki-people-page__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    width: auto;
-    padding-top: 0.5rem;
-    white-space: normal;
-
-    > * + * {
-      margin-left: 0;
-    }
+    padding-bottom: 0.45rem;
   }
 
   .anotoki-people-page__query {

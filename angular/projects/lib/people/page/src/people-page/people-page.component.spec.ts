@@ -87,7 +87,9 @@ describe('<anotoki-people-page>: the people who signed in to the site', () => {
 
   const words = (element: Element | null | undefined): string | null => element?.textContent?.replace(/\s+/g, ' ').trim() ?? null;
   const row = (sub: string) => host.querySelector<HTMLElement>(`[data-person="${sub}"]`)!;
-  const cells = (sub: string) => Array.from(row(sub).children).map(words);
+  /** A row's cells after the name's. */
+  const cells = (sub: string) => Array.from(row(sub).children).slice(1).map(words);
+  const nameOf = (sub: string) => words(row(sub).querySelector('.anotoki-people-page__name-line'));
   const headings = () => Array.from(host.querySelectorAll('[data-people] thead th')).map(words);
   const outcome = () => words(host.querySelector('[data-outcome]'));
 
@@ -114,27 +116,30 @@ describe('<anotoki-people-page>: the people who signed in to the site', () => {
     await open();
     expect(host.getAttribute('lang')).toBe('en');
     expect(words(host.querySelector('[data-total]'))).toBe('4 people');
-    expect(headings()).toEqual(['Name', 'IAM id', 'First seen', 'Last seen', 'Notes', 'Time zone', 'Last import', 'Actions']);
+    expect(headings()).toEqual(['Name', 'IAM id', 'First seen', 'Last seen', 'Notes', 'Time zone', 'Last import']);
     expect(Array.from(host.querySelectorAll('[data-person]')).map((element) => (element as HTMLElement).dataset['person'])).toEqual(['8', '7', '9', '12']);
 
-    expect(cells('8')).toEqual(['Bob', '8', '2026-09-01', '2026-10-10', '12', 'Europe/Bratislava', '2026-10-09', 'Open at the IAM']);
+    expect(nameOf('8')).toBe('Bob');
+    expect(cells('8')).toEqual(['8', '2026-09-01', '2026-10-10', '12', 'Europe/Bratislava', '2026-10-09']);
     // The reader's own row; a count the site has no row for is none; text and times it has none of: a dash to see,
     // "none" to hear.
-    expect(cells('7')).toEqual(['mira you', '7', '2026-09-01', '2026-10-10', '0', '–none', '–none', 'Open at the IAM']);
+    expect(nameOf('7')).toBe('mira you');
+    expect(cells('7')).toEqual(['7', '2026-09-01', '2026-10-10', '0', '–none', '–none']);
     expect(row('7').querySelector('[data-column="time_zone"] [aria-hidden="true"]')?.textContent).toBe('–');
     expect(row('7').querySelector('[data-column="time_zone"] .anotoki-visually-hidden')?.textContent).toBe('none');
     expect(row('7').querySelector('[data-you]')).not.toBeNull();
     expect(row('8').querySelector('[data-you]')).toBeNull();
     // Somebody the site never learned a name of.
-    expect(words(row('12').querySelector('th'))).toBe('No name');
+    expect(nameOf('12')).toBe('No name');
 
-    const link = row('8').querySelector<HTMLAnchorElement>('[data-iam]')!;
+    // What can be done is under the name, never off the screen: here, the account at the IAM.
+    const link = row('8').querySelector<HTMLAnchorElement>('.anotoki-people-page__who [data-iam]')!;
+    expect(words(link)).toBe('Open at the IAM');
     expect(link.getAttribute('href')).toBe('https://iam.test/admin/users/8');
     expect(link.target).toBe('_blank');
     expect(link.rel).toBe('noopener noreferrer');
     expect(link.getAttribute('aria-label')).toBe("Open at the IAM: Bob (the IAM's admin panel, in a new tab)");
     expect(words(host.querySelector('.anotoki-people-page__iam-note'))).toBe("“Open at the IAM” opens the account in the IAM's admin panel - for the IAM's administrators.");
-    expect(host.querySelector('[data-people] th[scope=row]')).not.toBeNull();
     // No delete where the site gives none - its PeopleRoutes has no delete hook then.
     expect(host.querySelector('[data-delete]')).toBeNull();
     // Fewer than a page: no paging.
@@ -145,7 +150,8 @@ describe('<anotoki-people-page>: the people who signed in to the site', () => {
   it('an account the IAM deleted: there, muted, said to be deleted - its data stays, nobody’s now', async () => {
     await open();
     expect(row('9').classList).toContain('anotoki-people-page__row--anonymized');
-    expect(words(row('9').querySelector('th'))).toBe('deleted-9 Deleted at the IAM on 6 Nov 2026');
+    expect(nameOf('9')).toBe('deleted-9');
+    expect(words(row('9').querySelector('[data-deleted]'))).toBe('Deleted at the IAM on 6 Nov 2026');
     expect(row('9').querySelector('time')?.getAttribute('datetime')).toBe('2026-11-06T10:00:00Z');
     expect(row('8').classList).not.toContain('anotoki-people-page__row--anonymized');
   });
@@ -153,7 +159,7 @@ describe('<anotoki-people-page>: the people who signed in to the site', () => {
   it('a time nobody on the page has is not drawn: a site without a last-seen column (the build analyzer)', async () => {
     const people = answer().people.map((one) => ({ ...one, last_seen_at: null }));
     await open(undefined, answer({ people, columns: [] }));
-    expect(headings()).toEqual(['Name', 'IAM id', 'First seen', 'Actions']);
+    expect(headings()).toEqual(['Name', 'IAM id', 'First seen']);
   });
 
   it('where the scrub of the IAM’s deleted accounts stands - checked, how many scrubbed, or why it stopped - and Check now', async () => {

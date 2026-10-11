@@ -3,13 +3,12 @@
 } @else {
     <div class="anotoki-people-page__page">
         <anotoki-page-header heading="People" [lead]="lead" [headingId]="id + '-title'">
-            @if (list(); as current) {
-                @if (searched() === "") {
-                    <p pageMeta class="anotoki-people-page__counts" data-total>
-                        <strong>{{ count(current.total) }}</strong>
-                        {{ current.total === 1 ? "person" : "people" }}
-                    </p>
-                }
+            <!-- One element in the block: what the header's pageMeta slot takes. -->
+            @if (everybody(); as total) {
+                <p pageMeta class="anotoki-people-page__counts" data-total>
+                    <strong>{{ count(total.count) }}</strong>
+                    {{ total.count === 1 ? "person" : "people" }}
+                </p>
             }
         </anotoki-page-header>
 
@@ -67,24 +66,27 @@
             }
         }
 
-        <form class="anotoki-people-page__search" role="search" [attr.aria-label]="'Find a person'" (submit)="search($event)">
-            <anotoki-text-field
-                class="anotoki-people-page__query"
-                label="Find a person"
-                type="search"
-                placeholder="Name or IAM id"
-                autocomplete="off"
-                [hideLabel]="true"
-                [maxlength]="200"
-                [value]="query()"
-                (valueChange)="typed($event)">
-                <anotoki-icon fieldPrefix class="anotoki-people-page__search-icon" name="search" [size]="17" />
-            </anotoki-text-field>
-            <button anotokiButton type="submit" data-search>Search</button>
-            @if (searched() !== "") {
-                <button anotokiButton variant="ghost" data-clear (click)="clearSearch()">Clear</button>
-            }
-        </form>
+        <!-- Once there is a list to search: not before the first answer, nor while the table is not there. -->
+        @if (list() !== null) {
+            <form class="anotoki-people-page__search" role="search" [attr.aria-label]="'Find a person'" (submit)="search($event)">
+                <anotoki-text-field
+                    class="anotoki-people-page__query"
+                    label="Find a person"
+                    type="search"
+                    placeholder="Name or IAM id"
+                    autocomplete="off"
+                    [hideLabel]="true"
+                    [maxlength]="200"
+                    [value]="query()"
+                    (valueChange)="typed($event)">
+                    <anotoki-icon fieldPrefix class="anotoki-people-page__search-icon" name="search" [size]="17" />
+                </anotoki-text-field>
+                <button anotokiButton type="submit" data-search>Search</button>
+                @if (searched() !== "") {
+                    <button anotokiButton variant="ghost" data-clear (click)="clearSearch()">Clear</button>
+                }
+            </form>
+        }
 
         @if (loadProblem(); as problem) {
             @if (problem.unavailable) {
@@ -130,13 +132,13 @@
                                 @for (column of current.columns; track column.key) {
                                     <th scope="col" [class.anotoki-people-page__number]="column.kind === 'count'" [attr.data-column]="column.key">{{ column.label }}</th>
                                 }
-                                <th scope="col" class="anotoki-people-page__actions-head"><span class="anotoki-visually-hidden">Actions</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @for (person of current.people; track person.sub) {
                                 <tr class="anotoki-people-page__row" [class.anotoki-people-page__row--anonymized]="!!person.anonymized_at" [attr.data-person]="person.sub">
-                                    <th scope="row" class="anotoki-people-page__who">
+                                    <!-- The name, and its actions under it: never off the screen, in a table as wide as the site's columns make it. -->
+                                    <td class="anotoki-people-page__who">
                                         <span class="anotoki-people-page__name-line">
                                             @if (person.name) {
                                                 <span class="anotoki-people-page__name">{{ person.name }}</span>
@@ -154,7 +156,27 @@
                                                 <time [attr.datetime]="person.anonymized_at">{{ day(person.anonymized_at) }}</time>
                                             </span>
                                         }
-                                    </th>
+                                        <span class="anotoki-people-page__actions">
+                                            <a anotokiButton variant="link" size="sm" data-iam target="_blank" rel="noopener noreferrer" [href]="person.iam_url" [attr.aria-label]="iamLabel(person)">
+                                                Open at the IAM
+                                                <anotoki-icon name="externalLink" [size]="13" />
+                                            </a>
+                                            @if (deleting) {
+                                                <button
+                                                    anotokiButton
+                                                    variant="link"
+                                                    size="sm"
+                                                    class="anotoki-people-page__delete"
+                                                    data-delete
+                                                    [loading]="removing() === person.sub"
+                                                    [disabled]="(removing() !== null && removing() !== person.sub) || !deletable(person)"
+                                                    [attr.aria-label]="deleteLabel + ': ' + shortName(person)"
+                                                    (click)="ask(person)">
+                                                    {{ deleteLabel }}
+                                                </button>
+                                            }
+                                        </span>
+                                    </td>
                                     <td class="anotoki-people-page__cell" data-label="IAM id">
                                         <code class="anotoki-people-page__sub">{{ person.sub }}</code>
                                     </td>
@@ -193,25 +215,6 @@
                                             }
                                         </td>
                                     }
-                                    <td class="anotoki-people-page__actions">
-                                        <a anotokiButton variant="ghost" size="sm" data-iam target="_blank" rel="noopener noreferrer" [href]="person.iam_url" [attr.aria-label]="iamLabel(person)">
-                                            Open at the IAM
-                                            <anotoki-icon name="externalLink" [size]="14" />
-                                        </a>
-                                        @if (deleting) {
-                                            <button
-                                                anotokiButton
-                                                size="sm"
-                                                data-delete
-                                                [loading]="removing() === person.sub"
-                                                [disabled]="(removing() !== null && removing() !== person.sub) || !deletable(person)"
-                                                [attr.aria-label]="deleteLabel + ': ' + shortName(person)"
-                                                (click)="ask(person)">
-                                                <anotoki-icon name="trash" [size]="15" />
-                                                {{ deleteLabel }}
-                                            </button>
-                                        }
-                                    </td>
                                 </tr>
                             }
                         </tbody>

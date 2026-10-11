@@ -56,7 +56,9 @@ options replaces its own. Feedback deletes audited before 0.5.0 name no time and
   `ErrorLogRoutes::client()` through the app's HttpClient (the site's interceptors, its CSRF header) - scrubbed,
   at most 5 a page load, each once, never recursing, nothing read past what a report keeps.
 - Backups: a plain backup is sealed under the installation's key, and only a sealed or encrypted one is restored
-  here (a plain one made before 0.5.0: offline, `--extract`); a restore never moves a sequence back;
+  here (a plain one made before 0.5.0: offline, `--extract`) - the seal vouches for the id and the SHA-256 alone,
+  so a restore hashes the very bytes it reads; an encrypted backup carries no seal, and without the installation's
+  key a plain one is made unsealed, never refused; a restore never moves a sequence back;
   `--inspect` reads the manifest alone; a HEAD never spends a download ticket; files `0600` before a byte is in
   them, folders `0700` (every guarded folder too, and the installation's key).
 - Audit log: a flush empties the pending file under the lock its writers take (an entry written meanwhile waits

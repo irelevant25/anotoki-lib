@@ -207,7 +207,7 @@ final class BackupsTest extends BackupsTestCase
 
         self::assertInstanceOf(Refusal::class, $refused);
         self::assertSame('archive_invalid', $refused->code);
-        self::assertStringContainsString('checksum', $refused->message);
+        self::assertStringContainsString('it was changed', $refused->message, 'its gzip says so as it is read, before the checksum would');
     }
 
     public function testAnotherSchemaIsRefusedNamingWhatDiffers(): void
@@ -386,6 +386,88 @@ final class BackupsTest extends BackupsTestCase
         self::assertIsArray($backups->restore($made['id']));
         file_put_contents($backups->path($made['id']), substr_replace($bytes, 'X', -10, 1));
         self::assertSame('archive_invalid', $backups->restore($made['id'])->code ?? null);
+    }
+
+    public function testASealedSidecarWhoseStatusWasChangedLetsNoOtherArchiveThrough(): void
+    {
+        // The review's proof (M1): the seal vouches for the id and the SHA-256 alone. Somebody who can write the
+        // backups folder packs an archive of their own under a real backup's id, keeps the sealed sidecar's seal and
+        // SHA-256, and sets its status to "unlisted" - which once skipped the checksum.
+        $this->fill();
+        $backups = $this->backupsWith();
+        $made = $backups->create();
+        self::assertIsArray($made);
+        $id = $made['id'];
+        $file = $backups->path($id);
+        $before = $this->snapshot();
+
+        $work = $this->path('work');
+        $manifest = $backups->extractTo($id, $work);
+        foreach ($manifest['tables'] as $index => $table) {
+            if ($table['name'] === 'people') {
+                $rows = (string) preg_replace('/Reports to 3/', 'EVIL PLANTED', (string) file_get_contents($work . '/' . $table['file']), 1);
+                file_put_contents($work . '/' . $table['file'], $rows);
+                $manifest['tables'][$index]['sha256'] = hash('sha256', $rows);
+                $manifest['tables'][$index]['bytes'] = strlen($rows);
+            }
+        }
+        $entries = [['name' => 'manifest.json', 'data' => (string) json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)]];
+        foreach (array_merge($manifest['schema_files'], $manifest['tables']) as $part) {
+            $entries[] = ['name' => $part['file'], 'data' => (string) file_get_contents($work . '/' . $part['file'])];
+        }
+        $header = Archive::header($file);
+        unset($header['encrypted'], $header['cipher']);
+        Archive::write($this->path('forged.anotoki-backup'), $header, $entries, null);
+        copy($this->path('forged.anotoki-backup'), $file);
+        $sidecar = json_decode((string) file_get_contents($file . '.json'), true);
+
+        foreach (['unlisted', 'complete', null] as $status) {
+            $changed = $sidecar;
+            if ($status === null) {
+                unset($changed['status']);
+            } else {
+                $changed['status'] = $status;
+            }
+            file_put_contents($file . '.json', (string) json_encode($changed));
+            self::assertTrue($backups->get($id)['sealed'] ?? null, 'the list cannot tell without reading the whole file');
+
+            $refused = $backups->restore($id);
+
+            self::assertInstanceOf(Refusal::class, $refused, (string) $status);
+            self::assertSame('archive_invalid', $refused->code);
+            self::assertStringContainsString('checksum', $refused->message, 'the bytes read are not the ones sealed');
+        }
+        self::assertSame($before, $this->snapshot(), 'nothing of it loaded');
+        self::assertNotContains('EVIL PLANTED', $this->pdo->query('SELECT name FROM people')->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function testWithoutTheInstallationsKeyABackupIsMadeUnsealedAndAnEncryptedOneNeedsNone(): void
+    {
+        $this->fill();
+        // A key file nobody can take for a key: the installation has none to seal with (Keys::installation() throws).
+        @mkdir($this->storage, 0700, true);
+        file_put_contents($this->storage . '/' . Keys::INSTALLATION_FILE, 'not a key');
+        $backups = $this->backupsWith();
+
+        $made = $backups->create();
+
+        self::assertIsArray($made, 'made all the same - a before-migration backup that failed would stop an Apply');
+        self::assertFalse($made['sealed']);
+        self::assertArrayNotHasKey('seal', json_decode((string) file_get_contents($backups->path($made['id']) . '.json'), true));
+        self::assertCount(1, $this->failures);
+        self::assertStringContainsString('without its seal', $this->failures[0], 'and the site is told');
+        self::assertSame([[$made['id'], false]], array_map(static fn (array $backup): array => [$backup['id'], $backup['sealed']], $backups->list()), 'listed, never a failure');
+        self::assertSame('archive_invalid', $backups->restore($made['id'])->code ?? null, 'restored offline only');
+        self::assertSame($made['id'], $backups->extractTo($made['id'], $this->path('offline'))['id']);
+
+        // An encrypted site's backups carry no seal: their cipher is theirs.
+        $encrypted = $this->backupsWith(['encryption' => Keys::derive(str_repeat("\x42", 32), 'iam-backup')]);
+        $sealedByItsCipher = $encrypted->create();
+        self::assertIsArray($sealedByItsCipher);
+        self::assertTrue($sealedByItsCipher['sealed']);
+        self::assertArrayNotHasKey('seal', json_decode((string) file_get_contents($encrypted->path($sealedByItsCipher['id']) . '.json'), true));
+        self::assertIsArray($encrypted->restore($sealedByItsCipher['id']));
+        self::assertCount(1, $this->failures, 'nothing more to tell');
     }
 
     public function testInspectingReadsTheManifestAloneAndWritesNothing(): void

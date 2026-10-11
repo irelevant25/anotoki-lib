@@ -79,7 +79,12 @@ use Throwable;
  * its id and its SHA-256 under a key of this installation's (Keys) - so a file
  * dropped into the folder, with a sidecar of its own or none, is listed as not
  * sealed and never restored here (restored offline, from extractTo(), when its
- * owner means it). An encrypted one is sealed by its own cipher.
+ * owner means it). The seal vouches for the id and the SHA-256 alone, so a
+ * restore compares the SHA-256 of the very bytes it reads - whatever else the
+ * sidecar says. It stops somebody who can write the storage folder but not
+ * read it: whoever reads storage/anotoki-lib.key can seal anything. An
+ * encrypted one is sealed by its own cipher, and carries no seal; without the
+ * installation's key a plain one is made unsealed, never refused.
  */
 final class Backups
 {
@@ -133,6 +138,7 @@ final class Backups
     private readonly int $ticketSeconds;
     private readonly Tickets $tickets;
     private ?string $sealKey = null;
+    private bool $sealKeyMissing = false;
 
     /**
      * @param Closure(): PDO $connect  a connection (PDO::ERRMODE_EXCEPTION) - opened with Copy::connect() where
@@ -888,10 +894,19 @@ final class Backups
                 'rows' => array_sum(array_column($tables, 'rows')),
                 'sequences' => count($sequences),
                 'duration_ms' => (int) round((microtime(true) - $started) * 1000),
-                // This installation's seal: the file was made here, and is as it was made (see the class).
-                'seal' => $this->seal($id, $written['sha256']),
             ];
             unset($info['cipher']);
+            // A plain backup's seal: made here, and as it was made (the class). An encrypted one needs none - its
+            // cipher is its seal - and a backup is never kept from being made for want of one: without the
+            // installation's key it is made unsealed (restored offline), and the site is told.
+            if ($this->encryption === null) {
+                $seal = $this->seal($id, $written['sha256']);
+                if ($seal !== null) {
+                    $info['seal'] = $seal;
+                } else {
+                    ($this->onError)(new RuntimeException('The backup ' . $id . ' was made without its seal: the installation\'s key (storage/' . Keys::INSTALLATION_FILE . ') can be neither read nor made, so it is restored offline only.'));
+                }
+            }
             AtomicFile::write($target . '.json', json_encode($info, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), mode: 0600);
 
             return $this->info($id) ?? $info;
@@ -1054,11 +1069,10 @@ final class Backups
         if ($spooled && ($info['sealed'] ?? false) !== true) {
             throw new RuntimeException(self::UNSEALED);
         }
-        if (isset($info['sha256']) && is_string($info['sha256']) && ($info['status'] ?? null) === 'complete') {
-            if (!hash_equals($info['sha256'], (string) hash_file('sha256', $file))) {
-                throw new RuntimeException('Its checksum is not the one it was written with: it was changed or damaged.');
-            }
-        }
+        // The seal vouches for the SHA-256 beside it, and for nothing else of the sidecar (its status least of
+        // all): a plain backup is restored only when the very bytes read below - the file is opened once - are
+        // the ones sealed. An encrypted one's chunks are authenticated as they are read.
+        $sealedSha256 = is_string($info['sha256'] ?? null) ? $info['sha256'] : null;
         if (!is_dir($work)) {
             throw new RuntimeException('Its working folder is not there.');
         }
@@ -1076,6 +1090,7 @@ final class Backups
         };
         $seen = [];
         $spools = [];
+        $read = null;
         $sealed = $this->encryption !== null;
         try {
             $header = Archive::extract($file, $this->encryption, function (string $name, int $size) use ($work, $readManifest, &$seen, &$spools, $spooled, $sealed): string {
@@ -1110,8 +1125,13 @@ final class Backups
                     }
                 }
                 throw new RuntimeException("It holds a part its manifest does not name ($name).");
-            });
+            }, $read);
 
+            // A plain archive: the bytes just read must be the ones its sidecar names (and, for a restore, seals) -
+            // whatever else the sidecar says. Checked here, before a row of them is loaded.
+            if ($read !== null && ($spooled || $sealedSha256 !== null) && ($sealedSha256 === null || !hash_equals($sealedSha256, $read))) {
+                throw new RuntimeException('Its checksum is not the one it was written with: it was changed or damaged.');
+            }
             $manifest = $readManifest();
             if (($header['id'] ?? null) !== $id || ($manifest['id'] ?? null) !== $id) {
                 throw new RuntimeException('It is another backup than its name says.');
@@ -1367,22 +1387,34 @@ final class Backups
         }
         $info['stale'] = $info['kind'] === self::MANUAL && is_string($info['created_at'] ?? null)
             && strtotime($info['created_at']) < time() - $this->staleManualDays * 86400;
-        // Made here: encrypted under the site's key (its cipher refuses any other), or its sidecar sealed by this
-        // installation (the class). A site without a key made no encrypted backup.
+        // Made here: encrypted under the site's key (its cipher refuses any other), or a plain one whose sidecar
+        // this installation sealed (the class). A site without a key made no encrypted backup; a seal that cannot
+        // be checked (no installation key) is no seal.
         $seal = $info['seal'] ?? null;
         unset($info['seal']);
-        $info['sealed'] = (($info['encrypted'] ?? false) === true && $this->encryption !== null)
-            || (is_string($seal) && is_string($info['sha256'] ?? null) && hash_equals($this->seal($id, $info['sha256']), $seal));
+        $encrypted = ($info['encrypted'] ?? false) === true;
+        $expected = !$encrypted && is_string($seal) && is_string($info['sha256'] ?? null) ? $this->seal($id, $info['sha256']) : null;
+        $info['sealed'] = ($encrypted && $this->encryption !== null) || ($expected !== null && hash_equals($expected, (string) $seal));
 
         return $info;
     }
 
-    /** This installation's seal of a backup: an HMAC of its id and its SHA-256, under a key of its own (Keys). */
-    private function seal(string $id, string $sha256): string
+    /**
+     * This installation's seal of a backup: an HMAC of its id and its SHA-256, under a key of its own (Keys) -
+     * null when the installation's key can be neither read nor made (asked once: every backup listed would
+     * ask again otherwise).
+     */
+    private function seal(string $id, string $sha256): ?string
     {
-        $this->sealKey ??= Keys::derive(Keys::installation($this->storage), 'backup-seal');
+        if ($this->sealKey === null && !$this->sealKeyMissing) {
+            try {
+                $this->sealKey = Keys::derive(Keys::installation($this->storage), 'backup-seal');
+            } catch (Throwable) {
+                $this->sealKeyMissing = true;
+            }
+        }
 
-        return hash_hmac('sha256', $id . "\n" . $sha256, $this->sealKey);
+        return $this->sealKey === null ? null : hash_hmac('sha256', $id . "\n" . $sha256, $this->sealKey);
     }
 
     /** A backup to restore here: encrypted under the site's key, or sealed by this installation. @param array<string, mixed> $info */

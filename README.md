@@ -2027,12 +2027,18 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   sidecar `<id>.anotoki-backup.json` feeds the list; a file without one is
   listed from its header.
 - Only a backup made here is restored here (0.5.0): an encrypted one, under the
-  site's key, or a plain one whose sidecar carries this installation's seal - an
-  HMAC of its id and SHA-256 under a key of its own derived from
-  `storage/anotoki-lib.key`. A file dropped into the folder, or changed since,
-  is listed (`sealed: false`) and refused (`422 archive_invalid`): it is
-  restored offline (`--extract`). A plain backup made before 0.5.0 has no seal:
-  offline too. Every file of the backups is written `0600` before a byte is in
+  site's key (its cipher is its seal: it carries no other), or a plain one whose
+  sidecar carries this installation's seal - an HMAC of its id and SHA-256 under
+  a key of its own derived from `storage/anotoki-lib.key`. The seal vouches for
+  those two alone, so a restore hashes the very bytes it reads (the file opened
+  once) and refuses any other, whatever else the sidecar says. A file dropped
+  into the folder, or changed since, is refused (`422 archive_invalid`) and
+  restored offline (`--extract`); one without a seal lists `sealed: false`. A
+  plain backup made before 0.5.0 has none: offline too. The seal stops somebody
+  who can write the storage folder but not read it - whoever reads
+  `anotoki-lib.key` can seal anything. Without that key (it can be neither read
+  nor made) a plain backup is still made, unsealed, and the site's `onError` is
+  told. Every file of the backups is written `0600` before a byte is in
   it, every folder `0700`, as every folder the tools guard and the
   installation's key. Where PHP runs as the web server's own user (not the FTP
   account's, as under PHP-FPM or suEXEC), those modes keep the FTP account out

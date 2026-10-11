@@ -27,6 +27,25 @@ class Keys implements VisitorKeyStore {
   }
 }
 
+/** The page's origin in the spellings below. */
+const SITE = 'https://genshin.anotoki.eu';
+
+/** Another origin, as an attacker would spell it to pass for the site's. */
+const ELSEWHERE = [
+  '//evil.test/api/progress',
+  '/\\evil.test/api/progress',
+  '\\\\evil.test/api/progress',
+  'https://genshin.anotoki.eu.evil.test/api/progress',
+  'https://user@evil.test/api/progress',
+  'https://genshin.anotoki.eu@evil.test/api/progress',
+  'https://genshin.anotoki.eu:443@evil.test/api/progress',
+  'https://evil.test\\@genshin.anotoki.eu/api/progress',
+  'https://evil.test#@genshin.anotoki.eu/api/progress',
+  'http://genshin.anotoki.eu/api/progress',
+  'https://genshin.anotoki.eu:8443/api/progress',
+  'https://genshin.anotoki.eu./api/progress',
+];
+
 describe('anotokiAuthInterceptor: who a request is, decided when it is issued', () => {
   let site: SpecSite;
   let keys: Keys;
@@ -72,6 +91,66 @@ describe('anotokiAuthInterceptor: who a request is, decided when it is issued', 
       expect(request.request.headers.has('Authorization')).toBe(false);
       request.flush({});
       await sent;
+    });
+
+    it('another origin is another origin however it is spelled; a dot-dot leaves the API', () => {
+      const config = { config: '/api/boot' };
+      for (const url of [...ELSEWHERE, '/api/%2e%2e/progress', '/api/%2E%2E/progress', '/api/../progress']) {
+        expect(apiPath(url, SITE, config), url).toBeNull();
+      }
+      // The site's own address, spelled otherwise, is still its own.
+      expect(apiPath('HTTPS://GENSHIN.ANOTOKI.EU:443/api/progress', SITE, config)).toBe('/api/progress');
+      expect(apiPath('https://genshin.anotoki.eu/api/./progress?x=1', SITE, config)).toBe('/api/progress');
+    });
+
+    it('sends a person no token and a visitor no key to any of them', async () => {
+      const own = `${SITE}/api/progress`;
+      for (const signedIn of [true, false]) {
+        TestBed.resetTestingModule();
+        await start(signedIn);
+        site.browser.origin = () => SITE;
+        keys.key = 'vk-1';
+        for (const url of [...ELSEWHERE, '/api/%2e%2e/progress']) {
+          const sent = firstValueFrom(http.get(url));
+          const request = backend.expectOne(url);
+          expect(request.request.headers.has('Authorization'), url).toBe(false);
+          expect(request.request.headers.has('X-Visitor-Key'), url).toBe(false);
+          request.flush({});
+          await sent;
+        }
+        // The control: the site's API itself gets them.
+        const sent = firstValueFrom(http.get(own));
+        await settle();
+        const request = backend.expectOne(own);
+        expect(signedIn ? request.request.headers.get('Authorization') : request.request.headers.get('X-Visitor-Key')).toBe(signedIn ? 'Bearer token-1' : 'vk-1');
+        request.flush({});
+        await sent;
+        backend.verify();
+      }
+    });
+
+    it("AnotokiAuth.fetch(): this origin's addresses alone get the token - never another, however it is spelled", async () => {
+      await start(true);
+      site.browser.origin = () => SITE;
+      const sent: { url: string; headers: Headers }[] = [];
+      const fetched = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        sent.push({ url: String(input), headers: new Headers(init?.headers) });
+        return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+      });
+      try {
+        for (const url of ELSEWHERE) {
+          await auth.fetch(url, { headers: { Accept: 'application/json' } });
+          expect(sent.at(-1)?.url, url).toBe(url);
+          expect(sent.at(-1)?.headers.has('Authorization'), url).toBe(false);
+          expect(sent.at(-1)?.headers.has('X-Visitor-Key'), url).toBe(false);
+        }
+        for (const url of [`${SITE}/api/report/3`, '/api/report/3', 'HTTPS://GENSHIN.ANOTOKI.EU/files/report.pdf']) {
+          await auth.fetch(url);
+          expect(sent.at(-1)?.headers.get('Authorization'), url).toBe('Bearer token-1');
+        }
+      } finally {
+        fetched.mockRestore();
+      }
     });
   });
 

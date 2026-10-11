@@ -80,6 +80,12 @@ export interface AnotokiAuthConfig {
   headers?: () => Record<string, string>;
   /** Where the IAM sends the browser back to: a route of the site. Default '/auth/callback'. */
   redirectPath?: string;
+  /**
+   * Where the guards send a sign-in that came back without one, could not start, or cannot be set up: a route of
+   * the site showing <anotoki-sign-in-failure> (in the site's frame, under its bar). Default: the callback route
+   * (`redirectPath`), which shows the same screen.
+   */
+  failureRoute?: string;
   /** Where signing out lands. Default '/'. */
   postLogoutPath?: string;
   /** Where staffGuard and adminGuard send somebody signed in without the role. Default '/'. */

@@ -1,7 +1,8 @@
 -- anotoki_translations 003 - the words of signing in, under the anotoki library's namespace anotoki.signIn.
 --
 -- What the auth module's sign-in page says (@anotoki/lib/auth, <anotoki-auth-callback>: the site's address
--- the anotoki account sends the reader back to) - "Signing you in…", why a sign-in came back without one,
+-- the anotoki account sends the reader back to; <anotoki-sign-in-failure>, the screen of a sign-in that
+-- came back without one) - "Signing you in…", the screen's heading, why a sign-in came back without one,
 -- and its two buttons. anotoki-lib's php/resources/library-words.json holds them - the Angular half's
 -- built-in words are made from the same file, and a test of the library holds this file to it.
 --
@@ -13,6 +14,7 @@
 
 INSERT INTO translation_keys (name, description) VALUES
     ('anotoki.signIn.signingIn', 'The anotoki library''s sign-in page (the site''s address the anotoki account sends the reader back to): what it says for the moment the sign-in is being finished, before the page the reader was on comes back. No placeholders.'),
+    ('anotoki.signIn.failedTitle', 'The anotoki library''s sign-in page: the heading over why a sign-in came back without one, could not start, or cannot be offered right now - the reason under it, then the buttons to try again and to go back. No placeholders.'),
     ('anotoki.signIn.notCompleted', 'The anotoki library''s sign-in page: said when the reader came back from their anotoki account without signing in - they went back from its page, or the account was turned away. Under it, the buttons to try again and to go back. No placeholders.'),
     ('anotoki.signIn.expired', 'The anotoki library''s sign-in page: said when a sign-in came back that did not start on this page or took too long (an old tab, a link opened twice). No placeholders.'),
     ('anotoki.signIn.storageUnavailable', 'The anotoki library''s sign-in page: said when the browser does not let the site keep anything (its storage blocked or switched off), so a sign-in cannot even start. No placeholders.'),
@@ -29,6 +31,8 @@ SELECT v.key_name, v.language_code, v.value
   FROM (VALUES
     ('anotoki.signIn.signingIn', 'en', 'Signing you in…'),
     ('anotoki.signIn.signingIn', 'sk', 'Prihlasujeme ťa…'),
+    ('anotoki.signIn.failedTitle', 'en', 'Signing in did not work'),
+    ('anotoki.signIn.failedTitle', 'sk', 'Prihlásenie sa nepodarilo'),
     ('anotoki.signIn.notCompleted', 'en', 'The sign-in was not completed.'),
     ('anotoki.signIn.notCompleted', 'sk', 'Prihlásenie sa nedokončilo.'),
     ('anotoki.signIn.expired', 'en', 'The sign-in took too long or did not start on this page. Try again.'),
@@ -57,6 +61,7 @@ BEGIN
     SELECT string_agg(k.name, ', ' ORDER BY k.name) INTO missing
       FROM (VALUES
         ('anotoki.signIn.signingIn'),
+        ('anotoki.signIn.failedTitle'),
         ('anotoki.signIn.notCompleted'),
         ('anotoki.signIn.expired'),
         ('anotoki.signIn.storageUnavailable'),

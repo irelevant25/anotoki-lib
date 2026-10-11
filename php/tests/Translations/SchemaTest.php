@@ -467,7 +467,7 @@ final class SchemaTest extends DatabaseTestCase
         self::assertSame([['language_code' => 'en', 'value' => 'Sign in again']], $this->rows("SELECT language_code, value FROM translations WHERE key_name = 'anotoki.signIn.retry'"), 'its words and its blank stay');
         self::assertSame(LibraryWords::all()['anotoki.signIn.retry']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.signIn.retry'"), 'the description is the library\'s');
         self::assertSame('Prihlásenie zlyhalo ({code}).', $this->value("SELECT value FROM translations WHERE key_name = 'anotoki.signIn.failed' AND language_code = 'sk'"), 'a key with no string at all gets the library\'s');
-        self::assertSame(2 * 8 - 1, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.signIn.%'"));
+        self::assertSame(2 * 9 - 1, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.signIn.%'"));
         self::assertSame($kit, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND key_name NOT LIKE 'anotoki.signIn.%'"), 'nothing of 002\'s touched');
     }
 

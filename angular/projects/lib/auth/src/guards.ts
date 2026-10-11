@@ -14,8 +14,9 @@ import { ANOTOKI_AUTH_CONFIG, DEFAULT_REDIRECT_PATH } from './config';
  *   library's status page stands in front of the pages, with a quiet Sign in
  *   of its own - how an administrator gets to the update;
  *
- * and sends the browser to the callback route (<anotoki-auth-callback>, which
- * says why, with Try again and Back) instead of the IAM when a sign-in this page
+ * and sends the browser to the failure's screen (<anotoki-sign-in-failure>,
+ * which says why, with Try again and Back: on the module's `failureRoute`, or
+ * the callback route by default) instead of the IAM when a sign-in this page
  * load came back without one, or could not start, or the sign-in cannot be set
  * up at all: sent straight back to the IAM, the browser would go round for ever.
  */
@@ -42,7 +43,8 @@ function guard(target: RouterStateSnapshot, visitorsWelcome: boolean, roles: str
   const auth = inject(AnotokiAuth);
   const router = inject(Router);
   const config = inject(ANOTOKI_AUTH_CONFIG);
-  const callback = router.createUrlTree([config.redirectPath ?? DEFAULT_REDIRECT_PATH]);
+  // The failure's screen: the site's own route for it, or the callback route, which shows it too.
+  const failure = router.parseUrl(config.failureRoute ?? config.redirectPath ?? DEFAULT_REDIRECT_PATH);
   const state = auth.state();
 
   if (state === 'signed-in') {
@@ -61,10 +63,10 @@ function guard(target: RouterStateSnapshot, visitorsWelcome: boolean, roles: str
     return false;
   }
   if (state === 'unavailable' || auth.signInFailure() !== null) {
-    return callback;
+    return failure;
   }
 
   // On its way to the IAM: nothing of the page is drawn. Not started: the failure's words, or - the site said
   // to stay - nowhere.
-  return auth.signIn({ returnTo: target.url }).then((started) => (started || auth.signInFailure() === null ? false : callback));
+  return auth.signIn({ returnTo: target.url }).then((started) => (started || auth.signInFailure() === null ? false : failure));
 }

@@ -1,0 +1,12 @@
+@if (message(); as said) {
+    <section class="anotoki-sign-in-failure__panel" [attr.lang]="text().lang" [attr.aria-labelledby]="id + '-title'">
+        <h1 class="anotoki-sign-in-failure__title" [id]="id + '-title'">{{ text().words.failedTitle }}</h1>
+        <p class="anotoki-sign-in-failure__message" role="alert">{{ said }}</p>
+        <div class="anotoki-sign-in-failure__actions">
+            <button anotokiButton variant="primary" data-retry [loading]="busy()" (click)="retry()">{{ text().words.retry }}</button>
+            @if (failure()?.code !== "unavailable") {
+                <button anotokiButton variant="secondary" data-back (click)="back()">{{ text().words.back }}</button>
+            }
+        </div>
+    </section>
+}

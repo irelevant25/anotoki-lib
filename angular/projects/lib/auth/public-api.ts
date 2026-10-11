@@ -48,3 +48,4 @@ export { HINT_SHAPE, readHint } from './src/hint';
 export type { SignInWords } from './src/words';
 export { SIGN_IN_WORD_NAMES, failureText, signInKey, signInWords } from './src/words';
 export { AuthCallbackComponent } from './src/callback/auth-callback.component';
+export { SignInFailureComponent } from './src/failure/sign-in-failure.component';

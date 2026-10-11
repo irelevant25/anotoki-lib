@@ -129,6 +129,7 @@ export type LibraryKey =
   | 'anotoki.siteStatus.tryAgain'
   | 'anotoki.siteStatus.signIn'
   | 'anotoki.signIn.signingIn'
+  | 'anotoki.signIn.failedTitle'
   | 'anotoki.signIn.notCompleted'
   | 'anotoki.signIn.expired'
   | 'anotoki.signIn.storageUnavailable'

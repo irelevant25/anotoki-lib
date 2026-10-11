@@ -11,6 +11,8 @@ import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
  */
 export interface SignInWords {
   signingIn: string;
+  /** The heading of the failure's screen (<anotoki-sign-in-failure>), over the reason. */
+  failedTitle: string;
   /** access_denied: the IAM turned the account away, or the person went back from its page. */
   notCompleted: string;
   /** state_mismatch: the sign-in did not start on this page, or took too long. */
@@ -26,7 +28,17 @@ export interface SignInWords {
 }
 
 /** The words' names, each the library's word `anotoki.signIn.<name>`. */
-export const SIGN_IN_WORD_NAMES = ['signingIn', 'notCompleted', 'expired', 'storageUnavailable', 'unavailable', 'failed', 'retry', 'back'] as const satisfies readonly (keyof SignInWords)[];
+export const SIGN_IN_WORD_NAMES = [
+  'signingIn',
+  'failedTitle',
+  'notCompleted',
+  'expired',
+  'storageUnavailable',
+  'unavailable',
+  'failed',
+  'retry',
+  'back',
+] as const satisfies readonly (keyof SignInWords)[];
 
 function builtIn(language: 'en' | 'sk'): SignInWords {
   return Object.fromEntries(SIGN_IN_WORD_NAMES.map((name) => [name, SIGN_IN_LIBRARY_WORDS[language][`anotoki.signIn.${name}`]])) as unknown as SignInWords;

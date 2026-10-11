@@ -55,9 +55,9 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * kit's words alone - each other module's are an entry point of their own, @anotoki/lib/words/<namespace>). Room to
  * grow a little; a limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
  *
- * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences and the
- * callback page - 14.9 at 0.4.0. Every site that signs in loads it on its first page, as it loads the SDK and its
- * wrappers today.
+ * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences, the
+ * callback page and the failure's screen - 14.9 at 0.4.0 before the screen. Every site that signs in loads it on its
+ * first page, as it loads the SDK and its wrappers today.
  */
 const LIMITS = { [CORE]: 15, "@anotoki/lib/ui/menu": 6, "@anotoki/lib/shell": 14, "@anotoki/lib/migrations": 7, "@anotoki/lib/translations": 8, "@anotoki/lib/auth": 16 };
 const UI_AND_SHELL = 28;
@@ -116,8 +116,8 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * one). "the gate": genshin's and the build analyzer's whole use (the status page, its buttons, the kit's and the
  * status page's words); "the bar": the family's top bar and its theme; "the words": the translations module, with the
  * kit's words alone - a module's arrive with the module, by its registration; "a button": one piece alone; "the
- * sign-in": the gate and the auth module's every eager part, the callback page routed with the first page (it is in
- * the gate's company on every site that signs in).
+ * sign-in": the gate and the auth module's every eager part, the callback page and the failure's screen routed with
+ * the first page (they are in the gate's company on every site that signs in).
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
@@ -128,7 +128,7 @@ const FIRST_LOADS = [
         title: "the sign-in",
         imports: {
             "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"],
-            "@anotoki/lib/auth": ["AnotokiAuth", "anotokiAuthInterceptor", "provideAnotokiAuth", "personOrVisitorGuard", "staffGuard", "AccountPreferences", "AuthCallbackComponent"],
+            "@anotoki/lib/auth": ["AnotokiAuth", "anotokiAuthInterceptor", "provideAnotokiAuth", "personOrVisitorGuard", "staffGuard", "AccountPreferences", "AuthCallbackComponent", "SignInFailureComponent"],
         },
         limit: 19.5,
         words: [...KIT_WORDS, "siteStatus", "signIn"],

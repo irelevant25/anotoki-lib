@@ -275,6 +275,11 @@
             "en": "Signing you in…",
             "sk": "Prihlasujeme ťa…"
         },
+        "anotoki.signIn.failedTitle": {
+            "description": "The anotoki library's sign-in page: the heading over why a sign-in came back without one, could not start, or cannot be offered right now - the reason under it, then the buttons to try again and to go back. No placeholders.",
+            "en": "Signing in did not work",
+            "sk": "Prihlásenie sa nepodarilo"
+        },
         "anotoki.signIn.notCompleted": {
             "description": "The anotoki library's sign-in page: said when the reader came back from their anotoki account without signing in - they went back from its page, or the account was turned away. Under it, the buttons to try again and to go back. No placeholders.",
             "en": "The sign-in was not completed.",

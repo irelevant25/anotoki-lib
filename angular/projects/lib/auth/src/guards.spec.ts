@@ -13,8 +13,11 @@ class PageComponent {}
 describe('the guards', () => {
   let site: SpecSite;
 
-  async function start(options: { loginRequired?: boolean; roles?: string[] | null; blocked?: boolean; failure?: string } = {}): Promise<Router> {
+  async function start(options: { loginRequired?: boolean; roles?: string[] | null; blocked?: boolean; failure?: string; failureRoute?: string; boot?: false } = {}): Promise<Router> {
     site = specSite({ login_required: options.loginRequired ?? true });
+    if (options.boot === false) {
+      site.boot = null;
+    }
     if (options.roles) {
       site.prepare = (client) => client.hold(user('7', options.roles ?? []), null);
     }
@@ -27,12 +30,13 @@ describe('the guards', () => {
     }
     TestBed.configureTestingModule({
       providers: [
-        ...provideSpecAuth(site, { forbiddenRoute: '/sorry' }, [
+        ...provideSpecAuth(site, { forbiddenRoute: '/sorry', ...(options.failureRoute ? { failureRoute: options.failureRoute } : {}) }, [
           { path: 'learn', component: PageComponent, canActivate: [personGuard] },
           { path: 'take', component: PageComponent, canActivate: [personOrVisitorGuard] },
           { path: 'admin', component: PageComponent, canActivate: [staffGuard] },
           { path: 'admin/people', component: PageComponent, canActivate: [adminGuard] },
           { path: 'auth/callback', component: PageComponent },
+          { path: 'sign-in-failed', component: PageComponent },
           { path: 'sorry', component: PageComponent },
           { path: '', component: PageComponent },
         ]),
@@ -82,6 +86,17 @@ describe('the guards', () => {
     const router = await start({ failure: 'access_denied' });
     expect(await go(router, '/learn')).toBe('/auth/callback');
     expect(site.client?.logins).toEqual([]);
+  });
+
+  it("the failure on the site's own route for it, where the site names one (failureRoute) - a sign-in that cannot be set up too", async () => {
+    const router = await start({ failure: 'access_denied', failureRoute: '/sign-in-failed' });
+    expect(await go(router, '/learn')).toBe('/sign-in-failed');
+    expect(await go(router, '/admin')).toBe('/sign-in-failed');
+    expect(site.client?.logins).toEqual([]);
+
+    TestBed.resetTestingModule();
+    const unavailable = await start({ boot: false, failureRoute: '/sign-in-failed' });
+    expect(await go(unavailable, '/learn')).toBe('/sign-in-failed');
   });
 
   it('every page while the site is blocked: the status page stands in front, with a sign-in of its own', async () => {

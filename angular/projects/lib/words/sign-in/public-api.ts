@@ -10,6 +10,7 @@
 
 const EN = {
   'anotoki.signIn.signingIn': 'Signing you in…',
+  'anotoki.signIn.failedTitle': 'Signing in did not work',
   'anotoki.signIn.notCompleted': 'The sign-in was not completed.',
   'anotoki.signIn.expired': 'The sign-in took too long or did not start on this page. Try again.',
   'anotoki.signIn.storageUnavailable': 'This browser does not let the site remember a sign-in. Allow the site\'s storage, then try again.',
@@ -24,6 +25,7 @@ export type SignInLibraryKey = keyof typeof EN;
 
 const SK: Readonly<Record<SignInLibraryKey, string>> = {
   'anotoki.signIn.signingIn': 'Prihlasujeme ťa…',
+  'anotoki.signIn.failedTitle': 'Prihlásenie sa nepodarilo',
   'anotoki.signIn.notCompleted': 'Prihlásenie sa nedokončilo.',
   'anotoki.signIn.expired': 'Prihlásenie trvalo príliš dlho alebo sa nezačalo na tejto stránke. Skús to znova.',
   'anotoki.signIn.storageUnavailable': 'Tento prehliadač nedovolí stránke zapamätať si prihlásenie. Povoľ jej ukladanie údajov a skús to znova.',

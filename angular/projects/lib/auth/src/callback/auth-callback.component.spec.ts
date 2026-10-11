@@ -65,13 +65,18 @@ describe('<anotoki-auth-callback>: the one page of signing in a visitor sees', (
     tag.remove();
   });
 
-  it("a failure in the page's language, from its code alone - and Try again, Back, the kit's buttons", async () => {
+  it("a failure: the failure's screen in its place, in the page's language, from its code alone - and Try again, Back, the kit's buttons", async () => {
     const fixture = await render({ failure: 'access_denied', language: 'sk' });
     const element: HTMLElement = fixture.nativeElement;
+    expect(element.classList).toContain('anotoki-auth-callback--failed');
+    expect(element.querySelector('anotoki-sign-in-failure')).not.toBeNull();
+    expect(element.querySelector('h1')?.textContent?.trim()).toBe('Prihlásenie sa nepodarilo');
     expect(element.querySelector('[role="alert"]')?.textContent?.trim()).toBe('Prihlásenie sa nedokončilo.');
-    expect(element.querySelector('[role="alert"]')?.classList).toContain('anotoki-auth-callback__message');
+    expect(element.querySelector('[role="alert"]')?.classList).toContain('anotoki-sign-in-failure__message');
+    expect(element.querySelector('[role="status"]')).toBeNull();
     expect(element.textContent).not.toContain('IAM said');
     expect(element.querySelector('section')?.getAttribute('lang')).toBe('sk');
+    expect(robots()).toBe('noindex');
     const [retry, back] = Array.from(element.querySelectorAll('button'));
     expect([retry.textContent?.trim(), back.textContent?.trim()]).toEqual(['Skúsiť znova', 'Späť']);
     expect(retry.classList).toContain('anotoki-button--primary');
@@ -86,6 +91,8 @@ describe('<anotoki-auth-callback>: the one page of signing in a visitor sees', (
     await settle();
     expect(TestBed.inject(AnotokiAuth).signInFailure()).toBeNull();
     expect(TestBed.inject(Router).url).toBe('/quiz/3');
+    fixture.destroy();
+    expect(robots()).toBeNull();
   });
 
   it('a sign-in that cannot be set up: said so, and Try again loads the page afresh', async () => {

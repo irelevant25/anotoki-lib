@@ -1,13 +1,5 @@
-@if (message(); as said) {
-    <section class="anotoki-auth-callback__panel" [attr.lang]="text().lang">
-        <p class="anotoki-auth-callback__message" role="alert">{{ said }}</p>
-        <div class="anotoki-auth-callback__actions">
-            <button anotokiButton variant="primary" data-retry [loading]="busy()" (click)="retry()">{{ text().words.retry }}</button>
-            @if (failure()?.code !== "unavailable") {
-                <button anotokiButton variant="secondary" data-back (click)="back()">{{ text().words.back }}</button>
-            }
-        </div>
-    </section>
+@if (failed()) {
+    <anotoki-sign-in-failure />
 } @else {
     <section class="anotoki-auth-callback__panel" role="status" [attr.lang]="text().lang">
         <p class="anotoki-auth-callback__message">{{ text().words.signingIn }}</p>

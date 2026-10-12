@@ -67,6 +67,26 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame(6, (int) $this->value("SELECT id FROM people WHERE name = 'after the restore'"), 'never 5 again: the person made since had it');
     }
 
+    public function testASequenceThatCountsDownNeverGoesBackEither(): void
+    {
+        // A site's visitors count down from -1 (visitor_ids: INCREMENT BY -1, MAXVALUE -1): never back is further
+        // down for it - and 0.5.0's setval(0) was past its MAXVALUE, so the whole restore failed.
+        $this->pdo->exec('CREATE SEQUENCE visitor_ids INCREMENT BY -1 MAXVALUE -1 START WITH -1');
+        $this->pdo->exec('CREATE SEQUENCE by_tens INCREMENT BY 10 START WITH 100');
+        $this->fill();
+        $this->pdo->exec("SELECT nextval('visitor_ids'), nextval('visitor_ids'), nextval('by_tens'), nextval('by_tens')");
+        $backups = $this->backupsWith();
+        $backup = $backups->create(Backups::MANUAL, 'With two visitors', 7);
+        self::assertIsArray($backup);
+        $this->pdo->exec("SELECT nextval('visitor_ids')");
+
+        $result = $backups->restore($backup['id'], 7);
+
+        self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
+        self::assertSame(-4, (int) $this->value("SELECT nextval('visitor_ids')"), 'below every visitor handed out, before the backup (-1, -2) and since (-3)');
+        self::assertSame(120, (int) $this->value("SELECT nextval('by_tens')"), 'a sequence\'s own step: 100, 110, then 120');
+    }
+
     /** The value a sequence hands out next, from sequences()' "last_value:is_called". */
     private static function nextOf(string $state): int
     {

@@ -5,6 +5,18 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.5.1 - 2026-10-12
+
+A restore set every sequence one step past the later of the backup's value and today's - by +1, and the
+higher of the two. A sequence that counts down (a site's visitors: `visitor_ids`, INCREMENT BY -1,
+MAXVALUE -1) was set back up instead: with one visitor ever made, to 0 - past its MAXVALUE, so the
+restore failed whole (`500 restore_failed`, nothing restored) on every site that ever had a visitor; with
+more, to an id a visitor had already been given. Each sequence now goes one of its own steps past the
+later value in its own direction (the lower of the two for one that counts down), read from
+`pg_sequence`; a sequence that counts up by more than 1 keeps its step too. Found by Piano Academy's
+restore test. Only the PHP half changed: a site takes it with `composer update anotoki/lib`; its frontend
+may stay on the 0.5.0 tarball (the same code but the version string).
+
 ## 0.5.0 - 2026-10-11
 
 A minor version, not 0.4.2: it changes what a site's hooks are given and may do (the People delete, the

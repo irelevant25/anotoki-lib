@@ -1254,13 +1254,20 @@ final class Backups
                 }
                 // Never backwards: the next value is the later of the backup's and today's. A value handed out
                 // since the backup was made may be named where a restore never reaches - the audit log kept, a
-                // site's generations of progress - and must never be handed out again.
+                // site's generations of progress - and must never be handed out again. "Later" in the sequence's
+                // own direction, by its own step: higher for one that counts up, lower for one that counts down
+                // (a site's visitors: -1, -2, ...), where a step of +1 would leave its range (setval(0) past
+                // MAXVALUE -1) and fail every restore of a database that ever had a visitor.
                 $sequenceName = $shape->qualified((string) $sequence['name']);
+                $step = $pdo->prepare('SELECT seqincrement FROM pg_sequence WHERE seqrelid = CAST(? AS regclass)');
+                $step->execute([$sequenceName]);
+                $increment = (int) $step->fetchColumn();
+                $later = $increment < 0 ? 'LEAST' : 'GREATEST';
                 $pdo->prepare(
-                    'SELECT setval(CAST(? AS regclass), GREATEST(CAST(? AS bigint) + CASE WHEN CAST(? AS boolean) THEN 1 ELSE 0 END,
-                                   s.last_value + CASE WHEN s.is_called THEN 1 ELSE 0 END), false)
+                    'SELECT setval(CAST(? AS regclass), ' . $later . '(CAST(? AS bigint) + CASE WHEN CAST(? AS boolean) THEN CAST(? AS bigint) ELSE 0 END,
+                                   s.last_value + CASE WHEN s.is_called THEN CAST(? AS bigint) ELSE 0 END), false)
                        FROM ' . $sequenceName . ' s'
-                )->execute([$sequenceName, (string) $sequence['last_value'], $sequence['is_called'] ? 'true' : 'false']);
+                )->execute([$sequenceName, (string) $sequence['last_value'], $sequence['is_called'] ? 'true' : 'false', (string) $increment, (string) $increment]);
             }
             // The deferred keys checked now, while their tables are whole: ALTER TABLE refuses a table with checks pending.
             $pdo->exec('SET CONSTRAINTS ALL IMMEDIATE');

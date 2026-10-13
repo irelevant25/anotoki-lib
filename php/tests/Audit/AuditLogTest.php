@@ -50,6 +50,22 @@ final class AuditLogTest extends DatabaseTestCase
         self::assertSame([1234, null, null], [$row['actor_id'], $row['ip'], $row['details']], 'a site keeps no address unless it says so; an IAM sub as text is an id');
     }
 
+    public function testTheAddressKeptIsTheVisitorsOnlyThroughTheOwnersZone(): void
+    {
+        $this->applyAdminSet();
+        $secret = str_repeat('zone-secret-', 4);
+        $audit = $this->audit(['recordAddress' => true, 'trustedProxies' => ['10.0.0.0/8'], 'originSecret' => $secret]);
+
+        $audit->record($this->request(), 1, 'user.signed_in', 'user', 1);
+        $audit->record($this->request()->withHeader('X-Anotoki-Origin', $secret), 1, 'user.signed_out', 'user', 1);
+
+        self::assertSame(['user.signed_in' => '10.0.0.1', 'user.signed_out' => '198.51.100.20'], array_column(
+            $this->rows("SELECT action, ip FROM anotoki_audit_log WHERE action LIKE 'user.%'"),
+            'ip',
+            'action',
+        ), 'without the zone\'s secret the proxy\'s own address; with it the visitor\'s');
+    }
+
     public function testWithoutAnOnErrorWhyAnEntryWasNotWrittenIsTheLibrarysLogLine(): void
     {
         LogLines::take();

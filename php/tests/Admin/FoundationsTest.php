@@ -493,6 +493,39 @@ final class FoundationsTest extends TestCase
         }))->names([1]), 'a lookup that fails: no names, never an error');
     }
 
+    public function testWithAnOriginSecretTheHeaderIsBelievedOnlyThroughTheOwnersZone(): void
+    {
+        $secret = str_repeat('zone-secret-', 4);
+        $request = static function (string $remote, array $headers = []): ServerRequestInterface {
+            $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/', ['REMOTE_ADDR' => $remote]);
+            foreach ($headers as $name => $value) {
+                $request = $request->withHeader($name, $value);
+            }
+
+            return $request;
+        };
+        $edge = '173.245.48.1';
+        $visitor = ['CF-Connecting-IP' => '198.51.100.7'];
+        $of = static fn (ServerRequestInterface $r, ?string $origin): ?string => ClientAddress::of($r, ClientAddress::CLOUDFLARE, ClientAddress::CLOUDFLARE_HEADER, $origin);
+
+        // Anybody's Worker: a connection from Cloudflare's ranges, a header of its own choosing - and no secret.
+        self::assertSame($edge, $of($request($edge, $visitor), $secret), 'no secret: the edge, never the header');
+        self::assertSame($edge, $of($request($edge, $visitor + [ClientAddress::ORIGIN_HEADER => 'a guess']), $secret), 'a wrong secret: the edge');
+        self::assertSame($edge, $of($request($edge, $visitor + [ClientAddress::ORIGIN_HEADER => $secret . 'x']), $secret), 'a longer one: the edge');
+        // Through the owner's zone, whose Transform Rule adds the secret.
+        self::assertSame('198.51.100.7', $of($request($edge, $visitor + [ClientAddress::ORIGIN_HEADER => $secret]), $secret));
+        // The secret opens nothing outside Cloudflare's ranges: whoever learnt it still counts as their connection.
+        self::assertSame('203.0.113.9', $of($request('203.0.113.9', $visitor + [ClientAddress::ORIGIN_HEADER => $secret]), $secret));
+        // A site given no secret: as before 0.5.2.
+        self::assertSame('198.51.100.7', $of($request($edge, $visitor), null));
+        self::assertSame('198.51.100.7', $of($request($edge, $visitor), ''));
+
+        // The admin tools count by the same rule (the feedback's limits, the error log's client).
+        $context = new AdminContext(static fn (): int => 1, trustedProxies: ClientAddress::CLOUDFLARE, originSecret: $secret);
+        self::assertSame($edge, $context->clientKey($request($edge, $visitor)));
+        self::assertSame('198.51.100.7', $context->clientKey($request($edge, $visitor + [ClientAddress::ORIGIN_HEADER => $secret])));
+    }
+
     public function testASitesOwnSecretNamesAreRedactedToo(): void
     {
         $message = 'Could not save totp_secret=JBSWY3DP and {"recovery_code": "1234-5678"} for x.key=abc';

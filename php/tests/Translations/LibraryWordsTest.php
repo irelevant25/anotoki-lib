@@ -68,6 +68,51 @@ final class LibraryWordsTest extends TestCase
             'anotoki.feedback.emailInvalid', 'anotoki.feedback.tooManyHour', 'anotoki.feedback.tooManyDay',
             'anotoki.feedback.unavailable', 'anotoki.feedback.signInRequired', 'anotoki.feedback.failed', 'anotoki.feedback.network',
             'anotoki.feedback.honeypot',
+            // The legal pages' footer links (angular/projects/lib/legal: <anotoki-legal-links>), from 005 ...
+            'anotoki.legalLinks.label', 'anotoki.legalLinks.terms', 'anotoki.legalLinks.privacy',
+            'anotoki.legalLinks.contact',
+            // ... and the legal pages themselves (angular/projects/lib/legal/pages: Terms, Privacy, Contact), from 005.
+            'anotoki.legal.updated', 'anotoki.legal.onThisPage', 'anotoki.legal.whatFor', 'anotoki.legal.howLong',
+            'anotoki.legal.toBeNamed', 'anotoki.legal.copyAddress', 'anotoki.legal.accountPage',
+            'anotoki.legal.accountTitle', 'anotoki.legal.sectionContact', 'anotoki.legal.otherWays',
+            'anotoki.legal.fanHoyoverse', 'anotoki.legal.termsTitle', 'anotoki.legal.termsLead',
+            'anotoki.legal.termsWhatTitle', 'anotoki.legal.termsWhatText', 'anotoki.legal.termsAccountText',
+            'anotoki.legal.termsAccountTextIam', 'anotoki.legal.termsAccountCare', 'anotoki.legal.termsAgeTitle',
+            'anotoki.legal.termsAgeText', 'anotoki.legal.termsUseTitle', 'anotoki.legal.termsUseText',
+            'anotoki.legal.termsSendTitle', 'anotoki.legal.termsSendText', 'anotoki.legal.termsAvailabilityTitle',
+            'anotoki.legal.termsAvailabilityText', 'anotoki.legal.termsChangesText', 'anotoki.legal.termsWarrantyTitle',
+            'anotoki.legal.termsWarrantyText', 'anotoki.legal.termsFanTitle', 'anotoki.legal.termsLawTitle',
+            'anotoki.legal.termsLawText', 'anotoki.legal.termsContactText', 'anotoki.legal.privacyTitle',
+            'anotoki.legal.privacyLead', 'anotoki.legal.privacyWhoTitle', 'anotoki.legal.privacyWhoText',
+            'anotoki.legal.privacyWhoContact', 'anotoki.legal.privacyKeepsTitle', 'anotoki.legal.privacyKeepsText',
+            'anotoki.legal.visitorsName', 'anotoki.legal.visitorsWhy', 'anotoki.legal.feedbackName',
+            'anotoki.legal.feedbackWhat', 'anotoki.legal.feedbackWhy', 'anotoki.legal.feedbackKept',
+            'anotoki.legal.errorLogName', 'anotoki.legal.errorLogWhat', 'anotoki.legal.errorLogWhy',
+            'anotoki.legal.errorLogKept', 'anotoki.legal.auditLogName', 'anotoki.legal.auditLogWhat',
+            'anotoki.legal.auditLogWhy', 'anotoki.legal.auditLogKept', 'anotoki.legal.backupsName',
+            'anotoki.legal.backupsWhat', 'anotoki.legal.backupsWherePlain', 'anotoki.legal.backupsWhereEncrypted',
+            'anotoki.legal.backupsWhy', 'anotoki.legal.backupsKept', 'anotoki.legal.privacyAccountText',
+            'anotoki.legal.privacyAccountLink', 'anotoki.legal.privacyAccountRecord',
+            'anotoki.legal.privacyAccountTextIam', 'anotoki.legal.privacyStorageTitle', 'anotoki.legal.privacyStorageText',
+            'anotoki.legal.storageCookie', 'anotoki.legal.storageLocal', 'anotoki.legal.storageSession',
+            'anotoki.legal.storageHintPurpose', 'anotoki.legal.storageHintKept', 'anotoki.legal.storageSignInPurpose',
+            'anotoki.legal.storageSignInKept', 'anotoki.legal.storageThemePurpose', 'anotoki.legal.storageLanguagePurpose',
+            'anotoki.legal.storageUntilCleared', 'anotoki.legal.storageVisitorPurpose', 'anotoki.legal.storageVisitorKept',
+            'anotoki.legal.privacyAnalyticsTitle', 'anotoki.legal.privacyAnalyticsText',
+            'anotoki.legal.privacyAnalyticsNone', 'anotoki.legal.privacyOthersTitle', 'anotoki.legal.privacyOthersText',
+            'anotoki.legal.hostingName', 'anotoki.legal.hostingRole', 'anotoki.legal.cloudflareRole',
+            'anotoki.legal.googleRole', 'anotoki.legal.mailName', 'anotoki.legal.mailRole',
+            'anotoki.legal.privacyHowLongTitle', 'anotoki.legal.privacyHowLongText', 'anotoki.legal.privacyRightsTitle',
+            'anotoki.legal.privacyRightsText', 'anotoki.legal.privacyRightsDelete', 'anotoki.legal.privacyRightsComplaint',
+            'anotoki.legal.authority', 'anotoki.legal.privacyChangesTitle', 'anotoki.legal.privacyChangesText',
+            'anotoki.legal.privacyContactText', 'anotoki.legal.contactTitle', 'anotoki.legal.contactLead',
+            'anotoki.legal.contactFeedbackTitle', 'anotoki.legal.contactFeedbackText',
+            'anotoki.legal.contactFeedbackButton', 'anotoki.legal.contactFeedbackFailed',
+            'anotoki.legal.contactEmailTitle', 'anotoki.legal.contactEmailTitleAlone', 'anotoki.legal.contactEmailText',
+            'anotoki.legal.contactEmailTextAlone', 'anotoki.legal.contactEmailAccount', 'anotoki.legal.contactDeleteTitle',
+            'anotoki.legal.contactDeleteText', 'anotoki.legal.contactDeleteEverywhere',
+            'anotoki.legal.contactDeleteEverywhereIam', 'anotoki.legal.contactResponseTitle',
+            'anotoki.legal.contactResponseText', 'anotoki.legal.contactAboutTitle', 'anotoki.legal.contactAboutText',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -79,6 +124,8 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['name', 'code'], LibraryWords::placeholders('anotoki.language.button'));
         self::assertSame(['code'], LibraryWords::placeholders('anotoki.signIn.failed'));
         self::assertSame(['max'], LibraryWords::placeholders('anotoki.feedback.tooLong'));
+        self::assertSame(['site', 'operator'], LibraryWords::placeholders('anotoki.legal.termsWarrantyText'));
+        self::assertSame(['daily', 'beforeUpdate', 'beforeRestore'], LibraryWords::placeholders('anotoki.legal.backupsKept'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

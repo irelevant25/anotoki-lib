@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { provideAnotokiAdmin } from '@anotoki/lib/admin';
 import { AnotokiAuth } from '@anotoki/lib/auth';
 import { provideAnotokiFeedback } from '@anotoki/lib/feedback';
+import { provideAnotokiLegal } from '@anotoki/lib/legal';
 import { provideAnotokiMigrations, siteStatusInterceptor } from '@anotoki/lib/migrations';
 import { provideAnotokiPeople } from '@anotoki/lib/people';
 import { AnotokiThemeMode, ThemeService, provideAnotokiShell } from '@anotoki/lib/shell';
@@ -15,6 +16,7 @@ import { ToastService } from '@anotoki/lib/ui/toast';
 import { delay, of } from 'rxjs';
 import { IAM_CASE, adminServer } from './app/admin-server';
 import { AppComponent } from './app/app.component';
+import { showcaseLegalFacts } from './app/legal-facts';
 import { peopleServer } from './app/people-server';
 import { SignInDemoComponent, signInDemoProviders } from './app/sign-in-demo/sign-in-demo.component';
 import { SHOWCASE_GROUPS, wordsServer } from './app/words-server';
@@ -110,6 +112,10 @@ bootstrapApplication(AppComponent, {
         ],
       },
       { path: 'feedback', loadComponent: () => import('./app/feedback-demo/feedback-demo.component').then((m) => m.FeedbackDemoComponent) },
+      // The legal pages with a sample site's facts (legal-facts.ts: ?iam=1, ?fan=1, ?feedback=0), linked from the footer.
+      { path: 'terms', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.TermsPageComponent) },
+      { path: 'privacy', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.PrivacyPageComponent) },
+      { path: 'contact', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.ContactPageComponent) },
       { path: '**', redirectTo: '' },
     ]),
     // The People page: the reader is Mira (7); the site deletes what it keeps of a person, in its own words.
@@ -150,6 +156,15 @@ bootstrapApplication(AppComponent, {
         fields: () => [{ name: 'steps', label: slovak() ? 'Ako sa k tomu dostať' : 'Steps to reproduce', kinds: ['bug'], max: 5000 }],
         signedIn: () => signedIn(),
         email: () => (signedIn() ? 'mira@example.test' : null),
+      };
+    }),
+    // The legal pages and the footer's links: in the page's language, the database's words over the library's.
+    provideAnotokiLegal(() => {
+      const i18n = inject(TranslationService);
+      return {
+        language: () => i18n.language(),
+        translate: (key) => i18n.libraryWord(key),
+        facts: () => showcaseLegalFacts(i18n.language(), IAM_CASE),
       };
     }),
     // The words: the bundle's language (?lang=sk, a choice in the bar), the database's strings over the library's.

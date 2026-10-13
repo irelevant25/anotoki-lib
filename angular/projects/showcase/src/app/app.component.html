@@ -1,6 +1,7 @@
 <anotoki-shell [maxWidth]="frameWidth">
     <anotoki-top-bar topBar [brand]="brand()" [links]="links()" [person]="person()" [menuItems]="items()" [signOut]="signOut" [languages]="true" [phoneMax]="760" [phoneMark]="mark()" />
     <router-outlet />
+    <footer shellFooter class="show-footer"><anotoki-legal-links /></footer>
 </anotoki-shell>
 <anotoki-confirm-host />
 <anotoki-toast-host />

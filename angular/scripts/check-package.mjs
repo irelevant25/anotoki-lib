@@ -16,13 +16,17 @@
 //   its shared part (auth/core), never the module itself. The People page imports the
 //   kit and its configuration's small entry point, which imports nothing. The admin tools' pages import their
 //   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
-//   the feedback form imports its configuration and the kit's fields.
+//   the feedback form imports its configuration and the kit's fields. The legal pages import their configuration (and
+//   the footer's links, @anotoki/lib/legal), the kit's pieces, its dialog and its copy button, and the feedback form by
+//   import() alone.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
 //   which imports none and holds the kit's alone; @anotoki/lib/words, every namespace's, is for a site's specs and
 //   the showcase. Every first load carries the words of the namespaces its page says, and no others: a module that
-//   brings words weighs neither on the kit's first loads nor on the translations module's.
+//   brings words weighs neither on the kit's first loads nor on the translations module's. One namespace is read by
+//   its pages alone and never registered (READ_BY_THEIR_PAGES: the legal pages', pages of text - a registration comes
+//   with the eager configuration): only those pages may import it, and no first load carries it.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Text, never markup: no bundle names one of the ways to put a string into a page as HTML, or to switch Angular's
@@ -77,6 +81,11 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  *
  * error-report (0.5.0): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
  * so on every first page (2.8 at 0.5.0, its scrubbing's patterns most of it; 2.1 minified in a first load).
+ *
+ * legal (0.6.0): the legal pages' configuration and the footer's three links, with their four words - on every page of
+ * a site whose footer is the family's (2.5 at 0.6.0: the links' template and styles stand twice in the FESM, as every
+ * component's do - once more in its class metadata, which a site's production build drops; 1.5 minified in a first
+ * load). The pages are @anotoki/lib/legal/pages, on lazy routes, with their own words.
  */
 const LIMITS = {
     [CORE]: 15,
@@ -90,6 +99,7 @@ const LIMITS = {
     "@anotoki/lib/admin": 1.5,
     "@anotoki/lib/feedback": 1.5,
     "@anotoki/lib/error-report": 3,
+    "@anotoki/lib/legal": 3,
 };
 const UI_AND_SHELL = 28;
 
@@ -159,6 +169,10 @@ const MAY_IMPORT = {
     "@anotoki/lib/feedback/form": ["@anotoki/lib/feedback", ...PIECES, "@anotoki/lib/ui/forms"],
     // The browser's errors, reported: Angular's own alone (its ErrorHandler and HttpClient).
     "@anotoki/lib/error-report": [],
+    // The legal pages: their configuration and the footer's links register the links' words; the pages, each on a
+    // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form by import() as it is opened.
+    "@anotoki/lib/legal": ["@anotoki/lib/ui/config", "@anotoki/lib/words/legal-links"],
+    "@anotoki/lib/legal/pages": ["@anotoki/lib/legal", "@anotoki/lib/words/legal", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/copy", "@anotoki/lib/feedback/form"],
     // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
@@ -166,6 +180,13 @@ const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
 /** The library's words: the kit's namespaces (ui/config's), and where every other module's are. */
 const WORDS = "@anotoki/lib/words";
 const KIT_WORDS = ["language", "ui", "topbar", "theme"];
+
+/**
+ * The words entry points a module's lazy pages read themselves, never registering them: pages of text, which a
+ * registration would bring with the module's eager configuration into every first load. No other entry point may
+ * import them, and no first load carries their namespace (each FIRST_LOADS row names the namespaces it may carry).
+ */
+const READ_BY_THEIR_PAGES = { "@anotoki/lib/words/legal": ["@anotoki/lib/legal/pages"] };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
 const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][A-Za-z0-9_-]*)\./g)].map((match) => match[1]));
@@ -182,7 +203,9 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * configuration and the unread feedback count of a site's admin navigation - no words; "the words + feedback": a
  * site's translations with the feedback form's configuration, which registers the form's words - the form itself
  * (@anotoki/lib/feedback/form, the kit's fields) is loaded as it is opened: in a first load it would share ui/forms
- * with the lazy pages; "the error report": the browser's errors reported to the site's error log - no words.
+ * with the lazy pages; "the error report": the browser's errors reported to the site's error log - no words; "the
+ * words + legal links": a site's translations with the legal pages' configuration and the footer's three links, which
+ * register their four words - never the pages' own (`anotoki.legal.*`), which come with the pages alone.
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
@@ -209,6 +232,15 @@ const FIRST_LOADS = [
         words: [...KIT_WORDS, "feedback"],
     },
     { title: "the error report", imports: { "@anotoki/lib/error-report": ["provideAnotokiErrorReport"] }, limit: 2.5, words: [] },
+    {
+        title: "the words + legal links",
+        imports: {
+            "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"],
+            "@anotoki/lib/legal": ["provideAnotokiLegal", "LegalLinksComponent"],
+        },
+        limit: 9,
+        words: [...KIT_WORDS, "legalLinks"],
+    },
 ];
 
 /**
@@ -300,6 +332,13 @@ for (const [name, code] of Object.entries(codeOf)) {
         }
         if (from === WORDS) {
             problems.push(`${name} imports ${WORDS}, every module's words: a module imports its own namespace's alone.`);
+            continue;
+        }
+        // Words their lazy pages read themselves: those pages import them unregistered, and nothing else imports them.
+        if (from in READ_BY_THEIR_PAGES) {
+            if (!READ_BY_THEIR_PAGES[from].includes(name)) {
+                problems.push(`${name} imports ${from}, which only ${READ_BY_THEIR_PAGES[from].join(", ")} may: its pages read those words themselves, and no first load may carry them.`);
+            }
             continue;
         }
         for (const binding of bindings.split(",").map((part) => part.trim().split(/\s+as\s+/).pop()).filter(Boolean)) {

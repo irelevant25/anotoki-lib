@@ -56,8 +56,9 @@ final class TranslationsCommandTest extends DatabaseTestCase
         self::assertStringContainsString("In the database, used nowhere - a migration deletes a key the code has stopped using:\n    home.unused\n", $out);
         self::assertStringNotContainsString('mail.reset.subject', $out, 'the server\'s keys are not the frontend\'s');
         self::assertStringNotContainsString('anotoki.language', $out, 'nor the library\'s');
-        self::assertStringContainsString(sprintf('  en     English                %d / %d', $keys, $keys), $out);
-        self::assertStringContainsString(sprintf('  sk     Slovak                 %d / %d', $keys - 2, $keys), $out);
+        // The command's own columns: a count of any width up to four digits lines up.
+        self::assertStringContainsString(sprintf('  en     English              %4d / %d', $keys, $keys), $out);
+        self::assertStringContainsString(sprintf('  sk     Slovak               %4d / %d', $keys - 2, $keys), $out);
         self::assertStringContainsString(sprintf('  de     German                  0 / %d   (not offered)', $keys), $out);
         self::assertStringEndsWith("  Clean.\n", $out);
         self::assertStringNotContainsString("\033[", $out, 'no colours on what is not a terminal');

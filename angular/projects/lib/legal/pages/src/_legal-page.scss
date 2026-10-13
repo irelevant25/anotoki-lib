@@ -1,0 +1,199 @@
+////
+/// What the three legal pages share - `@use`d by each page's own stylesheet, so every rule is scoped to that page.
+/// Text in a measure a person reads comfortably, sections apart, the kit's colours (the site's palette).
+////
+
+@use "../../../sass/kit";
+
+:host {
+  display: block;
+  color: kit.token(text);
+}
+
+.anotoki-legal-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  max-width: 46rem;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.anotoki-legal-page__updated {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}
+
+// The list of the page's sections, at its top: a quiet box, its links each a section.
+.anotoki-legal-page__toc {
+  padding: 1rem 1.25rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+}
+
+.anotoki-legal-page__toc-title {
+  margin: 0 0 0.4rem;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.anotoki-legal-page__toc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 0.1rem 1.5rem;
+  margin: 0;
+  padding: 0 0 0 1.25rem;
+}
+
+.anotoki-legal-page__toc-link {
+  display: inline-block;
+  padding: 0.15rem 0;
+  color: kit.token(link);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  @include kit.focus-ring(1px);
+}
+
+.anotoki-legal-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.anotoki-legal-page__heading {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  // Out from under a sticky bar when a link of the list above brings it into view.
+  scroll-margin-top: calc(#{kit.token(topbar-height)} + 1rem);
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.anotoki-legal-page__text {
+  margin: 0;
+}
+
+.anotoki-legal-page__muted {
+  margin: 0;
+  color: kit.token(muted);
+}
+
+// A list of things the page describes (what the site keeps, its cookies, who else handles data): each a card.
+.anotoki-legal-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anotoki-legal-page__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+}
+
+.anotoki-legal-page__item-title {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.anotoki-legal-page__item-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.anotoki-legal-page__code {
+  padding: 0.05rem 0.35rem;
+  border-radius: kit.token(radius-sm);
+  background: kit.token(surface-3);
+  color: kit.token(text);
+  font-family: kit.token(font-mono);
+  font-size: 0.875em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-legal-page__kind {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.anotoki-legal-page__link {
+  color: kit.token(link);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  overflow-wrap: anywhere;
+
+  @include kit.focus-ring(1px);
+}
+
+// Label and value, a line each pair: "What for: ...", "How long: ...".
+.anotoki-legal-page__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+
+  div {
+    margin: 0;
+  }
+
+  dt {
+    display: inline;
+    font-weight: 700;
+
+    &::after {
+      content: ": ";
+    }
+  }
+
+  dd {
+    display: inline;
+    margin: 0;
+  }
+}
+
+.anotoki-legal-page__address {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  color: kit.token(muted);
+  font-style: normal;
+}
+
+.anotoki-legal-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}

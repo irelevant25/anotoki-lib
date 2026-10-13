@@ -1,0 +1,20 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: inline;
+}
+
+// The family's link, whatever a site's own `a {}` says; a long address breaks at 390 px.
+.anotoki-legal-text__link {
+  color: kit.token(link);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  overflow-wrap: anywhere;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  @include kit.focus-ring(1px);
+}

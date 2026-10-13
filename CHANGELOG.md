@@ -5,6 +5,44 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## Unreleased - 0.6.0
+
+**The legal pages** (the first part of 0.6.0; the owner's decisions of 2026-10-13): **Terms**, **Privacy** and
+**Contact** for every anotoki site - their structure and the family's shared wording are the library's, each site
+gives its own facts (README.md, "Legal pages"). The texts are a good-faith draft for the owner, not legal advice.
+
+- `@anotoki/lib/legal` (new): `provideAnotokiLegal()` - the site's facts (`LegalFacts`: its name and what it is, what
+  it keeps, what for and how long, its visitors, the feedback form, the error log, the audit log, the backups, its
+  cookies and browser storage, counting visits, who else handles data, where the account lives, the fan clause),
+  its paths, and the operator (`LEGAL_OPERATOR`: Code Hero s.r.o., linked to its site, run from Slovakia; the
+  support address kept in two parts and joined only as a page draws it) - and `<anotoki-legal-links>`, Terms ·
+  Privacy · Contact for a footer, which registers its words (`anotoki.legalLinks.*`). 1.5 kB gzipped in a first load.
+- `@anotoki/lib/legal/pages` (new): `TermsPageComponent`, `PrivacyPageComponent`, `ContactPageComponent`, each for a
+  lazy route - drawn with the kit, a heading per section, the list of sections moving the focus, 390 px; the Contact
+  page opens the feedback form in the kit's dialog (`@anotoki/lib/feedback/form`, its code loaded with the press, the
+  focus given back to the button after) on a site that takes feedback, and gives the address alone elsewhere. The
+  pages read their words (`anotoki.legal.*`) themselves and never register them: pages of text, they come with the
+  pages alone. `scripts/check-package.mjs` lets those pages import them unregistered (`READ_BY_THEIR_PAGES`), refuses
+  any other importer, and holds every first load free of them (a new first load: the words + the legal links).
+- The library's words: `anotoki.legal.*` (118 keys) and `anotoki.legalLinks.*` (4), English and Slovak - the Slovak
+  impersonal (no "ty", no "Vy"), so that the pages fit the formal survey too - in `php/resources/library-words.json`,
+  generated into `@anotoki/lib/words/legal` and `/legal-links` (`bun run words` says in their headers how each is
+  read); `anotoki_translations/005_legal_words.sql` writes them by 002's rule (a key's strings only where it has none)
+  with its gate on English. 216 library keys in all.
+- Tests: the PHP half's schema test compares the database's words with the JSON in PHP's order (a Slovak server
+  collation reads "ch" as one letter after "h"), and the command test reads the coverage's columns as the command
+  writes them (a count of three digits); Vitest covers the pages, the footer's links and the words (703 tests).
+
+What a site must do: nothing to keep building - the pages are new. To show them: apply `anotoki_translations/005` on
+the Migrations page (122 keys: about 10 kB of text a language in the site's bundle); give `provideAnotokiLegal()` its
+facts - the site's own words as keys of its own in its database, English and Slovak - and add the three lazy routes;
+put `<anotoki-legal-links>` in the footer (in the family's frame, `[shellFooter]`), or the three links in its own
+footer with the same words (`anotoki.legalLinks.*`); name the hosting company once the owner gives it ("to be named"
+until then). Per site: `feedback` on genshin, Piano Academy, Japanese Academy and the build analyzer (the IAM and the
+survey take none); `visitors` where it has them; `fanDisclaimer: 'hoyoverse'` on genshin and the build analyzer; the
+IAM `account.isIam`, `backups: { encrypted: true }`, its audit log in its own words, `google` and `mail` among the
+processors, its session and device cookies - and its own Privacy page at the address the other sites link to.
+
 ## 0.5.2 - 2026-10-13
 
 Cloudflare's published ranges are every Cloudflare customer's, not the owner's zone alone: anybody's Worker can

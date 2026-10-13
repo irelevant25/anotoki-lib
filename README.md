@@ -28,7 +28,11 @@ Version 0.5.2 holds:
 - **the admin tools** (both halves) - the error log, the audit log, feedback,
   backups and the file explorer, each an admin page, and the visitors' feedback
   form in their language - and the pages' own errors reported to the error log
-  (`@anotoki/lib/error-report`) (the section "Admin tools").
+  (`@anotoki/lib/error-report`) (the section "Admin tools");
+- **the legal pages** (Angular, with their words in both halves; 0.6.0, not
+  released yet) - Terms, Privacy and Contact for every site, the family's
+  wording around each site's facts, and the footer's three links (the section
+  "Legal pages").
 
 ## The behaviour
 
@@ -228,7 +232,9 @@ uses is in the first load again.
 | `@anotoki/lib/feedback` (0.4.0) | the visitors' feedback form's configuration (`provideAnotokiFeedback`, which registers its words) and its words | yes, beside the translations module |
 | `@anotoki/lib/feedback/form` (0.4.0) | `<anotoki-feedback-form>`, on the kit's fields | loaded when the person opens it |
 | `@anotoki/lib/error-report` (0.5.0) | `provideAnotokiErrorReport()`: the browser's errors in the site's error log ("Admin tools" below) | yes (every page) |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's) | with its module, which alone imports it and registers it with the translations module |
+| `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
+| `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone) | with its module, which alone imports it and registers it with the translations module (the legal pages read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -877,6 +883,10 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   (`anotoki.feedback.*`: its title, the kinds, the fields and their hints, Send,
   the thanks, every refusal it says), 31 keys in English and informal Slovak, by
   002's rule.
+- `005_legal_words.sql` (0.6.0) adds the legal pages' words (`anotoki.legal.*`,
+  118 keys: the headings and the family's wording of Terms, Privacy and Contact)
+  and the footer's links' (`anotoki.legalLinks.*`, 4), in English and impersonal
+  Slovak, by 002's rule ("Legal pages").
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -996,13 +1006,21 @@ import it:
 - every other namespace in an entry point of its own,
   `angular/projects/lib/words/<namespace>/` - `@anotoki/lib/words/site-status`
   (the status page's), `@anotoki/lib/words/sign-in` (the sign-in page's),
-  `@anotoki/lib/words/feedback` (the feedback form's) - which its module alone
+  `@anotoki/lib/words/feedback` (the feedback form's), `@anotoki/lib/words/legal-links`
+  (the footer's legal links', 0.6.0) - which its module alone
   imports, and registers with the translations module from its `provide*()`
   function: `provideLibraryWords(SITE_STATUS_LIBRARY_WORDS)` in
   `provideAnotokiMigrations()`, `provideLibraryWords(SIGN_IN_LIBRARY_WORDS)` in
   `provideAnotokiAuth()`, `provideLibraryWords(FEEDBACK_LIBRARY_WORDS)` in
-  `provideAnotokiFeedback()` (the multi provider `ANOTOKI_LIBRARY_WORDS` of
+  `provideAnotokiFeedback()`, `provideLibraryWords(LEGAL_LINKS_LIBRARY_WORDS)` in
+  `provideAnotokiLegal()` (the multi provider `ANOTOKI_LIBRARY_WORDS` of
   `@anotoki/lib/ui/config`);
+- one namespace read by its pages alone, never registered: `@anotoki/lib/words/legal`
+  (the legal pages', 0.6.0) - pages of text, which a registration would bring
+  with the eager configuration into every first load; `@anotoki/lib/legal/pages`
+  alone imports it and reads it itself (the database's string through
+  `translate`, then the built-in), and its Slovak addresses nobody (no "ty", no
+  "Vy"). The script knows both (`READ_BY_THEIR_PAGES`, `IMPERSONAL`);
 - `@anotoki/lib/words` (`angular/projects/lib/words/`): `LIBRARY_WORDS`, every
   namespace's, for a site's specs and the showcase - no module imports it.
 
@@ -1018,7 +1036,9 @@ with its configuration. A module that brings
 words brings a namespace, an entry point of its own and its registration:
 `scripts/check-package.mjs` derives the entry point's boundaries, holds every
 first load to the namespaces its page says, and refuses a module that imports
-its words without registering them, and the translations module importing any.
+its words without registering them, and the translations module importing any -
+but for the words its lazy pages alone read (`READ_BY_THEIR_PAGES`: the legal
+pages'), which only those pages may import and no first load may carry.
 
 ### The Angular half: `@anotoki/lib/translations`
 
@@ -2414,6 +2434,158 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   (017, keeping ids) with `AuditLog`'s `ready` holding entries back until 017
   ran.
 
+## Legal pages (0.6.0)
+
+Every anotoki site shows three pages - **Terms**, **Privacy** and **Contact** -
+from the library (the owner's decisions of 2026-10-13): their structure and the
+family's shared wording are the library's, each site gives its own facts. **The
+texts are a good-faith draft for the owner, not legal advice**: every statement
+in the library's words is meant to be true of every site as it is (what each
+rests on is listed below), and a lawyer's reading belongs before the sites go
+public.
+
+- `@anotoki/lib/legal` - small, with the rest of a site's app:
+  `provideAnotokiLegal()` (the site's facts, its paths, the operator) and
+  `<anotoki-legal-links>` (Terms · Privacy · Contact, for a footer), which
+  registers its four words (`anotoki.legalLinks.*`). 1.5 kB gzipped in a first
+  load beside the translations module.
+- `@anotoki/lib/legal/pages` - `TermsPageComponent`, `PrivacyPageComponent`,
+  `ContactPageComponent`, each on a lazy route of the site's. Their words
+  (`anotoki.legal.*`, pages of text) come with them alone: they read them
+  themselves - the database's string through `translate`, then the built-in
+  English and Slovak - and never register them, so no first load carries them
+  (`scripts/check-package.mjs` holds every first load to that).
+
+```ts
+// app.config.ts - beside the translations module (and the feedback form's configuration, where the site has one)
+provideAnotokiLegal(() => {
+  const i18n = inject(TranslationService), auth = inject(AnotokiAuth);
+  return {
+    language: () => i18n.language(),
+    translate: (key) => i18n.libraryWord(key),            // an owner's rewording on the Translations page
+    // paths: { terms: '/terms', privacy: '/privacy', contact: '/contact' },   the defaults
+    // operator: { name, url, email, details },          the family's: LEGAL_OPERATOR
+    // formatDate: (day) => …,                           default: the language's long date
+    facts: () => ({                                       // read as a page is drawn: signals are followed
+      site: i18n.t('brand.name'),
+      about: i18n.t('legal.about'),
+      updated: '2026-10-13',
+      account: { deleteUrl: auth.accountUrl(), privacyUrl: `${iamIssuer}/privacy` },
+      data: [{ name: i18n.t('legal.record'), what: i18n.t('legal.recordWhat'), why: i18n.t('legal.recordWhy'), kept: i18n.t('legal.recordKept') }],
+      visitors: { what: i18n.t('legal.visitorsWhat'), kept: i18n.t('legal.visitorsKept') },
+      feedback: true,
+      storage: [
+        { preset: 'signInHint', name: 'anotoki_signed_in' },
+        { preset: 'signIn', name: 'anotoki-auth:…' },
+        { preset: 'theme', name: 'anotoki-survey:theme' },
+        { preset: 'language', name: 'anotoki-survey:language' },
+      ],
+      processors: [{ preset: 'hosting' }, { preset: 'cloudflare' }],
+      // analytics: false, errorLog / auditLog / backups: false or { what, why, kept }, fanDisclaimer: 'hoyoverse'
+    }),
+  };
+}),
+
+// app.routes.ts - the paths given above
+{ path: 'terms', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.TermsPageComponent) },
+{ path: 'privacy', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.PrivacyPageComponent) },
+{ path: 'contact', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.ContactPageComponent) },
+```
+
+```html
+<!-- in the family's frame: the footer under every page (a site with a footer of its own adds the three links
+     itself, in the same words: i18n.t('anotoki.legalLinks.terms'), ...) -->
+<footer shellFooter><anotoki-legal-links /></footer>
+```
+
+**The site's facts** (`LegalFacts`) are worded in the page's language - a site
+keeps them as keys of its own in its database, English and Slovak:
+
+| Fact | |
+| --- | --- |
+| `site`, `about` | the site's name; what it is - Terms' first section |
+| `updated` | the day its facts last changed, for both pages or each (`{ terms, privacy }`): a page shows the later of it and `LEGAL_TEXTS_UPDATED`, the day the library's words last did |
+| `account` | `deleteUrl` - the IAM's account page (`AnotokiAuth.accountUrl()`; on the IAM its own path, which the router follows); `privacyUrl` - the IAM's own Privacy page (every site but the IAM); `isIam` on the IAM; `deletionDays` (the IAM's 30) |
+| `data` | the site's own, each `{ name, what?, why, kept }`: its record of the people who sign in (the IAM's id, the name, when first and last seen), their progress, ... |
+| `visitors` | `{ what, why?, kept }` on a site people use without an account |
+| `feedback` | `true` on a site with the feedback form (or `{ resolvedDays, spamDays }` where it changed Feedback's `keep`): Privacy describes it, and Contact opens it in the kit's dialog (`@anotoki/lib/feedback/form`, loaded with the press, configured by the site's `provideAnotokiFeedback()`). Without it the Contact page gives the address alone (the IAM, the survey) |
+| `errorLog`, `auditLog`, `backups` | every site has them: shown in the library's words with the library's defaults (the error log 30 days; the audit log with no set limit; backups daily 14 days, the 5 newest before an update and before a restore, by hand until deleted); `false` leaves one out, `{ what, why, kept }` puts the site's own words (the IAM's audit log keeps people's own security changes and the address), `backups: { encrypted: true }` the IAM's |
+| `storage` | each cookie and stored item by its name: a preset in the library's words - `signInHint` (the IAM's cookie for every site), `signIn` (the auth module's tokens and its notes), `theme`, `language`, `visitorKey` - or the site's own `{ name, kind: 'cookie' \| 'local' \| 'session', purpose, kept }` |
+| `analytics` | the family's Umami by default (`{ host }`, umami.anotoki.eu); `false`: "counts no visits" |
+| `processors` | presets `hosting` and `mail` - the site's `name`, or "to be named" until the owner gives it -, `cloudflare`, `google` (the IAM: signing in with Google); or `{ name, role, url? }` |
+| `fanDisclaimer` | `'hoyoverse'`: the fan clause on Terms and Contact (genshin, the build analyzer) |
+
+**The pages** - drawn with the kit in the site's frame and palette, each one
+`<h1>` (`<anotoki-page-header>`), a section an `<h2>` (Privacy's parts `<h3>`),
+Terms and Privacy with the list of their sections at the top, whose links move
+the focus to the section (out from under a sticky bar); working at 390 px. A
+sentence with a link (the address, the operator, the authority) is cut at its
+placeholder and drawn as text around the link - never markup; an owner's
+rewording without the placeholder keeps its words, and the link follows them.
+
+- **Terms**: what the site is (the site's words, then "one of the anotoki
+  sites, run by {operator}, and costs nothing to use"); the anotoki account;
+  age - someone under 16 needs a parent's or guardian's permission; using the
+  site fairly; messages and feedback; availability and changes (a hobby
+  project, no guarantee); no warranty, liability limited as far as Slovak law
+  allows; the fan clause where the site asks for it; governing law (Slovakia, a
+  consumer keeping their own country's protection); contact.
+- **Privacy**: who runs the site (the operator, from Slovakia: the controller);
+  what the site keeps, on which GDPR grounds (the service, the legitimate
+  interest, consent where asked), each part with what it is for; the anotoki
+  account (kept by the IAM, whose Privacy page is linked; on the IAM, the
+  account itself); cookies and browser storage; counting visits; who else
+  handles data; how long each part stays; the rights (access, correction,
+  deletion - the account on the IAM's page, after 30 days -, restriction,
+  objection, a copy; a complaint to the Úrad na ochranu osobných údajov
+  Slovenskej republiky or the authority where the person lives); changes;
+  contact.
+- **Contact** (genshintrack.com/contact's shape): every message is read; a bug
+  or an idea - the feedback form; everything else - the address, with a button
+  that copies it, "from the address of your account, or name it"; deleting the
+  account - the IAM's account page, after 30 days, cancellable; "We aim to
+  reply within a few days."; about - the operator, and the fan clause.
+
+**The operator** is the family's by default (`LEGAL_OPERATOR`): Code Hero
+s.r.o., linked to https://codehero.sk, run from Slovakia; a site may name
+another, and its registered details (`details`, a line each). The address is
+kept in two parts (`email: [mailbox, domain]`) and joined only as a page draws
+it - a mailto link, read out and pressed like any link - so no file holds it
+whole for a harvester; the pages are drawn in the browser, so no page's HTML
+holds it either. The words say Slovakia (its law, its authority): an operator
+elsewhere rewords them.
+
+**Words**: `anotoki.legal.*` (118 keys) and `anotoki.legalLinks.*` (4), English
+and Slovak - the Slovak impersonal, addressing nobody ("ty" or "Vy"), so the
+pages fit the informal sites and the formal survey alike - in every site's
+database through `anotoki_translations/005`, reworded on its Translations page.
+A site's bundle carries them like every library word: about 10 kB of text a
+language.
+
+**What the library's words state, and what each rests on** - check them when a
+site or a module changes:
+
+- "costs nothing to use", "Nothing is sold, and nothing is used for
+  advertising", "no cookies for advertising or tracking": no anotoki site
+  charges, shows advertising or loads a tracker; Umami alone counts visits.
+- "never sees your password, and it does not keep your account's e-mail
+  address": the password is typed at the IAM alone, and no site keeps an
+  address (the owner's decision of 2026-10-07; the survey's 011 and genshin's
+  users/052 dropped `users.email`) - a feedback message keeps a reply address
+  only where its sender leaves one.
+- "takes your name out of what it keeps": the People scrub (`deleted-{sub}`)
+  and each site's hooks; on the sites with feedback the hooks forget the reply
+  address and the browser (`Feedback::forgetPeopleOn()`), the words staying.
+- The error log: the address as a keyed HMAC of its bucket (never the address -
+  a pseudonym while its key lasts), the path without its query, 30 days.
+- Backups: the library's keeping, the IAM's encrypted, the folder refused to
+  the web (its deny-all `.htaccess`); what is deleted stays in the copies made
+  before until they go - the pages say so.
+- Umami: `data-exclude-search` and `data-exclude-hash`, no cookie, nothing in
+  the browser, no IP address kept (the counter works out the country from it).
+- The account: the IAM's deletion closes the account at once, deletes it 30
+  days later and can be cancelled until then.
+
 ## Working on the library
 
 ```
@@ -2433,10 +2605,11 @@ bun run build           # ng build lib -> angular/dist/lib, then scripts/check-p
                         # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
                         # build keeps of an entry point nothing is used of (nothing); no bundle naming innerHTML,
                         # outerHTML, insertAdjacentHTML or bypassSecurityTrust, comments too (the IAM's deploy
-                        # check refuses such a release); and seven first loads - the gate, the bar, the words, a
-                        # button, the sign-in, the badge, the words + feedback - beside lazy pages that use the
-                        # rest (no file of theirs, under a limit), each file through Angular's own linker and the
-                        # CLI's esbuild
+                        # check refuses such a release); and nine first loads - the gate, the bar, the words, a
+                        # button, the sign-in, the badge, the words + feedback, the error report, the words + legal
+                        # links - beside lazy pages that use the rest (no file of theirs, under a limit; the words
+                        # of the namespaces their page says, and no others), each file through Angular's own
+                        # linker and the CLI's esbuild
 bun run test            # ng test lib --watch=false (Vitest, jsdom)
 bun run showcase        # projects/showcase on http://localhost:4320: every piece and the bar, from the source
                         # (?theme=dark, ?lang=sk, ?account=1 for a refused theme, ?frame=88rem for the frame's
@@ -2445,7 +2618,10 @@ bun run showcase        # projects/showcase on http://localhost:4320: every piec
                         # /feedback, /backups, /files and the visitors' /feedback against an imagined server -
                         # ?visitor=1 for anybody but the ADMIN, ?iam=1 for the IAM's backups, ?proof=password for
                         # a password as the proof ("secret"), ?signedin=1 for the form; /sign-in, the sign-in
-                        # failure's screen (?code=state_mismatch, ..., unavailable); never published)
+                        # failure's screen (?code=state_mismatch, ..., unavailable); /terms, /privacy, /contact,
+                        # the legal pages with a sample site's facts, linked from the footer (?iam=1 the anotoki
+                        # account's own, ?fan=1 the fan clause, ?feedback=0 a site without feedback); never
+                        # published)
 bun run build:showcase  # the same, built into angular/dist/showcase
 bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)
 ```

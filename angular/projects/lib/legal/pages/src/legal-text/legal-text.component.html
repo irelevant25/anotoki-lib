@@ -1,0 +1,10 @@
+<!-- Each part an element of its own: no space a formatter puts between them reaches the page. -->
+<span>{{ parts().before }}</span>
+@if (link(); as link) {
+    @if (own()) {
+        <a class="anotoki-legal-text__link" [routerLink]="link.href">{{ link.label }}</a>
+    } @else {
+        <a class="anotoki-legal-text__link" [href]="link.href">{{ link.label }}</a>
+    }
+}
+<span>{{ parts().after }}</span>

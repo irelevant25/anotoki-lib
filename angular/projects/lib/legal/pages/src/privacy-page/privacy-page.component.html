@@ -1,0 +1,155 @@
+<article class="anotoki-legal-page" data-legal="privacy">
+    <anotoki-page-header [heading]="w().privacyTitle" [lead]="page.fill(w().privacyLead)">
+        <p pageMeta class="anotoki-legal-page__updated" data-updated>
+            <span>{{ updated().before }}</span>
+            <time [attr.datetime]="updated().day">{{ updated().text }}</time>
+            <span>{{ updated().after }}</span>
+        </p>
+    </anotoki-page-header>
+
+    <nav class="anotoki-legal-page__toc" [attr.aria-labelledby]="anchor('toc')">
+        <p class="anotoki-legal-page__toc-title" [id]="anchor('toc')">{{ w().onThisPage }}</p>
+        <ol class="anotoki-legal-page__toc-list">
+            @for (section of sections(); track section.id) {
+                <li>
+                    <a class="anotoki-legal-page__toc-link" [href]="'#' + anchor(section.id)" (click)="jump($event, section.id)">{{ section.title }}</a>
+                </li>
+            }
+        </ol>
+    </nav>
+
+    <section class="anotoki-legal-page__section" data-section="who">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('who')" tabindex="-1">{{ w().privacyWhoTitle }}</h2>
+        <p class="anotoki-legal-page__text" data-operator><anotoki-legal-text [text]="w().privacyWhoText" [params]="page.params()" [link]="page.operatorLink()" /></p>
+        @if (page.operator().details?.length) {
+            <address class="anotoki-legal-page__address" data-operator-details>
+                @for (line of page.operator().details; track $index) {
+                    <span>{{ line }}</span>
+                }
+            </address>
+        }
+        <p class="anotoki-legal-page__text" data-email><anotoki-legal-text [text]="w().privacyWhoContact" [link]="page.emailLink()" /></p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="keeps">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('keeps')" tabindex="-1">{{ w().privacyKeepsTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().privacyKeepsText }}</p>
+        <ul class="anotoki-legal-page__list">
+            @for (part of kept(); track part.id) {
+                <li class="anotoki-legal-page__item" [attr.data-kept]="part.id">
+                    <h3 class="anotoki-legal-page__item-title">{{ part.name }}</h3>
+                    @if (part.what) {
+                        <p class="anotoki-legal-page__text">{{ part.what }}</p>
+                    }
+                    <dl class="anotoki-legal-page__facts">
+                        <div>
+                            <dt>{{ w().whatFor }}</dt>
+                            <dd>{{ part.why }}</dd>
+                        </div>
+                    </dl>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="account">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('account')" tabindex="-1">{{ w().accountTitle }}</h2>
+        @if (isIam()) {
+            <p class="anotoki-legal-page__text">{{ w().privacyAccountTextIam }}</p>
+        } @else {
+            <p class="anotoki-legal-page__text">{{ page.fill(w().privacyAccountText) }}</p>
+            @if (accountPrivacy(); as url) {
+                <p class="anotoki-legal-page__text">
+                    <a class="anotoki-legal-page__link" data-account-privacy [href]="url">{{ w().privacyAccountLink }}</a>
+                </p>
+            }
+            <p class="anotoki-legal-page__text">{{ page.fill(w().privacyAccountRecord) }}</p>
+        }
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="storage">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('storage')" tabindex="-1">{{ w().privacyStorageTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().privacyStorageText }}</p>
+        <ul class="anotoki-legal-page__list">
+            @for (item of stored(); track $index) {
+                <li class="anotoki-legal-page__item" data-stored>
+                    <p class="anotoki-legal-page__item-name">
+                        <code class="anotoki-legal-page__code">{{ item.name }}</code>
+                        <span class="anotoki-legal-page__kind">{{ item.kind }}</span>
+                    </p>
+                    <p class="anotoki-legal-page__text">{{ item.purpose }}</p>
+                    <dl class="anotoki-legal-page__facts">
+                        <div>
+                            <dt>{{ w().howLong }}</dt>
+                            <dd>{{ item.kept }}</dd>
+                        </div>
+                    </dl>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="analytics">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('analytics')" tabindex="-1">{{ w().privacyAnalyticsTitle }}</h2>
+        <p class="anotoki-legal-page__text" data-analytics>{{ page.analytics() }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="others">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('others')" tabindex="-1">{{ w().privacyOthersTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().privacyOthersText }}</p>
+        <ul class="anotoki-legal-page__list">
+            @for (recipient of recipients(); track $index) {
+                <li class="anotoki-legal-page__item" data-recipient>
+                    <p class="anotoki-legal-page__item-name">
+                        @if (recipient.url) {
+                            <a class="anotoki-legal-page__link" [href]="recipient.url">{{ recipient.name }}</a>
+                        } @else {
+                            <span>{{ recipient.name }}</span>
+                        }
+                    </p>
+                    <p class="anotoki-legal-page__text">{{ recipient.role }}</p>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="how-long">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('how-long')" tabindex="-1">{{ w().privacyHowLongTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().privacyHowLongText }}</p>
+        <dl class="anotoki-legal-page__facts" data-durations>
+            @for (part of kept(); track part.id) {
+                <div [attr.data-duration]="part.id">
+                    <dt>{{ part.name }}</dt>
+                    <dd>{{ part.kept }}</dd>
+                </div>
+            }
+        </dl>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="rights">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('rights')" tabindex="-1">{{ w().privacyRightsTitle }}</h2>
+        <p class="anotoki-legal-page__text"><anotoki-legal-text [text]="w().privacyRightsText" [link]="page.emailLink()" /></p>
+        <p class="anotoki-legal-page__text" data-delete>
+            {{ page.fill(w().privacyRightsDelete) }}
+            @if (ownDelete()) {
+                <a class="anotoki-legal-page__link" data-account-page [routerLink]="page.deleteUrl()">{{ w().accountPage }}</a>
+            } @else {
+                <a class="anotoki-legal-page__link" data-account-page [href]="page.deleteUrl()">{{ w().accountPage }}</a>
+            }
+        </p>
+        <p class="anotoki-legal-page__text" data-authority><anotoki-legal-text [text]="w().privacyRightsComplaint" [link]="authority()" /></p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="changes">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('changes')" tabindex="-1">{{ w().privacyChangesTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().privacyChangesText }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="contact">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('contact')" tabindex="-1">{{ w().sectionContact }}</h2>
+        <p class="anotoki-legal-page__text" data-email><anotoki-legal-text [text]="w().privacyContactText" [link]="page.emailLink()" /></p>
+        <p class="anotoki-legal-page__text">
+            <a class="anotoki-legal-page__link" data-contact-page [routerLink]="page.paths().contact">{{ w().otherWays }}</a>
+        </p>
+    </section>
+</article>

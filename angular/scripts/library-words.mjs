@@ -8,7 +8,9 @@
 //   projects/lib/words/<namespace>/                @anotoki/lib/words/<namespace>: one module's words (siteStatus:
 //                                                  the migrations module's status page; signIn: the auth module's
 //                                                  sign-in page), imported by that module alone, which registers
-//                                                  them with the translations module (provideLibraryWords).
+//                                                  them with the translations module (provideLibraryWords) - or,
+//                                                  for words its lazy pages alone say (legal: pages of text), read
+//                                                  by those pages themselves (READ_BY_THEIR_PAGES).
 //   projects/lib/words/                            @anotoki/lib/words: LIBRARY_WORDS, every namespace's, for a
 //                                                  site's specs and the showcase - no module of the library's.
 //
@@ -38,6 +40,16 @@ const LANGUAGES = ["en", "sk"];
 
 /** The kit's namespaces: its own words (ui/config's AnotokiWords reads them), kept with the kit. */
 const KIT_NAMESPACES = ["language", "ui", "topbar", "theme"];
+
+/**
+ * The namespaces whose words their module's lazy pages read themselves and never register (the legal pages' - pages
+ * of text: a registration comes with the module's eager configuration, so they would ride in every first load).
+ * scripts/check-package.mjs lets their pages import them unregistered, and holds every first load free of them.
+ */
+const READ_BY_THEIR_PAGES = ["legal"];
+
+/** The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages'). */
+const IMPERSONAL = ["legal", "legalLinks"];
 
 /** Every file this writes says so: how a left-over one is known - and only such a one is ever removed. */
 const GENERATED = "GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs";
@@ -136,13 +148,35 @@ ${others.map((word) => `  | ${literal(word.key)}`).join("\n")};
 `;
 }
 
+/** Words of a comment, as lines of at most 120 characters: the first follows " * ", each other begins with it. */
+function wrapComment(text) {
+    const lines = [""];
+    for (const word of text.split(" ")) {
+        const line = lines[lines.length - 1];
+        if (line !== "" && 3 + line.length + 1 + word.length > 120) {
+            lines.push(word);
+        } else {
+            lines[lines.length - 1] = line === "" ? word : `${line} ${word}`;
+        }
+    }
+    return lines.join("\n * ");
+}
+
 /** One module's words: @anotoki/lib/words/<namespace>. */
 function namespaceFile(namespace, words) {
     const keyType = `${pascal(namespace)}LibraryKey`;
+    let about = `Slovak (informal, "ty"). Imported by the module that says them, which registers them with the translations module
+ * (provideLibraryWords) - never by the kit nor by the translations module, so they reach a site with the module alone.`;
+    if (IMPERSONAL.includes(namespace) || READ_BY_THEIR_PAGES.includes(namespace)) {
+        const slovak = IMPERSONAL.includes(namespace) ? 'Slovak (impersonal: no "ty", no "Vy" - it fits every site).' : 'Slovak (informal, "ty").';
+        const readers = READ_BY_THEIR_PAGES.includes(namespace)
+            ? "Imported by the lazy pages that say them, which read them themselves, never registered - never by the kit nor by the translations module, so they reach a site with those pages alone."
+            : "Imported by the module that says them, which registers them with the translations module (provideLibraryWords) - never by the kit nor by the translations module, so they reach a site with the module alone.";
+        about = wrapComment(`${slovak} ${readers}`);
+    }
     return `/*
  * @anotoki/lib/words/${kebab(namespace)} - the anotoki library's own words of \`anotoki.${namespace}.*\`, in English and in
- * Slovak (informal, "ty"). Imported by the module that says them, which registers them with the translations module
- * (provideLibraryWords) - never by the kit nor by the translations module, so they reach a site with the module alone.
+ * ${about}
  *
  * ${GENERATED} - never
  * edited by hand: a change is made in the JSON (with the library migration that writes it to the sites'

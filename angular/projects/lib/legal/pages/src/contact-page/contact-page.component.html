@@ -1,0 +1,66 @@
+<article class="anotoki-legal-page" data-legal="contact">
+    <anotoki-page-header [heading]="w().contactTitle" [lead]="w().contactLead" />
+
+    @if (feedback()) {
+        <section class="anotoki-legal-page__section" data-section="feedback">
+            <h2 class="anotoki-legal-page__heading">{{ w().contactFeedbackTitle }}</h2>
+            <p class="anotoki-legal-page__text">{{ page.fill(w().contactFeedbackText) }}</p>
+            <div class="anotoki-legal-page__actions">
+                <button #opener anotokiButton variant="primary" data-open-feedback [loading]="opening()" (click)="openFeedback()">{{ w().contactFeedbackButton }}</button>
+            </div>
+            @if (failed()) {
+                <anotoki-alert tone="warning" [announce]="true" data-feedback-failed>
+                    <p class="anotoki-legal-page__text"><anotoki-legal-text [text]="w().contactFeedbackFailed" [link]="page.emailLink()" /></p>
+                </anotoki-alert>
+            }
+        </section>
+    }
+
+    <section class="anotoki-legal-page__section" data-section="email">
+        <h2 class="anotoki-legal-page__heading">{{ feedback() ? w().contactEmailTitle : w().contactEmailTitleAlone }}</h2>
+        <p class="anotoki-legal-page__text" data-email><anotoki-legal-text [text]="feedback() ? w().contactEmailText : w().contactEmailTextAlone" [link]="page.emailLink()" /></p>
+        <div class="anotoki-legal-page__actions">
+            <anotoki-copy-button data-copy-address [text]="page.email()" [label]="w().copyAddress" />
+        </div>
+        <p class="anotoki-legal-page__muted">{{ w().contactEmailAccount }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="delete">
+        <h2 class="anotoki-legal-page__heading">{{ w().contactDeleteTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ page.fill(w().contactDeleteText) }}</p>
+        <p class="anotoki-legal-page__text">{{ isIam() ? w().contactDeleteEverywhereIam : page.fill(w().contactDeleteEverywhere) }}</p>
+        <div class="anotoki-legal-page__actions">
+            @if (ownDelete()) {
+                <a anotokiButton data-account-page [routerLink]="page.deleteUrl()">{{ w().accountPage }}</a>
+            } @else {
+                <a anotokiButton data-account-page [href]="page.deleteUrl()">{{ w().accountPage }}</a>
+            }
+        </div>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="response">
+        <h2 class="anotoki-legal-page__heading">{{ w().contactResponseTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().contactResponseText }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="about">
+        <h2 class="anotoki-legal-page__heading">{{ w().contactAboutTitle }}</h2>
+        <p class="anotoki-legal-page__text" data-operator><anotoki-legal-text [text]="w().contactAboutText" [params]="page.params()" [link]="page.operatorLink()" /></p>
+        @if (page.operator().details?.length) {
+            <address class="anotoki-legal-page__address" data-operator-details>
+                @for (line of page.operator().details; track $index) {
+                    <span>{{ line }}</span>
+                }
+            </address>
+        }
+        @if (fan()) {
+            <p class="anotoki-legal-page__muted" data-fan>{{ w().fanHoyoverse }}</p>
+        }
+    </section>
+</article>
+
+@if (formOpen() && form(); as component) {
+    <anotoki-dialog data-feedback-dialog [heading]="w().contactFeedbackButton" size="md" (dismiss)="closeFeedback()">
+        <ng-container *ngComponentOutlet="component; inputs: formInputs" />
+    </anotoki-dialog>
+}

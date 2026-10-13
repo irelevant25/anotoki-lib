@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { FeedbackUnread } from '@anotoki/lib/admin';
+import { LegalLinksComponent } from '@anotoki/lib/legal';
 import { ShellComponent, TopBarComponent, TopBarLink, TopBarMenuItem } from '@anotoki/lib/shell';
 import { TranslationService } from '@anotoki/lib/translations';
 import { AnotokiWords } from '@anotoki/lib/ui';
@@ -11,13 +12,14 @@ import { filter } from 'rxjs';
 
 /**
  * The showcase's frame: the family's bar and frame around the gallery, as a
- * site's app component holds them - a thin wrapper wording the bar. It tells
- * the translations where the page is after every navigation, as a site's
- * title strategy does (the admin pages are English).
+ * site's app component holds them - a thin wrapper wording the bar - and the
+ * footer's links to the legal pages. It tells the translations where the page
+ * is after every navigation, as a site's title strategy does (the admin pages
+ * are English).
  */
 @Component({
   selector: 'show-root',
-  imports: [RouterOutlet, ShellComponent, TopBarComponent, ConfirmHostComponent, ToastHostComponent],
+  imports: [RouterOutlet, ShellComponent, TopBarComponent, ConfirmHostComponent, ToastHostComponent, LegalLinksComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

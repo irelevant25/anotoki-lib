@@ -1,0 +1,58 @@
+@use "../../../sass/kit";
+
+:host {
+  display: block;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}
+
+.anotoki-legal-links__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anotoki-legal-links__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+
+  // The dot between two links: drawn, never read (no character a screen reader would say).
+  & + &::before {
+    content: "";
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+}
+
+// At least 24 px to press (WCAG 2.5.8), whatever a site's own `a {}` says.
+.anotoki-legal-links__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 0.15rem;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(muted);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    color: kit.token(text);
+    text-decoration: underline;
+  }
+
+  &.anotoki-legal-links__link--active {
+    color: kit.token(text);
+  }
+
+  @include kit.focus-ring;
+}

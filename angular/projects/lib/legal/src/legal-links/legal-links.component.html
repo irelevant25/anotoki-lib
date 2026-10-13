@@ -1,0 +1,11 @@
+<nav class="anotoki-legal-links__nav" [attr.aria-label]="said().words.label">
+    <ul class="anotoki-legal-links__list">
+        @for (link of links(); track link.id) {
+            <li class="anotoki-legal-links__item">
+                <a class="anotoki-legal-links__link" [attr.data-legal-link]="link.id" [routerLink]="link.path" routerLinkActive="anotoki-legal-links__link--active" ariaCurrentWhenActive="page">
+                    {{ link.label }}
+                </a>
+            </li>
+        }
+    </ul>
+</nav>

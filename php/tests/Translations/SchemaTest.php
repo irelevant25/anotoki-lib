@@ -191,7 +191,7 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertSame('anotoki_translations', $set->name);
         self::assertTrue($set->library);
-        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql'], $this->migrator([$set])->files($set));
+        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql'], $this->migrator([$set])->files($set));
     }
 
     // ─── A new database ─────────────────────────────────────────────────────
@@ -208,13 +208,14 @@ final class SchemaTest extends DatabaseTestCase
                 ['set' => 'anotoki_translations', 'name' => '002_library_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '003_sign_in_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '004_feedback_words.sql'],
+                ['set' => 'anotoki_translations', 'name' => '005_legal_words.sql'],
             ],
             $result['applied'],
             (string) $result['error']
         );
         self::assertTrue(Schema::ready($this->pdo));
         self::assertSame(
-            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql'],
+            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
         );
         self::assertSame(
@@ -256,6 +257,10 @@ final class SchemaTest extends DatabaseTestCase
         foreach ($this->rows("SELECT key_name, language_code, value FROM translations WHERE key_name LIKE 'anotoki.%' ORDER BY key_name, language_code") as $row) {
             $strings[$row['key_name']][$row['language_code']] = $row['value'];
         }
+        // In PHP's order, as the JSON's below: the server's collation is the server's (a Slovak one reads "ch" as one
+        // letter after "h" - privacyChangesText after privacyHowLongTitle).
+        ksort($descriptions, SORT_STRING);
+        ksort($strings, SORT_STRING);
 
         $words = LibraryWords::read(LibraryWords::file());
         ksort($words, SORT_STRING);
@@ -276,7 +281,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator(['split' => false])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(4, $result['applied']);
+        self::assertCount(5, $result['applied']);
         self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
@@ -298,7 +303,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertNull($result['error'], (string) $result['error']);
-        self::assertCount(4, $result['applied']);
+        self::assertCount(5, $result['applied']);
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
@@ -518,6 +523,48 @@ final class SchemaTest extends DatabaseTestCase
         self::assertStringContainsString("anotoki_translations 004: the library's keys without an English string: anotoki.feedback.send", (string) $result['error']);
     }
 
+    // ─── 005, the words of the legal pages: the same rule ───────────────────
+
+    public function testTheLegalWordsComeOnADatabaseThatHas004AndASiteThatTookOneOverKeepsIt(): void
+    {
+        // An installed site: 001 to 004 applied before 0.6.0 shipped 005 ...
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/005_legal_words.sql'");
+        $this->pdo->exec("DELETE FROM translation_keys WHERE name LIKE 'anotoki.legal.%' OR name LIKE 'anotoki.legalLinks.%'");
+        // ... that words the Contact page's lead its own way, in English alone, and the footer's Terms in both languages.
+        $this->pdo->exec("INSERT INTO translation_keys (name, description) VALUES
+            ('anotoki.legal.contactLead', 'The site''s own description.'),
+            ('anotoki.legalLinks.terms', 'The site''s own description.')");
+        $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES
+            ('anotoki.legal.contactLead', 'en', 'We read everything that comes in.', 7),
+            ('anotoki.legalLinks.terms', 'en', 'Terms of use', 7),
+            ('anotoki.legalLinks.terms', 'sk', 'Podmienky používania', 7)");
+        $others = (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND key_name NOT LIKE 'anotoki.legal%'");
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '005_legal_words.sql']], $this->siteMigrator()->apply()['applied']);
+
+        self::assertSame([['language_code' => 'en', 'value' => 'We read everything that comes in.']], $this->rows("SELECT language_code, value FROM translations WHERE key_name = 'anotoki.legal.contactLead'"), 'its words and its blank stay');
+        self::assertSame(['Terms of use', 'Podmienky používania'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.legalLinks.terms' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(LibraryWords::all()['anotoki.legal.contactLead']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.legal.contactLead'"), 'the description is the library\'s');
+        self::assertSame('Stránku {site} prevádzkuje {operator} zo Slovenska.', $this->value("SELECT value FROM translations WHERE key_name = 'anotoki.legal.contactAboutText' AND language_code = 'sk'"), 'a key with no string at all gets the library\'s');
+        $legal = count(array_filter(LibraryWords::keys(), static fn (string $key): bool => str_starts_with($key, 'anotoki.legal')));
+        self::assertSame(122, $legal, 'the footer\'s 4 and the pages\' 118');
+        self::assertSame(2 * $legal - 1, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.legal%'"));
+        self::assertSame($others, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND key_name NOT LIKE 'anotoki.legal%'"), 'nothing of the files before touched');
+    }
+
+    public function testALegalKeyWithoutEnglishIsRefusedBy005sGate(): void
+    {
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/005_legal_words.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.legal.privacyTitle' AND language_code = 'en'");
+
+        $result = $this->siteMigrator()->apply();
+
+        self::assertSame(['set' => 'anotoki_translations', 'name' => '005_legal_words.sql'], $result['failed']);
+        self::assertStringContainsString("anotoki_translations 005: the library's keys without an English string: anotoki.legal.privacyTitle", (string) $result['error']);
+    }
+
     // ─── The files themselves ───────────────────────────────────────────────
 
     public function testEveryFileIsInTheHouseStyle(): void
@@ -566,6 +613,7 @@ final class SchemaTest extends DatabaseTestCase
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/002_library_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/003_sign_in_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/004_feedback_words.sql")));
+        self::assertCount(3, Splitter::split((string) file_get_contents("$directory/005_legal_words.sql")));
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

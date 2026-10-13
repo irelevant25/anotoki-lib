@@ -1,0 +1,78 @@
+<article class="anotoki-legal-page" data-legal="terms">
+    <anotoki-page-header [heading]="w().termsTitle" [lead]="page.fill(w().termsLead)">
+        <p pageMeta class="anotoki-legal-page__updated" data-updated>
+            <span>{{ updated().before }}</span>
+            <time [attr.datetime]="updated().day">{{ updated().text }}</time>
+            <span>{{ updated().after }}</span>
+        </p>
+    </anotoki-page-header>
+
+    <nav class="anotoki-legal-page__toc" [attr.aria-labelledby]="anchor('toc')">
+        <p class="anotoki-legal-page__toc-title" [id]="anchor('toc')">{{ w().onThisPage }}</p>
+        <ol class="anotoki-legal-page__toc-list">
+            @for (section of sections(); track section.id) {
+                <li>
+                    <a class="anotoki-legal-page__toc-link" [href]="'#' + anchor(section.id)" (click)="jump($event, section.id)">{{ section.title }}</a>
+                </li>
+            }
+        </ol>
+    </nav>
+
+    <section class="anotoki-legal-page__section" data-section="what">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('what')" tabindex="-1">{{ page.fill(w().termsWhatTitle) }}</h2>
+        <p class="anotoki-legal-page__text" data-about>{{ facts().about }}</p>
+        <p class="anotoki-legal-page__text">{{ page.fill(w().termsWhatText) }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="account">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('account')" tabindex="-1">{{ w().accountTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ facts().account.isIam ? w().termsAccountTextIam : page.fill(w().termsAccountText) }}</p>
+        <p class="anotoki-legal-page__text">{{ w().termsAccountCare }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="age">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('age')" tabindex="-1">{{ w().termsAgeTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().termsAgeText }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="use">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('use')" tabindex="-1">{{ w().termsUseTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ page.fill(w().termsUseText) }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="send">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('send')" tabindex="-1">{{ w().termsSendTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().termsSendText }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="availability">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('availability')" tabindex="-1">{{ w().termsAvailabilityTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().termsAvailabilityText }}</p>
+        <p class="anotoki-legal-page__text">{{ w().termsChangesText }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="warranty">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('warranty')" tabindex="-1">{{ w().termsWarrantyTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ page.fill(w().termsWarrantyText) }}</p>
+    </section>
+
+    @if (fan()) {
+        <section class="anotoki-legal-page__section" data-section="fan">
+            <h2 class="anotoki-legal-page__heading" [id]="anchor('fan')" tabindex="-1">{{ w().termsFanTitle }}</h2>
+            <p class="anotoki-legal-page__text" data-fan>{{ w().fanHoyoverse }}</p>
+        </section>
+    }
+
+    <section class="anotoki-legal-page__section" data-section="law">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('law')" tabindex="-1">{{ w().termsLawTitle }}</h2>
+        <p class="anotoki-legal-page__text">{{ w().termsLawText }}</p>
+    </section>
+
+    <section class="anotoki-legal-page__section" data-section="contact">
+        <h2 class="anotoki-legal-page__heading" [id]="anchor('contact')" tabindex="-1">{{ w().sectionContact }}</h2>
+        <p class="anotoki-legal-page__text" data-email><anotoki-legal-text [text]="w().termsContactText" [link]="page.emailLink()" /></p>
+        <p class="anotoki-legal-page__text">
+            <a class="anotoki-legal-page__link" data-contact-page [routerLink]="page.paths().contact">{{ w().otherWays }}</a>
+        </p>
+    </section>
+</article>

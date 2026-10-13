@@ -41,10 +41,15 @@ version.
 - `@anotoki/lib/people` - `provideAnotokiPeople(...)` and the shape of the People
   API (the PHP half's `PeopleRoutes`); `@anotoki/lib/people/page` - the admin
   page `<anotoki-people-page>`, for a lazy admin route.
+- `@anotoki/lib/legal` - the legal pages' configuration (`provideAnotokiLegal`: the
+  site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy
+  · Contact for a footer; `@anotoki/lib/legal/pages` - the Terms, Privacy and Contact
+  pages, each for a lazy route, with their words.
 - `@anotoki/lib/words` - the library's own words, every module's: `LIBRARY_WORDS`
   (for a site's specs); `@anotoki/lib/words/<namespace>` - one module's
-  (`/site-status`, `/sign-in`), imported by that module alone, which registers
-  them with the translations module (`provideLibraryWords`). Generated from
+  (`/site-status`, `/sign-in`, `/feedback`, `/legal-links`), imported by that module
+  alone, which registers them with the translations module (`provideLibraryWords`),
+  and `/legal`, which the legal pages read themselves. Generated from
   `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site

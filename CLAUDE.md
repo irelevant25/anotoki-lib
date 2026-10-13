@@ -7,7 +7,8 @@ package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
-`auth`, `auth/testing`, `people`, `people/page`, and the generated `words`,
+`auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
+`feedback/form`, `error-report`, `legal`, `legal/pages`, and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
@@ -56,7 +57,11 @@ bun run words           # the library's words from php/resources/library-words.j
   (`anotoki_translations/003` brought `anotoki.signIn.*`; released files are never
   edited); a module's new words are a namespace of its own and its registration,
   never the kit's - no first load of the kit or of the translations module carries
-  them. Names (a site's sections, brand area) are never kit words.
+  them. One exception: words its lazy pages alone say, pages of text (the legal
+  pages' `anotoki.legal.*`), are read by those pages themselves and never
+  registered (`READ_BY_THEIR_PAGES` in both scripts), and their Slovak is
+  impersonal (no "ty", no "Vy": the legal pages fit the formal survey too).
+  Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says
@@ -88,7 +93,8 @@ bun run words           # the library's words from php/resources/library-words.j
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
   limits, every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces
-  and `migrations`; `people/page` the kit and `people`, which imports nothing; a
+  and `migrations`; `people/page` the kit and `people`, which imports nothing;
+  `legal/pages` the kit, `legal` and the feedback form by import() alone; a
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the

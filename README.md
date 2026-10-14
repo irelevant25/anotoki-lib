@@ -9,14 +9,17 @@ version:
 | PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/`, `php/testing/` |
 | Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
 
-Version 0.5.2 holds:
+Version 0.6.0 holds:
 
 - **migrations** - the engine that brings a site's database up to date, with
   the library's own migration sets beside a site's, and one behaviour for every
   site while an update waits (both halves);
 - **the UI kit** (Angular) - the family's styles and palette
   (`@anotoki/lib/styles`), its components (`@anotoki/lib/ui` and its entry
-  points, the core a file per piece) and its top bar and frame
+  points, the core a file per piece - since 0.6.0 also chips, cards that are
+  links, stat tiles, progress bars, disclosures, steppers, labelled groups,
+  link tabs, side navigation, and the date, slider, colour, file, combobox and
+  rich-text pieces, each its own entry point) and its top bar and frame
   (`@anotoki/lib/shell`);
 - **translations** (both halves) - a site's words, its languages and their admin
   pages, one implementation for every site (the section "Translations" below);
@@ -29,8 +32,8 @@ Version 0.5.2 holds:
   backups and the file explorer, each an admin page, and the visitors' feedback
   form in their language - and the pages' own errors reported to the error log
   (`@anotoki/lib/error-report`) (the section "Admin tools");
-- **the legal pages** (Angular, with their words in both halves; 0.6.0, not
-  released yet) - Terms, Privacy and Contact for every site, the family's
+- **the legal pages** (Angular, with their words in both halves; 0.6.0) -
+  Terms, Privacy and Contact for every site, the family's
   wording around each site's facts, and the footer's three links (the section
   "Legal pages").
 

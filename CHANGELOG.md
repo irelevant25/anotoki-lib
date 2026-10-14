@@ -5,7 +5,7 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## Unreleased - 0.6.0
+## 0.6.0 - 2026-10-14
 
 **The legal pages** (the first part of 0.6.0; the owner's decisions of 2026-10-13): **Terms**, **Privacy** and
 **Contact** for every anotoki site - their structure and the family's shared wording are the library's, each site

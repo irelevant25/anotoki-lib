@@ -1,0 +1,85 @@
+@if (phone()) {
+    @if (ownButton()) {
+        <button
+            anotokiButton
+            class="anotoki-side-nav__open"
+            aria-haspopup="dialog"
+            [attr.aria-expanded]="isOpen()"
+            [attr.aria-controls]="isOpen() ? drawerNavId : null"
+            (click)="toggle($any($event.currentTarget))">
+            <anotoki-icon name="menu" [size]="18" />
+            {{ buttonLabel() || label() }}
+        </button>
+    }
+    @if (isOpen()) {
+        <anotoki-drawer [heading]="heading() || label()" (dismiss)="close()">
+            <ng-container [ngTemplateOutlet]="navigation" [ngTemplateOutletContext]="{ $implicit: true }" />
+        </anotoki-drawer>
+    }
+} @else {
+    <ng-container [ngTemplateOutlet]="navigation" [ngTemplateOutletContext]="{ $implicit: false }" />
+}
+
+<!-- The navigation: beside the page, or in the drawer on a phone - one of the two at a time, so its ids are unique. -->
+<ng-template #navigation let-inDrawer>
+    <nav class="anotoki-side-nav__nav" [class.anotoki-side-nav__nav--drawer]="inDrawer" [id]="inDrawer ? drawerNavId : navId" [attr.aria-label]="label()" (click)="chosen($event)">
+        @for (group of groups(); track groupKey(group, $index); let index = $index) {
+            <div class="anotoki-side-nav__group">
+                @if (group.label) {
+                    <div class="anotoki-side-nav__head" [attr.role]="headingLevel() ? 'heading' : null" [attr.aria-level]="headingLevel()">
+                        @if (collapsible(group)) {
+                            <button
+                                type="button"
+                                class="anotoki-side-nav__toggle"
+                                [id]="labelId(index)"
+                                [attr.aria-expanded]="groupOpen(group, index)"
+                                [attr.aria-controls]="listId(index)"
+                                (click)="toggleGroup(group, index)">
+                                <span [attr.lang]="group.lang || null">{{ group.label }}</span>
+                                <anotoki-icon class="anotoki-side-nav__chevron" name="chevronDown" [size]="16" />
+                            </button>
+                        } @else {
+                            <span class="anotoki-side-nav__heading" [id]="labelId(index)" [attr.lang]="group.lang || null">{{ group.label }}</span>
+                        }
+                    </div>
+                }
+                <ul class="anotoki-side-nav__list" [id]="listId(index)" [attr.aria-labelledby]="group.label ? labelId(index) : null" [hidden]="!groupOpen(group, index)">
+                    @for (link of group.links; track linkKey(link, $index)) {
+                        <li>
+                            @if (link.href) {
+                                <a
+                                    class="anotoki-side-nav__link"
+                                    [href]="link.href"
+                                    [attr.target]="link.newTab ? '_blank' : null"
+                                    [attr.rel]="link.newTab ? 'noopener' : null"
+                                    [attr.lang]="link.lang || null">
+                                    <ng-container [ngTemplateOutlet]="inside" [ngTemplateOutletContext]="{ $implicit: link }" />
+                                </a>
+                            } @else {
+                                <a class="anotoki-side-nav__link" [routerLink]="link.path" [attr.aria-current]="link === page() ? 'page' : null" [attr.lang]="link.lang || null">
+                                    <ng-container [ngTemplateOutlet]="inside" [ngTemplateOutletContext]="{ $implicit: link }" />
+                                </a>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </nav>
+</ng-template>
+
+<!-- A link's inside: its icon, its words, its badge (seen alone; what it counts heard: "Feedback, 3 new"), the mark of a new tab. -->
+<ng-template #inside let-link>
+    @if (link.icon) {
+        <anotoki-icon [name]="link.icon" [size]="18" />
+    }
+    <span class="anotoki-side-nav__label">{{ link.label }}</span>
+    @if (hasBadge(link)) {
+        &ngsp;
+        <span class="anotoki-side-nav__badge" aria-hidden="true">{{ link.badge }}</span>
+        <span class="anotoki-visually-hidden" [attr.lang]="countedLang(link)">, {{ counted(link) }}</span>
+    }
+    @if (link.href && link.newTab) {
+        <anotoki-icon class="anotoki-side-nav__external" name="externalLink" [size]="14" />
+    }
+</ng-template>

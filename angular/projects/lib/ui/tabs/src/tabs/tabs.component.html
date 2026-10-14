@@ -1,19 +1,32 @@
-<div class="anotoki-tabs__tabs" role="tablist" [attr.aria-label]="label()" (keydown)="onKeydown($event)">
-    @for (tab of tabs(); track tab.id) {
-        <button
-            #tab
-            type="button"
-            role="tab"
-            class="anotoki-tabs__tab"
-            [id]="tabId(tab.id)"
-            [attr.aria-selected]="tab.id === active()"
-            [attr.aria-controls]="panelId(tab.id)"
-            [tabIndex]="tab.id === active() ? 0 : -1"
-            (click)="active.set(tab.id)">
-            {{ tab.label }}
-            @if (tab.count !== undefined && tab.count !== null) {
-                <span class="anotoki-tabs__count">{{ tab.count }}</span>
-            }
-        </button>
-    }
-</div>
+<anotoki-tab-strip [current]="active()">
+    <div class="anotoki-tabs__tabs" role="tablist" [attr.aria-label]="label()" (keydown)="onKeydown($event)">
+        @for (tab of tabs(); track tab.id) {
+            <button
+                #tab
+                type="button"
+                role="tab"
+                class="anotoki-tabs__tab"
+                [id]="tabId(tab.id)"
+                [attr.aria-selected]="tab.id === active()"
+                [attr.aria-controls]="panelId(tab.id)"
+                [tabIndex]="tab.id === active() ? 0 : -1"
+                (click)="active.set(tab.id)">
+                @if (tab.icon) {
+                    <anotoki-icon [name]="tab.icon" [size]="16" />
+                }
+                <span class="anotoki-tabs__label" [attr.lang]="tab.lang || null">{{ tab.label }}</span>
+                @if (tab.count !== undefined && tab.count !== null) {
+                    <!-- A space before the count, for the tab's name: "All 12" (the row's gap draws it). -->
+                    &ngsp;
+                    <span class="anotoki-tabs__count">{{ tab.count }}</span>
+                }
+                @if (hasBadge(tab)) {
+                    <!-- The badge is seen; what it says is heard after the label: "Issues, 3", never "Issues 3". -->
+                    &ngsp;
+                    <anotoki-badge class="anotoki-tabs__badge" aria-hidden="true" [tone]="tab.badgeTone || 'neutral'">{{ tab.badge }}</anotoki-badge>
+                    <span class="anotoki-visually-hidden">, {{ badgeHeard(tab) }}</span>
+                }
+            </button>
+        }
+    </div>
+</anotoki-tab-strip>

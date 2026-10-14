@@ -3,7 +3,8 @@
 --
 -- What a screen reader hears after the name of one of the site's links that has a number beside it
 -- (@anotoki/lib/shell, <anotoki-top-bar>: the new feedback beside "Feedback" in an admin panel - "Feedback, 3 new"),
--- where the site does not word what its number counts itself; the number alone stays beside the link, as it was.
+-- where the site does not word what its number counts itself; the number alone stays beside the link, as it was. The
+-- kit's side navigation (@anotoki/lib/ui/side-nav, the same release) says a link's number in the same words.
 -- anotoki-lib's php/resources/library-words.json holds it - the Angular half's built-in words are made from the same
 -- file, and a test of the library holds this file to it.
 --
@@ -14,7 +15,7 @@
 -- Released with anotoki-lib 0.6.0, and never edited once released: a change is a new file.
 
 INSERT INTO translation_keys (name, description) VALUES
-    ('anotoki.topbar.linkCount', 'The anotoki library''s top bar: what a screen reader hears after the name of one of the site''s links that has a number beside it - the new feedback in an admin panel: "Feedback, 3 new" - where the site does not word what its number counts itself. Heard, never seen: the number alone stays beside the link. {count}: the number. Placeholders: {count}.')
+    ('anotoki.topbar.linkCount', 'The anotoki library''s top bar and side navigation: what a screen reader hears after the name of one of the site''s links that has a number beside it - the new feedback in an admin panel: "Feedback, 3 new" - where the site does not word what its number counts itself. Heard, never seen: the number alone stays beside the link. {count}: the number. Placeholders: {count}.')
 ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
 
 -- One statement for every language: the rows it writes do not hide each other from the test of "no

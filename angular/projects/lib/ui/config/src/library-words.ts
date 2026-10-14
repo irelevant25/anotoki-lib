@@ -295,4 +295,6 @@ export type LibraryKey =
   | 'anotoki.chips.remove'
   | 'anotoki.progress.count'
   | 'anotoki.stepper.stepOf'
-  | 'anotoki.stepper.done';
+  | 'anotoki.stepper.done'
+  | 'anotoki.tabs.scrollBack'
+  | 'anotoki.tabs.scrollForward';

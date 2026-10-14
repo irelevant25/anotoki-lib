@@ -1,12 +1,9 @@
 import { ChangeDetectionStrategy, Component, ElementRef, effect, input, model, viewChildren } from '@angular/core';
+import { BadgeComponent } from '@anotoki/lib/ui/badge';
 import { uniqueId } from '@anotoki/lib/ui/dom';
-
-export interface TabItem {
-  id: string;
-  label: string;
-  /** A number after the label - how many members, say. */
-  count?: number | null;
-}
+import { IconComponent } from '@anotoki/lib/ui/icon';
+import { TabItem, badgeHeard, hasBadge } from '../tab-item';
+import { TabStripComponent } from '../tab-strip/tab-strip.component';
 
 /**
  * A row of tabs, the WAI-ARIA tabs pattern: only the chosen tab is a Tab
@@ -18,10 +15,16 @@ export interface TabItem {
  * <anotoki-tabs #tabs="anotokiTabs" label="Members" [tabs]="tabs" [(active)]="active" />
  * <div role="tabpanel" [id]="tabs.panelId(active())" [attr.aria-labelledby]="tabs.tabId(active())">...</div>
  * ```
+ *
+ * 0.6.0: a tab may have an icon before its label and the kit's badge after it - the badge seen as it is, heard after
+ * the label with a comma ("Issues, 3") or in the site's words (`badgeLabel`: "Issues, 3 open"). Tabs that do not fit
+ * their line scroll sideways in the kit's strip: the edge with more beyond it fades, a mouse has an arrow there, and
+ * the chosen tab is brought into view.
  */
 @Component({
   selector: 'anotoki-tabs',
   exportAs: 'anotokiTabs',
+  imports: [BadgeComponent, IconComponent, TabStripComponent],
   templateUrl: './tabs.component.html',
   styleUrl: './tabs.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +37,9 @@ export class TabsComponent {
   readonly label = input.required<string>();
   /** What the tabs' and panels' ids start with; one of the kit's own by default. */
   readonly idPrefix = input(uniqueId('anotoki-tabs'));
+
+  protected readonly hasBadge = hasBadge;
+  protected readonly badgeHeard = badgeHeard;
 
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('tab');
   /** A tab chosen from the keyboard: the focus follows it once it is drawn chosen. */

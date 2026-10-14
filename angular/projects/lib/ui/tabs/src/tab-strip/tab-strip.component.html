@@ -1,0 +1,33 @@
+<div #scroller class="anotoki-tab-strip__scroller" (scroll)="measure()" (focusin)="onFocusIn($event)">
+    <ng-content />
+</div>
+<!-- For the eye and the pointer: the keyboard and a screen reader reach every tab itself, each brought into view as it
+     takes the focus - so these are out of the tab order, hidden from screen readers, and never take the focus. -->
+@if (back()) {
+    @let backWord = word("anotoki.tabs.scrollBack");
+    <button
+        type="button"
+        class="anotoki-tab-strip__more anotoki-tab-strip__more--back"
+        tabindex="-1"
+        aria-hidden="true"
+        [attr.title]="backWord.text"
+        [attr.lang]="backWord.lang"
+        (mousedown)="$event.preventDefault()"
+        (click)="scrollBy(-1)">
+        <span class="anotoki-tab-strip__arrow"><anotoki-icon name="chevronLeft" [size]="16" /></span>
+    </button>
+}
+@if (forward()) {
+    @let forwardWord = word("anotoki.tabs.scrollForward");
+    <button
+        type="button"
+        class="anotoki-tab-strip__more anotoki-tab-strip__more--forward"
+        tabindex="-1"
+        aria-hidden="true"
+        [attr.title]="forwardWord.text"
+        [attr.lang]="forwardWord.lang"
+        (mousedown)="$event.preventDefault()"
+        (click)="scrollBy(1)">
+        <span class="anotoki-tab-strip__arrow"><anotoki-icon name="chevronRight" [size]="16" /></span>
+    </button>
+}

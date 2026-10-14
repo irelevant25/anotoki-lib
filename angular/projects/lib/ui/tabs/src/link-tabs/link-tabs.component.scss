@@ -1,0 +1,19 @@
+@use "../../../../sass/kit";
+@use "../tab";
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.anotoki-link-tabs__links {
+  @include tab.row;
+}
+
+.anotoki-link-tabs__link {
+  @include tab.tab('[aria-current="page"]');
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}

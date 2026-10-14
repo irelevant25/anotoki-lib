@@ -28,9 +28,10 @@ import { ProgressBarComponent } from '@anotoki/lib/ui/progress';
 import { QrCodeComponent } from '@anotoki/lib/ui/qr';
 // The select alone (0.6.0): what a site draws where the first load is (the piano's box in Piano's bar) - not every field.
 import { SelectComponent } from '@anotoki/lib/ui/select';
+import { SideNavComponent, SideNavGroup, SideNavTriggerDirective } from '@anotoki/lib/ui/side-nav';
 import { StatTileComponent, StatTilesComponent } from '@anotoki/lib/ui/stat-tiles';
 import { StepDotsComponent, StepItem, StepperComponent } from '@anotoki/lib/ui/stepper';
-import { TabsComponent } from '@anotoki/lib/ui/tabs';
+import { LinkTabItem, LinkTabsComponent, TabItem, TabsComponent } from '@anotoki/lib/ui/tabs';
 import { ToastService } from '@anotoki/lib/ui/toast';
 import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
 
@@ -60,6 +61,7 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     LabelledGroupComponent,
     LanguageSwitcherComponent,
     LinkCardComponent,
+    LinkTabsComponent,
     MenuComponent,
     MenuItemComponent,
     MenuSeparatorComponent,
@@ -74,6 +76,8 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     RadioGroupComponent,
     SegmentedComponent,
     SelectComponent,
+    SideNavComponent,
+    SideNavTriggerDirective,
     SpinnerComponent,
     StatTileComponent,
     StatTilesComponent,
@@ -190,6 +194,66 @@ export class GalleryComponent {
 
   /** The family's icons the build analyzer drew itself until 0.6.0. */
   protected readonly newIcons = ['rocket', 'upload', 'lightbulb', 'pause', 'minus', 'wrench', 'gamepad', 'save'];
+
+  // ── 0.6.0's navigation ──────────────────────────────────────────────────────
+
+  /** The showcase's pages as link tabs (Japanese Academy's Kanji section's way): the gallery is the page's. */
+  protected readonly pageLinks: LinkTabItem[] = [
+    { id: 'gallery', label: 'Gallery', path: '/', exact: true, icon: 'sparkle' },
+    { id: 'translations', label: 'Translations', path: '/translations', lang: 'en' },
+    { id: 'languages', label: 'Languages', path: '/languages', lang: 'en' },
+    { id: 'people', label: 'People', path: '/people', lang: 'en', badge: 7, badgeLabel: '7 people' },
+    { id: 'migrations', label: 'Migrations', path: '/migrations', lang: 'en', badge: 4, badgeLabel: '4 waiting', badgeTone: 'warning' },
+    { id: 'feedback', label: 'Feedback form', path: '/feedback', lang: 'en' },
+    { id: 'terms', label: 'Terms', path: '/terms' },
+    { id: 'privacy', label: 'Privacy', path: '/privacy' },
+  ];
+  /** A database's parts as tabs with icons and badges (genshin's, the build analyzer's): more than a phone's line holds. */
+  protected readonly partTabs: TabItem[] = [
+    { id: 'characters', label: 'Characters', icon: 'user', badge: 98 },
+    { id: 'weapons', label: 'Weapons', icon: 'wrench', badge: 145 },
+    { id: 'artifacts', label: 'Artifacts', icon: 'sparkle', badge: 'New', badgeTone: 'primary' },
+    { id: 'enemies', label: 'Enemies', icon: 'alert', badge: 3, badgeLabel: '3 to check', badgeTone: 'warning' },
+    { id: 'materials', label: 'Materials', icon: 'gamepad' },
+    { id: 'foods', label: 'Foods', icon: 'lightbulb' },
+    { id: 'banners', label: 'Banners', icon: 'rocket' },
+    { id: 'files', label: 'Files', icon: 'save', badge: 0 },
+  ];
+  protected readonly part = signal('characters');
+  protected readonly narrowPart = signal('banners');
+  /** The showcase's admin pages in the side navigation's groups (genshin's admin panel's way). */
+  protected readonly adminGroups: SideNavGroup[] = [
+    { links: [{ id: 'gallery', label: 'Gallery', path: '/', exact: true, icon: 'sparkle' }] },
+    {
+      label: 'Admin tools',
+      links: [
+        { id: 'errors', label: 'Error log', path: '/admin/errors', icon: 'alert' },
+        { id: 'audit', label: 'Audit log', path: '/admin/audit', icon: 'shield' },
+        { id: 'feedback', label: 'Feedback', path: '/admin/feedback', icon: 'info', badge: 3 },
+        { id: 'backups', label: 'Backups', path: '/admin/backups', icon: 'save' },
+        { id: 'files', label: 'Files', path: '/admin/files', icon: 'copy' },
+      ],
+    },
+    {
+      label: 'Words',
+      collapsible: true,
+      links: [
+        { id: 'translations', label: 'Translations', path: '/translations', icon: 'languages' },
+        { id: 'languages', label: 'Languages', path: '/languages', icon: 'languages', badge: 'Beta' },
+      ],
+    },
+    {
+      label: 'Site',
+      collapsed: true,
+      links: [
+        { id: 'people', label: 'People', path: '/people', icon: 'users' },
+        { id: 'migrations', label: 'Migrations', path: '/migrations', icon: 'refresh', badge: 4, badgeLabel: '4 waiting' },
+        { id: 'account', label: 'Accounts & access', href: 'https://iam.example.test/admin', newTab: true, icon: 'user' },
+      ],
+    },
+  ];
+  /** ?navButton=own: the side navigation's own button on a phone, in place of the site's in its bar. */
+  protected readonly siteNavButton = new URLSearchParams(location.search).get('navButton') !== 'own';
 
   protected async ask(): Promise<void> {
     const sure = await this.confirm.ask({ title: 'Delete the survey?', message: 'Its 48 answers go with it. This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' });

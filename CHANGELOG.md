@@ -181,6 +181,56 @@ words in a site's own wording, apply `anotoki_translations/007` on the Migration
 say the library's built-in words). A site that draws the select on its first page imports it from
 `@anotoki/lib/ui/select` (its `@defer` may go).
 
+**The kit's navigation pieces** (the fourth part of 0.6.0): what the sites still drew themselves - Japanese Academy's
+section tabs, the build analyzer's and genshin's tabs with a count or an icon, genshin's tabs cut off on a phone with
+no hint that they scroll, genshin's grouped admin navigation (README.md, "0.6.0's pieces"). The IAM's admin panel keeps
+its own side navigation for now.
+
+- `@anotoki/lib/ui/tabs`: a tab takes an `icon` before its label and the kit's `badge` after it (a count or a short word,
+  a `badgeTone`) - seen as it is and heard after the label with a comma, as itself or in the site's words
+  (`badgeLabel`): "Issues, 3", "Issues, 3 open" - and a `lang` on a label of another language; `count` is as it was.
+  `<anotoki-link-tabs>` (new): a section's pages drawn as tabs - a named `nav` of ordinary links (`routerLink`, each a
+  Tab stop, never the ARIA tabs pattern), the page's link `aria-current="page"`: the router's (`exact`, else the most
+  specific of those the address is at or under) or the one `current` names whatever the address says. Tabs and link
+  tabs that do not fit their line scroll sideways in the kit's strip, never the page: the edge with more beyond it
+  fades under a small arrow (28 px to a mouse, 44 to a finger) that moves the row; the arrows are out of the tab order,
+  `aria-hidden` and never take the focus (the keyboard and a screen reader reach every tab itself, each brought into
+  view clear of the fade as it takes the focus); the chosen tab, the page's link, is brought into view as it is drawn
+  and whenever it changes. The tabs' markup gained a strip around the tablist (`anotoki-tab-strip`, its scroller
+  `anotoki-tab-strip__scroller`) and a span around each label (`anotoki-tabs__label`): a tab's words and the tablist's
+  children are as they were.
+- `@anotoki/lib/ui/side-nav` (new): `<anotoki-side-nav>` - a named `nav` of links in groups under headings that name
+  their lists (`headingLevel`: headings of the page's outline), optionally `collapsible` (a button with `aria-expanded`
+  and `aria-controls`; `collapsed` starts closed; the group of the page's link opens by itself); links with an icon and
+  a badge (filled as the top bar's, heard "Feedback, 3 new" - the bar's `topbar.linkCount` - or in the site's words),
+  pages elsewhere in a new tab, the page's link `aria-current="page"`. Up to the site's `phoneMax` it moves into the
+  kit's drawer, opened by its own button or by the site's anywhere in its page (`[anotokiSideNavTrigger]`): the button
+  says `aria-expanded`, `aria-haspopup="dialog"` and `aria-controls` while the drawer is there; the focus goes in and
+  comes back to the button, the drawer closes on a link, Escape, the backdrop and its Close, and nothing of the
+  navigation is in the tab order while it is shut.
+- `@anotoki/lib/ui/current-link` (new): `currentLink()`, which of a navigation's links is the page's - what the link
+  tabs and the side navigation mark, a site's own navigation too.
+- The library's words: `anotoki.tabs.scrollBack` and `anotoki.tabs.scrollForward` (the arrows' tooltips, "Earlier tabs"
+  and "More tabs"), English and impersonal Slovak, read by the tabs themselves (`@anotoki/lib/words/tabs`,
+  `READ_BY_THEIR_PAGES`); `anotoki_translations/008_tab_words.sql` writes them by 002's rule, its gate naming its own
+  keys (223 library keys). `anotoki.topbar.linkCount`'s description names the side navigation too (006, unreleased,
+  its description alone).
+- The package check: the new entry points are outside every first load and the core; ui + shell stay 28.34 kB of 28.5
+  (the shell 13.92 of 14), every first load as it was; `ui/tabs` 5.1 kB gzipped (2.0 before), `ui/side-nav` 5.1,
+  `ui/current-link` 0.6 - lazy pages.
+- Tests: Vitest for the tabs' icons, badges and words, the strip (its fades, its arrows, what it brings into view, at
+  once or gliding, reduced motion, the focus), the link tabs (the nav, the router's page, `exact`, `current`, a click),
+  `currentLink()` (paths relative to the page, after every navigation), the side navigation (its groups, headings,
+  badges in English and Slovak, a page elsewhere, collapsible groups and the tab order, the drawer and its focus, the
+  site's own button, a turned tablet, groups made again) (791 tests); PHPUnit for 008's words, its rule and its gate
+  (518, 1 skipped).
+
+What a site must do: nothing to keep building - the new pieces are new, and a row of tabs that fits looks as it did; a
+row that does not fit now fades at its edge under an arrow where it was cut. To word the arrows in a site's own way,
+apply `anotoki_translations/008` on the Migrations page (two keys; until then the tabs say the library's built-in
+words). A site's spec that reads a tab's `textContent` finds a badge's hidden words after it ("Issues 3, 3"): it reads
+the badge (`anotoki-badge`) or the name a screen reader is given.
+
 ## 0.5.2 - 2026-10-13
 
 Cloudflare's published ranges are every Cloudflare customer's, not the owner's zone alone: anybody's Worker can

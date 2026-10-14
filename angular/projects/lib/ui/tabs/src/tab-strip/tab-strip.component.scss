@@ -1,0 +1,99 @@
+@use "../../../../sass/kit";
+
+:host {
+  // How wide the faded edge under an arrow is (the component's FADE: 44 px at the most).
+  --_tab-strip-fade: 2.5rem;
+
+  position: relative;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+// The row scrolls here, sideways, never the page: no scroll bar drawn (the fade and the arrows say there is more), and
+// a swipe that reaches the end does not go on to the page behind.
+.anotoki-tab-strip__scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// The edge with more beyond it fades out under its arrow - an alpha mask over the tabs, whatever ground they stand on
+// (#000 is the mask's "shown", never a colour drawn).
+:host(.anotoki-tab-strip--back) .anotoki-tab-strip__scroller {
+  mask-image: linear-gradient(to right, transparent, #000 var(--_tab-strip-fade));
+}
+
+:host(.anotoki-tab-strip--forward) .anotoki-tab-strip__scroller {
+  mask-image: linear-gradient(to left, transparent, #000 var(--_tab-strip-fade));
+}
+
+:host(.anotoki-tab-strip--back.anotoki-tab-strip--forward) .anotoki-tab-strip__scroller {
+  mask-image: linear-gradient(to right, transparent, #000 var(--_tab-strip-fade), #000 calc(100% - var(--_tab-strip-fade)), transparent);
+}
+
+// An arrow on the faded edge: the button as large as the pointer needs (28 px to a mouse, 44 to a finger), the round
+// mark inside it the same size for both.
+.anotoki-tab-strip__more {
+  @include kit.button-reset;
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  translate: 0 -50%;
+}
+
+.anotoki-tab-strip__more--back {
+  left: 0.25rem;
+}
+
+.anotoki-tab-strip__more--forward {
+  right: 0.25rem;
+}
+
+.anotoki-tab-strip__arrow {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid kit.token(border-strong);
+  border-radius: 50%;
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-sm);
+}
+
+.anotoki-tab-strip__more:hover .anotoki-tab-strip__arrow {
+  background: kit.token(surface-3);
+}
+
+@media (pointer: coarse) {
+  :host {
+    --_tab-strip-fade: 2.75rem;
+  }
+
+  .anotoki-tab-strip__more {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .anotoki-tab-strip__more--back {
+    left: 0;
+  }
+
+  .anotoki-tab-strip__more--forward {
+    right: 0;
+  }
+}

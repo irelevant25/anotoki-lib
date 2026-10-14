@@ -1,0 +1,20 @@
+<nav class="anotoki-link-tabs__nav" [attr.aria-label]="label()">
+    <anotoki-tab-strip [current]="pageId()">
+        <div class="anotoki-link-tabs__links">
+            @for (link of links(); track link.id) {
+                <a class="anotoki-link-tabs__link" [routerLink]="link.path" [attr.aria-current]="link.id === pageId() ? 'page' : null">
+                    @if (link.icon) {
+                        <anotoki-icon [name]="link.icon" [size]="16" />
+                    }
+                    <span class="anotoki-link-tabs__label" [attr.lang]="link.lang || null">{{ link.label }}</span>
+                    @if (hasBadge(link)) {
+                        <!-- The badge is seen; what it says is heard after the label: "Reviews, 12 due". -->
+                        &ngsp;
+                        <anotoki-badge class="anotoki-link-tabs__badge" aria-hidden="true" [tone]="link.badgeTone || 'neutral'">{{ link.badge }}</anotoki-badge>
+                        <span class="anotoki-visually-hidden">, {{ badgeHeard(link) }}</span>
+                    }
+                </a>
+            }
+        </div>
+    </anotoki-tab-strip>
+</nav>

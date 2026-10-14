@@ -20,7 +20,8 @@
 //   the feedback form imports its configuration and the kit's fields. The legal pages import their configuration (and
 //   the footer's links, @anotoki/lib/legal), the kit's pieces, its dialog and its copy button, and the feedback form by
 //   import() alone. The kit's pieces of 0.6.0 are entry points of their own (ui/chips, ui/link-card, ui/stat-tiles,
-//   ui/progress, ...), outside the core and its limit, each importing the core's pieces it draws.
+//   ui/progress, ..., ui/side-nav, ui/current-link), outside the core and its limit, each importing the core's pieces it
+//   draws; the tabs (lazy, no limit) gained the link tabs, the badge, the icon and the scroll hint in their own.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -147,7 +148,9 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/forms": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/select"],
     "@anotoki/lib/ui/field": ["@anotoki/lib/ui/config", "@anotoki/lib/ui/dom"],
     "@anotoki/lib/ui/select": [...PIECES, "@anotoki/lib/ui/field"],
-    "@anotoki/lib/ui/tabs": PIECES,
+    // The tabs and, 0.6.0, the link tabs: their arrows' words (read by the tabs themselves, READ_BY_THEIR_PAGES below)
+    // and which link is the page's (ui/current-link).
+    "@anotoki/lib/ui/tabs": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/tabs", "@anotoki/lib/ui/current-link"],
     "@anotoki/lib/ui/pagination": PIECES,
     "@anotoki/lib/ui/drawer": PIECES,
     "@anotoki/lib/ui/tooltip": PIECES,
@@ -164,6 +167,10 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/disclosure": PIECES,
     "@anotoki/lib/ui/stepper": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/stepper"],
     "@anotoki/lib/ui/labelled-group": PIECES,
+    // Which of a navigation's links is the page's: the router alone. The side navigation: the kit's drawer on a phone,
+    // its words the kit's own (the top bar's "{count} new", ui/config).
+    "@anotoki/lib/ui/current-link": [],
+    "@anotoki/lib/ui/side-nav": [...PIECES, "@anotoki/lib/ui/drawer", "@anotoki/lib/ui/current-link"],
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
@@ -222,6 +229,7 @@ const READ_BY_THEIR_PAGES = {
     "@anotoki/lib/words/chips": ["@anotoki/lib/ui/chips"],
     "@anotoki/lib/words/progress": ["@anotoki/lib/ui/progress"],
     "@anotoki/lib/words/stepper": ["@anotoki/lib/ui/stepper"],
+    "@anotoki/lib/words/tabs": ["@anotoki/lib/ui/tabs"],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */

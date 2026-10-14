@@ -1,0 +1,60 @@
+////
+/// The look the kit's tabs and link tabs share: a row on one line with the line under it, and each tab - a button or
+/// a link - in the muted ink, the current one in the text's with the primary line under it. Internal.
+////
+
+@use "../../../sass/kit";
+
+/// The row: as wide as its tabs (the strip around it scrolls it), at least as wide as the strip, the line under it.
+@mixin row {
+  display: flex;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 100%;
+  border-bottom: 1px solid kit.token(border);
+}
+
+/// A tab; `$current` is the selector of the current one (`[aria-selected="true"]`, `[aria-current="page"]`).
+@mixin tab($current) {
+  @include kit.button-reset;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.45rem;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: kit.token(radius-sm) kit.token(radius-sm) 0 0;
+  color: kit.token(muted);
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    color: kit.token(text);
+    text-decoration: none;
+  }
+
+  &#{$current} {
+    color: kit.token(text);
+  }
+
+  &#{$current}::after {
+    content: "";
+    position: absolute;
+    right: 0.6rem;
+    bottom: -1px;
+    left: 0.6rem;
+    height: 2px;
+    border-radius: 2px;
+    background: kit.token(primary);
+  }
+
+  @include kit.focus-ring(-2px);
+
+  anotoki-icon {
+    flex: none;
+  }
+}

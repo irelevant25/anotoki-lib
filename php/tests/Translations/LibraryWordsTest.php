@@ -117,6 +117,8 @@ final class LibraryWordsTest extends TestCase
             'anotoki.legal.contactResponseText', 'anotoki.legal.contactAboutTitle', 'anotoki.legal.contactAboutText',
             // The kit's pieces of 0.6.0, each read by the piece itself (angular/projects/lib/ui/chips, /progress, /stepper), from 007.
             'anotoki.chips.remove', 'anotoki.progress.count', 'anotoki.stepper.stepOf', 'anotoki.stepper.done',
+            // The tabs' arrows (angular/projects/lib/ui/tabs, read by the tabs themselves), from 008.
+            'anotoki.tabs.scrollBack', 'anotoki.tabs.scrollForward',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -134,6 +136,8 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['name'], LibraryWords::placeholders('anotoki.chips.remove'));
         self::assertSame(['value', 'max'], LibraryWords::placeholders('anotoki.progress.count'));
         self::assertSame(['current', 'total'], LibraryWords::placeholders('anotoki.stepper.stepOf'));
+        self::assertSame([], LibraryWords::placeholders('anotoki.tabs.scrollForward'));
+        self::assertSame('More tabs', LibraryWords::english('anotoki.tabs.scrollForward'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

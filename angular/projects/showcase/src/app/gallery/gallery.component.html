@@ -373,6 +373,52 @@
         </div>
     </section>
 
+    <section class="section" aria-labelledby="navigation-title">
+        <h2 class="section-title" id="navigation-title">Navigation (0.6.0)</h2>
+        <!-- Link tabs: a section's pages, each a link of its own - the page's marked by the router (here the gallery). -->
+        <anotoki-link-tabs data-link-tabs label="The showcase's pages" [links]="pageLinks" />
+
+        <!-- Tabs with an icon and the kit's badge; too many for their line, they scroll sideways with a hint. -->
+        <anotoki-card heading="The database" [flush]="true">
+            <div class="padded">
+                <anotoki-tabs data-tab-badges #parts="anotokiTabs" label="The database's parts" [tabs]="partTabs" [(active)]="part" />
+            </div>
+            <p class="padded muted small" role="tabpanel" [id]="parts.panelId(part())" [attr.aria-labelledby]="parts.tabId(part())">The {{ part() }} of the database.</p>
+        </anotoki-card>
+        <div class="nav-narrow" data-tab-narrow>
+            <anotoki-tabs #narrowParts="anotokiTabs" label="The database's parts, in a narrow column" [tabs]="partTabs" [(active)]="narrowPart" />
+            <p class="muted small" role="tabpanel" [id]="narrowParts.panelId(narrowPart())" [attr.aria-labelledby]="narrowParts.tabId(narrowPart())">
+                In a column of 22rem: {{ narrowPart() }} chosen, brought into view.
+            </p>
+        </div>
+
+        <!-- The side navigation in an area's frame of its own (genshin's admin panel): its column on a computer; on a
+             phone the site's bar with its own button opening the kit's drawer (?navButton=own: the navigation's own). -->
+        <div class="nav-area" data-side-nav-area>
+            @if (siteNavButton && adminNav.phone()) {
+                <div class="nav-area-bar">
+                    <strong>Showcase admin</strong>
+                    <button anotokiButton data-site-nav-button [anotokiSideNavTrigger]="adminNav">
+                        <anotoki-icon name="menu" [size]="18" />
+                        Menu
+                    </button>
+                </div>
+            }
+            <anotoki-side-nav
+                data-side-nav
+                #adminNav="anotokiSideNav"
+                class="nav-area-nav"
+                [class.nav-area-nav--own]="!siteNavButton"
+                label="Admin pages"
+                heading="Showcase admin"
+                [groups]="adminGroups"
+                [phoneMax]="760" />
+            <div class="nav-area-page">
+                <p class="muted small">The page beside the navigation. Words is a collapsible group; Site starts closed.</p>
+            </div>
+        </div>
+    </section>
+
     <section class="section" aria-labelledby="overlays-title">
         <h2 class="section-title" id="overlays-title">Dialogs, drawers, toasts, copy, QR</h2>
         <div class="cluster">

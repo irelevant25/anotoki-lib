@@ -213,9 +213,9 @@ uses is in the first load again.
 | `@anotoki/lib/ui/toast` | `ToastService` + `<anotoki-toast-host>` | yes |
 | `@anotoki/lib/ui/forms` | text field, textarea, password field, select, checkbox, switch, radio group, code input | lazy pages only |
 | `@anotoki/lib/ui/select`, `/field` (0.6.0) | the select alone, for a first page (a widget in the bar), and `FieldBase` - both named by `ui/forms` too | `ui/select` where a first page draws a select |
-| `@anotoki/lib/ui/tabs`, `/pagination`, `/drawer`, `/tooltip`, `/copy`, `/qr` | one piece each | lazy pages |
-| `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress`, `/disclosure`, `/stepper`, `/labelled-group` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar, the disclosure and the accordion, the stepper and the progress dots, the labelled group - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
-| `@anotoki/lib/ui/piece-words` (0.6.0) | `pieceWords()`: how a piece of its own entry point reads its own words, the site's string first | with those pieces |
+| `@anotoki/lib/ui/tabs`, `/pagination`, `/drawer`, `/tooltip`, `/copy`, `/qr` | one piece each (the tabs with, 0.6.0, the link tabs, icons, badges and the scroll hint) | lazy pages |
+| `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress`, `/disclosure`, `/stepper`, `/labelled-group`, `/side-nav` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar, the disclosure and the accordion, the stepper and the progress dots, the labelled group, the side navigation and its phone drawer - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
+| `@anotoki/lib/ui/piece-words`, `/current-link` (0.6.0) | `pieceWords()`: how a piece of its own entry point reads its own words, the site's string first; `currentLink()`: which of a navigation's links is the page's | with those pieces |
 | `@anotoki/lib/shell` | theme service and switch, language switcher, brand, top bar, frame, `latestChoiceSaver`; `assets/theme-boot.js` | yes (every page) |
 | `@anotoki/lib/migrations` | site status, interceptor, gate, status page, update banner | yes (the gate) |
 | `@anotoki/lib/migrations/page` | the admin Migrations page | a lazy admin route |
@@ -238,7 +238,7 @@ uses is in the first load again.
 | `@anotoki/lib/error-report/marker` (0.6.0) | `ANOTOKI_ERROR_REPORT` alone, the mark on a report's request an interceptor reads (the auth module's) - without the reporter; `@anotoki/lib/error-report` names it too | with the reporter, and the auth module |
 | `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress` and `/stepper` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper` and `/tabs` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -506,7 +506,8 @@ the first load is - a widget in the bar - without every other field: through `ui
 `anotoki-code-input` (`length`, `(complete)`).
 
 **Smaller entry points** - `ui/tabs` `<anotoki-tabs #tabs="anotokiTabs" label [tabs] [(active)]>`
-(the page draws the panels with `tabs.panelId(id)` / `tabs.tabId(id)`);
+(the page draws the panels with `tabs.panelId(id)` / `tabs.tabId(id)`; 0.6.0: icons, badges, the scroll
+hint and `<anotoki-link-tabs>` - "0.6.0's pieces" below);
 `ui/pagination` `<anotoki-pagination [page] [pageSize] [total] [busy] (pageChange)>`;
 `ui/drawer` `<anotoki-drawer heading subheading backLabel (dismiss) (back)>`
 (`[drawerActions]`, `[drawerFooter]`); `ui/tooltip` `[anotokiTooltip]="text"`
@@ -578,6 +579,52 @@ re-exported by `ui` (what the sites drew themselves until round 2's end):
   as tall as a field, so a segmented control lines up with the selects beside it) or `inline`;
   `hint` under it (`group.hintId` for the page to tie to its control). The library's own pages use it
   (the Errors page's Range, the Feedback dialog's Mark as).
+- `ui/tabs`, what 0.6.0 adds - a tab (`TabItem`) takes an `icon` before its label (drawn, never heard),
+  the kit's `badge` after it (a count or a short word; a 0 is a count too; `badgeTone`) - seen as it is
+  and heard after the label with a comma, as itself or in the site's words (`badgeLabel`): "Issues, 3",
+  "Issues, 3 open" - and a `lang` on a label of another language; `count` stays as it was, a quiet
+  number heard as part of the name ("All 12"). `<anotoki-link-tabs label [links] [current]>`: a
+  section's pages drawn as tabs (Japanese Academy's Kanji) - a named `nav` of ordinary links
+  (`routerLink`; each its own Tab stop, Enter follows it - never the ARIA tabs pattern, which is for
+  panels of one page), `{ id, label, path, exact?, icon?, badge?, badgeLabel?, badgeTone?, lang? }`; the
+  page's link `aria-current="page"` - the router's (`exact`: its address alone, a query it does not
+  name aside; else it or one under it, the most specific when several match), or the one `current`
+  names whatever the address says (a session drawn over the dashboard, the address unchanged). Both
+  scroll sideways where they do not fit, in the kit's strip (`anotoki-tab-strip`), never the page: the
+  edge with more beyond it fades (`anotoki-tab-strip--back`, `--forward`) under a small arrow
+  (`anotoki-tab-strip__more`, a 28 px mark - the target 28 px to a mouse, 44 to a finger) that moves
+  the row most of a view; the arrows are out of the tab order, `aria-hidden` and never take the focus
+  - the keyboard and a screen reader reach every tab itself, and a tab that takes the focus is brought
+  into view clear of the fade. The chosen tab, the page's link, is brought into view as it is drawn
+  (at once) and whenever it changes (gliding, unless motion is reduced), by the strip's own scroll. The
+  arrows' tooltips are the library's `anotoki.tabs.*` ("Earlier tabs", "More tabs"), read by the tabs
+  themselves.
+- `ui/side-nav` - `<anotoki-side-nav #nav="anotokiSideNav" label [groups] phoneMax heading buttonLabel headingLevel current>`:
+  an area's side navigation (genshin's admin panel). Groups `{ id?, label?, links, collapsible?,
+  collapsed?, lang? }`: a heading names its list (with `headingLevel`, a heading of the page's outline
+  too); a group without one is links alone (a dashboard above the groups); a `collapsible` group's
+  heading is a button (`aria-expanded`, `aria-controls`), its links out of the tab order while hidden -
+  `collapsed` starts closed, and the group of the page's link opens by itself. Links `{ id?, label,
+  path? or href?, newTab?, exact?, icon?, badge?, badgeLabel?, lang? }`: the page's `aria-current="page"`
+  (as the link tabs say which, `current` too); a page elsewhere a plain link, a new tab said by its
+  icon; a badge seen as it is - filled, as the top bar draws its number - and heard after the label:
+  the site's `badgeLabel`, or for a number the kit's `topbar.linkCount` ("Feedback, 3 new", the bar's
+  words), or a word as it is ("Guides, Beta"); a 0 shows nothing. Up to `phoneMax` (px, the site's own
+  measure, 860 by default; null: never) it moves into the kit's drawer: in its place its own button
+  (the menu icon and `buttonLabel`, else the navigation's name) with `aria-expanded`,
+  `aria-haspopup="dialog"` and `aria-controls` while the drawer is there - or the site's own button
+  anywhere in its page, `[anotokiSideNavTrigger]="nav"` (genshin's phone bar, drawn while
+  `nav.phone()`), and then none of its own. The drawer (`heading`, else the name) takes the focus as it
+  opens and gives it back to the button as it closes - on a link followed, Escape, the backdrop and its
+  Close; while it is shut nothing of the navigation is in the page, so nothing of it in the tab order.
+  Beside the page it is as tall as the site's column lets it be, scrolling inside it; on a phone keep it
+  in the page (never inside `display: none`: its drawer opens from it). `phone()`, `isOpen()`, `open()`,
+  `close()`, `toggle()`. The frame's own side navigation (`<anotoki-shell [nav]>`, a flat list) stays as
+  it was.
+- `ui/current-link` - `currentLink(links, named?)`, in an injection context: which of a navigation's
+  links (`{ id?, path?, exact? }`, each path read as `routerLink` reads it, relative to the page that
+  draws it) is the page's, a signal following the links, `named` and every navigation - what the link
+  tabs and the side navigation mark, for a site's own navigation too.
 
 ### `@anotoki/lib/shell`
 
@@ -980,12 +1027,16 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   Slovak, by 002's rule ("Legal pages").
 - `006_top_bar_words.sql` (0.6.0) adds the top bar's `anotoki.topbar.linkCount`,
   what a screen reader hears after a link's name when the link has a number
-  beside it ("Feedback, 3 new"; Slovak "nové: 3"), by 002's rule.
+  beside it ("Feedback, 3 new"; Slovak "nové: 3") - the side navigation's words for
+  its numbers too -, by 002's rule.
 - `007_kit_piece_words.sql` (0.6.0) adds the words of the kit's pieces of their
   own entry points: the removable chips' `anotoki.chips.remove` ("Remove:
   Furina"), the progress bar's `anotoki.progress.count` ("3 of 10") and the
   stepper's and progress dots' `anotoki.stepper.stepOf` ("Step 2 of 4") and
   `anotoki.stepper.done` ("done"), in English and impersonal Slovak, by 002's rule.
+- `008_tab_words.sql` (0.6.0) adds the tabs' `anotoki.tabs.scrollBack` and
+  `anotoki.tabs.scrollForward` - the tooltips of the arrows of a row of tabs that scrolls sideways,
+  "Earlier tabs" and "More tabs" -, in English and impersonal Slovak, by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -1123,7 +1174,8 @@ import it:
 - the namespaces of the kit's pieces that are entry points of their own (0.6.0),
   read by those pieces alone, never registered: `@anotoki/lib/words/chips` (by
   `ui/chips`), `@anotoki/lib/words/progress` (by `ui/progress`),
-  `@anotoki/lib/words/stepper` (by `ui/stepper`). A piece has no
+  `@anotoki/lib/words/stepper` (by `ui/stepper`), `@anotoki/lib/words/tabs` (by
+  `ui/tabs`, the tabs' and link tabs' arrows). A piece has no
   provide*() function, and the kit's own (provideAnotokiUi) is in every first
   load: a registration there would bring every piece's words into every first
   load. Each piece reads its words through `pieceWords()` (`ui/piece-words`) -

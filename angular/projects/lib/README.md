@@ -13,11 +13,13 @@ version.
   `ui/dom`, `ui/button`, `ui/spinner`, `ui/badge`, `ui/alert`, `ui/card`,
   `ui/empty-state`, `ui/error-state`, `ui/page-header`, `ui/avatar`,
   `ui/segmented`, `ui/autofocus`; and the kit's other entry points `ui/icons`,
-  `ui/menu`, `ui/dialog`, `ui/toast`, `ui/forms`, `ui/tabs`, `ui/pagination`,
-  `ui/drawer`, `ui/tooltip`, `ui/copy`, `ui/qr`, and 0.6.0's `ui/chips`,
-  `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`,
-  `ui/labelled-group`, `ui/select` (the select alone, for a first page), `ui/field`
-  and `ui/piece-words` (how those pieces read their own words).
+  `ui/menu`, `ui/dialog`, `ui/toast`, `ui/forms`, `ui/tabs` (with 0.6.0's link
+  tabs), `ui/pagination`, `ui/drawer`, `ui/tooltip`, `ui/copy`, `ui/qr`, and
+  0.6.0's `ui/chips`, `ui/link-card`, `ui/stat-tiles`, `ui/progress`,
+  `ui/disclosure`, `ui/stepper`, `ui/labelled-group`, `ui/side-nav` (the side
+  navigation and its phone drawer), `ui/select` (the select alone, for a first
+  page), `ui/field`, `ui/piece-words` (how those pieces read their own words) and
+  `ui/current-link` (which of a navigation's links is the page's).
 - `@anotoki/lib/shell` - the theme (service and switch), the language switcher, the
   brand, the family's top bar and the frame; `assets/theme-boot.js`.
 - `@anotoki/lib/migrations` - one behaviour for every site while its database waits
@@ -52,8 +54,8 @@ version.
   (for a site's specs); `@anotoki/lib/words/<namespace>` - one module's
   (`/site-status`, `/sign-in`, `/feedback`, `/legal-links`), imported by that module
   alone, which registers them with the translations module (`provideLibraryWords`),
-  and `/legal`, which the legal pages read themselves, and `/chips`, `/progress` and
-  `/stepper`, which those pieces read themselves. Generated from
+  and `/legal`, which the legal pages read themselves, and `/chips`, `/progress`,
+  `/stepper` and `/tabs`, which those pieces read themselves. Generated from
   `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site

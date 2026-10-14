@@ -5,6 +5,7 @@ import { PROGRESS_LIBRARY_WORDS } from '@anotoki/lib/words/progress';
 import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
 import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 import { STEPPER_LIBRARY_WORDS } from '@anotoki/lib/words/stepper';
+import { TABS_LIBRARY_WORDS } from '@anotoki/lib/words/tabs';
 import { BUILT_IN_WORDS as STATUS_WORDS } from '../../../migrations/src/words';
 import { KIT_LIBRARY_WORDS, LibraryKey } from './library-words';
 import { ANOTOKI_WORD_KEYS, BUILT_IN_WORDS } from './words';
@@ -38,6 +39,7 @@ describe('the library’s own words (generated a namespace at a time from php/re
       expect(CHIPS_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.chips.')));
       expect(PROGRESS_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.progress.')));
       expect(STEPPER_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.stepper.')));
+      expect(TABS_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.tabs.')));
     }
     // LibraryKey names every key, every module's - a type only: the kit's file holds no other module's words.
     const signIn: LibraryKey = 'anotoki.signIn.retry';

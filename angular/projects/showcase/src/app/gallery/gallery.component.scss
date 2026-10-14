@@ -162,3 +162,59 @@
     font-size: 0.8125rem;
   }
 }
+
+// ── 0.6.0's navigation ──────────────────────────────────────────────────────────
+
+// A narrow column, where the tabs never fit: the hint at every width.
+.nav-narrow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 22rem;
+}
+
+// An area's frame of its own, as genshin's admin panel has: the navigation's column beside the page; on a phone the
+// site's bar over the page, the navigation in the kit's drawer.
+.nav-area {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 20rem;
+  border: 1px solid anotoki.token(border);
+  border-radius: anotoki.token(radius-lg);
+  background: anotoki.token(surface);
+}
+
+.nav-area-nav {
+  max-height: 26rem;
+  border-right: 1px solid anotoki.token(border);
+}
+
+.nav-area-page {
+  padding: 1rem 1.25rem;
+}
+
+.nav-area-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid anotoki.token(border);
+}
+
+@media (max-width: 760px) {
+  .nav-area {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  // On a phone the navigation is its drawer - and, without the site's bar, its own button.
+  .nav-area-nav {
+    max-height: none;
+    border-right: 0;
+  }
+
+  .nav-area-nav--own {
+    padding: 0.5rem 0.75rem;
+  }
+}

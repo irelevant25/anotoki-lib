@@ -191,7 +191,7 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertSame('anotoki_translations', $set->name);
         self::assertTrue($set->library);
-        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql', '006_top_bar_words.sql', '007_kit_piece_words.sql', '008_tab_words.sql', '009_input_words.sql'], $this->migrator([$set])->files($set));
+        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql', '006_top_bar_words.sql', '007_kit_piece_words.sql', '008_tab_words.sql', '009_input_words.sql', '010_backups_where_words.sql'], $this->migrator([$set])->files($set));
     }
 
     // ─── A new database ─────────────────────────────────────────────────────
@@ -213,13 +213,14 @@ final class SchemaTest extends DatabaseTestCase
                 ['set' => 'anotoki_translations', 'name' => '007_kit_piece_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '008_tab_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '009_input_words.sql'],
+                ['set' => 'anotoki_translations', 'name' => '010_backups_where_words.sql'],
             ],
             $result['applied'],
             (string) $result['error']
         );
         self::assertTrue(Schema::ready($this->pdo));
         self::assertSame(
-            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql', 'anotoki_translations/006_top_bar_words.sql', 'anotoki_translations/007_kit_piece_words.sql', 'anotoki_translations/008_tab_words.sql', 'anotoki_translations/009_input_words.sql'],
+            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql', 'anotoki_translations/006_top_bar_words.sql', 'anotoki_translations/007_kit_piece_words.sql', 'anotoki_translations/008_tab_words.sql', 'anotoki_translations/009_input_words.sql', 'anotoki_translations/010_backups_where_words.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
         );
         self::assertSame(
@@ -285,7 +286,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator(['split' => false])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(9, $result['applied']);
+        self::assertCount(10, $result['applied']);
         self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
@@ -307,7 +308,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertNull($result['error'], (string) $result['error']);
-        self::assertCount(9, $result['applied']);
+        self::assertCount(10, $result['applied']);
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
@@ -723,6 +724,54 @@ final class SchemaTest extends DatabaseTestCase
         self::assertStringContainsString("anotoki_translations 009: the library's keys without an English string: anotoki.colorField.picker", (string) $result['error']);
     }
 
+    // ─── 010, where the backups are: 005's words made true, a site's own kept ─
+
+    /** 005's words for the two sentences 010 rewords, as a site on 0.6.0 has them. */
+    private const BACKUPS_WHERE_005 = [
+        ['anotoki.legal.backupsWherePlain', 'en', "The copies stay on the site's own server, out of public reach."],
+        ['anotoki.legal.backupsWherePlain', 'sk', 'Kópie zostávajú na vlastnom serveri stránky, mimo verejného prístupu.'],
+        ['anotoki.legal.backupsWhereEncrypted', 'en', "The copies stay on the site's own server, out of public reach, and are encrypted."],
+        ['anotoki.legal.backupsWhereEncrypted', 'sk', 'Kópie zostávajú na vlastnom serveri stránky, mimo verejného prístupu, a sú šifrované.'],
+    ];
+
+    public function testTheBackupsWordsAreRewordedWhereTheyAre005sAndASitesOwnStay(): void
+    {
+        // A site on 0.6.0: 001 to 009 applied, the two sentences in 005's words ...
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/010_backups_where_words.sql'");
+        $restore = $this->pdo->prepare('UPDATE translations SET value = ? WHERE key_name = ? AND language_code = ?');
+        foreach (self::BACKUPS_WHERE_005 as [$key, $language, $value]) {
+            $restore->execute([$value, $key, $language]);
+        }
+        // ... but the encrypted one in Slovak, which the site worded its own way - "own server" in it too.
+        $this->pdo->exec("UPDATE translations SET value = 'Zálohy sú na našom vlastnom serveri.', updated_by = 7 WHERE key_name = 'anotoki.legal.backupsWhereEncrypted' AND language_code = 'sk'");
+        $everythingElse = "SELECT md5(string_agg(key_name || '|' || language_code || '|' || value, '/' ORDER BY key_name, language_code)) FROM translations WHERE key_name NOT LIKE 'anotoki.legal.backupsWhere%'";
+        $before = $this->value($everythingElse);
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '010_backups_where_words.sql']], $this->siteMigrator()->apply()['applied']);
+
+        $words = LibraryWords::all();
+        $now = fn (string $key, string $language): string => (string) $this->value("SELECT value FROM translations WHERE key_name = '$key' AND language_code = '$language'");
+        self::assertSame($words['anotoki.legal.backupsWherePlain']['en'], $now('anotoki.legal.backupsWherePlain', 'en'), '005\'s English made true');
+        self::assertSame($words['anotoki.legal.backupsWherePlain']['sk'], $now('anotoki.legal.backupsWherePlain', 'sk'), '005\'s Slovak made true');
+        self::assertSame($words['anotoki.legal.backupsWhereEncrypted']['en'], $now('anotoki.legal.backupsWhereEncrypted', 'en'));
+        self::assertSame('Zálohy sú na našom vlastnom serveri.', $now('anotoki.legal.backupsWhereEncrypted', 'sk'), 'the site\'s own words stay, whatever they say');
+        self::assertStringContainsString('downloaded copy', $words['anotoki.legal.backupsWherePlain']['en'], 'the new words say where a downloaded copy may be');
+        self::assertSame($before, $this->value($everythingElse), 'nothing else touched');
+    }
+
+    public function testABackupsKeyWithoutEnglishIsRefusedBy010sGate(): void
+    {
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/010_backups_where_words.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.legal.backupsWherePlain' AND language_code = 'en'");
+
+        $result = $this->siteMigrator()->apply();
+
+        self::assertSame(['set' => 'anotoki_translations', 'name' => '010_backups_where_words.sql'], $result['failed']);
+        self::assertStringContainsString("anotoki_translations 010: the library's keys without an English string: anotoki.legal.backupsWherePlain", (string) $result['error']);
+    }
+
     public function testTheTopBarsWordNamesTheSideNavigationToo(): void
     {
         // 006 is 0.6.0's own file, still unreleased when the side navigation came to share its word: its description
@@ -785,6 +834,7 @@ final class SchemaTest extends DatabaseTestCase
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/007_kit_piece_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/008_tab_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/009_input_words.sql")));
+        self::assertCount(2, Splitter::split((string) file_get_contents("$directory/010_backups_where_words.sql")));
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

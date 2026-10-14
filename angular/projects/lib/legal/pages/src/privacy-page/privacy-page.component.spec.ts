@@ -45,7 +45,7 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
     expect(words(host().querySelector('[data-kept="visitors"] h3'))).toBe('Using the site without an account');
     expect(words(host().querySelector('[data-kept="feedback"]'))).toContain('a reply address only if the sender leaves one');
     expect(words(host().querySelector('[data-kept="error-log"]'))).toContain('In place of the IP address it keeps a code made from it with a secret key, never the address itself.');
-    expect(words(host().querySelector('[data-kept="backups"]'))).toContain("The copies stay on the site's own server, out of public reach.");
+    expect(words(host().querySelector('[data-kept="backups"]'))).toContain("The copies are kept on the site's server, out of public reach; an administrator may also keep a downloaded copy elsewhere.");
   });
 
   it("leaves out feedback where the site takes none, says the backups are encrypted where they are, and takes the site's own words for a module", async () => {
@@ -53,7 +53,7 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
       facts: { feedback: undefined, visitors: null, backups: { encrypted: true }, auditLog: { what: 'What administrators change, and your own security changes, with the address they came from.' } },
     });
     expect(kept()).toEqual(['data-0', 'data-1', 'error-log', 'audit-log', 'backups']);
-    expect(words(host().querySelector('[data-kept="backups"]'))).toContain('out of public reach, and are encrypted.');
+    expect(words(host().querySelector('[data-kept="backups"]'))).toContain('out of public reach, and are encrypted; an administrator may also keep a downloaded copy, encrypted the same way, elsewhere.');
     expect(words(host().querySelector('[data-kept="audit-log"]'))).toContain('your own security changes, with the address they came from.');
 
     drawn.facts.update((facts) => ({ ...facts, errorLog: false, auditLog: false, backups: false }));

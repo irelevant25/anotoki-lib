@@ -55,6 +55,9 @@ final class PeopleRestoreTest extends DatabaseTestCase
     /** What the delete hook does besides, while a restore does it again. */
     private ?Closure $during = null;
 
+    /** @var list<string> what the backups told their onError - the site's error log; their answers say none of it */
+    private array $failures = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -208,9 +211,11 @@ final class PeopleRestoreTest extends DatabaseTestCase
 
         self::assertInstanceOf(Refusal::class, $result);
         self::assertSame([500, 'restore_failed'], [$result->status, $result->code]);
+        // The answer in the library's words; the hook's own words go to the error log alone.
+        self::assertSame('The restore failed, and nothing of it stayed. The error log says why.', $result->message);
         self::assertSame(
-            'The restore failed and nothing of it stayed: What was deleted of person 7 since this backup was made could not be deleted again (the copy of their data could not be written).',
-            $result->message,
+            'What was deleted of person 7 since this backup was made could not be deleted again (the copy of their data could not be written).',
+            end($this->failures),
         );
         self::assertSame($before, $this->state(), 'nothing of the restore stayed: carol is there, alice\'s progress still gone');
         self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'backup.restore_failed'"));
@@ -230,8 +235,8 @@ final class PeopleRestoreTest extends DatabaseTestCase
         self::assertInstanceOf(Refusal::class, $result);
         self::assertSame('restore_failed', $result->code);
         $beforeRestore = array_values(array_filter($backups->list(), static fn (array $made): bool => $made['kind'] === Backups::BEFORE_RESTORE))[0]['id'];
-        self::assertStringStartsWith("The restore did not finish, and what it had loaded may have stayed ($beforeRestore holds the data as it was): ", $result->message);
-        self::assertStringContainsString('the delete hook ended the library\'s transaction', $result->message);
+        self::assertSame("The restore did not finish, and what it had loaded may have stayed ($beforeRestore holds the data as it was). The error log says why.", $result->message);
+        self::assertStringContainsString('the delete hook ended the library\'s transaction', (string) end($this->failures));
         self::assertFalse($this->connection->inTransaction());
     }
 
@@ -266,8 +271,10 @@ final class PeopleRestoreTest extends DatabaseTestCase
 
         self::assertInstanceOf(Refusal::class, $result);
         self::assertSame([500, 'restore_failed'], [$result->status, $result->code]);
-        self::assertStringStartsWith('The restore failed and nothing of it stayed: the database ended its connection, and its transaction with it - as it ends a restore that waits more than a second between two of its statements', $result->message);
-        self::assertStringContainsString('a delete hook works on the $pdo it is given, never on the site\'s own connection', $result->message);
+        self::assertSame('The restore failed, and nothing of it stayed. The error log says why.', $result->message);
+        $why = (string) end($this->failures);
+        self::assertStringStartsWith('the database ended its connection, and its transaction with it - as it ends a restore that waits more than a second between two of its statements', $why);
+        self::assertStringContainsString('a delete hook works on the $pdo it is given, never on the site\'s own connection', $why);
         self::assertLessThan(15.0, $took, 'ended by the database after its wait - not by the hook\'s statement giving up');
         self::assertSame([7, 7], $this->deleted, 'the hook\'s statement went through once the restore was gone');
         self::assertSame($before, $this->state(), 'nothing of the restore stayed: carol is there, alice\'s progress still gone');
@@ -401,8 +408,9 @@ SQL);
         $result = $backups->restore($backup['id'], 1);
 
         self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
-        self::assertStringStartsWith('The accounts the IAM deleted were not checked again (', (string) $result['after_restore_error']);
-        self::assertStringContainsString('the check runs again with the next request', (string) $result['after_restore_error']);
+        self::assertSame('What this site does after a restore did not all go through. The error log says what.', $result['after_restore_error']);
+        self::assertStringStartsWith('The accounts the IAM deleted were not checked again (', (string) end($this->failures));
+        self::assertStringContainsString('the check runs again with the next request', (string) end($this->failures));
         self::assertSame(0, (int) $this->value('SELECT count(*) FROM progress WHERE user_id = 7'), 'the deletes are done again all the same');
 
         // The hour's stamp goes after the answer - not before: this request's own upkeep would claim it again at once.
@@ -444,7 +452,10 @@ SQL);
 
         self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
         self::assertTrue($ran, 'the site\'s own work ran all the same');
-        $error = (string) $result['after_restore_error'];
+        self::assertSame('What this site does after a restore did not all go through. The error log says what.', $result['after_restore_error']);
+        // The database's words and the site's own: the error log's, never the answer's.
+        $error = (string) end($this->failures);
+        self::assertStringNotContainsString('read-only', (string) json_encode($result));
         self::assertStringStartsWith('The accounts the IAM deleted were not checked again (it failed: ', $error);
         self::assertStringContainsString('the scrub\'s table is read-only today', $error);
         self::assertStringEndsWith('on the People page. Not every progress took a new generation.', $error, 'the scrub\'s, then the site\'s own');
@@ -507,7 +518,8 @@ SQL);
         $refused = $backups->restore($backup['id'], 1);
 
         self::assertInstanceOf(Refusal::class, $refused);
-        self::assertStringContainsString('A check of the accounts the IAM deleted was running', $refused->message);
+        self::assertSame('The restore failed, and nothing of it stayed. The error log says why.', $refused->message);
+        self::assertStringContainsString('A check of the accounts the IAM deleted was running', (string) end($this->failures));
         self::assertSame('carol', $this->value('SELECT preferred_username FROM users WHERE id = 9'), 'nothing restored');
 
         $this->pdo->query('SELECT pg_advisory_unlock(' . Scrubber::LOCK . ')');
@@ -630,7 +642,8 @@ SQL);
             'site' => 'piano',
             'migrator' => fn (PDO $pdo): Migrator => $this->siteMigrator($pdo),
             'audit' => new AuditLog(static fn (): PDO => $connection),
-            'onError' => static function (): void {
+            'onError' => function (\Throwable $e): void {
+                $this->failures[] = $e->getMessage();
             },
             ...($hooks ?? $this->people->restoreHooks(delete: $this->hook(), defer: $this->defer())),
         ]);

@@ -126,12 +126,14 @@ let causes: Cause[] = [
       message: "Cannot read properties of undefined (reading 'name')",
       file: null,
       line: null,
-      route: null,
+      // As ErrorLog::recordClient() writes a page's own error: the report's own request (POST /api/client-errors) as
+      // its method and route, the page's path as its path.
+      route: '/api/client-errors',
       source: 'client',
     },
-    { path: '/characters/amber', method: null, user_id: 9, trace: ['at CharacterPage.title (main-4f2a.js:1:20431)', 'at executeTemplate (main-4f2a.js:1:88213)'] },
+    { path: '/characters/amber', method: 'POST', user_id: 9, trace: ['at CharacterPage.title (main-4f2a.js:1:20431)', 'at executeTemplate (main-4f2a.js:1:88213)'] },
     [0, 0, 0, 1, 0, 0, 2],
-    ['/characters/amber'],
+    ['/characters/amber', '/characters/diluc'],
   ),
   cause(
     {

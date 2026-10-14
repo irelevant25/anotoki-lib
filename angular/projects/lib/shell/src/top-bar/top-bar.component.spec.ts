@@ -90,6 +90,12 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     `${words(link)} ${link.getAttribute('href')}${link.getAttribute('aria-current') === 'page' ? ' [page]' : ''}${link.classList.contains('anotoki-top-bar__link--active') ? ' [here]' : ''}`;
   /** What stands in an element, in order: each child as tag.firstClass. */
   const childrenOf = (selector: string) => Array.from(host.querySelector(selector)!.children).map((child) => child.tagName.toLowerCase() + (child.classList.length ? '.' + child.classList[0] : ''));
+  /** What a screen reader hears of an element: its words without what is hidden from it (aria-hidden); a space before a comma is not heard. */
+  const heard = (element: Element | null | undefined): string => {
+    const said = (node: Node): string =>
+      node.nodeType === Node.TEXT_NODE ? (node.textContent ?? '') : node instanceof Element && node.getAttribute('aria-hidden') === 'true' ? '' : Array.from(node.childNodes, said).join('');
+    return element ? said(element).replace(/\s+/g, ' ').replace(/ ,/g, ',').trim() : '';
+  };
 
   async function draw(width = 1280, language = 'en'): Promise<void> {
     window = windowOf(width);
@@ -159,6 +165,45 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
     page.navLabel.set('The sections');
     await settle(fixture);
     expect(host.querySelector('.anotoki-top-bar__nav')?.getAttribute('aria-label')).toBe('The sections');
+  });
+
+  it('a link with a number: the number seen alone, and heard with what it counts ("Feedback, 3 new") - in English and Slovak', async () => {
+    await draw();
+    page.links.set([
+      { id: 'surveys', label: 'Surveys', path: '/admin' },
+      { id: 'feedback', label: 'Feedback', path: '/admin/feedback', badge: 3 },
+      { id: 'reviews', label: 'Reviews', path: '/reviews', badge: 12, badgeLabel: '12 reviews due' },
+    ]);
+    await settle(fixture);
+    const [surveys, feedback, reviews] = navLinks();
+    expect(words(feedback.querySelector('.anotoki-top-bar__badge'))).toBe('3');
+    expect(feedback.querySelector('.anotoki-top-bar__badge')?.getAttribute('aria-hidden')).toBe('true');
+    expect(heard(feedback)).toBe('Feedback, 3 new');
+    // The site's own words for what its number counts.
+    expect(heard(reviews)).toBe('Reviews, 12 reviews due');
+    expect(heard(surveys)).toBe('Surveys');
+    expect(feedback.querySelector('.anotoki-visually-hidden')?.hasAttribute('lang')).toBe(false);
+
+    site.language.set('sk');
+    await settle(fixture);
+    expect(heard(feedback)).toBe('Feedback, nové: 3');
+    expect(words(feedback.querySelector('.anotoki-top-bar__badge'))).toBe('3');
+    // A link marked English on a Slovak page (an admin panel's label, Japanese Academy's "Kanji"): what its number counts
+    // says it is Slovak - the kit's words, and the site's, which are the page's language.
+    page.links.set([
+      { id: 'feedback', label: 'Feedback', path: '/admin/feedback', lang: 'en', badge: 3 },
+      { id: 'kanji', label: 'Kanji', path: '/kanji', lang: 'en', badge: 125, badgeLabel: '125 na zopakovanie' },
+    ]);
+    await settle(fixture);
+    expect(navLinks().map((link) => [link.getAttribute('lang'), link.querySelector('.anotoki-visually-hidden')?.getAttribute('lang')])).toEqual([
+      ['en', 'sk'],
+      ['en', 'sk'],
+    ]);
+    expect(heard(navLinks()[1])).toBe('Kanji, 125 na zopakovanie');
+    // Not marked where it is the language it inherits.
+    site.language.set('en');
+    await settle(fixture);
+    expect(navLinks()[0].querySelector('.anotoki-visually-hidden')?.hasAttribute('lang')).toBe(false);
   });
 
   it('the person’s menu: its button named with the name it shows; the name, the address, the role; the site’s items; Sign out', async () => {
@@ -530,14 +575,15 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
 
     it('a badge on the menu button, and the button’s name says it ("Menu: 125 reviews due")', async () => {
       await draw(390);
-      page.links.set([{ id: 'kanji', label: 'Kanji', path: '/kanji', badge: 125 }]);
+      page.links.set([{ id: 'kanji', label: 'Kanji', path: '/kanji', badge: 125, badgeLabel: '125 reviews due' }]);
       page.phoneMark.set({ badge: 125, label: 'Menu: 125 reviews due' });
       await settle(fixture);
       expect(words(phoneButton().querySelector('.anotoki-top-bar__mark-badge'))).toBe('125');
       expect(phoneButton().querySelector('.anotoki-top-bar__mark-badge')?.getAttribute('aria-hidden')).toBe('true');
       expect(phoneButton().getAttribute('aria-label')).toBe('Menu: 125 reviews due');
       await openMenu();
-      expect(words(items()[0])).toBe('Kanji 125');
+      expect(words(items()[0].querySelector('.anotoki-top-bar__badge'))).toBe('125');
+      expect(heard(items()[0])).toBe('Kanji, 125 reviews due');
     });
 
     it('a link inside with a badge puts a dot on the menu button, and its name says which - unless the site marks it itself', async () => {
@@ -545,13 +591,14 @@ describe('<anotoki-top-bar>: the family’s one bar', () => {
       page.links.set([
         { id: 'surveys', label: 'Surveys', path: '/surveys' },
         { id: 'feedback', label: 'Feedback', path: '/admin/feedback', badge: 3 },
-        { id: 'reviews', label: 'Reviews', path: '/reviews', badge: '12' },
+        { id: 'reviews', label: 'Reviews', path: '/reviews', badge: '12', badgeLabel: '12 due' },
         { id: 'quiet', label: 'Quiet', path: '/quiet', badge: 0 },
       ]);
       await settle(fixture);
       expect(phoneButton().querySelector('.anotoki-top-bar__mark-dot')?.getAttribute('aria-hidden')).toBe('true');
       expect(phoneButton().querySelector('.anotoki-top-bar__mark-badge')).toBeNull();
-      expect(phoneButton().getAttribute('aria-label')).toBe('Menu: Feedback 3, Reviews 12');
+      // Each with what its number counts: the kit's words, or the site's.
+      expect(phoneButton().getAttribute('aria-label')).toBe('Menu: Feedback, 3 new; Reviews, 12 due');
       expect(phoneButton().hasAttribute('aria-describedby')).toBe(false);
 
       // Nothing new inside: no mark, the plain name.

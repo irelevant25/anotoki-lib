@@ -8,7 +8,7 @@ pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
-`feedback/form`, `error-report`, `legal`, `legal/pages`, and the generated `words`,
+`feedback/form`, `error-report`, `error-report/marker`, `legal`, `legal/pages`, and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
@@ -92,8 +92,8 @@ bun run words           # the library's words from php/resources/library-words.j
   `new` of anything but an InjectionToken - is kept whether used or not: mark it
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
   limits, every entry point to its imports (the shell imports only the core's
-  pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces
-  and `migrations`; `people/page` the kit and `people`, which imports nothing;
+  pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
+  `migrations` and `error-report/marker` (a token, never the reporter); `people/page` the kit and `people`, which imports nothing;
   `legal/pages` the kit, `legal` and the feedback form by import() alone; a
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an

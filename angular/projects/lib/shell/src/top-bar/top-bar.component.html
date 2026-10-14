@@ -21,7 +21,9 @@
                         [attr.lang]="link.lang ?? null">
                         {{ link.label }}
                         @if (hasBadge(link)) {
-                            <span class="anotoki-top-bar__badge">{{ link.badge }}</span>
+                            <!-- The number is seen; what it counts is heard: "Feedback, 3 new", never "Feedback 3". -->
+                            <span class="anotoki-top-bar__badge" aria-hidden="true">{{ link.badge }}</span>
+                            <span class="anotoki-visually-hidden" [attr.lang]="countedLang(link)">, {{ counted(link) }}</span>
                         }
                     </a>
                 }
@@ -66,7 +68,8 @@
                                 [attr.lang]="link.lang ?? null">
                                 {{ link.label }}
                                 @if (hasBadge(link)) {
-                                    <span class="anotoki-top-bar__badge anotoki-top-bar__in-menu">{{ link.badge }}</span>
+                                    <span class="anotoki-top-bar__badge anotoki-top-bar__in-menu" aria-hidden="true">{{ link.badge }}</span>
+                                    <span class="anotoki-visually-hidden" [attr.lang]="countedLang(link)">, {{ counted(link) }}</span>
                                 }
                             </a>
                         }

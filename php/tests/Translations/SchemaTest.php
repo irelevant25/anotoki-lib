@@ -191,7 +191,7 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertSame('anotoki_translations', $set->name);
         self::assertTrue($set->library);
-        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql'], $this->migrator([$set])->files($set));
+        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql', '006_top_bar_words.sql'], $this->migrator([$set])->files($set));
     }
 
     // ─── A new database ─────────────────────────────────────────────────────
@@ -209,13 +209,14 @@ final class SchemaTest extends DatabaseTestCase
                 ['set' => 'anotoki_translations', 'name' => '003_sign_in_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '004_feedback_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '005_legal_words.sql'],
+                ['set' => 'anotoki_translations', 'name' => '006_top_bar_words.sql'],
             ],
             $result['applied'],
             (string) $result['error']
         );
         self::assertTrue(Schema::ready($this->pdo));
         self::assertSame(
-            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql'],
+            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql', 'anotoki_translations/006_top_bar_words.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
         );
         self::assertSame(
@@ -281,7 +282,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator(['split' => false])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(5, $result['applied']);
+        self::assertCount(6, $result['applied']);
         self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
@@ -303,7 +304,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertNull($result['error'], (string) $result['error']);
-        self::assertCount(5, $result['applied']);
+        self::assertCount(6, $result['applied']);
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
@@ -565,6 +566,46 @@ final class SchemaTest extends DatabaseTestCase
         self::assertStringContainsString("anotoki_translations 005: the library's keys without an English string: anotoki.legal.privacyTitle", (string) $result['error']);
     }
 
+    // ─── 006, what a link's number in the top bar counts: the same rule ─────
+
+    public function testTheTopBarsWordComesOnADatabaseThatHas005AndASiteThatTookItOverKeepsIt(): void
+    {
+        // An installed site: 001 to 005 applied before 0.6.0 shipped 006 ...
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/006_top_bar_words.sql'");
+        $this->pdo->exec("DELETE FROM translation_keys WHERE name = 'anotoki.topbar.linkCount'");
+        $others = (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%'");
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '006_top_bar_words.sql']], $this->siteMigrator()->apply()['applied']);
+
+        self::assertSame(['{count} new', 'nové: {count}'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.topbar.linkCount' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(LibraryWords::all()['anotoki.topbar.linkCount']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.topbar.linkCount'"));
+        self::assertSame($others + 2, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%'"), 'nothing of the files before touched');
+
+        // ... and one that words it its own way first, in English alone: its words and its blank stay.
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/006_top_bar_words.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.topbar.linkCount'");
+        $this->pdo->exec("UPDATE translation_keys SET description = 'The site''s own description.' WHERE name = 'anotoki.topbar.linkCount'");
+        $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES ('anotoki.topbar.linkCount', 'en', '{count} unread', 7)");
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '006_top_bar_words.sql']], $this->siteMigrator()->apply()['applied']);
+
+        self::assertSame([['language_code' => 'en', 'value' => '{count} unread']], $this->rows("SELECT language_code, value FROM translations WHERE key_name = 'anotoki.topbar.linkCount'"));
+        self::assertSame(LibraryWords::all()['anotoki.topbar.linkCount']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.topbar.linkCount'"), 'the description is the library\'s');
+    }
+
+    public function testTheTopBarsKeyWithoutEnglishIsRefusedBy006sGate(): void
+    {
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/006_top_bar_words.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.topbar.linkCount' AND language_code = 'en'");
+
+        $result = $this->siteMigrator()->apply();
+
+        self::assertSame(['set' => 'anotoki_translations', 'name' => '006_top_bar_words.sql'], $result['failed']);
+        self::assertStringContainsString("anotoki_translations 006: the library's keys without an English string: anotoki.topbar.linkCount", (string) $result['error']);
+    }
+
     // ─── The files themselves ───────────────────────────────────────────────
 
     public function testEveryFileIsInTheHouseStyle(): void
@@ -614,6 +655,7 @@ final class SchemaTest extends DatabaseTestCase
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/003_sign_in_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/004_feedback_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/005_legal_words.sql")));
+        self::assertCount(3, Splitter::split((string) file_get_contents("$directory/006_top_bar_words.sql")));
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

@@ -66,6 +66,9 @@ final class SupportTest extends TestCase
         self::assertSame('400 invalid_json', $code(JsonBody::read($this->request('{"a":'), 1000)));
         self::assertSame('400 invalid_json', $code(JsonBody::read($this->request(str_repeat('[', 40) . str_repeat(']', 40)), 1000)), 'nested deeper than any body here');
         self::assertSame('400 invalid_json', $code(JsonBody::read($this->request("\xEF\xBB\xBF{}"), 1000)));
+        // A fixed sentence, never the words of the exception the parser threw ("Syntax error", "Maximum stack depth").
+        $refused = JsonBody::read($this->request(str_repeat('[', 40) . str_repeat(']', 40)), 1000);
+        self::assertSame('The body is not JSON.', $refused instanceof Refusal ? $refused->message : null);
     }
 
     public function testTheStreamIsReadFromItsBeginningEvenWhenTheSiteReadItFirst(): void

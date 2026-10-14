@@ -10,10 +10,11 @@
 //   never through @anotoki/lib/ui, which holds re-exports and nothing else: a build that reaches it from a first page
 //   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
-//   Languages pages into the translations module's. The auth module imports the core's pieces and the migrations
-//   module (whether the site is blocked), and nothing imports it but its testing helper; its parts loaded later - the
-//   screens (auth/screens) and the client's token requests (auth/session, which it imports by import() alone) - import
-//   its shared part (auth/core), never the module itself. The People page imports the
+//   Languages pages into the translations module's. The auth module imports the core's pieces, the migrations
+//   module (whether the site is blocked) and the error report's marker (@anotoki/lib/error-report/marker, a token: a
+//   report's failure is left alone) - never the reporter -, and nothing imports it but its testing helper; its parts
+//   loaded later - the screens (auth/screens) and the client's token requests (auth/session, which it imports by
+//   import() alone) - import its shared part (auth/core), never the module itself. The People page imports the
 //   kit and its configuration's small entry point, which imports nothing. The admin tools' pages import their
 //   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
 //   the feedback form imports its configuration and the kit's fields. The legal pages import their configuration (and
@@ -80,7 +81,9 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * on lazy routes or loaded as they are opened.
  *
  * error-report (0.5.0): the browser's errors reported to the site's error log - an ErrorHandler every site provides,
- * so on every first page (2.8 at 0.5.0, its scrubbing's patterns most of it; 2.1 minified in a first load).
+ * so on every first page (2.8 at 0.5.0, its scrubbing's patterns most of it; 2.1 minified in a first load). Its mark on
+ * a report, ANOTOKI_ERROR_REPORT, is an entry point of its own (0.6.0, error-report/marker): the auth module reads it,
+ * and a site's build places whole files in its chunks - the reporter beside the sign-in would be 2.3 kB more.
  *
  * legal (0.6.0): the legal pages' configuration and the footer's three links, with their four words - on every page of
  * a site whose footer is the family's (2.5 at 0.6.0: the links' template and styles stand twice in the FESM, as every
@@ -144,7 +147,8 @@ const MAY_IMPORT = {
     "@anotoki/lib/translations": PIECES,
     "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms"],
     "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
-    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/auth/core", "@anotoki/lib/auth/session", "@anotoki/lib/auth/screens"],
+    // The error report's marker alone (a token), never the reporter.
+    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/error-report/marker", "@anotoki/lib/auth/core", "@anotoki/lib/auth/session", "@anotoki/lib/auth/screens"],
     // The auth module's shared part, and its parts loaded later: never the module itself (it names them, by import()
     // the session part - a site's build puts that in a chunk of its own).
     "@anotoki/lib/auth/core": ["@anotoki/lib/ui/config", "@anotoki/lib/words/sign-in"],
@@ -167,8 +171,10 @@ const MAY_IMPORT = {
     // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
     "@anotoki/lib/feedback": ["@anotoki/lib/ui/config", "@anotoki/lib/words/feedback"],
     "@anotoki/lib/feedback/form": ["@anotoki/lib/feedback", ...PIECES, "@anotoki/lib/ui/forms"],
-    // The browser's errors, reported: Angular's own alone (its ErrorHandler and HttpClient).
-    "@anotoki/lib/error-report": [],
+    // The browser's errors, reported: Angular's own (its ErrorHandler and HttpClient) and the report's mark, an entry
+    // point of its own that imports nothing.
+    "@anotoki/lib/error-report": ["@anotoki/lib/error-report/marker"],
+    "@anotoki/lib/error-report/marker": [],
     // The legal pages: their configuration and the footer's links register the links' words; the pages, each on a
     // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form by import() as it is opened.
     "@anotoki/lib/legal": ["@anotoki/lib/ui/config", "@anotoki/lib/words/legal-links"],

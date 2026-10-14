@@ -1,5 +1,7 @@
-import { HttpClient, HttpContext, HttpContextToken, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { EnvironmentProviders, ErrorHandler, Injectable, InjectionToken, Injector, inject, makeEnvironmentProviders } from '@angular/core';
+// The mark on the report's own request: an entry point of its own, which an interceptor reads without this file.
+import { ANOTOKI_ERROR_REPORT } from '@anotoki/lib/error-report/marker';
 
 /** What a site tells the reporter, through provideAnotokiErrorReport(). */
 export interface AnotokiErrorReportConfig {
@@ -22,13 +24,6 @@ export interface ErrorReport {
 }
 
 export const ANOTOKI_ERROR_REPORT_CONFIG = new InjectionToken<AnotokiErrorReportConfig>('ANOTOKI_ERROR_REPORT_CONFIG');
-
-/**
- * Set on the reporter's own request, for a site's interceptors: a report is no request to retry, to sign in again
- * for, or to show a failure of. Skip your error handling for it - never your headers: the CSRF header (the IAM's
- * X-IAM-Request) is what lets the report in. `request.context.get(ANOTOKI_ERROR_REPORT)` says which it is.
- */
-export const ANOTOKI_ERROR_REPORT = /* @__PURE__ */ new HttpContextToken<boolean>(() => false);
 
 export const DEFAULT_ERROR_REPORT_ENDPOINT = '/api/client-errors';
 

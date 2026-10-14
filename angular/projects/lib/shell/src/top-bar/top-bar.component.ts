@@ -58,8 +58,16 @@ export interface TopBarLink {
   under?: readonly string[];
   /** The label's language, where it is not the page's (an admin panel's English). */
   lang?: string | null;
-  /** A number beside the label (reviews due); its words are the site's to make part of the label. */
+  /**
+   * A number beside the label (the new feedback, reviews due), shown alone. A screen reader hears the link's name,
+   * then what the number counts: `badgeLabel`, or the kit's "{count} new" ("Feedback, 3 new").
+   */
   badge?: string | number | null;
+  /**
+   * What the badge counts, in the site's words and the page's language - "125 reviews due": heard, never seen (marked
+   * as the page's language inside a link marked as another, Japanese Academy's English "Kanji").
+   */
+  badgeLabel?: string | null;
 }
 
 /** Who is signed in, worded by the site. */
@@ -195,7 +203,7 @@ export class TopBarComponent {
   readonly width = input<'wide' | 'narrow'>('wide');
   /**
    * What stands on the phone's menu button. Without one of the site's, a link inside with a badge puts a dot there
-   * itself, and the button's name says which ("Menu: Feedback 3") - new feedback is not hidden in a folded bar.
+   * itself, and the button's name says which ("Menu: Feedback, 3 new") - new feedback is not hidden in a folded bar.
    */
   readonly phoneMark = input<TopBarPhoneMark | null>(null);
   readonly menuNote = input<TopBarMenuNote | null>(null);
@@ -222,7 +230,7 @@ export class TopBarComponent {
       return given;
     }
     const badged = this.links().filter((link) => this.hasBadge(link));
-    return badged.length === 0 ? null : { dot: true, label: `${this.words.t('topbar.phoneMenu')}: ${badged.map((link) => `${link.label} ${link.badge}`).join(', ')}` };
+    return badged.length === 0 ? null : { dot: true, label: `${this.words.t('topbar.phoneMenu')}: ${badged.map((link) => `${link.label}, ${this.counted(link)}`).join('; ')}` };
   });
   protected readonly phoneMenuName = computed(() => this.menuMark()?.label || this.words.t('topbar.phoneMenu'));
   protected readonly markId = uniqueId('anotoki-topbar-mark');
@@ -286,6 +294,21 @@ export class TopBarComponent {
 
   protected hasBadge(link: TopBarLink): boolean {
     return link.badge !== undefined && link.badge !== null && link.badge !== '' && link.badge !== 0;
+  }
+
+  /** What a link's number counts, as a screen reader hears it after the link's name: the site's words, or the kit's "3 new". */
+  protected counted(link: TopBarLink): string {
+    return link.badgeLabel || this.words.t('topbar.linkCount', { count: String(link.badge) });
+  }
+
+  /**
+   * The language of what a link's number counts, where it is not the one it inherits from the link: the site's words
+   * are the page's language, the kit's its own (the page's, or English where nobody wrote words for it) - inside a
+   * link marked as another language (an admin panel's English label, Japanese Academy's "Kanji"), said as such.
+   */
+  protected countedLang(link: TopBarLink): string | null {
+    const own = link.badgeLabel ? this.words.language() : this.words.lang();
+    return own === (link.lang || this.words.language()) ? null : own;
   }
 
   /**

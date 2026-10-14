@@ -13,11 +13,19 @@ use Anotoki\Lib\Migrations\Migrator;
 use Anotoki\Lib\Support\Keys;
 use Anotoki\Lib\Support\Refusal;
 use PDO;
+use PDOException;
 
 /** Backups against a real database: made, restored whole or not at all, encrypted, kept and pruned. */
 final class BackupsTest extends BackupsTestCase
 {
     private const KEPT = ['anotoki_audit_log', 'migrations'];
+
+    // What the answers say of a failure - the library's sentences, never the failure's own words (those are onError's:
+    // the site's error log).
+    private const UNREADABLE = 'This backup cannot be read here: it was changed, damaged or cut short, made under another key, or not made here - the error log says which. One not made here is restored offline (README).';
+    private const RESTORE_FAILED = 'The restore failed, and nothing of it stayed. The error log says why.';
+    private const BACKUP_FAILED = 'The backup could not be made. The error log says why.';
+    private const CANNOT_ASK = 'The database cannot be asked now. The error log says why.';
 
     public function testARestorePutsEveryRowAndSequenceBackAsItWas(): void
     {
@@ -208,7 +216,8 @@ final class BackupsTest extends BackupsTestCase
 
         $refused = $iam->restore($plain['id']);
         self::assertSame([422, 'archive_invalid'], [$refused->status ?? null, $refused->code ?? null], 'somebody put a plain one there: it is not restored');
-        self::assertStringContainsString('encrypted, and this one is not', $refused->message ?? '');
+        self::assertSame(self::UNREADABLE, $refused->message ?? '');
+        self::assertStringContainsString('encrypted, and this one is not', (string) end($this->failures), 'which, in the error log');
         $this->expectException(\RuntimeException::class);
         $iam->extractTo($plain['id'], $this->path('offline'));
     }
@@ -227,7 +236,8 @@ final class BackupsTest extends BackupsTestCase
 
         self::assertInstanceOf(Refusal::class, $refused);
         self::assertSame('archive_invalid', $refused->code);
-        self::assertStringContainsString('it was changed', $refused->message, 'its gzip says so as it is read, before the checksum would');
+        self::assertSame(self::UNREADABLE, $refused->message);
+        self::assertStringContainsString('it was changed', (string) end($this->failures), 'its gzip says so as it is read, before the checksum would');
     }
 
     public function testAnotherSchemaIsRefusedNamingWhatDiffers(): void
@@ -269,8 +279,8 @@ final class BackupsTest extends BackupsTestCase
         $refused = $backups->restore($backup['id'], 3);
 
         self::assertInstanceOf(Refusal::class, $refused);
-        self::assertSame([500, 'restore_failed'], [$refused->status, $refused->code]);
-        self::assertStringContainsString('notes_small', $refused->message);
+        self::assertSame([500, 'restore_failed', self::RESTORE_FAILED], [$refused->status, $refused->code, $refused->message]);
+        self::assertStringContainsString('notes_small', (string) end($this->failures), 'the database\'s words, in the error log');
         self::assertSame(
             array_diff_key($live, array_flip(self::KEPT)),
             array_diff_key($this->snapshot(), array_flip(self::KEPT)),
@@ -279,6 +289,72 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame(['O', 'O'], $this->pdo->query("SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'people'::regclass AND NOT tgisinternal ORDER BY tgname")->fetchAll(PDO::FETCH_COLUMN));
         self::assertSame(['backup.created', 'backup.created', 'backup.restore_failed'], $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN));
         self::assertCount(1, array_filter($backups->list(), static fn (array $b): bool => $b['kind'] === 'before-restore'), 'never without a copy of what was there');
+    }
+
+    public function testAFailuresOwnWordsGoToTheErrorLogAndNeverIntoAnAnswer(): void
+    {
+        // A hook that fails as code fails: PHP's TypeError names the absolute path of the file it was called in - what
+        // a site's mutation run found in a restore's answer.
+        $named = static fn (string $name): string => $name;
+        $failing = static function () use ($named): void {
+            $named(null);
+        };
+        $this->fill();
+        $backups = $this->backupsWith(['beforeCommit' => $failing]);
+        $backup = $backups->create();
+        self::assertIsArray($backup);
+
+        $refused = $backups->restore($backup['id'], 3);
+
+        self::assertInstanceOf(Refusal::class, $refused);
+        self::assertSame([500, 'restore_failed', self::RESTORE_FAILED], [$refused->status, $refused->code, $refused->message]);
+        self::assertStringContainsString(__FILE__, (string) end($this->failures), 'the error log has the failure whole');
+        $entry = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'backup.restore_failed'"), true);
+        self::assertSame(self::RESTORE_FAILED, $entry['error'] ?? null, 'the audit log, kept for good, says what the answer said');
+
+        // What the site does after a restore, failing the same way: the restore stands, and its answer says so in the
+        // library's words.
+        $result = $this->backupsWith(['afterRestore' => $failing])->restore($backup['id'], 3);
+
+        self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
+        self::assertSame('What this site does after a restore did not all go through. The error log says what.', $result['after_restore_error']);
+        self::assertStringContainsString(__FILE__, (string) end($this->failures));
+    }
+
+    public function testADatabaseThatCannotBeAskedOrAFolderThatCannotBeWrittenIsSaidInTheLibrarysWords(): void
+    {
+        $this->fill();
+        $backups = $this->backupsWith();
+        $backup = $backups->create();
+        self::assertIsArray($backup);
+        // The database's own words: its host, its user and a file of the server's.
+        $theDatabases = 'SQLSTATE[08006] [7] connection to server at "db.internal" (10.0.0.5), port 5432 failed: FATAL: password authentication failed for user "shop_owner" (/var/www/shop/config/database.local.php)';
+        $down = new Backups(static fn (): PDO => throw new PDOException($theDatabases), $this->backups, [
+            'site' => 'shop',
+            'migrator' => fn (PDO $pdo): Migrator => $this->siteMigrator($pdo),
+            'onError' => function (\Throwable $e): void {
+                $this->failures[] = $e->getMessage();
+            },
+        ]);
+
+        $status = $down->status();
+        $preview = $down->preview($backup['id']);
+        $made = $down->create();
+
+        self::assertSame([self::CANNOT_ASK], $status['problems']);
+        self::assertFalse($status['restorable']);
+        self::assertSame([503, 'database_unavailable', self::CANNOT_ASK], [$preview->status ?? null, $preview->code ?? null, $preview->message ?? null]);
+        self::assertSame([500, 'backup_failed', self::BACKUP_FAILED], [$made->status ?? null, $made->code ?? null, $made->message ?? null]);
+        self::assertStringNotContainsString('db.internal', (string) json_encode([$status, $preview, $made]));
+        self::assertSame([$theDatabases, $theDatabases, $theDatabases], array_slice($this->failures, -3), 'each told to the error log, whole');
+
+        // A download whose ticket cannot be written: a file in its folder's place.
+        @mkdir($this->storage . '/cache', 0700, true);
+        file_put_contents($this->storage . '/cache/backup-tickets', 'not a folder');
+        $ticket = $backups->ticket($backup['id']);
+
+        self::assertSame([500, 'ticket_failed', 'The download could not be prepared. The error log says why.'], [$ticket->status ?? null, $ticket->code ?? null, $ticket->message ?? null]);
+        self::assertSame('The tickets folder cannot be written.', end($this->failures));
     }
 
     public function testATableKeptThatRefersToARestoredOneIsAConfigurationError(): void
@@ -376,8 +452,8 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame([$backup['id'], 'manual', 'unlisted', null, false], [$listed['id'], $listed['kind'], $listed['status'], $listed['description'], $listed['sealed']]);
         // Without its sealed sidecar it is a file somebody put there: listed, never restored here.
         $refused = $backups->restore($backup['id']);
-        self::assertSame([422, 'archive_invalid'], [$refused->status ?? null, $refused->code ?? null]);
-        self::assertStringContainsString('no seal of this site', $refused->message ?? '');
+        self::assertSame([422, 'archive_invalid', self::UNREADABLE], [$refused->status ?? null, $refused->code ?? null, $refused->message ?? null]);
+        self::assertStringContainsString('no seal of this site', (string) end($this->failures));
         self::assertContains('It carries no seal of this site\'s - it was not made here, or it was changed since - so it is not restored here: restore it offline (README).', $backups->preview($backup['id'])['reasons']);
         self::assertSame($backup['id'], $backups->extractTo($backup['id'], $this->path('offline'))['id'], 'offline, its owner may still read it');
     }
@@ -458,7 +534,7 @@ final class BackupsTest extends BackupsTestCase
 
             self::assertInstanceOf(Refusal::class, $refused, (string) $status);
             self::assertSame('archive_invalid', $refused->code);
-            self::assertStringContainsString('checksum', $refused->message, 'the bytes read are not the ones sealed');
+            self::assertStringContainsString('checksum', (string) end($this->failures), 'the bytes read are not the ones sealed');
         }
         self::assertSame($before, $this->snapshot(), 'nothing of it loaded');
         self::assertNotContains('EVIL PLANTED', $this->pdo->query('SELECT name FROM people')->fetchAll(PDO::FETCH_COLUMN));
@@ -481,6 +557,8 @@ final class BackupsTest extends BackupsTestCase
         self::assertStringContainsString('without its seal', $this->failures[0], 'and the site is told');
         self::assertSame([[$made['id'], false]], array_map(static fn (array $backup): array => [$backup['id'], $backup['sealed']], $backups->list()), 'listed, never a failure');
         self::assertSame('archive_invalid', $backups->restore($made['id'])->code ?? null, 'restored offline only');
+        self::assertCount(2, $this->failures, 'the refused restore is told too');
+        self::assertStringContainsString('no seal of this site', $this->failures[1]);
         self::assertSame($made['id'], $backups->extractTo($made['id'], $this->path('offline'))['id']);
 
         // An encrypted site's backups carry no seal: their cipher is theirs.
@@ -490,7 +568,7 @@ final class BackupsTest extends BackupsTestCase
         self::assertTrue($sealedByItsCipher['sealed']);
         self::assertArrayNotHasKey('seal', json_decode((string) file_get_contents($encrypted->path($sealedByItsCipher['id']) . '.json'), true));
         self::assertIsArray($encrypted->restore($sealedByItsCipher['id']));
-        self::assertCount(1, $this->failures, 'nothing more to tell');
+        self::assertCount(2, $this->failures, 'nothing more to tell');
     }
 
     public function testInspectingReadsTheManifestAloneAndWritesNothing(): void
@@ -604,7 +682,8 @@ final class BackupsTest extends BackupsTestCase
         }]);
         $stopped = (new Migrator($this->pdo, [\Anotoki\Lib\Admin\Schema::migrationSet(), $this->siteSet], ['beforeApply' => $failing->beforeApplyHook()]))->apply();
         self::assertSame([], $stopped['applied']);
-        self::assertStringStartsWith('The backup before the update could not be made, so nothing was applied', (string) $stopped['error']);
+        // The Migrations page shows the Apply's error: the library's sentence, never the failure's words.
+        self::assertSame('The backup before the update could not be made, so nothing was applied. The error log says why.', $stopped['error']);
         self::assertFalse($this->tableExists('extra'));
     }
 
@@ -650,8 +729,8 @@ final class BackupsTest extends BackupsTestCase
 
         $refused = $this->backupsWith()->create();
 
-        self::assertSame('backup_failed', $refused->code ?? null);
-        self::assertStringContainsString('eggs, hens', $refused->message);
+        self::assertSame(['backup_failed', self::BACKUP_FAILED], [$refused->code ?? null, $refused->message ?? null]);
+        self::assertStringContainsString('eggs, hens', (string) end($this->failures), 'named in the error log');
 
         $this->pdo->exec('ALTER TABLE eggs DROP CONSTRAINT eggs_hen_fkey, ADD FOREIGN KEY (hen) REFERENCES hens (id) DEFERRABLE');
         $this->pdo->exec('INSERT INTO eggs VALUES (1, NULL); INSERT INTO hens VALUES (1, 1); UPDATE eggs SET hen = 1');

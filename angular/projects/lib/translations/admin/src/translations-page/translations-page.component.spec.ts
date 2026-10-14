@@ -147,6 +147,22 @@ describe('<anotoki-translations-page>: the site’s words in every language', ()
       expect(words(host.querySelector('.anotoki-translations-page__part-lead'))).toBe('One line each, no address.');
     });
 
+    it('lets a key break after its dots and nowhere else - nothing added to the key itself', async () => {
+      await open();
+      /** An element's children as the line sees them: each piece of the key, and each place it may break. */
+      const pieces = (element: Element | null) => Array.from(element?.children ?? [], (child) => (child.localName === 'wbr' ? '|' : (child.textContent ?? '')));
+
+      const key = host.querySelector('[data-block="mail.reset.greeting"] .anotoki-translations-page__key-name');
+      expect(key?.textContent).toBe('mail.reset.greeting');
+      expect(pieces(key)).toEqual(['mail.', '|', 'reset.', '|', 'greeting']);
+      // A plural family's name, the same way.
+      const family = host.querySelector('[data-block="reviews.due"] .anotoki-translations-page__block-name');
+      expect(family?.textContent).toBe('reviews.due');
+      expect(pieces(family)).toEqual(['reviews.', '|', 'due']);
+      // What a box is named still reads the key whole.
+      expect(box('mail.reset.greeting')).not.toBeNull();
+    });
+
     it('stacks the languages under one another above three of them', async () => {
       setUp();
       await draw();

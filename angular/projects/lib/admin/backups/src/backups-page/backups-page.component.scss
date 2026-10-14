@@ -47,10 +47,18 @@
   }
 }
 
+// The backup's id under its time, as an id reads - small, muted, its own width: no chip of a site's `code {}` stretched
+// across the cell into a grey bar (the family's base gives code a ground; this is a line of the cell).
 .anotoki-backups-page__id {
   display: block;
+  width: fit-content;
+  max-width: 100%;
   margin-top: 0.15rem;
+  padding: 0;
+  border-radius: 0;
+  background: none;
   color: kit.token(muted);
+  font-family: kit.token(font-mono);
   font-size: 0.75rem;
 }
 

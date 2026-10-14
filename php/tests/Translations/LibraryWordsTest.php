@@ -51,6 +51,8 @@ final class LibraryWordsTest extends TestCase
             'anotoki.topbar.skipToContent', 'anotoki.topbar.sections', 'anotoki.topbar.phoneMenu', 'anotoki.topbar.menuButton',
             'anotoki.topbar.menu', 'anotoki.topbar.roleAdmin', 'anotoki.topbar.roleEditor', 'anotoki.topbar.account',
             'anotoki.topbar.admin', 'anotoki.topbar.signIn', 'anotoki.topbar.signOut', 'anotoki.topbar.saving',
+            // (what a link's number counts, from 006) ...
+            'anotoki.topbar.linkCount',
             // ... and its theme switch.
             'anotoki.theme.label', 'anotoki.theme.light', 'anotoki.theme.dark', 'anotoki.theme.auto', 'anotoki.theme.autoHint',
             'anotoki.theme.notSaved',
@@ -123,6 +125,7 @@ final class LibraryWordsTest extends TestCase
         self::assertSame('Language: {name} ({code})', LibraryWords::english('anotoki.language.button'));
         self::assertSame(['name', 'code'], LibraryWords::placeholders('anotoki.language.button'));
         self::assertSame(['code'], LibraryWords::placeholders('anotoki.signIn.failed'));
+        self::assertSame(['count'], LibraryWords::placeholders('anotoki.topbar.linkCount'));
         self::assertSame(['max'], LibraryWords::placeholders('anotoki.feedback.tooLong'));
         self::assertSame(['site', 'operator'], LibraryWords::placeholders('anotoki.legal.termsWarrantyText'));
         self::assertSame(['daily', 'beforeUpdate', 'beforeRestore'], LibraryWords::placeholders('anotoki.legal.backupsKept'));

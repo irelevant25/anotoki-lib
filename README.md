@@ -232,6 +232,7 @@ uses is in the first load again.
 | `@anotoki/lib/feedback` (0.4.0) | the visitors' feedback form's configuration (`provideAnotokiFeedback`, which registers its words) and its words | yes, beside the translations module |
 | `@anotoki/lib/feedback/form` (0.4.0) | `<anotoki-feedback-form>`, on the kit's fields | loaded when the person opens it |
 | `@anotoki/lib/error-report` (0.5.0) | `provideAnotokiErrorReport()`: the browser's errors in the site's error log ("Admin tools" below) | yes (every page) |
+| `@anotoki/lib/error-report/marker` (0.6.0) | `ANOTOKI_ERROR_REPORT` alone, the mark on a report's request an interceptor reads (the auth module's) - without the reporter; `@anotoki/lib/error-report` names it too | with the reporter, and the auth module |
 | `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
 | `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone) | with its module, which alone imports it and registers it with the translations module (the legal pages read theirs themselves) |
@@ -396,7 +397,7 @@ The keys: `ui.close`, `ui.dismiss`, `ui.notifications`, `ui.cancel`,
 `topbar.skipToContent`, `topbar.sections`, `topbar.phoneMenu`,
 `topbar.menuButton`, `topbar.menu`, `topbar.roleAdmin`, `topbar.roleEditor`,
 `topbar.account`, `topbar.admin`, `topbar.signIn`, `topbar.signOut`,
-`topbar.saving`, `language.label`, `language.button`, `language.notLoaded`,
+`topbar.saving`, `topbar.linkCount` (0.6.0), `language.label`, `language.button`, `language.notLoaded`,
 `language.notSaved`, `theme.label`, `theme.light`, `theme.dark`, `theme.auto`,
 `theme.autoHint`, `theme.notSaved` - the library's words under the namespaces
 `anotoki.ui|topbar|language|theme.*`, English and Slovak generated from
@@ -529,7 +530,7 @@ is `login_required` - nobody signed in any more - is no refusal; `themeColor`) a
 | Input | |
 | --- | --- |
 | `brand` | `{ area, short?, panel?, link, label, current?, lang? }` - `panel: 'admin panel'` in an admin panel |
-| `links` | `{ id, label, path, under?, lang?, badge? }[]` - the page's link marked `aria-current`, its section `anotoki-top-bar__link--active` (in the phone menu `anotoki-menu-item--active`) |
+| `links` | `{ id, label, path, under?, lang?, badge?, badgeLabel? }[]` - the page's link marked `aria-current`, its section `anotoki-top-bar__link--active` (in the phone menu `anotoki-menu-item--active`). A `badge` is seen alone, and heard after the link's name with what it counts (0.6.0): "Feedback, 3 new" - the kit's `topbar.linkCount`, or the site's `badgeLabel`, in the page's language ("Kanji, 125 reviews due"; marked so inside a link of another `lang`) |
 | `navLabel` | the links' name (the kit's "Main navigation") |
 | `person` | `{ name, email?, role? }`, or null - the site words the role |
 | `menuItems` | `{ id, label, icon?, path? or href?, newTab?, lang? }[]` - between the menu's head and Sign out |
@@ -539,7 +540,7 @@ is `login_required` - nobody signed in any more - is no refusal; `themeColor`) a
 | `nameMin` | the person's name shows from here (phoneMax + 201) |
 | `shortBrandMax` | the brand short up to here (phoneMax by default) - the survey's admin panel: 960. Given, it alone decides (0.4.0): below phoneMax too, a folded bar keeps the full wordmark above it - a bar that folds wide (Piano Academy's 1320 px) measures where "anotoki Piano Academy" still fits beside the language, the theme and the menu button |
 | `width` | `wide` (84rem) or `narrow` (49rem); `--anotoki-topbar-max-width` overrides; in a frame with a side navigation, 88rem, and in one with a `maxWidth`, that |
-| `phoneMark` | `{ badge?, label? }` (the button's name says the count) or `{ dot, description? }`. Without one (0.5.0), a link inside with a badge puts a dot there, the button's name saying which: "Menu: Feedback 3" |
+| `phoneMark` | `{ badge?, label? }` (the button's name says the count) or `{ dot, description? }`. Without one (0.5.0), a link inside with a badge puts a dot there, the button's name saying which: "Menu: Feedback, 3 new" (0.6.0; links with a badge apart by "; ") |
 | `menuNote` | `{ title, text? }` heading both menus |
 | `isolateKeys` | no key pressed in the bar reaches `document` (true) |
 
@@ -785,8 +786,8 @@ PHP and its Angular half together (`anotoki/lib ^0.5.0`, the 0.5.0 tarball).
    today. On the People page that is the same connection; in a restore it is
    not: the site's own waits on the restore's locks while the restore waits on
    the hook, and every request to those tables waits behind both - PostgreSQL
-   ends such a restore after a minute (rolled back, `500 restore_failed`: "the
-   database ended its connection"). The hook begins, commits or rolls back no
+   ends such a restore after a minute (rolled back, `500 restore_failed`; "the
+   database ended its connection", the error log says from 0.6.0). The hook begins, commits or rolls back no
    transaction of its own - a savepoint is fine. genshin's and the build
    analyzer's begin one today: they would be refused with a `LogicException`
    saying so. It takes `?ServerRequestInterface $request`: null when a restore
@@ -887,6 +888,9 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   118 keys: the headings and the family's wording of Terms, Privacy and Contact)
   and the footer's links' (`anotoki.legalLinks.*`, 4), in English and impersonal
   Slovak, by 002's rule ("Legal pages").
+- `006_top_bar_words.sql` (0.6.0) adds the top bar's `anotoki.topbar.linkCount`,
+  what a screen reader hears after a link's name when the link has a number
+  beside it ("Feedback, 3 new"; Slovak "nové: 3"), by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -1431,7 +1435,11 @@ show.
   person, a 502 when an answer to a person's request made a visitor; a
   visitor's with the key (the first save going alone), a key brought kept, a
   `visitor_unknown` key forgotten and tried once more, `sign_in_required` noted;
-  writes counted in `SavesInFlight`, which a sign-in waits for.
+  writes counted in `SavesInFlight`, which a sign-in waits for. A report of the
+  page's own error (`ANOTOKI_ERROR_REPORT`, "The browser's errors" below; 0.6.0)
+  goes as any request - the token, or not at all; the key - and its failure is
+  handed back as it came: no fresh token, no retry, no sign-in, nothing cleared,
+  no key forgotten, nothing noted.
 - `personGuard`, `personOrVisitorGuard`, `staffGuard`, `adminGuard` - a sign-in
   started for the page asked for; every page while `SiteStatus.blocked()`; the
   failure's screen when a sign-in came back without one, could not start or
@@ -1657,16 +1665,19 @@ $backups = new Backups($connect, $directory, [
   accounts may run across a restore - one begun before it would keep its own
   place in the IAM's list over the restored one: the restore takes the check's
   lock until it commits, and is refused while a check holds it ("restore again
-  in a minute"). Whatever fails rolls the restore back whole, as does - with
-  something to do again - a backup that says no time, one whose snapshot cannot
-  be read, or a database without the audit log.
+  in a minute" - in the error log, which hears why every restore failed: the
+  answer is the library's fixed sentence, 0.6.0). Whatever fails rolls the
+  restore back whole, as does - with something to do again - a backup that says
+  no time, one whose snapshot cannot be read, or a database without the audit
+  log.
 - `People::afterRestore(defer:, then:)` - for Backups' `afterRestore`, once the
   restore committed: the scrub of the IAM's deleted accounts at once (the
   restore brought back the scrub's place of that day). One that does not go
   through - the IAM out of reach, a failure of any kind - is thrown, with the
-  site's own failure, in one sentence: the restore's `after_restore_error`
-  (the first failure that threw chained: the error log's line shows it as
-  `Caused by …` with its frames); the upkeep's hourly stamp then goes after the
+  site's own failure, in one sentence, for the error log (the first failure that
+  threw chained: the error log's line shows it as `Caused by …` with its
+  frames); the restore's answer says `after_restore_error` in the library's own
+  words (0.6.0: never what failed); the upkeep's hourly stamp then goes after the
   answer (`defer`, the site's runner), so the next request scrubs again.
   `then:` is the site's own work after a restore (Piano Academy's new
   generations), run whatever the scrub did. The survey's, Piano Academy's and
@@ -1716,7 +1727,8 @@ Piano Academy's, Japanese Academy's and the build analyzer's pages showed and di
   at the IAM on {day}";
 - where the scrub stands (`sync`): when the IAM's deleted accounts were last
   checked and how many were scrubbed here, or why the last check stopped (in
-  `danger-text`), with Check now (`POST sync`: what it did - scrubbed, none, part
+  `danger-text`; a hook that failed is said in the library's words - what it
+  threw goes to the server's error log, redacted, 0.6.0), with Check now (`POST sync`: what it did - scrubbed, none, part
   of the list, the IAM not answering, another check running - then the list again);
 - Delete behind a question in the page's own dialog (the focus on Cancel; the
   site's `question`, or the family's, which names the counts and "This is you."),
@@ -2152,20 +2164,29 @@ BackupsRoutes::file($app, '/api/admin/backups', $backups, $context);          //
   since - and only then the commit). Whatever fails, the hook too, rolls it back
   whole (`500 restore_failed`, "nothing of it stayed"); a hook that ended the
   restore's transaction itself is said apart ("may have stayed"), the
-  before-restore backup named. Nobody reads the restored rows, nor backs them
+  before-restore backup named. What failed is the site's `onError`'s - its
+  error log, redacted there (0.6.0): a refusal or an answer says it in a fixed
+  sentence of the library's ("The error log says why."), never in the
+  failure's own words - a TypeError's names the absolute path of the file it
+  was called in, a database's its host, its user and the values it quotes -
+  and so does the `backup.restore_failed` entry of the audit log, kept for
+  good. The same for `backup_failed`, `before_restore_failed`, `ticket_failed`,
+  `archive_invalid`, `database_unavailable`, the status card's problem and the
+  Apply's error when the backup before it fails. Nobody reads the restored rows, nor backs them
   up, before the hook ran: the tables stay locked, and the folder's lock holds
   every other backup off. A restore that waits more than a minute between two
   of its statements is ended by PostgreSQL
   (`idle_in_transaction_session_timeout`, set for its transaction alone) and
-  rolled back with its connection - "the database ended its connection",
-  nothing of it stayed: the restore itself never waits so long (COPY reads its
+  rolled back with its connection - "the database ended its connection" (the
+  error log says), nothing of it stayed: the restore itself never waits so long (COPY reads its
   spools inside its own statement), only a hook that waits on something else
   does - on another connection, which waits on the restore's own locks while
   every request to those tables waits behind both (no deadlock is seen: the
   restore's connection is idle). A hook does all its work on the PDO it is
   given. The site's `afterRestore` runs once it committed - what cannot be
-  inside it, the scrub that asks the IAM - and what it throws is the answer's
-  `after_restore_error`. A backup's manifest says when its snapshot was taken
+  inside it, the scrub that asks the IAM - and when it throws, the answer's
+  `after_restore_error` says so in the library's words, what it threw going to
+  `onError`. A backup's manifest says when its snapshot was taken
   by the database's own clock (`snapshot_at`, 0.5.0) - the one the audit log is
   written by - beside PHP's `created_at`, and the transactions it sees
   (`txid_snapshot`, for `People::replay()`). A sequence never goes
@@ -2292,7 +2313,9 @@ protected readonly unread = inject(FeedbackUnread);       // void this.unread.re
   a search; the counts and a chart by day (its numbers in words for screen
   readers); the failures grouped by fingerprint, 20 a page, a row opening its
   details - the facts, its path and route each a search, the trace (copied in
-  one press), every occurrence. "Clear" asks what goes: everything before today,
+  one press), every occurrence. A page's own error (`source: client`) is where
+  it happened - the page's path, in its row and as its details' Page - never
+  the report's own request (`POST /api/client-errors`, 0.6.0). "Clear" asks what goes: everything before today,
   everything older than a week, or everything.
 - **Audit log**: who, the action (or a family of them, `backup.*`), what it is
   about and its id, a date range - kept in the address, so a link to a filtered
@@ -2380,7 +2403,8 @@ provideAnotokiErrorReport(),               // { endpoint: '/api/client-errors', 
   carry (the IAM's `X-IAM-Request`), never a way around them. The request
   carries `ANOTOKI_ERROR_REPORT` in its context: an interceptor skips its error
   handling for it (no sign-in redirect for a report) - never its headers, which
-  are what let the report in.
+  are what let the report in. The library's own `anotokiAuthInterceptor` does
+  (0.6.0): the token or the key as for any request, the failure left alone.
 - Scrubbed before it leaves the page (`describeError()`, `scrubText()`): the
   page's path alone, a segment that looks like an address or a code replaced;
   never a query or a fragment (a frame keeps its line and column); no value the

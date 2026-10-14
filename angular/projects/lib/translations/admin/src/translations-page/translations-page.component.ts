@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DOCUMENT, Injector, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminLanguage, FALLBACK_LANGUAGE, HoldsUnsavedChanges, TranslationChanges, TranslationGrid, TranslationKeyRow, TranslationService, TranslationsFailure } from '@anotoki/lib/translations';
@@ -105,6 +106,7 @@ let nextId = 0;
 @Component({
   selector: 'anotoki-translations-page',
   imports: [
+    NgTemplateOutlet,
     RouterLink,
     AlertComponent,
     BadgeComponent,
@@ -331,6 +333,15 @@ export class TranslationsPageComponent implements HoldsUnsavedChanges {
   protected about(block: KeyBlock): { title: string; text?: string } | null {
     const about = block.group?.about;
     return about && Object.hasOwn(about, block.name) ? about[block.name] : null;
+  }
+
+  /**
+   * A key in the pieces a line may break after - each dot - never inside a word: "anotoki.feedback." then
+   * "anonymous", never "anotoki.feedback.anonymou" then "s". The <wbr>s between them add nothing to what a screen
+   * reader hears or a copy takes.
+   */
+  protected keyParts(name: string): string[] {
+    return name.split(/(?<=\.)/);
   }
 
   protected rowId(name: string): string {

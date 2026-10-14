@@ -43,7 +43,9 @@
         <form class="anotoki-admin__filters anotoki-error-log-page__filters" role="search" aria-label="Filter the error log" (submit)="$event.preventDefault(); applySearch()">
             <div class="anotoki-error-log-page__range">
                 <span class="anotoki-error-log-page__label" aria-hidden="true">Range</span>
-                <anotoki-segmented label="Range" data-range [options]="ranges" [value]="'' + filter().days" (valueChange)="setRange($event)" />
+                <div class="anotoki-error-log-page__range-control">
+                    <anotoki-segmented label="Range" data-range [options]="ranges" [value]="'' + filter().days" (valueChange)="setRange($event)" />
+                </div>
             </div>
             <anotoki-select label="Level" data-level placeholder="Any level" [options]="levels" [value]="filter().level" (valueChange)="setLevel($event)" />
             <anotoki-select label="Status" data-status placeholder="Any status" [options]="statusOptions()" [value]="filter().status" (valueChange)="setStatus($event)" />
@@ -169,7 +171,10 @@
                                         <td data-label="Where">
                                             <code class="anotoki-error-log-page__where">{{ whereOf(group) || "-" }}</code>
                                             @if (group.paths.length > 1) {
-                                                <span class="anotoki-error-log-page__more">and {{ group.paths.length - 1 }} more {{ group.paths.length === 2 ? "path" : "paths" }}</span>
+                                                <span class="anotoki-error-log-page__more">
+                                                    and {{ group.paths.length - 1 }} more
+                                                    {{ onPage(group) ? (group.paths.length === 2 ? "page" : "pages") : group.paths.length === 2 ? "path" : "paths" }}
+                                                </span>
                                             }
                                         </td>
                                         <td class="anotoki-admin__nowrap" data-label="Last seen">
@@ -191,13 +196,14 @@
                                                         </div>
                                                         @if (group.latest.path) {
                                                             <div>
-                                                                <dt>Request</dt>
+                                                                <!-- A page's own error: the page it happened on - its line's method and route are the report's own request. -->
+                                                                <dt>{{ onPage(group) ? "Page" : "Request" }}</dt>
                                                                 <dd>
-                                                                    <code>{{ group.latest.method }} {{ group.latest.path }}</code>
+                                                                    <code>{{ requestOf(group.latest) }}</code>
                                                                 </dd>
                                                             </div>
                                                         }
-                                                        @if (group.route) {
+                                                        @if (group.route && !onPage(group)) {
                                                             <div>
                                                                 <dt>Route</dt>
                                                                 <dd>
@@ -253,7 +259,7 @@
 
                                                     @if (group.paths.length > 1) {
                                                         <div class="anotoki-error-log-page__block">
-                                                            <h3 class="anotoki-admin__section-title">Reached through</h3>
+                                                            <h3 class="anotoki-admin__section-title">{{ onPage(group) ? "On the pages" : "Reached through" }}</h3>
                                                             <ul class="anotoki-error-log-page__paths">
                                                                 @for (path of group.paths; track path) {
                                                                     <li>
@@ -298,7 +304,7 @@
                                                                     <thead>
                                                                         <tr>
                                                                             <th scope="col">When</th>
-                                                                            <th scope="col">Request</th>
+                                                                            <th scope="col">{{ onPage(group) ? "Page" : "Request" }}</th>
                                                                             <th scope="col">Signed in as</th>
                                                                             <th scope="col">Connection</th>
                                                                         </tr>
@@ -309,8 +315,8 @@
                                                                                 <td class="anotoki-admin__nowrap" data-label="When">
                                                                                     <time [attr.datetime]="entry.at">{{ tools.date(entry.at, true) }}</time>
                                                                                 </td>
-                                                                                <td data-label="Request">
-                                                                                    <code>{{ entry.method }} {{ entry.path || "-" }}</code>
+                                                                                <td [attr.data-label]="onPage(group) ? 'Page' : 'Request'">
+                                                                                    <code>{{ requestOf(entry) }}</code>
                                                                                 </td>
                                                                                 <td data-label="Signed in as">{{ entry.user_id ?? "nobody" }}</td>
                                                                                 <td data-label="Connection">

@@ -154,7 +154,9 @@ final class ScrubberTest extends DatabaseTestCase
 
         self::assertSame('stopped', $result['state']);
         self::assertSame(1, $result['handled']);
-        self::assertSame('The scrub of account 30 failed: the feedback table is busy', $result['error']);
+        // The People page's words are the library's: what a hook threw - its own words, a TypeError's absolute path -
+        // goes to the server's log alone.
+        self::assertSame("The scrub of account 30 failed: the server's error log says why.", $result['error']);
         self::assertSame(['deleted-12', 'bob', 'carol'], $this->column('SELECT username FROM users ORDER BY id'), 'account 30 rolled back whole');
         self::assertSame([
             ['user_id' => 12, 'username' => 'deleted-12', 'email' => null, 'ip' => null, 'user_agent' => null, 'message' => 'The quiz is great'],
@@ -163,9 +165,22 @@ final class ScrubberTest extends DatabaseTestCase
         self::assertSame([12], $this->column('SELECT sub FROM anotoki_people_anonymized'));
         $sync = Scrubber::status($this->pdo);
         self::assertSame('2026-11-06T10:00:00Z', $sync['since'], 'since stays before the account that failed');
-        self::assertSame('The scrub of account 30 failed: the feedback table is busy', $sync['error'], 'kept for the People page');
+        self::assertSame("The scrub of account 30 failed: the server's error log says why.", $sync['error'], 'kept for the People page');
         self::assertNull($sync['ok_at']);
         self::assertContains('[anotoki people] The scrub of account 30 failed: the feedback table is busy', LogLines::take());
+
+        // A hook that fails as code fails - PHP's TypeError names the absolute path of the file it was called in: the
+        // server's log has it, the People page never.
+        $typed = static fn (string $name): string => $name;
+        $failing = static function (PDO $pdo, int $sub) use ($typed): void {
+            $typed($sub === 30 ? null : 'a name');
+        };
+        $failed = $this->scrubber('genshin', [$failing])->run();
+        self::assertSame("The scrub of account 30 failed: the server's error log says why.", $failed['error']);
+        $lines = LogLines::take();
+        self::assertCount(1, $lines);
+        self::assertStringContainsString(__FILE__, $lines[0], 'the server\'s log has the failure whole');
+        self::assertSame("The scrub of account 30 failed: the server's error log says why.", Scrubber::status($this->pdo)['error']);
 
         $broken = false;
         $next = $this->scrubber('genshin', [$feedback])->run();

@@ -260,9 +260,18 @@ $topbar: kit.token(topbar-height);
   margin: 0;
 }
 
+// A key breaks after a dot (the <wbr>s the page puts there), inside a word only when a word alone is wider than the
+// line - whatever a site's own `code` rule says (the family's base breaks code anywhere: "anotoki.feedback.anonymou|s").
+.anotoki-translations-page__key-name,
+.anotoki-translations-page__block-name {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: normal;
+}
+
 .anotoki-translations-page__key-name {
   font-weight: 650;
-  overflow-wrap: anywhere;
 }
 
 .anotoki-translations-page__description {

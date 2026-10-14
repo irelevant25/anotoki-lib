@@ -39,7 +39,8 @@ export class AppComponent {
     // The admin tools, the new feedback beside them (FeedbackUnread) - as a site's admin navigation shows it.
     { id: 'admin', label: 'Admin tools', path: '/admin/errors', under: ['/admin'], lang: 'en', badge: this.unread.count() || null },
     { id: 'feedback', label: 'Feedback form', path: '/feedback', lang: 'en' },
-    { id: 'reviews', label: this.i18n.t('nav.reviews'), path: '/reviews', badge: 12 },
+    // What its number counts, in the site's own words ("Reviews, 12 reviews due"); without them the kit's "12 new".
+    { id: 'reviews', label: this.i18n.t('nav.reviews'), path: '/reviews', badge: 12, badgeLabel: this.words.language() === 'sk' ? '12 na zopakovanie' : '12 reviews due' },
   ]);
   protected readonly person = computed(() => ({ name: 'Mira Nováková', email: 'mira@example.test', role: this.words.t('topbar.roleAdmin') }));
   protected readonly items = computed<TopBarMenuItem[]>(() => [

@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { HttpTestingController } from '@angular/common/http/testing';
+import { ErrorHandler } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AnotokiAuth } from './auth.service';
 import { AnotokiAuthConfig, VisitorKeyStore } from '@anotoki/lib/auth/core';
+import { ANOTOKI_ERROR_REPORT, provideAnotokiErrorReport } from '@anotoki/lib/error-report';
 import { apiPath } from './auth.interceptor';
 import { CARRIES_VISITOR_KEY, issuedAs } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';
@@ -53,20 +55,23 @@ describe('anotokiAuthInterceptor: who a request is, decided when it is issued', 
   let backend: HttpTestingController;
   let auth: AnotokiAuth;
 
-  async function start(signedIn: boolean, config: Partial<AnotokiAuthConfig> = {}): Promise<void> {
+  async function start(signedIn: boolean, config: Partial<AnotokiAuthConfig> = {}, reporter = false): Promise<void> {
     site = specSite();
     keys = new Keys();
     if (signedIn) {
       site.prepare = (client) => client.hold(user('7'), null);
     }
-    TestBed.configureTestingModule({ providers: provideSpecAuth(site, { visitors: () => keys, ...config }) });
+    TestBed.configureTestingModule({ providers: [...provideSpecAuth(site, { visitors: () => keys, ...config }), ...(reporter ? [provideAnotokiErrorReport()] : [])] });
     http = TestBed.inject(HttpClient);
     backend = TestBed.inject(HttpTestingController);
     auth = TestBed.inject(AnotokiAuth);
     await auth.init();
   }
 
-  afterEach(() => backend?.verify());
+  afterEach(() => {
+    backend?.verify();
+    vi.restoreAllMocks();
+  });
 
   describe('what it handles', () => {
     it("the site's API of this origin only, but what is anybody's", () => {
@@ -305,6 +310,85 @@ describe('anotokiAuthInterceptor: who a request is, decided when it is issued', 
       expect(waited.request.headers.get('X-Visitor-Key')).toBe('k9');
       waited.flush({});
       await second;
+    });
+  });
+
+  describe("a report of the page's own error (ANOTOKI_ERROR_REPORT): sent as any request, its failure left alone", () => {
+    /** A report as the error reporter sends it. */
+    const report = () => firstValueFrom(http.post('/api/client-errors', { type: 'Error', message: 'x', page: '/', stack: [] }, { context: new HttpContext().set(ANOTOKI_ERROR_REPORT, true) }));
+
+    it("a person's carries the token; its 401 is handed back - no fresh token, no retry, the page neither followed nor sent to sign in", async () => {
+      await start(true, {}, true);
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      // Through the reporter itself, as a site has it (provideAnotokiErrorReport() beside the interceptor).
+      TestBed.inject(ErrorHandler).handleError(new Error('The kanji card could not be drawn'));
+      await settle();
+      const sent = backend.expectOne('/api/client-errors');
+      expect(sent.request.context.get(ANOTOKI_ERROR_REPORT)).toBe(true);
+      expect(sent.request.headers.get('Authorization')).toBe('Bearer token-1');
+      sent.flush({ code: 'invalid_token' }, { status: 401, statusText: 'Unauthorized' });
+      await settle();
+
+      backend.expectNone('/api/client-errors');
+      expect(site.client!.refreshes).toBe(0);
+      expect(site.client!.logins).toEqual([]);
+      expect(site.browser.navigations).toEqual([]);
+      expect(site.browser.reloads).toBe(0);
+      expect(auth.state()).toBe('signed-in');
+
+      // The error itself, as it came, for whoever sent it: here too, nothing more.
+      const direct = report();
+      await settle();
+      backend.expectOne('/api/client-errors').flush({ code: 'invalid_token' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(direct).rejects.toMatchObject({ status: 401, error: { code: 'invalid_token' } });
+      backend.expectNone('/api/client-errors');
+      expect(site.client!.refreshes).toBe(0);
+      expect(auth.state()).toBe('signed-in');
+
+      // The control: any other request of the person's gets its fresh token and its one retry.
+      const save = firstValueFrom(http.post('/api/progress', {}));
+      await settle();
+      backend.expectOne('/api/progress').flush({ code: 'invalid_token' }, { status: 401, statusText: 'Unauthorized' });
+      await settle();
+      backend.expectOne('/api/progress').flush({});
+      await save;
+      expect(site.client!.refreshes).toBe(1);
+    });
+
+    it('with no token to send it is not sent, as any request - and the page is not told to follow the session', async () => {
+      await start(true);
+      site.client!.session = null;
+
+      await expect(report()).rejects.toMatchObject({ status: 401, error: { code: 'sign_in_required' } });
+      backend.expectNone('/api/client-errors');
+      expect(auth.state()).toBe('signed-in');
+      expect(site.browser.reloads).toBe(0);
+
+      // The control: another request of the person's makes the page follow.
+      await expect(firstValueFrom(http.get('/api/progress'))).rejects.toMatchObject({ status: 401 });
+      expect(auth.state()).toBe('signed-out');
+    });
+
+    it("a visitor's carries the key; a 401 forgets no key, tries nothing again and notes no sign-in as required", async () => {
+      await start(false);
+      keys.key = 'k1';
+
+      let sent = report();
+      let request = backend.expectOne('/api/client-errors');
+      expect(request.request.headers.get('X-Visitor-Key')).toBe('k1');
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      request.flush({ code: 'visitor_unknown' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(sent).rejects.toMatchObject({ status: 401, error: { code: 'visitor_unknown' } });
+      backend.expectNone('/api/client-errors');
+      expect([keys.key, keys.forgotten]).toEqual(['k1', []]);
+
+      sent = report();
+      request = backend.expectOne('/api/client-errors');
+      request.flush({ code: 'sign_in_required' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(sent).rejects.toBeInstanceOf(HttpErrorResponse);
+      expect(auth.loginRequired()).toBe(false);
+      expect(auth.state()).toBe('visitor');
     });
   });
 

@@ -161,17 +161,23 @@
                                             }
                                             @if (about(block); as known) {
                                                 <strong class="anotoki-translations-page__block-title">{{ known.title }}</strong>
-                                                <code>{{ block.name }}</code>
+                                                <code class="anotoki-translations-page__block-name">
+                                                    <ng-container [ngTemplateOutlet]="keyName" [ngTemplateOutletContext]="{ $implicit: block.name }" />
+                                                </code>
                                                 @if (known.text) {
                                                     <span class="anotoki-translations-page__block-text">{{ known.text }}</span>
                                                 }
                                             } @else {
-                                                <code>{{ block.name }}</code>
+                                                <code class="anotoki-translations-page__block-name">
+                                                    <ng-container [ngTemplateOutlet]="keyName" [ngTemplateOutletContext]="{ $implicit: block.name }" />
+                                                </code>
                                             }
                                         </div>
                                     } @else if (block.kind === "plural") {
                                         <div class="anotoki-translations-page__block-head">
-                                            <code>{{ block.name }}</code>
+                                            <code class="anotoki-translations-page__block-name">
+                                                <ng-container [ngTemplateOutlet]="keyName" [ngTemplateOutletContext]="{ $implicit: block.name }" />
+                                            </code>
                                             <span class="anotoki-translations-page__block-text">Plural: one text for each kind of number</span>
                                         </div>
                                     }
@@ -179,7 +185,9 @@
                                     @for (row of block.rows; track row.key.name) {
                                         <div class="anotoki-translations-page__row" [id]="rowId(row.key.name)">
                                             <div class="anotoki-translations-page__key">
-                                                <code class="anotoki-translations-page__key-name">{{ row.key.name }}</code>
+                                                <code class="anotoki-translations-page__key-name">
+                                                    <ng-container [ngTemplateOutlet]="keyName" [ngTemplateOutletContext]="{ $implicit: row.key.name }" />
+                                                </code>
                                                 @if (row.key.description) {
                                                     <p class="anotoki-translations-page__description">{{ row.key.description }}</p>
                                                 }
@@ -290,3 +298,14 @@
 
     <anotoki-translations-question [questions]="questions" />
 }
+
+<!-- A key, a line free to break after each of its dots and nowhere else ("anotoki.feedback." / "anonymous"): <wbr>
+     adds nothing to the words a screen reader hears or a copy takes. -->
+<ng-template #keyName let-name>
+    @for (part of keyParts(name); track $index) {
+        <span>{{ part }}</span>
+        @if (!$last) {
+            <wbr />
+        }
+    }
+</ng-template>

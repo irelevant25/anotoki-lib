@@ -12,14 +12,8 @@
  * The server's half: Anotoki\Lib\ErrorLog\Http\ErrorLogRoutes::client().
  */
 
+// The report's mark lives in an entry point of its own (@anotoki/lib/error-report/marker), which the auth module's
+// interceptor reads without the reporter; named here too, where a site has always taken it.
+export { ANOTOKI_ERROR_REPORT } from '@anotoki/lib/error-report/marker';
 export type { AnotokiErrorReportConfig, ErrorReport } from './src/error-report';
-export {
-  ANOTOKI_ERROR_REPORT,
-  ANOTOKI_ERROR_REPORT_CONFIG,
-  AnotokiErrorReporter,
-  DEFAULT_ERROR_REPORT_ENDPOINT,
-  describeError,
-  provideAnotokiErrorReport,
-  scrubText,
-  storedValues,
-} from './src/error-report';
+export { ANOTOKI_ERROR_REPORT_CONFIG, AnotokiErrorReporter, DEFAULT_ERROR_REPORT_ENDPOINT, describeError, provideAnotokiErrorReport, scrubText, storedValues } from './src/error-report';

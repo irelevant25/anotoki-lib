@@ -43,6 +43,62 @@ survey take none); `visitors` where it has them; `fanDisclaimer: 'hoyoverse'` on
 IAM `account.isIam`, `backups: { encrypted: true }`, its audit log in its own words, `google` and `mail` among the
 processors, its session and device cookies - and its own Privacy page at the address the other sites link to.
 
+**The admin pages' fixes** (the second part of 0.6.0; each found by a site's review or UI test in rounds 2 and 3):
+
+- The base `code` style no longer shows through the admin pages - in the pages' own styles, `@anotoki/lib/styles`' base
+  unchanged: the Translations page breaks a key only after a dot ("anotoki.legal." then "backupsWhereEncrypted": a
+  `<wbr>` after each dot, which adds nothing to what a screen reader hears or a copy takes), inside a word only when a
+  word alone is wider than the line, where the base broke code anywhere ("anotoki.feedback.anonymou|s"); the Backups
+  page's id reads as an id - small, muted, its own width - not a grey bar the width of its cell; the Errors page's path
+  in a row keeps its chip around the path instead of stretching it across the cell.
+- The Errors page says where a page's own error (`source: client`) happened: the page's path in its row ("/kanji",
+  "and 1 more page"), as its details' Page, in its occurrences' Page column and under "On the pages" - no longer the
+  report's own route in the row (`POST /api/client-errors`) nor its method in the details ("POST /kanji"). The PHP
+  half writes the lines as before: old lines read the same way.
+- The Errors page's Range lines up with Level and Status: its label at the fields' gap, the segmented control (38 px)
+  on the middle of the selects (44 px), where its label sat 6 px below theirs.
+- `anotokiAuthInterceptor` leaves a report of the page's own error alone, as the README said an interceptor may: a
+  request marked `ANOTOKI_ERROR_REPORT` goes as any request - the token (or, with none to send, not at all), a
+  visitor's key - and its failure comes back as it came: no fresh token and no retry, no page following a session that
+  ended (nothing cleared, no reload, no sign-in), no key forgotten, no sign-in noted as required. The mark is an entry
+  point of its own, `@anotoki/lib/error-report/marker` (a token, 0.1 kB), which the auth module reads without the
+  reporter - through `@anotoki/lib/error-report` the sign-in's first load would have grown 2.3 kB gzipped beside lazy
+  pages; that entry point names it too, so a site's import stays as it is.
+- No refusal or answer carries a failure's own words any more - a TypeError's names the absolute path of the file it was
+  called in (a site's mutation run found one in a `restore_failed`), a database's its host, its user and the values it
+  quotes: a fixed sentence of the library's says what failed and that the error log says why, and the failure goes to
+  the site's `onError` (its error log, redacted there). Backups: `backup_failed`, `before_restore_failed`,
+  `restore_failed` (and its `backup.restore_failed` entry in the audit log, kept for good; a restore a hook ended still
+  says what had loaded may have stayed, and names the backup of before), `archive_invalid`, `ticket_failed`,
+  `database_unavailable`, the status card's problem, `after_restore_error`, and the Apply's error when the backup before
+  it fails; `onError` now hears `archive_invalid`, `ticket_failed`, `database_unavailable` and the status card too.
+  People: a scrub a hook stopped says so in the library's words on the People page (`sync.error`), what the hook threw
+  going to the server's log, redacted (it went there unredacted). `JsonBody`'s `invalid_json` says "The body is not
+  JSON." without the parser's words. Left as they are, on purpose: the Migrations page's error - PostgreSQL's words
+  about the site's own SQL, and a site hook's own refusal (genshin's order guard): what that page is for - and the
+  command lines, which speak to the owner's own terminal.
+- The top bar: a link with a number beside it is heard "Feedback, 3 new" - the number seen alone (`aria-hidden`), what
+  it counts heard after the link's name: the kit's new `topbar.linkCount` ("{count} new", Slovak "nové: {count}") or
+  the site's own words, `TopBarLink.badgeLabel` ("125 reviews due"), in the page's language and marked so inside a link
+  marked as another; the folded bar's button "Menu: Feedback, 3 new" (links apart by "; "). The words are visually
+  hidden, as the kit hides any: Chromium's tree puts a space before their comma ("Feedback , 3 new"), which is not
+  heard. `anotoki_translations/006_top_bar_words.sql` writes the key by 002's rule, its gate on English (217 library
+  keys).
+- Tests: PHPUnit - a real TypeError in a restore's hook and in its after-restore work (its absolute path in the error
+  log, never in the answer or the audit entry), a database that cannot be asked and a tickets folder that cannot be
+  written, a hook's TypeError in the scrub, the JSON body's sentence, 006's words and gate; the tests that read a
+  refusal's words for what failed read the error log's. Vitest - the report's 401 through the real reporter and the
+  interceptor, one with no token to send and a visitor's; a page's own error's row and details; a key's pieces; the
+  bar's link heard in English and Slovak, with the site's words, inside a link of another language.
+
+What a site must do: apply `anotoki_translations/006` on the Migrations page (one key; until then the kit's built-in
+words say it). A site whose link's number counts something else than new things gives `badgeLabel` in its words -
+Japanese Academy's Kanji, its reviews due: without it the link is heard "Kanji, 125 new". A site's spec that reads a
+badged link's `textContent` finds the hidden words after the number ("Feedback 3, 3 new"): it reads the badge
+(`.anotoki-top-bar__badge`) or the name a screen reader is given. A site's test that reads a Backups refusal's,
+`after_restore_error`'s or the People scrub's words for what failed reads its `onError` (the error log) instead; one
+that reads `invalid_json`'s words in brackets, the plain sentence.
+
 ## 0.5.2 - 2026-10-13
 
 Cloudflare's published ranges are every Cloudflare customer's, not the owner's zone alone: anybody's Worker can

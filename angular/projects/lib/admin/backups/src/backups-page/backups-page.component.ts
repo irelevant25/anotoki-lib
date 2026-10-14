@@ -372,7 +372,8 @@ export class BackupsPageComponent {
       tone: result.after_restore_error ? 'warning' : 'success',
       heading: 'Restored',
       text: `${result.restored}: ${counted(result.rows, 'row', 'rows')} in ${counted(result.tables, 'table', 'tables')}, in ${(result.duration_ms / 1000).toFixed(1)} s. What was there before is kept as the backup ${result.before_restore}.`,
-      note: result.after_restore_error ? `The restore stands, but the site's own work after it failed: ${result.after_restore_error}` : null,
+      // The server's own sentence (0.6.0: never what failed - that is the error log's).
+      note: result.after_restore_error ? `The restore stands. ${result.after_restore_error}` : null,
     });
     await this.load();
   }

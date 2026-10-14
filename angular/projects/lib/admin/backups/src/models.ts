@@ -88,6 +88,9 @@ export interface RestoreResult {
   tables: number;
   rows: number;
   duration_ms: number;
-  /** The site's work after a restore failed (the restore itself stands). */
+  /**
+   * The site's work after a restore did not all go through (the restore itself stands): the library's sentence, which
+   * says to look in the error log - never what failed.
+   */
   after_restore_error: string | null;
 }

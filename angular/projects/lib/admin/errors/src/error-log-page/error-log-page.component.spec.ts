@@ -245,6 +245,50 @@ describe('<anotoki-error-log-page>: what went wrong, grouped, and clearing it', 
     expect(host.querySelector('[data-detail]')).toBeNull();
   });
 
+  it("a page's own error: the page it happened on, in its row and its details - never the report's own request", async () => {
+    await setUp();
+    // As ErrorLog::recordClient() writes it: the method and the route are the report's own (POST /api/client-errors),
+    // the path is the page's.
+    const page = {
+      source: 'client',
+      status: 0,
+      type: 'TypeError',
+      code: null,
+      message: "Cannot read properties of undefined (reading 'kanji')",
+      file: null,
+      line: null,
+      method: 'POST',
+      route: '/api/client-errors',
+      path: '/kanji',
+      user_id: null,
+      trace: ['at KanjiPage.card (main-4f2a.js:1:20431)'],
+      fingerprint: 'c11e47000001',
+    } satisfies Partial<ErrorLogEntry>;
+    await open(report({ groups: [group({ paths: ['/kanji', '/kanji/12'], count: 2 }, page)] }));
+
+    expect(cells(rows()[0]).slice(1, 4)).toEqual(['Page', "TypeError Cannot read properties of undefined (reading 'kanji')", '/kanji and 1 more page']);
+    expect(words(host)).not.toContain('client-errors');
+
+    rows()[0].querySelector<HTMLButtonElement>('[data-toggle]')!.click();
+    await settle(fixture);
+    const detail = host.querySelector<HTMLElement>('[data-detail]')!;
+    const said = facts(detail);
+    expect(said).toMatchObject({ Page: '/kanji', From: "A page, in somebody's browser", 'Signed in as': 'nobody' });
+    expect(Object.keys(said)).not.toContain('Request');
+    expect(Object.keys(said)).not.toContain('Route');
+    expect(words(detail)).not.toMatch(/POST|client-errors/);
+    expect(words(detail.querySelector('.anotoki-error-log-page__block h3'))).toBe('On the pages');
+
+    click(detail.querySelector('[data-occurrences-button]'));
+    await settle(fixture);
+    http.expectOne((r) => r.url === `${BASE}/c11e47000001`).flush([entry(page), entry({ ...page, path: '/kanji/12', at: `${DAY(1)}T10:00:00.000Z` })]);
+    await settle(fixture);
+    expect(Array.from(host.querySelectorAll('[data-occurrences] thead th')).map(words)).toEqual(['When', 'Page', 'Signed in as', 'Connection']);
+    const occurrences = Array.from(host.querySelectorAll<HTMLTableRowElement>('[data-occurrences] tbody tr'));
+    expect(occurrences.map((row) => cells(row)[1])).toEqual(['/kanji', '/kanji/12']);
+    expect(occurrences[0].cells[1].getAttribute('data-label')).toBe('Page');
+  });
+
   it('says plainly when nothing went wrong, when the log was full and when only the newest lines were read', async () => {
     await setUp();
     await open(report({ total: 0, errors: 0, warnings: 0, distinct: 0, groups: [], statuses: [], days: [] }));

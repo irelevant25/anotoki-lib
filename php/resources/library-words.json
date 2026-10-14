@@ -240,6 +240,11 @@
             "en": "Saving…",
             "sk": "Ukladá sa…"
         },
+        "anotoki.topbar.linkCount": {
+            "description": "The anotoki library's top bar: what a screen reader hears after the name of one of the site's links that has a number beside it - the new feedback in an admin panel: \"Feedback, 3 new\" - where the site does not word what its number counts itself. Heard, never seen: the number alone stays beside the link. {count}: the number. Placeholders: {count}.",
+            "en": "{count} new",
+            "sk": "nové: {count}"
+        },
         "anotoki.theme.label": {
             "description": "The anotoki library's theme switch (light, dark, as the device is set): its small heading, and the accessible name of the group. No placeholders.",
             "en": "Theme",

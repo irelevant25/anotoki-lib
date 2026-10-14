@@ -348,11 +348,30 @@ export class ErrorLogPageComponent {
     return group.status > 0 ? String(group.status) : group.source === 'php' ? 'PHP' : group.source === 'client' ? 'Page' : '-';
   }
 
-  /** Where it went wrong, as a person looks for it: the request's route, else its path. */
+  /**
+   * A page's own error (`source: client`): it happened on a page in somebody's browser, and the page's path is where.
+   * Its line's method and route are the report's own request (POST /api/client-errors), which say nothing of it.
+   */
+  protected onPage(line: { source: string }): boolean {
+    return line.source === 'client';
+  }
+
+  /** Where it went wrong, as a person looks for it: a page's own error, the page; else the request's route, else its path. */
   protected whereOf(group: ErrorLogGroup): string {
+    if (this.onPage(group)) {
+      return group.latest.path || group.paths[0] || '';
+    }
     const request = group.route || group.latest.path || group.paths[0] || '';
     const method = group.latest.method;
     return request ? (method ? `${method} ${request}` : request) : '';
+  }
+
+  /** An occurrence's request - its method and path - or, for a page's own error, the page alone: never the report's method. */
+  protected requestOf(line: ErrorLogEntry): string {
+    if (this.onPage(line)) {
+      return line.path || '-';
+    }
+    return line.method ? `${line.method} ${line.path || '-'}` : line.path || '-';
   }
 
   protected thrownAt(entry: { file: string | null; line: number | null }): string | null {

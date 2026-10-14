@@ -16,11 +16,13 @@ import {
 } from '@anotoki/lib/ui';
 import { ChipComponent, ChipGroupComponent, ChipItem, ChipListComponent, ChipOption } from '@anotoki/lib/ui/chips';
 import { ColorFieldComponent, ColorSwatch } from '@anotoki/lib/ui/color-field';
+import { ComboboxComponent, ComboboxOption } from '@anotoki/lib/ui/combobox';
 import { CopyButtonComponent } from '@anotoki/lib/ui/copy';
 import { DateFieldComponent, DateFieldFormat } from '@anotoki/lib/ui/date-field';
 import { ConfirmService, DialogComponent } from '@anotoki/lib/ui/dialog';
 import { AccordionComponent, DisclosureComponent, DisclosurePanelDirective } from '@anotoki/lib/ui/disclosure';
 import { DrawerComponent } from '@anotoki/lib/ui/drawer';
+import { FilePickerComponent } from '@anotoki/lib/ui/file-picker';
 import { CheckboxComponent, CodeInputComponent, PasswordFieldComponent, RadioGroupComponent, SwitchComponent, TextFieldComponent, TextareaComponent } from '@anotoki/lib/ui/forms';
 import { LabelledGroupComponent } from '@anotoki/lib/ui/labelled-group';
 import { LinkCardComponent } from '@anotoki/lib/ui/link-card';
@@ -28,6 +30,7 @@ import { MenuComponent, MenuItemComponent, MenuSeparatorComponent, MenuTriggerDi
 import { PaginationComponent } from '@anotoki/lib/ui/pagination';
 import { ProgressBarComponent } from '@anotoki/lib/ui/progress';
 import { QrCodeComponent } from '@anotoki/lib/ui/qr';
+import { RichTextEditableDirective, RichTextToolbarComponent, TextCommand, ToolbarItemDirective, ToolbarTool } from '@anotoki/lib/ui/rich-text';
 // The select alone (0.6.0): what a site draws where the first load is (the piano's box in Piano's bar) - not every field.
 import { SelectComponent } from '@anotoki/lib/ui/select';
 import { SideNavComponent, SideNavGroup, SideNavTriggerDirective } from '@anotoki/lib/ui/side-nav';
@@ -37,6 +40,74 @@ import { StepDotsComponent, StepItem, StepperComponent } from '@anotoki/lib/ui/s
 import { LinkTabItem, LinkTabsComponent, TabItem, TabsComponent } from '@anotoki/lib/ui/tabs';
 import { ToastService } from '@anotoki/lib/ui/toast';
 import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
+
+/** Genshin's elements and their colours, for the showcase's portraits. */
+const ELEMENTS: Record<string, string> = {
+  Anemo: '#3f9e86',
+  Geo: '#b88a1e',
+  Electro: '#8a62a8',
+  Dendro: '#6f9a1c',
+  Hydro: '#2f8fc2',
+  Pyro: '#c95a1f',
+  Cryo: '#4b98ab',
+};
+
+/** Genshin's characters and their elements: more than the combobox draws at once (its limit). */
+const CHARACTERS: [string, string][] = [
+  ['Furina', 'Hydro'],
+  ['Neuvillette', 'Hydro'],
+  ['Hu Tao', 'Pyro'],
+  ['Kamisato Ayaka', 'Cryo'],
+  ['Raiden Shogun', 'Electro'],
+  ['Nahida', 'Dendro'],
+  ['Zhongli', 'Geo'],
+  ['Venti', 'Anemo'],
+  ['Xiao', 'Anemo'],
+  ['Yelan', 'Hydro'],
+  ['Nilou', 'Hydro'],
+  ['Arlecchino', 'Pyro'],
+  ['Navia', 'Geo'],
+  ['Chiori', 'Geo'],
+  ['Clorinde', 'Electro'],
+  ['Emilie', 'Dendro'],
+  ['Mavuika', 'Pyro'],
+  ['Citlali', 'Cryo'],
+  ['Xilonen', 'Geo'],
+  ['Kinich', 'Dendro'],
+  ['Mualani', 'Hydro'],
+  ['Lynette', 'Anemo'],
+  ['Wriothesley', 'Cryo'],
+  ['Alhaitham', 'Dendro'],
+  ['Cyno', 'Electro'],
+  ['Tighnari', 'Dendro'],
+  ['Shenhe', 'Cryo'],
+  ['Eula', 'Cryo'],
+  ['Diluc', 'Pyro'],
+  ['Jean', 'Anemo'],
+  ['Keqing', 'Electro'],
+  ['Mona', 'Hydro'],
+  ['Qiqi', 'Cryo'],
+  ['Tartaglia', 'Hydro'],
+  ['Albedo', 'Geo'],
+  ['Ganyu', 'Cryo'],
+  ['Kaedehara Kazuha', 'Anemo'],
+  ['Yoimiya', 'Pyro'],
+  ['Sangonomiya Kokomi', 'Hydro'],
+  ['Arataki Itto', 'Geo'],
+  ['Yae Miko', 'Electro'],
+  ['Kamisato Ayato', 'Hydro'],
+];
+
+/** A portrait for the showcase: the initials on a disc of the element's colour, as an SVG address. */
+function portrait(name: string, colour: string): string {
+  const initials = name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="${colour}"/><text x="32" y="41" font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#fff">${initials}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
 /** Every piece of the kit, on one page, in the states a person meets. */
 @Component({
@@ -54,6 +125,7 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     ChipListComponent,
     CodeInputComponent,
     ColorFieldComponent,
+    ComboboxComponent,
     CopyButtonComponent,
     DateFieldComponent,
     DialogComponent,
@@ -62,6 +134,7 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     DrawerComponent,
     EmptyStateComponent,
     ErrorStateComponent,
+    FilePickerComponent,
     IconComponent,
     LabelledGroupComponent,
     LanguageSwitcherComponent,
@@ -79,6 +152,8 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     ProgressBarComponent,
     QrCodeComponent,
     RadioGroupComponent,
+    RichTextEditableDirective,
+    RichTextToolbarComponent,
     SegmentedComponent,
     SelectComponent,
     SideNavComponent,
@@ -94,6 +169,7 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     TextFieldComponent,
     TextareaComponent,
     ThemeToggleComponent,
+    ToolbarItemDirective,
     TooltipDirective,
     TopBarComponent,
   ],
@@ -299,6 +375,36 @@ export class GalleryComponent {
   ];
   protected readonly ink = signal('#4cc2f1');
   protected readonly paper = signal('');
+  /** The build analyzer's import: one JSON export, 20 MB at most. */
+  protected readonly exportFile = signal<readonly File[]>([]);
+  /** A guide's pictures (genshin's): several, 2 MB each at most. */
+  protected readonly pictures = signal<readonly File[]>([]);
+  protected readonly megabyte = 1024 * 1024;
+  /** Genshin's characters, each with a portrait (drawn here: a disc in the element's colour, the initials) and its element to find it by. */
+  protected readonly characters: ComboboxOption[] = CHARACTERS.map(([name, element]) => ({
+    value: name.toLowerCase().replace(/\s+/g, '-'),
+    label: name,
+    picture: portrait(name, ELEMENTS[element]),
+    keywords: element,
+    disabled: name === 'Lynette',
+  }));
+  protected readonly character = signal<string | null>('furina');
+  protected readonly team = signal<readonly string[]>(['furina', 'neuvillette']);
+  /** Every button of the rich-text toolbar, in groups. */
+  protected readonly allTools: ToolbarTool[] = ['bold', 'italic', 'underline', 'strike', '|', 'bulletList', 'orderedList', 'indent', 'outdent', '|', 'link', 'clear', '|', 'undo', 'redo'];
+  protected readonly textSize = signal('Normal');
+
+  /** The toolbar's commands on the showcase's contenteditable; a link's address asked in the browser's own words here (a site asks in its own dialog). */
+  protected onCommand(command: TextCommand, editable: RichTextEditableDirective): void {
+    if (command !== 'link') {
+      editable.run(command);
+      return;
+    }
+    const address = window.prompt('The link’s address');
+    if (address !== null && !editable.link(address)) {
+      this.toasts.error('Not an address the editor takes: a web or mail address, or a page of the site.');
+    }
+  }
 
   protected async ask(): Promise<void> {
     const sure = await this.confirm.ask({ title: 'Delete the survey?', message: 'Its 48 answers go with it. This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' });

@@ -1,0 +1,6 @@
+@if (isOpen()) {
+    <!-- A press anywhere in it leaves the focus in the field (and the text's selection where it is). -->
+    <div #panel class="anotoki-combobox-panel__panel" popover="manual" (mousedown)="$event.preventDefault()">
+        <ng-content />
+    </div>
+}

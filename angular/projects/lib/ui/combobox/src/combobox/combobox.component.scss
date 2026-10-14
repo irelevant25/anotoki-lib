@@ -1,0 +1,130 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+@include field.styles;
+
+.anotoki-combobox__chips {
+  margin-bottom: 0.125rem;
+}
+
+.anotoki-combobox__chosen-picture {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-left: 0.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+// The arrow at the field's end, for a mouse.
+.anotoki-combobox__arrow {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-right: 0.25rem;
+  border-radius: 8px;
+  color: kit.token(muted);
+  cursor: pointer;
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+}
+
+.anotoki-field__control--disabled .anotoki-combobox__arrow {
+  cursor: not-allowed;
+}
+
+// The list box: as many options as fit in a third of a laptop's screen, then it scrolls.
+.anotoki-combobox__options {
+  max-height: 18rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.anotoki-combobox__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(text);
+  cursor: pointer;
+
+  // The active option: where Enter chooses - the field keeps the focus, so it is drawn as the focus is.
+  &.anotoki-combobox__option--active {
+    background: kit.token(surface-3);
+    box-shadow: inset 0 0 0 2px kit.token(focus);
+  }
+
+  &.anotoki-combobox__option--chosen {
+    font-weight: 700;
+  }
+
+  &[aria-disabled="true"] {
+    color: kit.token(muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  // A finger's target.
+  @media (pointer: coarse) {
+    min-height: kit.token(control-height);
+  }
+}
+
+// Several at a time: a box before each option, checked when chosen - the state said by more than a colour.
+.anotoki-combobox__box-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1.5px solid kit.token(border-strong);
+  border-radius: 4px;
+  background: kit.token(surface);
+  color: kit.token(primary-contrast);
+}
+
+.anotoki-combobox__option--chosen .anotoki-combobox__box-mark {
+  border-color: kit.token(primary);
+  background: kit.token(primary);
+}
+
+.anotoki-combobox__picture {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: kit.token(surface-2);
+  object-fit: cover;
+}
+
+.anotoki-combobox__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-combobox__check {
+  flex: none;
+  color: kit.token(primary);
+}
+
+// "No matches", "12 more: keep typing ..." under the options.
+.anotoki-combobox__note {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}

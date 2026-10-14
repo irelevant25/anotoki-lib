@@ -2,8 +2,11 @@ import source from '../../../../../../php/resources/library-words.json';
 import { LIBRARY_WORDS } from '@anotoki/lib/words';
 import { CHIPS_LIBRARY_WORDS } from '@anotoki/lib/words/chips';
 import { COLOR_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/color-field';
+import { COMBOBOX_LIBRARY_WORDS } from '@anotoki/lib/words/combobox';
 import { DATE_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/date-field';
+import { FILE_PICKER_LIBRARY_WORDS } from '@anotoki/lib/words/file-picker';
 import { PROGRESS_LIBRARY_WORDS } from '@anotoki/lib/words/progress';
+import { RICH_TEXT_LIBRARY_WORDS } from '@anotoki/lib/words/rich-text';
 import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
 import { SITE_STATUS_LIBRARY_WORDS } from '@anotoki/lib/words/site-status';
 import { STEPPER_LIBRARY_WORDS } from '@anotoki/lib/words/stepper';
@@ -44,6 +47,9 @@ describe('the library’s own words (generated a namespace at a time from php/re
       expect(TABS_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.tabs.')));
       expect(DATE_FIELD_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.dateField.')));
       expect(COLOR_FIELD_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.colorField.')));
+      expect(FILE_PICKER_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.filePicker.')));
+      expect(COMBOBOX_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.combobox.')));
+      expect(RICH_TEXT_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.richText.')));
     }
     // LibraryKey names every key, every module's - a type only: the kit's file holds no other module's words.
     const signIn: LibraryKey = 'anotoki.signIn.retry';

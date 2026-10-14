@@ -22,8 +22,8 @@
 //   import() alone. The kit's pieces of 0.6.0 are entry points of their own (ui/chips, ui/link-card, ui/stat-tiles,
 //   ui/progress, ..., ui/side-nav, ui/current-link), outside the core and its limit, each importing the core's pieces it
 //   draws; the tabs (lazy, no limit) gained the link tabs, the badge, the icon and the scroll hint in their own. Its input
-//   pieces (ui/date-field, ui/slider, ui/color-field, ...) too, each held to a limit of its own (LAZY_LIMITS): big
-//   pieces, lazy, kept from growing unseen.
+//   pieces (ui/date-field, ui/slider, ui/color-field, ui/file-picker, ui/combobox, ui/rich-text) too, each held to a
+//   limit of its own (LAZY_LIMITS): big pieces, lazy, kept from growing unseen.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -128,6 +128,10 @@ const LAZY_LIMITS = {
     "@anotoki/lib/ui/date-field": 10,
     "@anotoki/lib/ui/slider": 4,
     "@anotoki/lib/ui/color-field": 4.5,
+    "@anotoki/lib/ui/file-picker": 5.5,
+    "@anotoki/lib/ui/combobox": 7,
+    // 5.4 at 0.6.0: the toolbar, its item, the contenteditable's driver and the copies of twelve icons.
+    "@anotoki/lib/ui/rich-text": 6,
 };
 
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
@@ -191,6 +195,11 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/date-field": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/menu", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/date-field"],
     "@anotoki/lib/ui/slider": [...PIECES, "@anotoki/lib/ui/field"],
     "@anotoki/lib/ui/color-field": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/color-field"],
+    "@anotoki/lib/ui/file-picker": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/file-picker"],
+    // The combobox: its list box is a box under the field (AnchoredPanel), several chosen are the kit's removable chips.
+    "@anotoki/lib/ui/combobox": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/menu", "@anotoki/lib/ui/chips", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/combobox"],
+    // The rich-text toolbar: no field and no box - its buttons and its words.
+    "@anotoki/lib/ui/rich-text": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/rich-text"],
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
@@ -252,6 +261,9 @@ const READ_BY_THEIR_PAGES = {
     "@anotoki/lib/words/tabs": ["@anotoki/lib/ui/tabs"],
     "@anotoki/lib/words/date-field": ["@anotoki/lib/ui/date-field"],
     "@anotoki/lib/words/color-field": ["@anotoki/lib/ui/color-field"],
+    "@anotoki/lib/words/file-picker": ["@anotoki/lib/ui/file-picker"],
+    "@anotoki/lib/words/combobox": ["@anotoki/lib/ui/combobox"],
+    "@anotoki/lib/words/rich-text": ["@anotoki/lib/ui/rich-text"],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */

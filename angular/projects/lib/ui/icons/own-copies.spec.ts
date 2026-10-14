@@ -5,12 +5,14 @@ import * as family from '@anotoki/lib/ui/icons';
 import { registerPageIcons as registerPeopleIcons } from '../../people/page/src/icons';
 import { registerPageIcons as registerTranslationsIcons } from '../../translations/admin/src/icons';
 import { registerDateFieldIcons } from '../date-field/src/icons';
+import { registerFilePickerIcons } from '../file-picker/src/icons';
+import { registerRichTextIcons } from '../rich-text/src/icons';
 
 /**
  * The lazy pages carry their own copies of the family's icons they draw - the admin tools' pages, the People page, the
- * translations admin pages, and the kit's pieces of 0.6.0 that draw one (the date field's calendar) - never an import of
- * @anotoki/lib/ui/icons, which a site may load up front for its own: one file is one chunk, and the pages' icons would
- * sit in its first load. The copies stay the family's drawings.
+ * translations admin pages, and the kit's pieces of 0.6.0 that draw some (the date field's calendar, the file picker's,
+ * the rich-text toolbar's) - never an import of @anotoki/lib/ui/icons, which a site may load up front for its own: one
+ * file is one chunk, and the pages' icons would sit in its first load. The copies stay the family's drawings.
  */
 describe("the lazy pages' own icons: the family's, path for path", () => {
   const registered = (register: (icons: AnotokiIcons) => void): IconSet => {
@@ -26,6 +28,9 @@ describe("the lazy pages' own icons: the family's, path for path", () => {
     ['the People page', registerPeopleIcons, 1],
     ['the translations admin', registerTranslationsIcons, 7],
     ['the date field', registerDateFieldIcons, 1],
+    ['the file picker', registerFilePickerIcons, 2],
+    // Every one of the toolbar's twelve, indent and outdent among them (the family's since 0.6.0).
+    ['the rich-text toolbar', registerRichTextIcons, 12],
   ] as const) {
     it(`${pages}: each icon of the family's set drawn as the set draws it`, () => {
       const set = registered(register);

@@ -215,7 +215,7 @@ uses is in the first load again.
 | `@anotoki/lib/ui/select`, `/field` (0.6.0) | the select alone, for a first page (a widget in the bar), and `FieldBase` - both named by `ui/forms` too | `ui/select` where a first page draws a select |
 | `@anotoki/lib/ui/tabs`, `/pagination`, `/drawer`, `/tooltip`, `/copy`, `/qr` | one piece each (the tabs with, 0.6.0, the link tabs, icons, badges and the scroll hint) | lazy pages |
 | `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress`, `/disclosure`, `/stepper`, `/labelled-group`, `/side-nav` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar, the disclosure and the accordion, the stepper and the progress dots, the labelled group, the side navigation and its phone drawer - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
-| `@anotoki/lib/ui/date-field`, `/slider`, `/color-field` (0.6.0) | the input pieces: a date typed in the reader's format or chosen in a calendar, a slider with marks, a colour with its code and suggested colours - one each ("0.6.0's input pieces" below) | where a page draws one (not re-exported by `ui`) |
+| `@anotoki/lib/ui/date-field`, `/slider`, `/color-field`, `/file-picker`, `/combobox`, `/rich-text` (0.6.0) | the input pieces: a date typed in the reader's format or chosen in a calendar, a slider with marks, a colour with its code and suggested colours, files chosen or dropped, one or several things chosen by typing (with pictures), the rich-text toolbar - one each ("0.6.0's input pieces" below) | where a page draws one (not re-exported by `ui`) |
 | `@anotoki/lib/ui/piece-words`, `/current-link` (0.6.0) | `pieceWords()`: how a piece of its own entry point reads its own words, the site's string first; `currentLink()`: which of a navigation's links is the page's | with those pieces |
 | `@anotoki/lib/shell` | theme service and switch, language switcher, brand, top bar, frame, `latestChoiceSaver`; `assets/theme-boot.js` | yes (every page) |
 | `@anotoki/lib/migrations` | site status, interceptor, gate, status page, update banner | yes (the gate) |
@@ -239,7 +239,7 @@ uses is in the first load again.
 | `@anotoki/lib/error-report/marker` (0.6.0) | `ANOTOKI_ERROR_REPORT` alone, the mark on a report's request an interceptor reads (the auth module's) - without the reporter; `@anotoki/lib/error-report` names it too | with the reporter, and the auth module |
 | `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper`, `/tabs`, `/date-field` and `/color-field` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper`, `/tabs`, `/date-field`, `/color-field`, `/file-picker`, `/combobox` and `/rich-text` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -423,10 +423,12 @@ unless labelled. The kit's own: `sun`, `moon`, `monitor`, `user`,
 `plus`; the rest from `@anotoki/lib/ui/icons`, registered by name (`icons`
 above, or an `ANOTOKI_ICONS` multi provider on a lazy route) - since 0.6.0 with
 the build analyzer's own among them: `iconRocket`, `iconUpload`, `iconLightbulb`,
-`iconPause`, `iconMinus`, `iconWrench`, `iconGamepad`, `iconSave`. An unknown name
+`iconPause`, `iconMinus`, `iconWrench`, `iconGamepad`, `iconSave`, and the rich-text
+toolbar's `iconIndent` and `iconOutdent`. An unknown name
 draws nothing and warns once in development. The library's lazy pages (the
-admin tools', the People page, the translations admin) carry their own copies
-of the family's icons they draw (0.5.0) - one file is one chunk, and a site
+admin tools', the People page, the translations admin) and the kit's pieces that
+draw the family's icons (0.6.0: the date field, the file picker, the rich-text
+toolbar) carry their own copies of them (0.5.0) - one file is one chunk, and a site
 that loads `ui/icons` up front for its own would otherwise carry theirs in its
 first load.
 
@@ -678,6 +680,57 @@ is sent again, as from any form.
   suggested colours": one Tab stop, the arrow keys choose), each with its name beside its colour - never a
   colour alone - and a check on the chosen one. `readColor(text)` reads a code the field's way. Words:
   `anotoki.colorField.*`.
+- `ui/file-picker` - `<anotoki-file-picker label [(files)] accept [maxSize] multiple>`: files chosen to send.
+  **It never uploads**: `files` is the browser's `File` objects, for the site to send where it wants. Two
+  ways in, the button always: a real button ("Choose files", "Choose a file") opens the device's chooser,
+  and the area round it takes files dropped on it with a mouse ("Drop files here" - not said on a touch
+  screen); the area is a group the label names, the hint and the error tied to the button. `accept` is the
+  kinds taken as the `accept` attribute says them (`'.json,application/json'`, `'image/*'`) and the chooser
+  offers those; `maxSize` the largest file in bytes. A file of another kind or too large is not taken and the
+  picker says why (role="alert": "photo.png is too large: 24 MB, at most 20 MB."). **The browser's check is a
+  convenience, never a defence: the server checks every file again** - its kind (by what is in it, not its
+  name), its size, what it holds. One file (a new one takes the place of the one there) or `multiple` (each
+  added, the same file never twice; several dropped where one is taken are refused together). The files
+  taken are listed under it - name, size (the page's way), and a remove button named with it ("Remove:
+  report.json"; the focus then goes on to the next file's button, the one before, or the choose button) -
+  and a screen reader is told what was chosen ("Chosen: report.json"). `accepts(file, accept)` and
+  `writtenSize(bytes, language)` are its checks. Words: `anotoki.filePicker.*`.
+- `ui/combobox` - `<anotoki-combobox label [options] [(value)] multiple [(values)] placeholder [limit]>`: one or
+  several things chosen out of many by typing (genshin's characters with their portraits) - the ARIA 1.2
+  combobox: the field role="combobox" (aria-expanded, aria-controls, aria-activedescendant: the focus stays
+  in it) over a list box (role="listbox", role="option", aria-selected). Options `{ value, label, picture?,
+  keywords?, lang?, disabled? }`; **the value is an option's `value`** (null for none), or the chosen
+  values in the options' order with `multiple`. Typing filters - the words anywhere in a name or its
+  `keywords`, accents and case aside ("furina" finds "Fúrina", "hydro" a character by its element), the
+  names that start with it first - and opens the list, its first match active; Down and Up move the active
+  option (and open the list), Alt+Down opens it as it is, Enter chooses, Escape closes it (closed, it empties
+  the field), a press on an option chooses it; an option that cannot be chosen is shown and passed over. A
+  picture is drawn beside its name with an empty alt (the name says it). "No matches" when nothing matches,
+  and a long list draws `limit` matches at once (50) and says how many more wait for more typing ("30 more:
+  keep typing to narrow the list.") - both told to a screen reader too. One at a time, the chosen name (and
+  picture) in the field, put back when the field is left - or no choice where it was emptied; several, the
+  list stays open and the chosen ones are the kit's removable chips over the field (`ui/chips`, "Team:
+  chosen"). Its list box is drawn in the top layer, as wide as the field. `foldText()` folds a text as the
+  filter does. Words: `anotoki.combobox.*`.
+- `ui/rich-text` - `<anotoki-rich-text-toolbar [tools] [active] [unavailable] controls label disabled (command)>`:
+  the buttons over a text editor, the ARIA toolbar pattern - role="toolbar" (named "Formatting", the
+  library's, or `label`; `controls` the editor's id), one Tab stop (the button the focus was last on), Left and
+  Right round the row, Home and End; a format that is on is `aria-pressed` (from `active`) and drawn on (a
+  ring, not a colour alone); `unavailable` and `disabled` buttons stay in the row, aria-disabled. `tools` is
+  the buttons and their order - `'bold'`, `'italic'`, `'underline'`, `'strike'`, `'bulletList'`,
+  `'orderedList'`, `'indent'`, `'outdent'`, `'link'`, `'clear'`, `'undo'`, `'redo'`, `'|'` a line between groups
+  (`DEFAULT_TOOLS`: genshin's set) - each the kit's icon with its name ("Bold", "Bulleted list", its tooltip
+  too). A site's own controls join the row and its Tab stop with `[anotokiToolbarItem]` (a menu button for the
+  text size: Up and Down stay the menu's). **The toolbar holds no text and inserts none**: a press is
+  `(command)`, for the site's editor to carry out - a library's (TipTap: `editor.chain().focus().toggleBold().run()`,
+  `editor.isActive('bold')` into `active`) or a plain `contenteditable` through `[anotokiRichTextEditable]`
+  (`#editor="anotokiRichTextEditable"`): `run(command)` (the browser's own editing, the focus and the selection
+  put back in the editor first), `link(address)` (a web, mail or the site's own address - never
+  `javascript:` or `data:`: `safeLinkAddress()`), `unlink()`, `active()` (the formats on where the caret is,
+  for the toolbar), and a paste or a drop that brings markup comes in as its plain text, a drop of files not
+  at all. A press with a pointer leaves the focus and the selection in the editor. **The kit never lets
+  markup in, and the editor's text is the site's**: the site cleans it before it shows it (its own allow-list)
+  and **its server cleans every text it keeps**. Words: `anotoki.richText.*`.
 
 ### `@anotoki/lib/shell`
 
@@ -1092,9 +1145,13 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   "Earlier tabs" and "More tabs" -, in English and impersonal Slovak, by 002's rule.
 - `009_input_words.sql` (0.6.0) adds the words of the kit's input pieces: the date field's
   `anotoki.dateField.*` (its calendar's button and name "Choose a date: {field}", "Previous month",
-  "Next month", and what it says of a text that is no date or one outside its dates) and the colour
+  "Next month", and what it says of a text that is no date or one outside its dates), the colour
   field's `anotoki.colorField.*` (what a screen reader hears for its colour box and its suggested colours,
-  and what it says of a code that is no colour), in English and impersonal Slovak, by 002's rule.
+  and what it says of a code that is no colour), the file picker's `anotoki.filePicker.*` (its button, its
+  drop area, why a file was not taken, a file's remove button, what was chosen), the combobox's
+  `anotoki.combobox.*` ("No matches", how many more match, the chosen ones' name) and the rich-text
+  toolbar's `anotoki.richText.*` (its name and its twelve buttons'), 34 keys in English and impersonal
+  Slovak, by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -1234,7 +1291,9 @@ import it:
   `ui/chips`), `@anotoki/lib/words/progress` (by `ui/progress`),
   `@anotoki/lib/words/stepper` (by `ui/stepper`), `@anotoki/lib/words/tabs` (by
   `ui/tabs`, the tabs' and link tabs' arrows), `@anotoki/lib/words/date-field` (by
-  `ui/date-field`), `@anotoki/lib/words/color-field` (by `ui/color-field`). A piece has no
+  `ui/date-field`), `@anotoki/lib/words/color-field` (by `ui/color-field`),
+  `@anotoki/lib/words/file-picker` (by `ui/file-picker`), `@anotoki/lib/words/combobox` (by
+  `ui/combobox`), `@anotoki/lib/words/rich-text` (by `ui/rich-text`). A piece has no
   provide*() function, and the kit's own (provideAnotokiUi) is in every first
   load: a registration there would bring every piece's words into every first
   load. Each piece reads its words through `pieceWords()` (`ui/piece-words`) -

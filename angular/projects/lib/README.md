@@ -21,8 +21,12 @@ version.
   page), `ui/field`, `ui/piece-words` (how those pieces read their own words),
   `ui/current-link` (which of a navigation's links is the page's), and the input
   pieces `ui/date-field` (a date typed in the reader's format or chosen in a
-  calendar; ISO values), `ui/slider` (the native range input with marks) and
-  `ui/color-field` (a colour, its code and suggested colours; `#rrggbb`).
+  calendar; ISO values), `ui/slider` (the native range input with marks),
+  `ui/color-field` (a colour, its code and suggested colours; `#rrggbb`),
+  `ui/file-picker` (files chosen or dropped, checked in the browser, never
+  uploaded), `ui/combobox` (one or several things chosen by typing, with
+  pictures) and `ui/rich-text` (the rich-text toolbar, and a contenteditable's
+  driver that lets no markup in).
 - `@anotoki/lib/shell` - the theme (service and switch), the language switcher, the
   brand, the family's top bar and the frame; `assets/theme-boot.js`.
 - `@anotoki/lib/migrations` - one behaviour for every site while its database waits
@@ -58,8 +62,8 @@ version.
   (`/site-status`, `/sign-in`, `/feedback`, `/legal-links`), imported by that module
   alone, which registers them with the translations module (`provideLibraryWords`),
   and `/legal`, which the legal pages read themselves, and `/chips`, `/progress`,
-  `/stepper`, `/tabs`, `/date-field` and `/color-field`, which those pieces read
-  themselves. Generated from
+  `/stepper`, `/tabs`, `/date-field`, `/color-field`, `/file-picker`, `/combobox`
+  and `/rich-text`, which those pieces read themselves. Generated from
   `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site

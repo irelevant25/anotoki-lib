@@ -1,0 +1,68 @@
+@use "../../../../sass/kit";
+
+// The row over the editor: it wraps onto lines where it does not fit (a phone).
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.125rem;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0.25rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-2);
+  color: kit.token(text);
+}
+
+.anotoki-rich-text-toolbar__tool {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(muted);
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+
+  // A format that is on: its soft ground and a ring in the primary colour (3:1 on the row) - more than a colour.
+  &.anotoki-rich-text-toolbar__tool--on {
+    background: kit.token(primary-soft);
+    color: kit.token(primary-soft-text);
+    box-shadow: inset 0 0 0 1.5px kit.token(primary);
+  }
+
+  // In the row and in the tab order, said unavailable, doing nothing.
+  &[aria-disabled="true"] {
+    background: none;
+    color: kit.token(muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  @include kit.focus-ring(1px);
+
+  // A finger's target.
+  @media (pointer: coarse) {
+    width: kit.token(control-height);
+    height: kit.token(control-height);
+  }
+}
+
+// A line between two groups: drawn alone, for the eye (the toolbar's role="separator" tells a screen reader).
+.anotoki-rich-text-toolbar__separator {
+  align-self: stretch;
+  width: 1px;
+  margin: 0.375rem 0.25rem;
+  background: kit.token(border-strong);
+}

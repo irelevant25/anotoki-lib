@@ -1159,6 +1159,131 @@
             "description": "The anotoki library's colour field: said under the field when the colour's code typed is not one it can read. A code is # and six digits 0-9 or letters a-f: keep \"#1f5fbf\" as it is. No placeholders.",
             "en": "Write the colour as # and six digits or letters a–f, like #1f5fbf.",
             "sk": "Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf."
+        },
+        "anotoki.filePicker.chooseFile": {
+            "description": "The anotoki library's file picker (a button that opens the device's file chooser, and an area a file may be dropped on): the button's words where one file is taken. No placeholders.",
+            "en": "Choose a file",
+            "sk": "Vybrať súbor"
+        },
+        "anotoki.filePicker.chooseFiles": {
+            "description": "The anotoki library's file picker: the button's words where several files are taken. No placeholders.",
+            "en": "Choose files",
+            "sk": "Vybrať súbory"
+        },
+        "anotoki.filePicker.dropFile": {
+            "description": "The anotoki library's file picker: the words in the area a file may be dropped on (with a mouse), beside the button, where one file is taken. Not shown on a touch screen. No placeholders.",
+            "en": "Drop a file here",
+            "sk": "Súbor sem stačí pretiahnuť"
+        },
+        "anotoki.filePicker.dropFiles": {
+            "description": "The anotoki library's file picker: the words in the area files may be dropped on (with a mouse), beside the button, where several files are taken. Not shown on a touch screen. No placeholders.",
+            "en": "Drop files here",
+            "sk": "Súbory sem stačí pretiahnuť"
+        },
+        "anotoki.filePicker.tooLarge": {
+            "description": "The anotoki library's file picker: said when a file chosen or dropped is larger than the site takes, and it was not taken. {name}: the file's name; {size}: its size; {max}: the largest size taken - both written the page's way (\"20 MB\"). Placeholders: {name}, {size}, {max}.",
+            "en": "{name} is too large: {size}, at most {max}.",
+            "sk": "Súbor {name} je príliš veľký: {size}, najviac {max}."
+        },
+        "anotoki.filePicker.wrongType": {
+            "description": "The anotoki library's file picker: said when a file chosen or dropped is not of a kind the site takes, and it was not taken. {name}: the file's name; {types}: the kinds taken, as the site gives them (\".json\", \"image/*\"). Placeholders: {name}, {types}.",
+            "en": "{name} is not a kind of file taken here ({types}).",
+            "sk": "Súbor {name} nie je z povolených typov ({types})."
+        },
+        "anotoki.filePicker.oneOnly": {
+            "description": "The anotoki library's file picker: said when several files are dropped where one alone is taken - none of them was taken. No placeholders.",
+            "en": "Only one file can be chosen here.",
+            "sk": "Tu sa dá vybrať iba jeden súbor."
+        },
+        "anotoki.filePicker.remove": {
+            "description": "The anotoki library's file picker: what a screen reader hears for the small button beside a chosen file that takes it away again, and its tooltip - the file's name in it, so a list of buttons says which. {name}: the file's name. Placeholders: {name}.",
+            "en": "Remove: {name}",
+            "sk": "Odstrániť: {name}"
+        },
+        "anotoki.filePicker.chosen": {
+            "description": "The anotoki library's file picker: what a screen reader is told once files were chosen or dropped (the list under the picker shows them). Heard, never seen. {names}: the names of the files taken, with commas between them. Placeholders: {names}.",
+            "en": "Chosen: {names}",
+            "sk": "Vybrané: {names}"
+        },
+        "anotoki.combobox.noMatches": {
+            "description": "The anotoki library's combobox (a field that lists what matches what is typed, to choose one or several - characters with their portraits): said in the list when nothing matches what was typed, and told to a screen reader. No placeholders.",
+            "en": "No matches",
+            "sk": "Nič sa nenašlo"
+        },
+        "anotoki.combobox.more": {
+            "description": "The anotoki library's combobox: said under the list when more match than it shows at once, and told to a screen reader. {count}: how many more match, written the page's way. Placeholders: {count}.",
+            "en": "{count} more: keep typing to narrow the list.",
+            "sk": "Ďalších možností: {count} – zoznam zúži ďalšie písanie."
+        },
+        "anotoki.combobox.chosen": {
+            "description": "The anotoki library's combobox, where several may be chosen: the name a screen reader hears for the list of the chosen ones over the field (each with a button that takes it away). {field}: the field's own label, as the page shows it. Heard, never seen. Placeholders: {field}.",
+            "en": "{field}: chosen",
+            "sk": "{field}: vybrané"
+        },
+        "anotoki.richText.toolbar": {
+            "description": "The anotoki library's rich-text toolbar (the row of buttons over a text editor that make words bold, a list, a link): its name, where the site gives none. No placeholders.",
+            "en": "Formatting",
+            "sk": "Formátovanie"
+        },
+        "anotoki.richText.bold": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that makes the words bold. No placeholders.",
+            "en": "Bold",
+            "sk": "Tučné"
+        },
+        "anotoki.richText.italic": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that makes the words italic. No placeholders.",
+            "en": "Italic",
+            "sk": "Kurzíva"
+        },
+        "anotoki.richText.underline": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that underlines the words. No placeholders.",
+            "en": "Underline",
+            "sk": "Podčiarknuté"
+        },
+        "anotoki.richText.strike": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that strikes the words through. No placeholders.",
+            "en": "Strikethrough",
+            "sk": "Prečiarknuté"
+        },
+        "anotoki.richText.bulletList": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that makes the lines a bulleted list. No placeholders.",
+            "en": "Bulleted list",
+            "sk": "Odrážky"
+        },
+        "anotoki.richText.orderedList": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that makes the lines a numbered list. No placeholders.",
+            "en": "Numbered list",
+            "sk": "Číslovaný zoznam"
+        },
+        "anotoki.richText.indent": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that indents the lines more. No placeholders.",
+            "en": "Indent more",
+            "sk": "Zväčšiť odsadenie"
+        },
+        "anotoki.richText.outdent": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that indents the lines less. No placeholders.",
+            "en": "Indent less",
+            "sk": "Zmenšiť odsadenie"
+        },
+        "anotoki.richText.link": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that makes the words a link (the site asks for its address). No placeholders.",
+            "en": "Link",
+            "sk": "Odkaz"
+        },
+        "anotoki.richText.clear": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that takes the words' formatting away (bold, italic, a colour). No placeholders.",
+            "en": "Clear formatting",
+            "sk": "Zrušiť formátovanie"
+        },
+        "anotoki.richText.undo": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that undoes the last change. No placeholders.",
+            "en": "Undo",
+            "sk": "Späť"
+        },
+        "anotoki.richText.redo": {
+            "description": "The anotoki library's rich-text toolbar: the name and the tooltip of the button that does again what was undone. No placeholders.",
+            "en": "Redo",
+            "sk": "Znova"
         }
     }
 }

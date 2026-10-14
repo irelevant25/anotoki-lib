@@ -1,0 +1,28 @@
+@for (tool of tools(); track $index) {
+    @if (tool === "|") {
+        <span class="anotoki-rich-text-toolbar__separator" role="separator" aria-orientation="vertical"></span>
+    } @else {
+        @let named = wordsOf(tool);
+        <button
+            #button
+            type="button"
+            class="anotoki-rich-text-toolbar__tool"
+            data-anotoki-toolbar-item
+            [class.anotoki-rich-text-toolbar__tool--on]="isToggle(tool) && isOn(tool)"
+            [tabIndex]="isStop(button) ? 0 : -1"
+            [attr.aria-label]="named.text"
+            [attr.title]="named.text"
+            [attr.lang]="named.lang"
+            [attr.aria-pressed]="isToggle(tool) ? isOn(tool) : null"
+            [attr.aria-disabled]="isShut(tool) ? 'true' : null"
+            (mousedown)="$event.preventDefault()"
+            (click)="press(tool)">
+            <anotoki-icon [name]="iconOf(tool)" [size]="18" [strokeWidth]="2.25" />
+        </button>
+    }
+}
+@if (own().length && tools().length && tools()[tools().length - 1] !== "|") {
+    <!-- A line between the toolbar's buttons and the site's own. -->
+    <span class="anotoki-rich-text-toolbar__separator" role="separator" aria-orientation="vertical"></span>
+}
+<ng-content />

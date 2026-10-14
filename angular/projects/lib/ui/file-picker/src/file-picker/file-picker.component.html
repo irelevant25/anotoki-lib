@@ -1,0 +1,74 @@
+<div class="anotoki-field">
+    <span class="anotoki-field__label" [id]="labelId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <!-- A space between the two, for the group's name: "Export optional". -->
+            &ngsp;
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </span>
+    <div
+        class="anotoki-file-picker__area"
+        role="group"
+        [attr.aria-labelledby]="labelId"
+        [class.anotoki-file-picker__area--over]="over()"
+        [class.anotoki-file-picker__area--invalid]="isInvalid()"
+        [class.anotoki-file-picker__area--disabled]="disabled()"
+        (dragenter)="onDragEnter($event)"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave()"
+        (drop)="onDrop($event)">
+        <anotoki-icon class="anotoki-file-picker__icon" name="upload" [size]="26" />
+        @let drop = word(multiple() ? "anotoki.filePicker.dropFiles" : "anotoki.filePicker.dropFile");
+        <span class="anotoki-file-picker__drop" [attr.lang]="drop.lang">{{ drop.text }}</span>
+        @let chooseWords = word(multiple() ? "anotoki.filePicker.chooseFiles" : "anotoki.filePicker.chooseFile");
+        <button #control anotokiButton class="anotoki-file-picker__choose" [disabled]="disabled()" [attr.lang]="chooseWords.lang" [attr.aria-describedby]="describedBy()" (click)="choose()">
+            {{ chooseWords.text }}
+        </button>
+        <!-- The device's chooser, opened by the button: never drawn, never a second Tab stop. -->
+        <input #native class="anotoki-file-picker__native" type="file" [multiple]="multiple()" [attr.accept]="accept() || null" [disabled]="disabled()" (change)="onChosen($event)" />
+    </div>
+    @if (files().length) {
+        <ul class="anotoki-file-picker__files" [attr.aria-labelledby]="labelId">
+            @for (file of files(); track $index; let index = $index) {
+                <li class="anotoki-file-picker__file">
+                    <anotoki-icon class="anotoki-file-picker__file-icon" name="fileText" [size]="18" />
+                    <span class="anotoki-file-picker__name">{{ file.name }}</span>
+                    <!-- A space between the two, for the line's words: "report.json 300 bytes" (the row's gap draws it). -->
+                    &ngsp;
+                    <span class="anotoki-file-picker__size">{{ size(file.size) }}</span>
+                    @let remove = word("anotoki.filePicker.remove", { name: file.name });
+                    <button
+                        #removeButton
+                        type="button"
+                        class="anotoki-file-picker__remove"
+                        [attr.aria-label]="remove.text"
+                        [attr.title]="remove.text"
+                        [attr.lang]="remove.lang"
+                        [disabled]="disabled()"
+                        (click)="removeAt(index)">
+                        <anotoki-icon name="x" [size]="16" [strokeWidth]="2.25" />
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    <p class="anotoki-visually-hidden" aria-live="polite">{{ told() }}</p>
+    <div class="anotoki-file-picker__refused" role="alert">
+        @for (refusal of refused(); track $index) {
+            <p class="anotoki-field__error">
+                <anotoki-icon name="alert" [size]="15" />
+                <span [attr.lang]="refusal.lang">{{ refusal.text }}</span>
+            </p>
+        }
+    </div>
+    @if (hint() && !error()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

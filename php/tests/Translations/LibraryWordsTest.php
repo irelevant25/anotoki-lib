@@ -119,10 +119,18 @@ final class LibraryWordsTest extends TestCase
             'anotoki.chips.remove', 'anotoki.progress.count', 'anotoki.stepper.stepOf', 'anotoki.stepper.done',
             // The tabs' arrows (angular/projects/lib/ui/tabs, read by the tabs themselves), from 008.
             'anotoki.tabs.scrollBack', 'anotoki.tabs.scrollForward',
-            // The kit's input pieces (angular/projects/lib/ui/date-field, /color-field, each read by the piece itself), from 009.
+            // The kit's input pieces (angular/projects/lib/ui/date-field, /color-field, /file-picker, /combobox, /rich-text, each
+            // read by the piece itself), from 009.
             'anotoki.dateField.choose', 'anotoki.dateField.previousMonth', 'anotoki.dateField.nextMonth', 'anotoki.dateField.invalid',
             'anotoki.dateField.tooEarly', 'anotoki.dateField.tooLate',
             'anotoki.colorField.picker', 'anotoki.colorField.swatches', 'anotoki.colorField.invalid',
+            'anotoki.filePicker.chooseFile', 'anotoki.filePicker.chooseFiles', 'anotoki.filePicker.dropFile', 'anotoki.filePicker.dropFiles',
+            'anotoki.filePicker.tooLarge', 'anotoki.filePicker.wrongType', 'anotoki.filePicker.oneOnly', 'anotoki.filePicker.remove',
+            'anotoki.filePicker.chosen',
+            'anotoki.combobox.noMatches', 'anotoki.combobox.more', 'anotoki.combobox.chosen',
+            'anotoki.richText.toolbar', 'anotoki.richText.bold', 'anotoki.richText.italic', 'anotoki.richText.underline',
+            'anotoki.richText.strike', 'anotoki.richText.bulletList', 'anotoki.richText.orderedList', 'anotoki.richText.indent',
+            'anotoki.richText.outdent', 'anotoki.richText.link', 'anotoki.richText.clear', 'anotoki.richText.undo', 'anotoki.richText.redo',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -146,6 +154,12 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['example'], LibraryWords::placeholders('anotoki.dateField.invalid'));
         self::assertSame(['date'], LibraryWords::placeholders('anotoki.dateField.tooEarly'));
         self::assertSame([], LibraryWords::placeholders('anotoki.colorField.invalid'));
+        self::assertSame(['name', 'size', 'max'], LibraryWords::placeholders('anotoki.filePicker.tooLarge'));
+        self::assertSame(['name', 'types'], LibraryWords::placeholders('anotoki.filePicker.wrongType'));
+        self::assertSame(['names'], LibraryWords::placeholders('anotoki.filePicker.chosen'));
+        self::assertSame(['count'], LibraryWords::placeholders('anotoki.combobox.more'));
+        self::assertSame(['field'], LibraryWords::placeholders('anotoki.combobox.chosen'));
+        self::assertSame('Bulleted list', LibraryWords::english('anotoki.richText.bulletList'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

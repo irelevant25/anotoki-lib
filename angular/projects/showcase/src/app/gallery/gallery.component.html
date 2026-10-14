@@ -244,6 +244,51 @@
             <anotoki-color-field label="Text colour" [(value)]="ink" [swatches]="elementColors" hint="An element's colour, or one of your own" />
             <anotoki-color-field label="Background" [(value)]="paper" optional />
         </div>
+        <!-- Files to send: never uploaded by the kit; the server checks every file again. -->
+        <div class="form-grid" data-file-pickers>
+            <anotoki-file-picker label="The export" accept=".json,application/json" [maxSize]="20 * megabyte" [(files)]="exportFile" hint="A JSON file, 20 MB at most" />
+            <anotoki-file-picker label="Pictures" accept="image/*" multiple [maxSize]="2 * megabyte" [(files)]="pictures" hint="Pictures, 2 MB each at most" optional />
+        </div>
+        <!-- Genshin's characters with their portraits: typing finds a name, or an element. -->
+        <div class="form-grid" data-comboboxes>
+            <anotoki-combobox label="Character" [options]="characters" [(value)]="character" placeholder="A name or an element" hint="One character" />
+            <anotoki-combobox label="Team" [options]="characters" multiple [(values)]="team" [limit]="12" placeholder="A name or an element" hint="As many as you like" />
+        </div>
+        <!-- The rich-text toolbar over a plain contenteditable (genshin's editor), the site's own menu in its row. -->
+        <div class="editor-block" data-rich-text>
+            <span class="editor-label" id="show-editor-label">The guide's text</span>
+            <anotoki-rich-text-toolbar controls="show-editor" [active]="editable.active()" (command)="onCommand($event, editable)">
+                <button anotokiToolbarItem anotokiButton variant="ghost" size="sm" [anotokiMenuTrigger]="sizes">
+                    {{ textSize() }}
+                    <anotoki-icon name="chevronDown" [size]="14" />
+                </button>
+                <anotoki-menu #sizes label="Text size">
+                    @for (size of ["Small", "Normal", "Large"]; track size) {
+                        <button anotokiMenuItem [radio]="textSize() === size" (click)="textSize.set(size)">{{ size }}</button>
+                    }
+                </anotoki-menu>
+            </anotoki-rich-text-toolbar>
+            <div
+                id="show-editor"
+                class="editor"
+                contenteditable="true"
+                role="textbox"
+                aria-multiline="true"
+                aria-labelledby="show-editor-label"
+                anotokiRichTextEditable
+                #editable="anotokiRichTextEditable">
+                <p>
+                    Swap the goblet for a
+                    <b>Hydro</b>
+                    one once the crit rate reaches 70 %.
+                </p>
+                <ul>
+                    <li>Furina first,</li>
+                    <li>then Neuvillette.</li>
+                </ul>
+            </div>
+            <anotoki-rich-text-toolbar data-all-tools label="Every button" [tools]="allTools" [active]="['bold', 'link']" [unavailable]="['redo']" />
+        </div>
     </section>
 
     <section class="section" aria-labelledby="choices-title">

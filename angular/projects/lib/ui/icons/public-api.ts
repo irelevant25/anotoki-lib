@@ -10,7 +10,7 @@
  * function runs when the module loads), so an icon nobody imports is left out.
  * Generated from the IAM's and the survey's icon sets; 0.6.0 took the build
  * analyzer's own (rocket, upload, lightbulb, pause, minus, wrench, gamepad,
- * save), drawn the same way.
+ * save), drawn the same way, and indent and outdent for the rich-text toolbar.
  */
 
 import type { IconPaths } from '@anotoki/lib/ui/config';
@@ -93,6 +93,7 @@ export const iconImagePlus: IconPaths = [
   'M21 15l-3.09-3.09a2 2 0 0 0-2.82 0L6 21',
   'M7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0',
 ];
+export const iconIndent: IconPaths = ['M21 6H11', 'M21 12H11', 'M21 18H11', 'M3 8l4 4-4 4'];
 export const iconItalic: IconPaths = ['M19 4h-9', 'M14 20H5', 'M15 4 9 20'];
 export const iconKey: IconPaths = ['M2 15.5a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0', 'M21 2l-9.6 9.6', 'M15.5 7.5l3 3L22 7l-3-3'];
 export const iconLanguages: IconPaths = ['M5 8l6 6', 'M4 14l6-6 2-3', 'M2 5h12', 'M7 2h1', 'M22 22l-5-10-5 10', 'M14 18h6'];
@@ -107,6 +108,7 @@ export const iconMail: IconPaths = ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16
 export const iconMessage: IconPaths = ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'];
 export const iconMinus: IconPaths = ['M5 12h14'];
 export const iconMoreHorizontal: IconPaths = ['M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0', 'M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0', 'M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0'];
+export const iconOutdent: IconPaths = ['M21 6H11', 'M21 12H11', 'M21 18H11', 'M7 8l-4 4 4 4'];
 export const iconPause: IconPaths = ['M15 4h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z', 'M7 4h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z'];
 export const iconPencil: IconPaths = ['M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z', 'M15 5l4 4'];
 export const iconPlay: IconPaths = ['M6 3l14 9-14 9z'];

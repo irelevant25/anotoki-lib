@@ -1,0 +1,142 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+// A field of the kit's: its frame, its label and its messages as every field has them (the same classes).
+@include field.frame;
+@include field.labels;
+@include field.messages;
+
+// The area a file may be dropped on, round the button: a dashed edge at 3:1 on every ground.
+.anotoki-file-picker__area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 1.25rem 1rem;
+  border: 1.5px dashed kit.token(border-strong);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  color: kit.token(text);
+  text-align: center;
+  transition:
+    border-color kit.token(duration) kit.token(ease),
+    background-color kit.token(duration) kit.token(ease);
+
+  // Files over it: the primary edge, whole, and its soft ground.
+  &.anotoki-file-picker__area--over {
+    border-style: solid;
+    border-color: kit.token(primary);
+    background: kit.token(primary-soft);
+  }
+
+  &.anotoki-file-picker__area--invalid {
+    border-color: kit.token(danger);
+  }
+
+  &.anotoki-file-picker__area--disabled {
+    background: kit.token(surface-2);
+    opacity: 0.7;
+  }
+}
+
+.anotoki-file-picker__icon {
+  color: kit.token(muted);
+}
+
+.anotoki-file-picker__drop {
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  // A touch screen drops nothing: the button alone.
+  @media (hover: none) {
+    display: none;
+  }
+}
+
+.anotoki-file-picker__native {
+  display: none;
+}
+
+// The files taken, a line each: its name (long ones wrap), its size, its remove button.
+.anotoki-file-picker__files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anotoki-file-picker__file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-2);
+  font-size: 0.875rem;
+}
+
+.anotoki-file-picker__file-icon {
+  flex: none;
+  color: kit.token(muted);
+}
+
+.anotoki-file-picker__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-file-picker__size {
+  flex: none;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.anotoki-file-picker__remove {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(muted);
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(danger-soft);
+    color: kit.token(danger-text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @include kit.focus-ring(1px);
+
+  // A finger's target.
+  @media (pointer: coarse) {
+    width: kit.token(control-height);
+    height: kit.token(control-height);
+  }
+}
+
+// The live region stays in the page (an alert is heard as its words change), and takes no room while empty.
+.anotoki-file-picker__refused {
+  display: contents;
+}

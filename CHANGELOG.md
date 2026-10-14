@@ -253,25 +253,56 @@ in them is a convenience, never a defence: the server checks every value again.
   the colour's code beside it, kept in step (a typed code checked: `#rrggbb`, `#rgb`, with or without `#`), suggested
   colours as a radio group, each with its name - never a colour alone. The value is `'#rrggbb'` lower-case, `''` for
   none (the box crossed out, never black). `readColor()` reads a code the field's way.
+- `@anotoki/lib/ui/file-picker` (new): `<anotoki-file-picker>` - files chosen with a real button (the device's chooser)
+  or dropped on the area round it (never the only way; the drop words not said on a touch screen); the kinds taken
+  (`accept`, as the attribute says them) and the largest size (`maxSize`) checked in the browser - a file refused with
+  its reason (role="alert"); one file or `multiple` (never the same twice); the files listed with a remove button each,
+  the focus going on as one goes; a screen reader told what was chosen. It never uploads: `files` is the browser's
+  `File` objects. The browser's check is a convenience: the server checks every file again.
+- `@anotoki/lib/ui/combobox` (new): `<anotoki-combobox>` - the ARIA 1.2 combobox with a list box (genshin's characters
+  with their portraits): typing filters, accents and case aside, by names and `keywords`, the names starting with it
+  first; Down, Up, Alt+Down, Enter, Escape; the active option by aria-activedescendant, the focus kept in the field; a
+  picture beside its name with an empty alt; "No matches"; a long list drawn `limit` at a time with how many more wait
+  ("30 more: keep typing"), both told to a screen reader; one at a time (`[(value)]`) or several (`multiple`,
+  `[(values)]`, the chosen ones the kit's removable chips over the field). The list box in the top layer, as wide as the
+  field.
+- `@anotoki/lib/ui/rich-text` (new): `<anotoki-rich-text-toolbar>` - the ARIA toolbar pattern over an editor (one Tab
+  stop, Left/Right/Home/End, `aria-pressed` for a format on, drawn with a ring), twelve buttons with the kit's icons and
+  names (`tools`, `'|'` between groups), `unavailable` and `disabled` kept in the row aria-disabled, a site's own
+  controls in its row and Tab stop (`[anotokiToolbarItem]`). It holds no text and inserts none: a press is `(command)`
+  for the site's editor - a library's (TipTap), or a plain contenteditable through `[anotokiRichTextEditable]`
+  (`run()` with the browser's own editing, the selection put back first; `link()` refusing every address but a web,
+  mail or the site's own - `safeLinkAddress()`; `active()`; a paste or a drop of markup comes in as plain text, a drop of
+  files not at all). The site cleans what its editor holds before it shows it, and its server what it keeps.
+- `@anotoki/lib/ui/icons`: `iconIndent` and `iconOutdent`, drawn as the family's others (the toolbar's own copies).
 - The library's words: `anotoki.dateField.*` (6: the calendar's button and name "Choose a date: {field}", the month
-  buttons, "Write the date like {example}.", the earliest and latest date) and `anotoki.colorField.*` (3: the colour
-  box's and the swatches' names after the label, the code's message), English and impersonal Slovak, read by the pieces
-  themselves (`@anotoki/lib/words/date-field`, `/color-field`, `READ_BY_THEIR_PAGES`);
-  `anotoki_translations/009_input_words.sql` writes them by 002's rule, its gate naming its own keys (232 library keys).
-  Month and day names are never words: Intl writes them.
+  buttons, "Write the date like {example}.", the earliest and latest date), `anotoki.colorField.*` (3: the colour box's
+  and the swatches' names after the label, the code's message), `anotoki.filePicker.*` (9: the button, the drop words,
+  "{name} is too large: {size}, at most {max}.", the kind refused, one file only, "Remove: {name}", "Chosen: {names}"),
+  `anotoki.combobox.*` (3: "No matches", "{count} more: keep typing to narrow the list.", "{field}: chosen") and
+  `anotoki.richText.*` (13: "Formatting" and the twelve buttons), English and impersonal Slovak, read by the pieces
+  themselves (`@anotoki/lib/words/date-field`, `/color-field`, `/file-picker`, `/combobox`, `/rich-text`,
+  `READ_BY_THEIR_PAGES`); `anotoki_translations/009_input_words.sql` writes the 34 by 002's rule, its gate naming its own
+  keys (257 library keys). Month and day names are never words: Intl writes them.
 - The package check: every first load as it was (ui + shell 28.34 kB of 28.5); the input pieces are lazy, each held to
-  a limit of its own (`LAZY_LIMITS`: `ui/date-field` 9.4 kB gzipped of 10 - the field, its calendar and the dates' reading
-  and writing -, `ui/slider` 3.5 of 4, `ui/color-field` 4.2 of 4.5). The date field's calendar icon is its own copy of
-  the family's (`own-copies.spec.ts` holds it to `iconCalendar`).
+  a limit of its own (`LAZY_LIMITS`, kB gzipped: `ui/date-field` 9.4 of 10 - the field, its calendar and the dates'
+  reading and writing -, `ui/slider` 3.5 of 4, `ui/color-field` 4.3 of 4.5, `ui/file-picker` 5.2 of 5.5,
+  `ui/combobox` 6.7 of 7, `ui/rich-text` 5.4 of 6); no bundle names an HTML sink. The pieces that draw the family's
+  icons carry their own copies (`own-copies.spec.ts`: the calendar, the picker's two, the toolbar's twelve).
 - Tests: Vitest - the dates' reading and writing in the four formats and the languages' own, the field's typing, its
   messages, min and max, the calendar's dialog, grid, keys, focus and words in English and Slovak, a day and a month; the
-  slider's label, words, marks and fill; the colour field's code, box, swatches and words (825 tests); PHPUnit for 009's
+  slider's label, words, marks and fill; the colour field's code, box, swatches and words; the file picker's checks,
+  chooser, drops, list, focus and words; the combobox's filter, keys, active option, pictures, notes, one and several,
+  chips and words; the toolbar's role, names, pressed states, one Tab stop and arrows with a site's own item, presses and
+  words, and the contenteditable's commands, kept selection, states, links and pastes (861 tests); PHPUnit for 009's
   words, its rule and its gate (520, 1 skipped).
 
 What a site must do: nothing to keep building - the pieces are new. To word them in its own way, apply
 `anotoki_translations/009` on the Migrations page (until then they say the library's built-in words). Genshin, as it
 takes them: its birthdays from `0004-MM-DD` to `--MM-DD` (or back, at its API), the account's `date_format` into
-`format`.
+`format`; its own toolbar's buttons for the kit's (its font menus and colour pickers as `[anotokiToolbarItem]`s), its
+editor's `execCommand` calls through `[anotokiRichTextEditable]` - its paste then plain text -, and its own allow-list
+kept for showing the editor's text.
 
 ## 0.5.2 - 2026-10-13
 

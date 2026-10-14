@@ -59,10 +59,13 @@ const READ_BY_THEIR_PAGES = {
     tabs: "the kit's tabs and link tabs (@anotoki/lib/ui/tabs), which read them themselves, never registered - never by the kit's core nor by the translations module, so they reach a site with the tabs alone.",
     dateField: "the kit's date field (@anotoki/lib/ui/date-field), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the date field alone.",
     colorField: "the kit's colour field (@anotoki/lib/ui/color-field), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the colour field alone.",
+    filePicker: "the kit's file picker (@anotoki/lib/ui/file-picker), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the file picker alone.",
+    combobox: "the kit's combobox (@anotoki/lib/ui/combobox), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the combobox alone.",
+    richText: "the kit's rich-text toolbar (@anotoki/lib/ui/rich-text), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the toolbar alone.",
 };
 
 /** The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages', and the kit's pieces' of 0.6.0). */
-const IMPERSONAL = ["legal", "legalLinks", "chips", "progress", "stepper", "tabs", "dateField", "colorField"];
+const IMPERSONAL = ["legal", "legalLinks", "chips", "progress", "stepper", "tabs", "dateField", "colorField", "filePicker", "combobox", "richText"];
 
 /** Every file this writes says so: how a left-over one is known - and only such a one is ever removed. */
 const GENERATED = "GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs";

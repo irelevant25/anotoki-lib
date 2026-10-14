@@ -1,0 +1,91 @@
+<div class="anotoki-field">
+    <label class="anotoki-field__label" [id]="labelId" [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </label>
+    @if (chosenItems().length) {
+        @let chosenName = word("anotoki.combobox.chosen", { field: label() });
+        <anotoki-chip-list class="anotoki-combobox__chips" [label]="chosenName.text" [items]="chosenItems()" [disabled]="disabled()" (remove)="unchoose($event)" />
+    }
+    <div #box class="anotoki-field__control anotoki-combobox__box" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
+        @if (chosenOption()?.picture; as picture) {
+            <img class="anotoki-combobox__chosen-picture" [src]="picture" alt="" width="28" height="28" />
+        }
+        <input
+            #control
+            class="anotoki-field__input"
+            type="text"
+            role="combobox"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            [value]="text()"
+            [attr.placeholder]="placeholder() || null"
+            autocomplete="off"
+            spellcheck="false"
+            autocapitalize="off"
+            aria-autocomplete="list"
+            [attr.aria-expanded]="isOpen()"
+            [attr.aria-controls]="listboxId"
+            [attr.aria-activedescendant]="isOpen() ? activeId() : null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            [attr.aria-required]="required() && multiple() ? 'true' : null"
+            [required]="required() && !multiple()"
+            [disabled]="disabled()"
+            (input)="onInput($event)"
+            (keydown)="onKeydown($event)"
+            (click)="onClick()"
+            (blur)="onBlur()" />
+        <!-- A mouse's way to open the list; the keyboard has Down and Alt+Down. -->
+        <span class="anotoki-combobox__arrow" aria-hidden="true" (mousedown)="onArrow($event)">
+            <anotoki-icon name="chevronDown" [size]="18" />
+        </span>
+    </div>
+    <anotoki-combobox-panel (closed)="onClosed()">
+        <ul class="anotoki-combobox__options" role="listbox" [id]="listboxId" [attr.aria-labelledby]="labelId" [attr.aria-multiselectable]="multiple() ? 'true' : null">
+            @for (entry of shown(); track entry.option.value) {
+                <li
+                    class="anotoki-combobox__option"
+                    role="option"
+                    [id]="optionId(entry)"
+                    [class.anotoki-combobox__option--active]="entry.option.value === active()"
+                    [class.anotoki-combobox__option--chosen]="isChosen(entry.option)"
+                    [attr.aria-selected]="isChosen(entry.option) ? 'true' : 'false'"
+                    [attr.aria-disabled]="entry.option.disabled ? 'true' : null"
+                    (mousemove)="hover(entry.option)"
+                    (click)="pick(entry.option)">
+                    @if (multiple()) {
+                        <span class="anotoki-combobox__box-mark" aria-hidden="true">
+                            @if (isChosen(entry.option)) {
+                                <anotoki-icon name="check" [size]="14" [strokeWidth]="3" />
+                            }
+                        </span>
+                    }
+                    @if (entry.option.picture) {
+                        <img class="anotoki-combobox__picture" [src]="entry.option.picture" alt="" width="32" height="32" loading="lazy" decoding="async" />
+                    }
+                    <span class="anotoki-combobox__label" [attr.lang]="entry.option.lang || null">{{ entry.option.label }}</span>
+                    @if (!multiple() && isChosen(entry.option)) {
+                        <anotoki-icon class="anotoki-combobox__check" name="check" [size]="16" />
+                    }
+                </li>
+            }
+        </ul>
+        @if (note(); as said) {
+            <!-- For the eye: a screen reader is told the same in the field's own live region. -->
+            <p class="anotoki-combobox__note" aria-hidden="true" [attr.lang]="said.lang">{{ said.text }}</p>
+        }
+    </anotoki-combobox-panel>
+    <p class="anotoki-visually-hidden" aria-live="polite">{{ told() }}</p>
+    @if (hint() && !error()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

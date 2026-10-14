@@ -683,7 +683,7 @@ final class SchemaTest extends DatabaseTestCase
     // ─── 009, the words of the kit's input pieces: the same rule ────────────
 
     /** The namespaces 009 writes. */
-    private const INPUT_WORDS = "key_name LIKE 'anotoki.dateField.%' OR key_name LIKE 'anotoki.colorField.%'";
+    private const INPUT_WORDS = "key_name LIKE 'anotoki.dateField.%' OR key_name LIKE 'anotoki.colorField.%' OR key_name LIKE 'anotoki.filePicker.%' OR key_name LIKE 'anotoki.combobox.%' OR key_name LIKE 'anotoki.richText.%'";
 
     public function testTheInputWordsComeOnADatabaseThatHas008AndASiteThatTookOneOverKeepsIt(): void
     {
@@ -696,7 +696,7 @@ final class SchemaTest extends DatabaseTestCase
         $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES ('anotoki.dateField.nextMonth', 'en', 'Later', 7)");
         $mine = self::INPUT_WORDS;
         $others = (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND NOT ($mine)");
-        $keys = count(array_filter(LibraryWords::keys(), static fn (string $key): bool => (bool) preg_match('/^anotoki\.(dateField|colorField)\./', $key)));
+        $keys = count(array_filter(LibraryWords::keys(), static fn (string $key): bool => (bool) preg_match('/^anotoki\.(dateField|colorField|filePicker|combobox|richText)\./', $key)));
 
         self::assertSame([['set' => 'anotoki_translations', 'name' => '009_input_words.sql']], $this->siteMigrator()->apply()['applied']);
 
@@ -704,6 +704,9 @@ final class SchemaTest extends DatabaseTestCase
         self::assertSame(LibraryWords::all()['anotoki.dateField.nextMonth']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.dateField.nextMonth'"), 'the description is the library\'s');
         self::assertSame(['Choose a date: {field}', 'Vybrať dátum: {field}'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.dateField.choose' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN), 'a key with no string at all gets the library\'s');
         self::assertSame(['Pick from the palette', 'Vybrať z palety'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.colorField.picker' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(['Drop files here', 'Súbory sem stačí pretiahnuť'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.filePicker.dropFiles' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(['No matches', 'Nič sa nenašlo'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.combobox.noMatches' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(['Bulleted list', 'Odrážky'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.richText.bulletList' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
         self::assertSame(2 * $keys - 1, (int) $this->value("SELECT count(*) FROM translations WHERE $mine"), 'every key in both languages but the one the site worded in English alone');
         self::assertSame($others, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND NOT ($mine)"), 'nothing of the files before touched');
     }

@@ -8,7 +8,7 @@ pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., the pieces of 0.6.0 (`ui/chips`,
 `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`, `ui/labelled-group`,
 `ui/select`, `ui/field`, `ui/piece-words`, `ui/side-nav`, `ui/current-link`; `ui/tabs` gained the link tabs;
-the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`),
+the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker`, `ui/combobox`, `ui/rich-text`),
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
@@ -66,8 +66,8 @@ bun run words           # the library's words from php/resources/library-words.j
   "Vy": they fit the formal survey too): words its lazy pages alone say, pages of
   text (the legal pages' `anotoki.legal.*`), and the words of the kit's pieces
   that are entry points of their own (0.6.0: `anotoki.chips.*`,
-  `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*`, `anotoki.dateField.*`, `anotoki.colorField.*` - a
-  piece has no provide*(), and provideAnotokiUi is in
+  `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*`, `anotoki.dateField.*`, `anotoki.colorField.*`,
+  `anotoki.filePicker.*`, `anotoki.combobox.*`, `anotoki.richText.*` - a piece has no provide*(), and provideAnotokiUi is in
   every first load), each read through `ui/piece-words`' `pieceWords()`, the
   site's string first. Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)

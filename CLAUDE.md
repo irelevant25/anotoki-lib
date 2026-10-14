@@ -59,7 +59,13 @@ bun run words           # the library's words from php/resources/library-words.j
   (`provideLibraryWords`); `@anotoki/lib/words` (all of them) is for specs and the
   showcase, never a module. A new one is a JSON entry and a new library migration
   (`anotoki_translations/003` brought `anotoki.signIn.*`; released files are never
-  edited); a module's new words are a namespace of its own and its registration,
+  edited). A changed one is a JSON entry and a new file that rewords only the
+  strings still in the earlier file's words and that nobody saved - `WHERE value =
+  '<the earlier words>' AND updated_by IS NULL`, its gate's "old words left" check
+  on those rows alone - so a site's own wording, and an administrator's deliberate
+  save of the old words, stay (010 matched on the value alone: harmless, as no site
+  applied 005 without 010, but the next one adds `updated_by IS NULL` - the IAM's
+  review of 2026-10-14). A module's new words are a namespace of its own and its registration,
   never the kit's - no first load of the kit or of the translations module carries
   them. Two exceptions, read by their readers themselves and never registered
   (`READ_BY_THEIR_PAGES` in both scripts), their Slovak impersonal (no "ty", no

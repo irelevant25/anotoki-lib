@@ -1,5 +1,6 @@
 import { ApplicationRef, DOCUMENT, EnvironmentInjector, Injectable, Injector, Type, createComponent, inject } from '@angular/core';
 import { DialogContainerComponent } from './dialog-container/dialog-container.component';
+import type { DialogSize } from './dialog/dialog.component';
 import { ANOTOKI_DIALOG_DATA, AnotokiDialogRef } from './dialog-ref';
 
 /** How AnotokiDialog.open() draws a component. */
@@ -9,7 +10,7 @@ export interface AnotokiDialogOptions<D = unknown> {
   /** The dialog's heading (the component can set it later: `inject(AnotokiDialogRef).heading.set(...)`). */
   heading?: string;
   description?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+  size?: DialogSize;
   /** False: Escape, the backdrop and the close button do nothing - the component closes it. */
   dismissible?: boolean;
   /** Where the component's injections come from; the application's by default. */

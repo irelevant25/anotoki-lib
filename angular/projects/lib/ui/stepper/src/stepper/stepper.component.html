@@ -1,0 +1,40 @@
+<ol class="anotoki-stepper__steps" [attr.aria-label]="label()">
+    @for (step of steps(); track $index; let index = $index) {
+        @let state = states()[index];
+        <li
+            class="anotoki-stepper__step"
+            [class.anotoki-stepper__step--done]="state === 'done'"
+            [class.anotoki-stepper__step--current]="state === 'current'"
+            [attr.aria-current]="state === 'current' ? 'step' : null">
+            @if (state === "done" && navigable()) {
+                <button type="button" class="anotoki-stepper__button" [disabled]="disabled()" (click)="choose.emit(index)">
+                    <ng-container [ngTemplateOutlet]="content" [ngTemplateOutletContext]="{ $implicit: step, index, state }" />
+                </button>
+            } @else {
+                <span class="anotoki-stepper__item">
+                    <ng-container [ngTemplateOutlet]="content" [ngTemplateOutletContext]="{ $implicit: step, index, state }" />
+                </span>
+            }
+        </li>
+    }
+</ol>
+
+<!-- A step: its mark (a check, or its number) for the eye; for the ear "Step 2 of 4: Import", or "Choose the game, done". -->
+<ng-template #content let-step let-index="index" let-state="state">
+    <span class="anotoki-stepper__mark" aria-hidden="true">
+        @if (state === "done") {
+            <anotoki-icon name="check" [size]="14" [strokeWidth]="2.25" />
+        } @else {
+            {{ index + 1 }}
+        }
+    </span>
+    @if (state === "current") {
+        @let stepOf = word("anotoki.stepper.stepOf", { current: index + 1, total: steps().length });
+        <span class="anotoki-visually-hidden" [attr.lang]="stepOf.lang">{{ stepOf.text }}:&ngsp;</span>
+    }
+    <span class="anotoki-stepper__label" [attr.lang]="step.lang || null">{{ step.label }}</span>
+    @if (state === "done") {
+        @let done = word("anotoki.stepper.done");
+        <span class="anotoki-visually-hidden" [attr.lang]="done.lang">,&ngsp;{{ done.text }}</span>
+    }
+</ng-template>

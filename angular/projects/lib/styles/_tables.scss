@@ -2,7 +2,10 @@
 /// Tables: `.table` for dense lists. Inside `.table-scroll` a wide table
 /// scrolls on its own instead of widening the page. `.table-stack` turns each
 /// row into a small card up to 720 px, labelled from each cell's data-label -
-/// for the lists people read on their phones.
+/// for the lists people read on their phones (a number's cell then starts at
+/// its label, as the other cells do). `.table-middle` (0.6.0) sits every cell
+/// on its row's middle - for rows of pictures, badges and buttons of different
+/// heights; the cells start at the top otherwise, for rows of text.
 ////
 
 @use "tokens";
@@ -74,6 +77,13 @@
     }
   }
 
+  .#{$prefix}table.#{$prefix}table-middle {
+    th,
+    td {
+      vertical-align: middle;
+    }
+  }
+
   @media (max-width: 720px) {
     .#{$prefix}table-stack {
       thead {
@@ -94,9 +104,11 @@
         border-bottom: 0;
       }
 
+      // A badge or a button in a cell keeps its own width (0.6.0): a grid would stretch it across the column.
       td {
         display: grid;
         grid-template-columns: 8.5rem 1fr;
+        justify-items: start;
         gap: 0.75rem;
         padding: 0.2rem 0.5rem;
         border: 0;
@@ -105,6 +117,11 @@
           content: attr(data-label);
           color: tokens.token(muted);
           font-size: 0.8125rem;
+        }
+
+        // A number reads from its label, as every other cell does, not from the card's far edge.
+        &.cell-num {
+          text-align: left;
         }
 
         &.cell-actions {

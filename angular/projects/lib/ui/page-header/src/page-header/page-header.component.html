@@ -5,6 +5,7 @@
         @if (lead()) {
             <p class="anotoki-page-header__lead">{{ lead() }}</p>
         }
+        <div class="anotoki-page-header__lead anotoki-page-header__lead--own"><ng-content select="[pageLead]" /></div>
         <ng-content select="[pageMeta]" />
     </div>
     <div class="anotoki-page-header__actions"><ng-content /></div>

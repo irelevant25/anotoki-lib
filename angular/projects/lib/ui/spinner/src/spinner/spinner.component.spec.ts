@@ -1,8 +1,21 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { draw, kitProviders, settle, words } from '../../../src/testing';
 import { SpinnerComponent } from './spinner.component';
 
 describe('<anotoki-spinner>', () => {
+  it('takes showLabel and inline as bare attributes (0.6.0)', async () => {
+    @Component({ selector: 'anotoki-test-bare', imports: [SpinnerComponent], template: '<anotoki-spinner label="Saving" showLabel inline />' })
+    class BareComponent {}
+    TestBed.configureTestingModule({ providers: kitProviders() });
+    const fixture = await draw(BareComponent);
+    const spinner = fixture.nativeElement.querySelector('anotoki-spinner') as HTMLElement;
+    expect(spinner.classList).toContain('anotoki-spinner--inline');
+    expect(spinner.querySelector('.anotoki-spinner__label')?.classList).not.toContain('anotoki-visually-hidden');
+    expect(words(spinner.querySelector('[role=status]'))).toBe('Saving');
+    fixture.nativeElement.remove();
+  });
+
   it('without a label it is decoration: no status, nothing said', async () => {
     TestBed.configureTestingModule({ providers: kitProviders() });
     const fixture = await draw(SpinnerComponent);

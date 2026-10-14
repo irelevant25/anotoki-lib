@@ -117,9 +117,28 @@
   font-size: 1rem;
 }
 
-.chip-list-label {
-  font-size: 0.875rem;
-  font-weight: 650;
+// Labelled groups beside a field, lined up as a filter bar lines them: at the bottom.
+.labelled-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+
+  anotoki-select {
+    flex: 0 1 12rem;
+  }
+}
+
+.range-input {
+  width: min(100%, 12rem);
+  accent-color: anotoki.token(primary);
+}
+
+// A person in a row: their picture and name, on the row's middle (table-middle).
+.person {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 // A site's own colour for its fill: the grade's.

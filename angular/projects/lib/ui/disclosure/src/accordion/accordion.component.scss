@@ -1,0 +1,7 @@
+// Its disclosures one under another, a little apart.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}

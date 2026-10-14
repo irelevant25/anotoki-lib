@@ -293,4 +293,6 @@ export type LibraryKey =
   | 'anotoki.legal.contactAboutTitle'
   | 'anotoki.legal.contactAboutText'
   | 'anotoki.chips.remove'
-  | 'anotoki.progress.count';
+  | 'anotoki.progress.count'
+  | 'anotoki.stepper.stepOf'
+  | 'anotoki.stepper.done';

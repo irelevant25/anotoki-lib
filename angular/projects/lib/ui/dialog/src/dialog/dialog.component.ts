@@ -3,6 +3,9 @@ import { AnotokiWords } from '@anotoki/lib/ui/config';
 import { tabbable, uniqueId } from '@anotoki/lib/ui/dom';
 import { IconComponent } from '@anotoki/lib/ui/icon';
 
+/** A dialog's width: 27rem (`sm`), 34 (`md`), 46 (`lg`) or 64 (`xl`, 0.6.0). */
+export type DialogSize = 'sm' | 'md' | 'lg' | 'xl';
+
 /**
  * A modal dialog on the native `<dialog>` element.
  *
@@ -37,7 +40,8 @@ export class DialogComponent {
 
   readonly heading = input.required<string>();
   readonly description = input<string | null>(null);
-  readonly size = input<'sm' | 'md' | 'lg'>('md');
+  /** Its width: 27, 34, 46 or 64rem (`xl`, 0.6.0: a whole editor, a preview), never wider than the screen. */
+  readonly size = input<DialogSize>('md');
   readonly dismissible = input(true, { transform: booleanAttribute });
   readonly busy = input(false, { transform: booleanAttribute });
 

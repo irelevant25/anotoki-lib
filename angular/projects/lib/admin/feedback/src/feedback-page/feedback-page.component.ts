@@ -10,6 +10,7 @@ import { EmptyStateComponent } from '@anotoki/lib/ui/empty-state';
 import { ErrorStateComponent } from '@anotoki/lib/ui/error-state';
 import { SelectComponent, SelectOption, TextFieldComponent } from '@anotoki/lib/ui/forms';
 import { AnotokiIcons, IconComponent } from '@anotoki/lib/ui/icon';
+import { LabelledGroupComponent } from '@anotoki/lib/ui/labelled-group';
 import { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
 import { PaginationComponent } from '@anotoki/lib/ui/pagination';
 import { SegmentedComponent, SegmentedOption } from '@anotoki/lib/ui/segmented';
@@ -85,6 +86,7 @@ let nextId = 0;
     EmptyStateComponent,
     ErrorStateComponent,
     IconComponent,
+    LabelledGroupComponent,
     PageHeaderComponent,
     PaginationComponent,
     SegmentedComponent,

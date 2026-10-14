@@ -134,22 +134,52 @@ that reads `invalid_json`'s words in brackets, the plain sentence.
   site's string first (provideAnotokiUi's `lookup`: the database's), then the built-in words of the page's language,
   then English. Such a piece has no provide*() function, and provideAnotokiUi is in every first load: its words are
   read by the piece itself, never registered, as the legal pages read theirs (`READ_BY_THEIR_PAGES` in both scripts).
-- The library's words: `anotoki.chips.remove` and `anotoki.progress.count`, English and impersonal Slovak, in
-  `php/resources/library-words.json`, generated into `@anotoki/lib/words/chips` and `/progress`;
-  `anotoki_translations/007_kit_piece_words.sql` writes them by 002's rule, its gate naming its own keys (219 library
-  keys).
+- `@anotoki/lib/ui/disclosure` (new): `<anotoki-disclosure>` - a button with `aria-expanded` and `aria-controls`, in a
+  heading of the page's outline with `headingLevel`, its content made at once and hidden, or given as
+  `<ng-template anotokiDisclosurePanel>` made only while open and dropped when closed - or kept once made (`keep`); a
+  card's look or `plain`. `<anotoki-accordion>`: one open at a time or `multiple`, Down, Up, Home and End between its own
+  disclosures' buttons (Japanese Academy's, the build analyzer's and genshin's `<details>`).
+- `@anotoki/lib/ui/stepper` (new): `<anotoki-stepper>` - a named list of steps, the current one `aria-current="step"`
+  heard "Step 3 of 4: Import", one done heard "…, done" with a check, `navigable` steps done as buttons back to them,
+  the marks alone where the row is narrow (its own width: a container query); `<anotoki-step-dots>` - the same for the
+  ear, dots or pills of short words for the eye (the build analyzer's wizard, Piano's lesson dots).
+- `@anotoki/lib/ui/labelled-group` (new): `<anotoki-labelled-group>` - a label drawn as the fields', naming a group of
+  controls (role="group"), labelling one native control (`for`), or shown beside a control that names itself
+  (`selfNamed`), stacked at a field's height or `inline` (Japanese Academy's choice labels). The Errors page's Range and
+  the Feedback dialog's Mark as are drawn with it now (their own label classes gone; the Range still lines up with the
+  selects beside it; Mark as in the text's ink, as every field's label, where it was muted).
+- `@anotoki/lib/ui/page-header`: a lead with markup of its own, `[pageLead]` content beside the plain `lead` (genshin).
+- `@anotoki/lib/styles` (tables): `.table-middle`, every cell on its row's middle (genshin); stacked (`.table-stack`),
+  a number's cell starts at its label (Piano) and a badge or a button keeps its own width instead of stretching across
+  the column.
+- `@anotoki/lib/ui/dialog`: `size="xl"`, 64rem (genshin's editors and previews); `DialogSize` names the four.
+- `@anotoki/lib/ui/spinner`: `showLabel` and `inline` take a bare attribute (Piano).
+- `@anotoki/lib/ui/select` and `@anotoki/lib/ui/field` (new): the select alone, for a first page that draws one (Piano's
+  piano box in its bar, a `@defer` until now), and the fields' base they share; `@anotoki/lib/ui/forms` names both as
+  before. Measured by the package check's new first load "a select": 7.0 kB gzipped beside lazy pages, where the select
+  from `ui/forms` took every field with it - 11.2.
+- The admin tools' Backups page: a restore that failed is headed "The restore failed", the answer's own sentence under
+  it - rolled back whole, or ended with what it had loaded perhaps still there -, where the heading said "nothing of it
+  stayed" of both.
+- The library's words: `anotoki.chips.remove`, `anotoki.progress.count`, `anotoki.stepper.stepOf` and
+  `anotoki.stepper.done`, English and impersonal Slovak, in `php/resources/library-words.json`, generated into
+  `@anotoki/lib/words/chips`, `/progress` and `/stepper`; `anotoki_translations/007_kit_piece_words.sql` writes them by
+  002's rule, its gate naming its own keys (221 library keys).
 - The package check: the ui and the shell together may weigh 28.5 kB gzipped (28 before; 28.3 now, 27.96 before): the
-  segmented control's, the button's, the badge's and the card's additions are the core pieces' own. The bar's first
-  load is 20.2 kB of its 21.5 (19.9 before), a button's 5.0 of 5.5 (4.9), the gate's 8.5 of 9 (8.4); every new piece
-  stays out of every first load.
+  segmented control's, the button's, the badge's, the card's, the page header's and the spinner's additions are the core
+  pieces' own. The bar's first load is 20.2 kB of its 21.5 (19.9 before), a button's 5.0 of 5.5 (4.9), the gate's 8.5 of 9
+  (8.4); every new piece stays out of every first load, and a select alone has a first load of its own (7.0 of 7.5).
 - Tests: Vitest for every piece - its roles, its aria states, its keyboard, its words in English and Slovak and the
-  site's own - and the segmented control's disabled options and marks (741 tests); PHPUnit for 007's words, its rule
-  and its gate (515).
+  site's own -, the segmented control's disabled options and marks, the dialog's xl, the spinner's bare attributes, the
+  page header's lead, and the restore's heading with each answer (760 tests); PHPUnit for 007's words, its rule and its
+  gate (515, 1 skipped).
 
-What a site must do: nothing to keep building - everything is new, and the defaults are as before but two that change
+What a site must do: nothing to keep building - everything is new, and the defaults are as before but three that change
 how a page looks where it was broken or small: a segmented control too wide for its line wraps instead of running off
-it, and a small link button is 44 px on a touch screen. To use the new words in a site's own wording, apply
-`anotoki_translations/007` on the Migrations page (two keys; until then the pieces say the library's built-in words).
+it, a small link button is 44 px on a touch screen, and a stacked table's badges keep their own width. To use the new
+words in a site's own wording, apply `anotoki_translations/007` on the Migrations page (four keys; until then the pieces
+say the library's built-in words). A site that draws the select on its first page imports it from
+`@anotoki/lib/ui/select` (its `@defer` may go).
 
 ## 0.5.2 - 2026-10-13
 

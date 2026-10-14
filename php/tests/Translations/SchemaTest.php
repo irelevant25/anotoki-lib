@@ -614,11 +614,11 @@ final class SchemaTest extends DatabaseTestCase
         // An installed site: 001 to 006 applied before 0.6.0 shipped 007 ...
         $this->siteMigrator()->apply();
         $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/007_kit_piece_words.sql'");
-        $this->pdo->exec("DELETE FROM translation_keys WHERE name LIKE 'anotoki.chips.%' OR name LIKE 'anotoki.progress.%'");
+        $this->pdo->exec("DELETE FROM translation_keys WHERE name LIKE 'anotoki.chips.%' OR name LIKE 'anotoki.progress.%' OR name LIKE 'anotoki.stepper.%'");
         // ... that words the remove button its own way, in English alone.
         $this->pdo->exec("INSERT INTO translation_keys (name, description) VALUES ('anotoki.chips.remove', 'The site''s own description.')");
         $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES ('anotoki.chips.remove', 'en', 'Take {name} away', 7)");
-        $mine = "key_name LIKE 'anotoki.chips.%' OR key_name LIKE 'anotoki.progress.%'";
+        $mine = "key_name LIKE 'anotoki.chips.%' OR key_name LIKE 'anotoki.progress.%' OR key_name LIKE 'anotoki.stepper.%'";
         $others = (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND NOT ($mine)");
 
         self::assertSame([['set' => 'anotoki_translations', 'name' => '007_kit_piece_words.sql']], $this->siteMigrator()->apply()['applied']);
@@ -626,6 +626,8 @@ final class SchemaTest extends DatabaseTestCase
         self::assertSame([['language_code' => 'en', 'value' => 'Take {name} away']], $this->rows("SELECT language_code, value FROM translations WHERE key_name = 'anotoki.chips.remove'"), 'its words and its blank stay');
         self::assertSame(LibraryWords::all()['anotoki.chips.remove']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.chips.remove'"), 'the description is the library\'s');
         self::assertSame(['{value} of {max}', '{value} z {max}'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.progress.count' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN), 'a key with no string at all gets the library\'s');
+        self::assertSame(['Step {current} of {total}', 'Krok {current} z {total}'], $this->pdo->query("SELECT value FROM translations WHERE key_name = 'anotoki.stepper.stepOf' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(7, (int) $this->value("SELECT count(*) FROM translations WHERE $mine"), 'the four keys in both languages but the one the site worded in English alone');
         self::assertSame($others, (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND NOT ($mine)"), 'nothing of the files before touched');
     }
 

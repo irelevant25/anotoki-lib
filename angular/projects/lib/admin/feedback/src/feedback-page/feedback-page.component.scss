@@ -137,18 +137,8 @@
   font-size: 0.8125rem;
 }
 
-// Mark as, at the footer's start; Delete and Close at its end.
+// Mark as (the kit's labelled group, inline), at the footer's start; Delete and Close at its end.
 .anotoki-feedback-page__mark {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
   margin-right: auto;
   max-width: 100%;
-}
-
-.anotoki-feedback-page__mark-label {
-  color: kit.token(muted);
-  font-size: 0.875rem;
-  font-weight: 650;
 }

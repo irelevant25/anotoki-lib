@@ -1,7 +1,13 @@
 <div class="page">
-    <anotoki-page-header heading="The anotoki kit" lead="Every piece of @anotoki/lib 0.3.0, in the family's palette - switch the theme and the language in the bar.">
+    <!-- The lead with markup of its own (0.6.0): pageLead. -->
+    <anotoki-page-header heading="The anotoki kit">
         <span pageEyebrow class="eyebrow">Showcase</span>
-        <anotoki-badge pageMeta tone="primary" mono>v0.2.0</anotoki-badge>
+        <span pageLead data-page-lead>
+            Every piece of
+            <a href="https://github.com/irelevant25/anotoki-lib">&#64;anotoki/lib</a>
+            0.6.0, in the family's palette - switch the theme and the language in the bar.
+        </span>
+        <anotoki-badge pageMeta tone="primary" mono>v0.6.0</anotoki-badge>
         <button anotokiButton variant="secondary" (click)="ask()">Ask a question</button>
         <button anotokiButton variant="primary" [loading]="loading()" (click)="save()">Save</button>
     </anotoki-page-header>
@@ -59,7 +65,12 @@
             <anotoki-spinner size="sm" />
             <anotoki-spinner />
             <anotoki-spinner size="lg" />
-            <anotoki-spinner label [showLabel]="true" />
+            <anotoki-spinner label showLabel data-bare-spinner />
+            <span class="muted small">
+                Saving
+                <anotoki-spinner size="sm" inline />
+                in a line of text
+            </span>
             <anotoki-avatar name="Japanese Academy" />
             <anotoki-avatar name="Mira Nováková" shape="circle" [size]="32" />
             <anotoki-avatar name="Piano Academy" imageUrl="/no-such-logo.png" [size]="48" />
@@ -103,26 +114,40 @@
                 <anotoki-tabs #members="anotokiTabs" label="Members" [tabs]="tabs" [(active)]="tab" />
             </div>
             <div role="tabpanel" [id]="members.panelId(tab())" [attr.aria-labelledby]="members.tabId(tab())" class="table-scroll">
-                <table class="table table-stack">
+                <!-- 0.6.0: table-middle (each row's cells on its middle); a number's cell starts at its label once the rows stack. -->
+                <table class="table table-stack table-middle" data-members>
                     <thead>
                         <tr>
                             <th scope="col">Name</th>
                             <th scope="col">Address</th>
                             <th scope="col">Role</th>
+                            <th scope="col" class="cell-num">Answers</th>
                             <th scope="col" class="cell-actions"><span class="visually-hidden">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td data-label="Name">Mira Nováková</td>
+                            <td data-label="Name">
+                                <span class="person">
+                                    <anotoki-avatar name="Mira Nováková" shape="circle" [size]="32" />
+                                    Mira Nováková
+                                </span>
+                            </td>
                             <td data-label="Address">mira&#64;example.test</td>
                             <td data-label="Role"><anotoki-badge tone="primary">Administrator</anotoki-badge></td>
+                            <td data-label="Answers" class="cell-num">1,204</td>
                             <td class="cell-actions"><button anotokiButton size="sm" variant="ghost">Edit</button></td>
                         </tr>
                         <tr>
-                            <td data-label="Name">Jo Kováč</td>
+                            <td data-label="Name">
+                                <span class="person">
+                                    <anotoki-avatar name="Jo Kováč" shape="circle" [size]="32" />
+                                    Jo Kováč
+                                </span>
+                            </td>
                             <td data-label="Address">jo&#64;example.test</td>
                             <td data-label="Role"><anotoki-badge>Member</anotoki-badge></td>
+                            <td data-label="Answers" class="cell-num">48</td>
                             <td class="cell-actions"><button anotokiButton size="sm" variant="ghost">Edit</button></td>
                         </tr>
                     </tbody>
@@ -213,6 +238,30 @@
             <anotoki-segmented label="Grade" [options]="grades" [(value)]="grade" />
             <anotoki-segmented label="Period" [options]="periods" [(value)]="period" />
         </div>
+        <!-- 0.6.0: the labelled group - a row of the page's own buttons, a native control of its own, a control that names itself. -->
+        <div class="labelled-groups" data-labelled-groups>
+            <anotoki-labelled-group label="Lessons" hint="Pick as many as you like">
+                <button anotokiButton size="sm" variant="primary" aria-pressed="true">L1</button>
+                <button anotokiButton size="sm" aria-pressed="false">L2</button>
+                <button anotokiButton size="sm" variant="primary" aria-pressed="true">L3</button>
+                <button anotokiButton variant="link" size="sm">All</button>
+            </anotoki-labelled-group>
+            <anotoki-labelled-group label="Tempo" for="show-tempo" #tempoGroup="anotokiLabelledGroup" [hint]="tempo() + ' beats a minute'">
+                <input
+                    id="show-tempo"
+                    class="range-input"
+                    type="range"
+                    min="40"
+                    max="200"
+                    [value]="tempo()"
+                    [attr.aria-describedby]="tempoGroup.hintId"
+                    (input)="tempo.set(+$any($event.target).value)" />
+            </anotoki-labelled-group>
+            <anotoki-labelled-group label="View" selfNamed>
+                <anotoki-segmented label="View" [options]="views" [(value)]="view" />
+            </anotoki-labelled-group>
+            <anotoki-select label="Sort by" [options]="options" [(value)]="language" />
+        </div>
         <div class="cluster">
             <button anotokiButton [anotokiMenuTrigger]="more">
                 More
@@ -265,10 +314,9 @@
             <button anotokiChip disabled>3 · Read</button>
             <button anotokiChip [pressed]="pyro()" (click)="pyro.set(!pyro())">Pyro</button>
         </div>
-        <div class="stack-sm stack">
-            <span class="chip-list-label" aria-hidden="true">Your answers</span>
+        <anotoki-labelled-group label="Your answers" selfNamed>
             <anotoki-chip-list data-answers label="Your answers" [items]="answers()" (remove)="removeAnswer($event)" />
-        </div>
+        </anotoki-labelled-group>
     </section>
 
     <section class="section" aria-labelledby="figures-title">
@@ -295,10 +343,41 @@
         </ul>
     </section>
 
+    <section class="section" aria-labelledby="disclosures-title">
+        <h2 class="section-title" id="disclosures-title">Disclosures and steps (0.6.0)</h2>
+        <div class="grid-2" data-disclosures>
+            <div class="stack">
+                <anotoki-disclosure heading="Notes from Wanderer's Troupe" [(open)]="notesOpen">
+                    <p>Swap the goblet for a Hydro one once the crit rate reaches 70 %.</p>
+                </anotoki-disclosure>
+                <anotoki-disclosure heading="Pyro (12 lines)">
+                    <ng-template anotokiDisclosurePanel>
+                        <p class="muted small">Made only while open - hundreds of lines would be.</p>
+                    </ng-template>
+                </anotoki-disclosure>
+                <anotoki-disclosure heading="More options" plain>
+                    <p class="muted small">A quiet line, its content under it.</p>
+                </anotoki-disclosure>
+            </div>
+            <anotoki-accordion data-accordion>
+                <anotoki-disclosure heading="Choose the game" [headingLevel]="3" [open]="true">Genshin Impact, or Honkai: Star Rail.</anotoki-disclosure>
+                <anotoki-disclosure heading="Choose the way in" [headingLevel]="3">Your UID, or the export of your account.</anotoki-disclosure>
+                <anotoki-disclosure heading="Trouble importing?" [headingLevel]="3">Read the guide for your game first.</anotoki-disclosure>
+            </anotoki-accordion>
+        </div>
+        <anotoki-stepper data-stepper label="The import's steps" [steps]="wizard" [current]="wizardStep()" navigable (choose)="wizardStep.set($event)" />
+        <div class="cluster" data-dots>
+            <anotoki-step-dots label="The unit's steps" [steps]="lesson" [current]="1" />
+            <anotoki-step-dots label="The unit's steps, named" [steps]="lesson" [current]="1" showLabels />
+            <button anotokiButton size="sm" (click)="wizardStep.set(wizardStep() < 3 ? wizardStep() + 1 : 0)">Next step</button>
+        </div>
+    </section>
+
     <section class="section" aria-labelledby="overlays-title">
         <h2 class="section-title" id="overlays-title">Dialogs, drawers, toasts, copy, QR</h2>
         <div class="cluster">
             <button anotokiButton (click)="dialog.set(true)">Open a dialog</button>
+            <button anotokiButton (click)="wideDialog.set(true)" data-open-xl>Open an extra-large dialog</button>
             <button anotokiButton (click)="drawer.set(true)">Open a drawer</button>
             <button anotokiButton (click)="ask()">Confirm</button>
             <button anotokiButton (click)="toasts.success('Password changed.')">Toast</button>
@@ -340,6 +419,20 @@
         <div dialogFooter>
             <button anotokiButton (click)="dialog.set(false)">Cancel</button>
             <button anotokiButton variant="primary" (click)="dialog.set(false)">Save</button>
+        </div>
+    </anotoki-dialog>
+}
+
+@if (wideDialog()) {
+    <!-- 0.6.0: an extra-large dialog - a whole editor, a preview (64rem, never wider than the screen). -->
+    <anotoki-dialog heading="Edit the guide" description="Every language's version, side by side." size="xl" (dismiss)="wideDialog.set(false)">
+        <div class="grid-2">
+            <anotoki-textarea label="English" [(value)]="bio" [rows]="8" />
+            <anotoki-textarea label="Slovenčina" [(value)]="bio" [rows]="8" />
+        </div>
+        <div dialogFooter>
+            <button anotokiButton (click)="wideDialog.set(false)">Cancel</button>
+            <button anotokiButton variant="primary" (click)="wideDialog.set(false)">Save</button>
         </div>
     </anotoki-dialog>
 }

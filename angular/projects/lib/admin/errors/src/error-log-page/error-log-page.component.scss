@@ -4,29 +4,11 @@
 @include page.styles;
 
 // The Range at its own width, never squeezed with the fields beside it ("14 days30 days"): as a child of the bar, so
-// the bar's `> *` does not win (page.styles). Built as the fields beside it are - the label, the field's gap, then a
-// control the fields' height - so the bar, which lines its children up at the bottom, puts the three labels on one
-// line and the segmented control (38 px) on the middle of the selects (44 px).
+// the bar's `> *` does not win (page.styles). The kit's labelled group is built as the fields beside it are - the
+// label, the field's gap, then a control the fields' height - so the bar, which lines its children up at the bottom,
+// puts the three labels on one line and the segmented control (38 px) on the middle of the selects (44 px).
 .anotoki-error-log-page__filters > .anotoki-error-log-page__range {
-  display: flex;
   flex: 0 0 auto;
-  flex-direction: column;
-  gap: 0.375rem;
-  min-width: 0;
-}
-
-// The segmented control's name, shown as the fields beside it show theirs.
-.anotoki-error-log-page__label {
-  color: kit.token(text);
-  font-size: 0.875rem;
-  font-weight: 650;
-  line-height: 1.55;
-}
-
-.anotoki-error-log-page__range-control {
-  display: flex;
-  align-items: center;
-  min-height: kit.token(control-height);
 }
 
 // ── The chart ────────────────────────────────────────────────────────────────

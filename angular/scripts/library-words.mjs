@@ -10,7 +10,7 @@
 //                                                  sign-in page), imported by that module alone, which registers
 //                                                  them with the translations module (provideLibraryWords) - or,
 //                                                  for words its lazy pages alone say (legal: pages of text), or a
-//                                                  kit piece of its own entry point (chips, progress), read by
+//                                                  kit piece of its own entry point (chips, progress, stepper), read by
 //                                                  those pages or that piece themselves (READ_BY_THEIR_PAGES).
 //   projects/lib/words/                            @anotoki/lib/words: LIBRARY_WORDS, every namespace's, for a
 //                                                  site's specs and the showcase - no module of the library's.
@@ -54,10 +54,11 @@ const READ_BY_THEIR_PAGES = {
     legal: "the lazy pages that say them, which read them themselves, never registered - never by the kit nor by the translations module, so they reach a site with those pages alone.",
     chips: "the kit's chips (@anotoki/lib/ui/chips), which read them themselves, never registered - never by the kit's core nor by the translations module, so they reach a site with the chips alone.",
     progress: "the kit's progress bar (@anotoki/lib/ui/progress), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the progress bar alone.",
+    stepper: "the kit's stepper and progress dots (@anotoki/lib/ui/stepper), which read them themselves, never registered - never by the kit's core nor by the translations module, so they reach a site with them alone.",
 };
 
 /** The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages', and the kit's pieces' of 0.6.0). */
-const IMPERSONAL = ["legal", "legalLinks", "chips", "progress"];
+const IMPERSONAL = ["legal", "legalLinks", "chips", "progress", "stepper"];
 
 /** Every file this writes says so: how a left-over one is known - and only such a one is ever removed. */
 const GENERATED = "GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs";

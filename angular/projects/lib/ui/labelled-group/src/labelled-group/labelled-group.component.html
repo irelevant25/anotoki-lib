@@ -1,0 +1,9 @@
+@if (for(); as control) {
+    <label class="anotoki-labelled-group__label" [id]="labelId" [for]="control">{{ label() }}</label>
+} @else {
+    <span class="anotoki-labelled-group__label" [id]="labelId" [attr.aria-hidden]="selfNamed() ? 'true' : null">{{ label() }}</span>
+}
+<div class="anotoki-labelled-group__control"><ng-content /></div>
+@if (hint()) {
+    <p class="anotoki-labelled-group__hint" [id]="hintId">{{ hint() }}</p>
+}

@@ -5,7 +5,7 @@ import { CheckboxComponent } from './checkbox/checkbox.component';
 import { CodeInputComponent } from './code-input/code-input.component';
 import { PasswordFieldComponent } from './password-field/password-field.component';
 import { RadioGroupComponent } from './radio-group/radio-group.component';
-import { SelectComponent } from './select/select.component';
+import { SelectComponent } from '@anotoki/lib/ui/select';
 import { SwitchComponent } from './switch/switch.component';
 import { TextFieldComponent } from './text-field/text-field.component';
 import { TextareaComponent } from './textarea/textarea.component';

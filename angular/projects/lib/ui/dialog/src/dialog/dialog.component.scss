@@ -34,6 +34,11 @@
   --_dialog-width: 46rem;
 }
 
+// A whole editor, a preview (0.6.0): never wider than the screen, as every size.
+.anotoki-dialog__dialog[data-size="xl"] {
+  --_dialog-width: 64rem;
+}
+
 .anotoki-dialog__dialog[open] {
   animation: dialog-in 180ms kit.token(ease);
 

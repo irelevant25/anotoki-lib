@@ -67,12 +67,12 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * at 0.3.0 with the kit's own class names and every library word in ui/config; 27.4 at 0.4.0, ui/config holding the
  * kit's words alone - each other module's are an entry point of their own, @anotoki/lib/words/<namespace>). Room to
  * grow a little; a limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
- * Raised once, at 0.6.0, from 28 to 28.5 for the ui and the shell together (27.96 before, 28.3 after): the sites asked
+ * Raised once, at 0.6.0, from 28 to 28.5 for the ui and the shell together (27.96 before, 28.34 after): the sites asked
  * for what can only be the core pieces' own - the segmented control's disabled options, colour marks and wrapping, the
- * button's quiet red and a small link button's 44 px on touch, the badge's wrapping, the card's highlight - each a
- * binding and a few rules (a component's styles stand twice in its FESM: once more in the class metadata a site's
- * build drops). Every new piece of 0.6.0 is an entry point of its own, outside this sum; the bar's own first load (a
- * site's real one, below) stays well under its limit.
+ * button's quiet red and a small link button's 44 px on touch, the badge's wrapping, the card's highlight, the page
+ * header's lead with markup, the spinner's bare attributes - each a binding and a few rules (a component's styles stand
+ * twice in its FESM: once more in the class metadata a site's build drops). Every new piece of 0.6.0 is an entry point
+ * of its own, outside this sum; the bar's own first load (a site's real one, below) stays well under its limit.
  *
  * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences - 14.9
  * at 0.4.0 before the screen, 15.3 with it. Every site that signs in loads it on its first page, with its shared part
@@ -115,7 +115,7 @@ const LIMITS = {
 const UI_AND_SHELL = 28.5;
 
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
-const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs"];
+const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs", "@anotoki/lib/ui/labelled-group"];
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
@@ -142,7 +142,11 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/menu": PIECES,
     "@anotoki/lib/ui/dialog": PIECES,
     "@anotoki/lib/ui/toast": PIECES,
-    "@anotoki/lib/ui/forms": PIECES,
+    // The fields; since 0.6.0 the field base and the select are entry points of their own, which it names (a first load
+    // can take the select alone, without every field).
+    "@anotoki/lib/ui/forms": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/select"],
+    "@anotoki/lib/ui/field": ["@anotoki/lib/ui/config", "@anotoki/lib/ui/dom"],
+    "@anotoki/lib/ui/select": [...PIECES, "@anotoki/lib/ui/field"],
     "@anotoki/lib/ui/tabs": PIECES,
     "@anotoki/lib/ui/pagination": PIECES,
     "@anotoki/lib/ui/drawer": PIECES,
@@ -157,6 +161,9 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/link-card": [],
     "@anotoki/lib/ui/stat-tiles": ["@anotoki/lib/ui/config"],
     "@anotoki/lib/ui/progress": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/progress"],
+    "@anotoki/lib/ui/disclosure": PIECES,
+    "@anotoki/lib/ui/stepper": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/stepper"],
+    "@anotoki/lib/ui/labelled-group": PIECES,
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
@@ -214,6 +221,7 @@ const READ_BY_THEIR_PAGES = {
     "@anotoki/lib/words/legal": ["@anotoki/lib/legal/pages"],
     "@anotoki/lib/words/chips": ["@anotoki/lib/ui/chips"],
     "@anotoki/lib/words/progress": ["@anotoki/lib/ui/progress"],
+    "@anotoki/lib/words/stepper": ["@anotoki/lib/ui/stepper"],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
@@ -233,13 +241,16 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * (@anotoki/lib/feedback/form, the kit's fields) is loaded as it is opened: in a first load it would share ui/forms
  * with the lazy pages; "the error report": the browser's errors reported to the site's error log - no words; "the
  * words + legal links": a site's translations with the legal pages' configuration and the footer's three links, which
- * register their four words - never the pages' own (`anotoki.legal.*`), which come with the pages alone.
+ * register their four words - never the pages' own (`anotoki.legal.*`), which come with the pages alone; "a select"
+ * (0.6.0): the kit's select alone, where a first page draws one (a widget in the bar) - from ui/forms it took every
+ * field with it, 11.2 kB beside lazy pages (6.0 alone), measured before ui/select; 7.0 with it (6.0 alone).
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
     { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5, words: KIT_WORDS },
     { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5, words: KIT_WORDS },
     { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5, words: KIT_WORDS },
+    { title: "a select", imports: { "@anotoki/lib/ui/select": ["SelectComponent"] }, limit: 7.5, words: KIT_WORDS },
     {
         title: "the sign-in",
         imports: {

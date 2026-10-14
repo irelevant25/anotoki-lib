@@ -43,6 +43,13 @@
   font-size: 1rem;
 }
 
+// A lead with markup of its own (0.6.0: a link, a name in bold) takes the lead's look; nothing given, no box.
+@include kit.slot-wrappers(pageLead);
+
+.anotoki-page-header__lead--own:empty {
+  display: none;
+}
+
 .anotoki-page-header__actions {
   display: flex;
   flex-wrap: wrap;

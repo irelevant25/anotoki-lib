@@ -204,10 +204,10 @@
                 }
             </div>
             <div dialogFooter>
-                <div class="anotoki-feedback-page__mark">
-                    <span class="anotoki-feedback-page__mark-label" aria-hidden="true">Mark as</span>
+                <!-- The kit's labelled group, inline: the segmented control names itself "Mark as". -->
+                <anotoki-labelled-group class="anotoki-feedback-page__mark" label="Mark as" selfNamed inline>
                     <anotoki-segmented label="Mark as" data-mark size="sm" [options]="markOptions" [value]="message.status" [busy]="savingStatus()" (valueChange)="setStatus($event)" />
-                </div>
+                </anotoki-labelled-group>
                 <button anotokiButton variant="ghost" data-delete [loading]="deleting()" (click)="remove()">
                     <anotoki-icon name="trash" [size]="15" />
                     Delete

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, input, model, output, signal, viewChild } from '@angular/core';
 import { IconComponent } from '@anotoki/lib/ui/icon';
-import { FieldBase } from '../field-base';
+import { FieldBase } from '@anotoki/lib/ui/field';
 
 /**
  * A short numeric code (six digits by default), drawn as boxes and typed into

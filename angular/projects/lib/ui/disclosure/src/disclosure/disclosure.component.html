@@ -1,0 +1,15 @@
+<div class="anotoki-disclosure__heading" [attr.role]="headingLevel() ? 'heading' : null" [attr.aria-level]="headingLevel()">
+    <button #button type="button" class="anotoki-disclosure__button" [id]="buttonId" [attr.aria-expanded]="open()" [attr.aria-controls]="panelId" (click)="toggle()">
+        <span class="anotoki-disclosure__title">{{ heading() }}</span>
+        <anotoki-icon class="anotoki-disclosure__chevron" name="chevronDown" [size]="18" />
+    </button>
+</div>
+<div class="anotoki-disclosure__panel" [id]="panelId" [hidden]="!open()">
+    @if (panel(); as content) {
+        @if (open() || (keep() && made())) {
+            <ng-container [ngTemplateOutlet]="content.template" />
+        }
+    } @else {
+        <ng-content />
+    }
+</div>

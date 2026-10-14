@@ -3,7 +3,9 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 /**
  * The top of a page: the one `<h1>`, a lead line, and the page's main actions
  * at the right (under it on a phone). Content marked `pageEyebrow` goes above
- * the heading (a back link), `pageMeta` under the lead (badges, dates).
+ * the heading (a back link), `pageMeta` under the lead (badges, dates). A lead
+ * with markup of its own - a link, a name in bold - is content marked
+ * `pageLead` (0.6.0), drawn as the lead: `<span pageLead>Built from <a …>…</a></span>`.
  *
  * The heading takes the focus (tabindex="-1", no ring), so a site can move the
  * focus to it after a navigation and a screen reader starts at the new page.

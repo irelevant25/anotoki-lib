@@ -1,0 +1,75 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: block;
+  min-width: 0;
+  color: kit.token(text);
+}
+
+.anotoki-step-dots__dots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A dot: to come a ring (border-strong, 3:1), done filled with the success colour, current with the primary - and
+// longer, so it is told by its shape too.
+.anotoki-step-dots__dot {
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.625rem;
+  border: 1.5px solid kit.token(border-strong);
+  border-radius: 999px;
+  transition:
+    width kit.token(duration) kit.token(ease),
+    background-color kit.token(duration) kit.token(ease);
+}
+
+.anotoki-step-dots__dot--done {
+  border-color: kit.token(success);
+  background: kit.token(success);
+}
+
+.anotoki-step-dots__dot--current {
+  width: 1.5rem;
+  border-color: kit.token(primary);
+  background: kit.token(primary);
+}
+
+// Pills of short words (Piano's): to come in the muted ink, done in the success ink, current filled.
+:host(.anotoki-step-dots--labels) {
+  .anotoki-step-dots__dot {
+    width: auto;
+    height: auto;
+    padding: 0.15rem 0.6rem;
+    border-width: 1px;
+    background: none;
+    color: kit.token(muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+
+  .anotoki-step-dots__dot--done {
+    color: kit.token(success-text);
+  }
+
+  .anotoki-step-dots__dot--current {
+    background: kit.token(primary);
+    color: kit.token(primary-contrast);
+    font-weight: 600;
+  }
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anotoki-step-dots__dot {
+    transition: none;
+  }
+}

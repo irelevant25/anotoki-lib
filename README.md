@@ -212,8 +212,9 @@ uses is in the first load again.
 | `@anotoki/lib/ui/dialog` | dialog, `AnotokiDialog.open()`, `ConfirmService` + `<anotoki-confirm-host>` | where the host is in the root |
 | `@anotoki/lib/ui/toast` | `ToastService` + `<anotoki-toast-host>` | yes |
 | `@anotoki/lib/ui/forms` | text field, textarea, password field, select, checkbox, switch, radio group, code input | lazy pages only |
+| `@anotoki/lib/ui/select`, `/field` (0.6.0) | the select alone, for a first page (a widget in the bar), and `FieldBase` - both named by `ui/forms` too | `ui/select` where a first page draws a select |
 | `@anotoki/lib/ui/tabs`, `/pagination`, `/drawer`, `/tooltip`, `/copy`, `/qr` | one piece each | lazy pages |
-| `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
+| `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress`, `/disclosure`, `/stepper`, `/labelled-group` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar, the disclosure and the accordion, the stepper and the progress dots, the labelled group - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
 | `@anotoki/lib/ui/piece-words` (0.6.0) | `pieceWords()`: how a piece of its own entry point reads its own words, the site's string first | with those pieces |
 | `@anotoki/lib/shell` | theme service and switch, language switcher, brand, top bar, frame, `latestChoiceSaver`; `assets/theme-boot.js` | yes (every page) |
 | `@anotoki/lib/migrations` | site status, interceptor, gate, status page, update banner | yes (the gate) |
@@ -237,7 +238,7 @@ uses is in the first load again.
 | `@anotoki/lib/error-report/marker` (0.6.0) | `ANOTOKI_ERROR_REPORT` alone, the mark on a report's request an interceptor reads (the auth module's) - without the reporter; `@anotoki/lib/error-report` names it too | with the reporter, and the auth module |
 | `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips` and `/progress` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress` and `/stepper` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -277,7 +278,7 @@ worded.
 @include anotoki.fonts;       // Manrope's @font-face rules (its files come with the package)
 @include anotoki.base;        // the page's font, colours, type, links, code, the focus ring, reduced motion
 @include anotoki.utilities;   // .stack, .cluster, .form-grid, .muted, .facts, .skeleton ... ("anotoki-" prefix if they collide)
-@include anotoki.tables;      // .table, .table-scroll, .table-stack
+@include anotoki.tables;      // .table, .table-scroll, .table-stack, .table-middle
 ```
 
 ```ts
@@ -327,7 +328,11 @@ in `angular.json`) drops that line for `anotoki.fonts`.
   downloads only what a page uses).
 - `base`, `utilities($prefix: "")`, `tables($prefix: "")` - the IAM's global
   styles; a site whose own `.page`, `.lead`, `.card` would collide passes
-  `"anotoki-"`.
+  `"anotoki-"`. Tables (0.6.0): `.table-middle` on a table sits every cell on its
+  row's middle (rows of pictures, badges and buttons; the cells start at the top
+  otherwise); stacked (`.table-stack` up to 720 px) a number's cell (`.cell-num`)
+  starts at its label as every other cell does, and a badge or a button keeps its
+  own width.
 
 The tokens (each `--anotoki-<name>`, light and dark): `bg`, `surface`,
 `surface-2`, `surface-3`, `surface-raised`, `border`, `border-strong`, `text`,
@@ -435,7 +440,7 @@ first load.
   is the quiet red of a row's Delete among quiet buttons: no ground until hovered,
   its words and icon in `danger-text` - `<button anotokiButton variant="danger-ghost" iconOnly size="sm" aria-label="Delete">`.
 - `anotoki-spinner` (`ui/spinner`) - `size`, `label` (a bare `label` says the kit's "Loading…"),
-  `showLabel`, `inline`, `delay` (ms before it shows).
+  `showLabel`, `inline` (both bare attributes too, 0.6.0: `<anotoki-spinner label showLabel />`), `delay` (ms before it shows).
 - `anotoki-badge` (`ui/badge`) - `tone`, `dot`, `mono`, `wrap` (0.6.0: its words wrap onto more
   lines in a narrow line instead of running out of it). `anotoki-alert` (`ui/alert`) - `tone`, `heading`,
   `announce` (`true`: role="alert", `'polite'`: role="status"); `[alertActions]`.
@@ -445,7 +450,8 @@ first load.
 - `anotoki-empty-state` (`ui/empty-state`) - `icon`, `heading`, `text`; content: actions.
   `anotoki-error-state` (`ui/error-state`) - `heading`, `message`, `retryLabel`; `(retry)`.
 - `anotoki-page-header` (`ui/page-header`) - `heading`, `lead`, `headingId` (`page-title`);
-  `[pageEyebrow]`, `[pageMeta]`, content: actions.
+  `[pageEyebrow]`, `[pageMeta]`, `[pageLead]` (0.6.0: a lead with markup of its own - a link, a name in
+  bold - drawn as the lead: `<span pageLead>Built from <a …>…</a></span>`), content: actions.
 - `anotoki-avatar` (`ui/avatar`) - `name`, `imageUrl`, `size`, `shape` (`rounded`, `circle`).
 - `anotoki-segmented` (`ui/segmented`) - `label`, `options` (`{ value, label, icon?, hint?, name?, lang?, disabled?, mark? }`),
   `value` + `(valueChange)` (or `[(value)]`), `iconsOnly`, `size`, `busy`: a radio
@@ -469,7 +475,8 @@ click outside closes it where the focus is; choosing an item closes it.
 `[anotokiPopoverTrigger]` + `<anotoki-popover label autoFocus>` - the same for a
 box of controls (a labelled group; Escape, the focus leaving and a click outside close it).
 
-**`ui/dialog`** - `<anotoki-dialog heading description size dismissible busy (dismiss)>`
+**`ui/dialog`** - `<anotoki-dialog heading description size dismissible busy (dismiss)>` (`size`: `sm` 27rem,
+`md` 34, `lg` 46, `xl` 64 - 0.6.0, a whole editor or a preview -, never wider than the screen)
 in a page's `@if` (`[dialogFooter]`); `AnotokiDialog.open(Component, { data, heading, size, dismissible })`
 -> `AnotokiDialogRef` (`close(result)`, `closed`, `busy`, `heading`); the
 component injects `AnotokiDialogRef` and `ANOTOKI_DIALOG_DATA` and puts its
@@ -492,7 +499,9 @@ summary; the text field, textarea, password field, select and code input),
 `anotoki-textarea` (`rows`, `readonly`, ...), `anotoki-password-field`
 (`autocomplete` required, `[labelAside]`; its Show the only one - Edge's own
 reveal and clear buttons hidden, 0.5.0), `anotoki-select` (`options`,
-`placeholder`, `inline`), `anotoki-checkbox` / `anotoki-switch`
+`placeholder`, `inline`; 0.6.0: an entry point of its own too, `ui/select`, for a page that draws it where
+the first load is - a widget in the bar - without every other field: through `ui/forms` a first load took
+11.2 kB gzipped beside lazy pages, 7.0 through `ui/select`; `ui/forms` names it as before), `anotoki-checkbox` / `anotoki-switch`
 (`[(checked)]`, `hint`, the switch's `busy`), `anotoki-radio-group`,
 `anotoki-code-input` (`length`, `(complete)`).
 
@@ -544,6 +553,31 @@ re-exported by `ui` (what the sites drew themselves until round 2's end):
   page's language, then English (marked `lang="en"`) - never a key. A piece has no provide*()
   function, and the kit's own is in every first load: the pieces read their words themselves,
   never registering them ("The library's own words" below).
+- `ui/disclosure` - `<anotoki-disclosure heading [(open)] headingLevel keep plain>`: a button that shows
+  and hides what is under it, `aria-expanded` and `aria-controls`; inside a heading of the page's
+  outline with `headingLevel` (2-6). Content given as it is is made at once and hidden while closed;
+  given as `<ng-template anotokiDisclosurePanel>` it is made only once opened (hundreds of lines,
+  editors that load) and dropped when closed - or kept once made (`keep`). A card's look, or `plain`
+  (a quiet line in the link's ink). `<anotoki-accordion [multiple]>` around several: one open at a
+  time (opening one closes the others; all may be closed) or many; Down, Up, Home and End move the
+  focus between its own disclosures' buttons (one inside another's panel is the panel's own).
+- `ui/stepper` - `<anotoki-stepper label [steps] [current] navigable disabled (choose)>`: a wizard's
+  steps in a row (`{ label, short?, lang?, done? }`), a named list - the current step
+  `aria-current="step"`, heard "Step 3 of 4: Import"; one done shows a check and is heard "Choose
+  the game, done" (the library's `anotoki.stepper.*`); one to come its number. `navigable`: a step
+  done is a button back to it (`choose`, its index), shut while `disabled`. Narrow (its own width
+  under 36rem) the steps are their marks, the current one its name too. `<anotoki-step-dots label
+  [steps] [current] showLabels>`: the same list for the ear, small dots for the eye (the current one
+  longer and filled, the ones done in the success colour) or pills of short words; a step after the
+  current one may be `done` too.
+- `ui/labelled-group` - `<anotoki-labelled-group label for selfNamed hint inline #group="anotokiLabelledGroup">`:
+  a label drawn as the fields', tied to a control that is no field of the kit's - a row of the
+  page's buttons (the default: `role="group"` named by the label), one native control of its own
+  (`for` its id: a real `<label for>`), or a control that names itself with the same words
+  (`selfNamed`: the kit's segmented control - the label shown, not said twice). Stacked (the control
+  as tall as a field, so a segmented control lines up with the selects beside it) or `inline`;
+  `hint` under it (`group.hintId` for the page to tie to its control). The library's own pages use it
+  (the Errors page's Range, the Feedback dialog's Mark as).
 
 ### `@anotoki/lib/shell`
 
@@ -949,8 +983,9 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   beside it ("Feedback, 3 new"; Slovak "nové: 3"), by 002's rule.
 - `007_kit_piece_words.sql` (0.6.0) adds the words of the kit's pieces of their
   own entry points: the removable chips' `anotoki.chips.remove` ("Remove:
-  Furina") and the progress bar's `anotoki.progress.count` ("3 of 10"), in
-  English and impersonal Slovak, by 002's rule.
+  Furina"), the progress bar's `anotoki.progress.count` ("3 of 10") and the
+  stepper's and progress dots' `anotoki.stepper.stepOf` ("Step 2 of 4") and
+  `anotoki.stepper.done` ("done"), in English and impersonal Slovak, by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -1087,7 +1122,8 @@ import it:
   "Vy"). The script knows both (`READ_BY_THEIR_PAGES`, `IMPERSONAL`);
 - the namespaces of the kit's pieces that are entry points of their own (0.6.0),
   read by those pieces alone, never registered: `@anotoki/lib/words/chips` (by
-  `ui/chips`), `@anotoki/lib/words/progress` (by `ui/progress`). A piece has no
+  `ui/chips`), `@anotoki/lib/words/progress` (by `ui/progress`),
+  `@anotoki/lib/words/stepper` (by `ui/stepper`). A piece has no
   provide*() function, and the kit's own (provideAnotokiUi) is in every first
   load: a registration there would bring every piece's words into every first
   load. Each piece reads its words through `pieceWords()` (`ui/piece-words`) -
@@ -2698,9 +2734,9 @@ bun run build           # ng build lib -> angular/dist/lib, then scripts/check-p
                         # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
                         # build keeps of an entry point nothing is used of (nothing); no bundle naming innerHTML,
                         # outerHTML, insertAdjacentHTML or bypassSecurityTrust, comments too (the IAM's deploy
-                        # check refuses such a release); and nine first loads - the gate, the bar, the words, a
-                        # button, the sign-in, the badge, the words + feedback, the error report, the words + legal
-                        # links - beside lazy pages that use the rest (no file of theirs, under a limit; the words
+                        # check refuses such a release); and ten first loads - the gate, the bar, the words, a
+                        # button, a select, the sign-in, the badge, the words + feedback, the error report, the
+                        # words + legal links - beside lazy pages that use the rest (no file of theirs, under a limit; the words
                         # of the namespaces their page says, and no others), each file through Angular's own
                         # linker and the CLI's esbuild
 bun run test            # ng test lib --watch=false (Vitest, jsdom)

@@ -15,8 +15,9 @@ version.
   `ui/segmented`, `ui/autofocus`; and the kit's other entry points `ui/icons`,
   `ui/menu`, `ui/dialog`, `ui/toast`, `ui/forms`, `ui/tabs`, `ui/pagination`,
   `ui/drawer`, `ui/tooltip`, `ui/copy`, `ui/qr`, and 0.6.0's `ui/chips`,
-  `ui/link-card`, `ui/stat-tiles`, `ui/progress` and `ui/piece-words` (how those
-  pieces read their own words).
+  `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`,
+  `ui/labelled-group`, `ui/select` (the select alone, for a first page), `ui/field`
+  and `ui/piece-words` (how those pieces read their own words).
 - `@anotoki/lib/shell` - the theme (service and switch), the language switcher, the
   brand, the family's top bar and the frame; `assets/theme-boot.js`.
 - `@anotoki/lib/migrations` - one behaviour for every site while its database waits
@@ -51,8 +52,8 @@ version.
   (for a site's specs); `@anotoki/lib/words/<namespace>` - one module's
   (`/site-status`, `/sign-in`, `/feedback`, `/legal-links`), imported by that module
   alone, which registers them with the translations module (`provideLibraryWords`),
-  and `/legal`, which the legal pages read themselves, and `/chips` and `/progress`,
-  which those pieces read themselves. Generated from
+  and `/legal`, which the legal pages read themselves, and `/chips`, `/progress` and
+  `/stepper`, which those pieces read themselves. Generated from
   `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site

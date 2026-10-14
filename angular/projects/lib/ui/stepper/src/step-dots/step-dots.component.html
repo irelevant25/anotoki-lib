@@ -1,0 +1,26 @@
+<ol class="anotoki-step-dots__dots" [attr.aria-label]="label()">
+    @for (step of steps(); track $index; let index = $index) {
+        @let state = states()[index];
+        <li
+            class="anotoki-step-dots__dot"
+            [class.anotoki-step-dots__dot--done]="state === 'done'"
+            [class.anotoki-step-dots__dot--current]="state === 'current'"
+            [attr.aria-current]="state === 'current' ? 'step' : null">
+            @if (showLabels()) {
+                <span class="anotoki-step-dots__short" aria-hidden="true" [attr.lang]="step.lang || null">{{ step.short ?? step.label }}</span>
+            }
+            <!-- What a screen reader hears of the step: "Step 3 of 5: Play", "Listen, done", "Read". -->
+            <span class="anotoki-visually-hidden">
+                @if (state === "current") {
+                    @let stepOf = word("anotoki.stepper.stepOf", { current: index + 1, total: steps().length });
+                    <span [attr.lang]="stepOf.lang">{{ stepOf.text }}:&ngsp;</span>
+                }
+                <span [attr.lang]="step.lang || null">{{ step.label }}</span>
+                @if (state === "done") {
+                    @let done = word("anotoki.stepper.done");
+                    <span [attr.lang]="done.lang">,&ngsp;{{ done.text }}</span>
+                }
+            </span>
+        </li>
+    }
+</ol>

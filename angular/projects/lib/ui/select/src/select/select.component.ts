@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, input, model, viewChild } from '@angular/core';
 import { IconComponent } from '@anotoki/lib/ui/icon';
-import { FieldBase } from '../field-base';
+import { FieldBase } from '@anotoki/lib/ui/field';
 
 export interface SelectOption {
   value: string;

@@ -17,14 +17,19 @@ import {
 import { ChipComponent, ChipGroupComponent, ChipItem, ChipListComponent, ChipOption } from '@anotoki/lib/ui/chips';
 import { CopyButtonComponent } from '@anotoki/lib/ui/copy';
 import { ConfirmService, DialogComponent } from '@anotoki/lib/ui/dialog';
+import { AccordionComponent, DisclosureComponent, DisclosurePanelDirective } from '@anotoki/lib/ui/disclosure';
 import { DrawerComponent } from '@anotoki/lib/ui/drawer';
-import { CheckboxComponent, CodeInputComponent, PasswordFieldComponent, RadioGroupComponent, SelectComponent, SwitchComponent, TextFieldComponent, TextareaComponent } from '@anotoki/lib/ui/forms';
+import { CheckboxComponent, CodeInputComponent, PasswordFieldComponent, RadioGroupComponent, SwitchComponent, TextFieldComponent, TextareaComponent } from '@anotoki/lib/ui/forms';
+import { LabelledGroupComponent } from '@anotoki/lib/ui/labelled-group';
 import { LinkCardComponent } from '@anotoki/lib/ui/link-card';
 import { MenuComponent, MenuItemComponent, MenuSeparatorComponent, MenuTriggerDirective, PopoverComponent, PopoverTriggerDirective } from '@anotoki/lib/ui/menu';
 import { PaginationComponent } from '@anotoki/lib/ui/pagination';
 import { ProgressBarComponent } from '@anotoki/lib/ui/progress';
 import { QrCodeComponent } from '@anotoki/lib/ui/qr';
+// The select alone (0.6.0): what a site draws where the first load is (the piano's box in Piano's bar) - not every field.
+import { SelectComponent } from '@anotoki/lib/ui/select';
 import { StatTileComponent, StatTilesComponent } from '@anotoki/lib/ui/stat-tiles';
+import { StepDotsComponent, StepItem, StepperComponent } from '@anotoki/lib/ui/stepper';
 import { TabsComponent } from '@anotoki/lib/ui/tabs';
 import { ToastService } from '@anotoki/lib/ui/toast';
 import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
@@ -33,6 +38,7 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
 @Component({
   selector: 'show-gallery',
   imports: [
+    AccordionComponent,
     AlertComponent,
     AvatarComponent,
     BadgeComponent,
@@ -45,10 +51,13 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     CodeInputComponent,
     CopyButtonComponent,
     DialogComponent,
+    DisclosureComponent,
+    DisclosurePanelDirective,
     DrawerComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     IconComponent,
+    LabelledGroupComponent,
     LanguageSwitcherComponent,
     LinkCardComponent,
     MenuComponent,
@@ -68,6 +77,8 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     SpinnerComponent,
     StatTileComponent,
     StatTilesComponent,
+    StepDotsComponent,
+    StepperComponent,
     SwitchComponent,
     TabsComponent,
     TextFieldComponent,
@@ -97,6 +108,7 @@ export class GalleryComponent {
   protected readonly page = signal(2);
   protected readonly view = signal('list');
   protected readonly dialog = signal(false);
+  protected readonly wideDialog = signal(false);
   protected readonly drawer = signal(false);
   protected readonly loading = signal(false);
 
@@ -163,6 +175,19 @@ export class GalleryComponent {
     { value: 'all', label: 'Everything' },
   ];
   protected readonly period = signal('7');
+  /** The import's steps (the build analyzer's wizard): a step done is a way back to it. */
+  protected readonly wizard: StepItem[] = [{ label: 'Choose the game' }, { label: 'Choose the way in' }, { label: 'Prepare the export' }, { label: 'Import' }];
+  protected readonly wizardStep = signal(2);
+  /** A lesson's steps (Piano's): one after the current one passed before. */
+  protected readonly lesson: StepItem[] = [
+    { label: 'Listen', short: 'Listen' },
+    { label: 'Play the scale', short: 'Play' },
+    { label: 'Read the notes', short: 'Read', done: true },
+    { label: 'Sing it back', short: 'Sing' },
+  ];
+  protected readonly notesOpen = signal(false);
+  protected readonly tempo = signal(96);
+
   /** The family's icons the build analyzer drew itself until 0.6.0. */
   protected readonly newIcons = ['rocket', 'upload', 'lightbulb', 'pause', 'minus', 'wrench', 'gamepad', 'save'];
 

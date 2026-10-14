@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, booleanAttribute, computed, inject, input, signal } from '@angular/core';
 import { AnotokiWords } from '@anotoki/lib/ui/config';
 
 const SIZES = { sm: 16, md: 24, lg: 36 } as const;
@@ -31,9 +31,10 @@ export class SpinnerComponent implements OnInit {
   readonly size = input<keyof typeof SIZES>('md');
   /** What it says: a string, '' (a bare attribute) for the kit's "Loading…", null for nothing. */
   readonly label = input<string | null>(null);
-  readonly showLabel = input(false);
-  /** In a line of text: it sits on the text's middle. */
-  readonly inline = input(false);
+  /** The words shown beside it, not only said - a bare attribute too (0.6.0): `<anotoki-spinner label showLabel />`. */
+  readonly showLabel = input(false, { transform: booleanAttribute });
+  /** In a line of text: it sits on the text's middle (a bare attribute too, 0.6.0). */
+  readonly inline = input(false, { transform: booleanAttribute });
   /** Milliseconds before it shows. */
   readonly delay = input(0);
 

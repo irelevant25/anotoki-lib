@@ -41,12 +41,10 @@
         <p class="anotoki-admin__happened" data-happened role="status">{{ happened() }}</p>
 
         <form class="anotoki-admin__filters anotoki-error-log-page__filters" role="search" aria-label="Filter the error log" (submit)="$event.preventDefault(); applySearch()">
-            <div class="anotoki-error-log-page__range">
-                <span class="anotoki-error-log-page__label" aria-hidden="true">Range</span>
-                <div class="anotoki-error-log-page__range-control">
-                    <anotoki-segmented label="Range" data-range [options]="ranges" [value]="'' + filter().days" (valueChange)="setRange($event)" />
-                </div>
-            </div>
+            <!-- The kit's labelled group: the label as the fields' beside it; the segmented control names itself "Range". -->
+            <anotoki-labelled-group class="anotoki-error-log-page__range" label="Range" selfNamed>
+                <anotoki-segmented label="Range" data-range [options]="ranges" [value]="'' + filter().days" (valueChange)="setRange($event)" />
+            </anotoki-labelled-group>
             <anotoki-select label="Level" data-level placeholder="Any level" [options]="levels" [value]="filter().level" (valueChange)="setLevel($event)" />
             <anotoki-select label="Status" data-status placeholder="Any status" [options]="statusOptions()" [value]="filter().status" (valueChange)="setStatus($event)" />
             <div class="anotoki-admin__search">

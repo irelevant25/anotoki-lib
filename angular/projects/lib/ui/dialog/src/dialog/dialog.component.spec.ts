@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { draw, kitProviders, press, settle, words } from '../../../src/testing';
-import { DialogComponent } from './dialog.component';
+import { DialogComponent, DialogSize } from './dialog.component';
 
 @Component({
   selector: 'anotoki-test-dialog-page',
@@ -9,7 +9,7 @@ import { DialogComponent } from './dialog.component';
   template: `
     <button type="button" id="opener" (click)="open.set(true)">Edit</button>
     @if (open()) {
-      <anotoki-dialog heading="Edit the name" description="Everybody sees it." [dismissible]="dismissible()" [busy]="busy()" (dismiss)="dismissed = dismissed + 1; open.set(false)">
+      <anotoki-dialog heading="Edit the name" description="Everybody sees it." [size]="size()" [dismissible]="dismissible()" [busy]="busy()" (dismiss)="dismissed = dismissed + 1; open.set(false)">
         <input id="hidden-user" type="text" tabindex="-1" autocomplete="username" />
         <input id="name" type="text" />
         <button type="button" id="minus" tabindex="-1">Not a stop</button>
@@ -24,6 +24,7 @@ import { DialogComponent } from './dialog.component';
 })
 class DialogPageComponent {
   readonly open = signal(false);
+  readonly size = signal<DialogSize>('md');
   readonly dismissible = signal(true);
   readonly busy = signal(false);
   dismissed = 0;
@@ -59,6 +60,13 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
     expect(document.getElementById(shown.getAttribute('aria-labelledby')!)?.textContent).toBe('Edit the name');
     expect(document.getElementById(shown.getAttribute('aria-describedby')!)?.textContent).toBe('Everybody sees it.');
     expect(Array.from(shown.querySelectorAll('.anotoki-dialog__footer button')).map(words)).toEqual(['Cancel', 'Save']);
+    expect(shown.getAttribute('data-size')).toBe('md');
+  });
+
+  it('an extra-large size for a whole editor or a preview (0.6.0)', async () => {
+    page.size.set('xl');
+    await open();
+    expect(dialog()!.getAttribute('data-size')).toBe('xl');
   });
 
   it('the focus starts on the first field - not on the close button, nor on what is out of the tab order', async () => {

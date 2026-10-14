@@ -1,0 +1,51 @@
+@use "../../../../sass/kit";
+
+// Built as the kit's fields are: the label, the fields' gap, then the control.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+  color: kit.token(text);
+}
+
+// The label as every field's.
+.anotoki-labelled-group__label {
+  color: kit.token(text);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+// As tall as a field, its content on the middle: a segmented control (38 px) beside selects (44 px) lines up with them.
+// A row of controls wraps.
+.anotoki-labelled-group__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: kit.token(control-height);
+}
+
+.anotoki-labelled-group__hint {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+// The label before the control, on its line.
+:host(.anotoki-labelled-group--inline) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+
+  .anotoki-labelled-group__control {
+    min-height: 0;
+  }
+
+  .anotoki-labelled-group__hint {
+    flex-basis: 100%;
+  }
+}

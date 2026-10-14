@@ -1094,6 +1094,16 @@
             "description": "The anotoki library's progress bar, counting things done: the words beside the bar, and what a screen reader hears for its value - \"3 of 10\". {value}: how many are done; {max}: how many there are - both numbers written the page's way. Placeholders: {value}, {max}.",
             "en": "{value} of {max}",
             "sk": "{value} z {max}"
+        },
+        "anotoki.stepper.stepOf": {
+            "description": "The anotoki library's stepper and progress dots (the steps of a wizard, of a lesson): what a screen reader hears before the current step's name - \"Step 2 of 4: Import\". Heard, never seen. {current}: the step's number; {total}: how many steps there are. Placeholders: {current}, {total}.",
+            "en": "Step {current} of {total}",
+            "sk": "Krok {current} z {total}"
+        },
+        "anotoki.stepper.done": {
+            "description": "The anotoki library's stepper and progress dots: what a screen reader hears after the name of a step that is done - \"Choose the game, done\" (a check mark says it to the eye). Heard, never seen. No placeholders.",
+            "en": "done",
+            "sk": "hotovo"
         }
     }
 }

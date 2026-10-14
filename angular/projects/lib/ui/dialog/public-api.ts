@@ -4,6 +4,7 @@
  * and <anotoki-confirm-host />).
  */
 
+export type { DialogSize } from './src/dialog/dialog.component';
 export { DialogComponent } from './src/dialog/dialog.component';
 export { ANOTOKI_DIALOG_DATA, AnotokiDialogRef } from './src/dialog-ref';
 export type { AnotokiDialogOptions } from './src/dialog.service';

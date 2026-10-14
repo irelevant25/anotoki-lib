@@ -1,6 +1,6 @@
 import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Type, inject, input } from '@angular/core';
-import { DialogComponent } from '../dialog/dialog.component';
+import { DialogComponent, DialogSize } from '../dialog/dialog.component';
 import { AnotokiDialogRef } from '../dialog-ref';
 
 /**
@@ -18,7 +18,7 @@ export class DialogContainerComponent {
   protected readonly ref = inject(AnotokiDialogRef);
 
   readonly component = input.required<Type<unknown>>();
-  readonly size = input<'sm' | 'md' | 'lg'>('md');
+  readonly size = input<DialogSize>('md');
   readonly dismissible = input(true);
   readonly description = input<string | null>(null);
 }

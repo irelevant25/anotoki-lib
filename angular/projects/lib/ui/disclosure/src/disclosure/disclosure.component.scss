@@ -1,0 +1,111 @@
+@use "../../../../sass/kit";
+
+// A card's look: the sites' disclosures (the build analyzer's notes, genshin's groups of lines).
+:host {
+  display: block;
+  min-width: 0;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-sm);
+}
+
+.anotoki-disclosure__heading {
+  margin: 0;
+}
+
+// The whole row is the button: 48 px high, its words wrapping, the chevron at its end. Its focus ring inside the card,
+// clear of the cards beside it.
+.anotoki-disclosure__button {
+  @include kit.button-reset;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.6rem 1rem;
+  border-radius: kit.token(radius-lg);
+  color: kit.token(text);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: start;
+  transition: background-color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-2);
+  }
+
+  @include kit.focus-ring(-2px);
+}
+
+:host(.anotoki-disclosure--open) .anotoki-disclosure__button {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.anotoki-disclosure__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Down while closed, up while open.
+.anotoki-disclosure__chevron {
+  color: kit.token(muted);
+  transition: transform kit.token(duration) kit.token(ease);
+}
+
+:host(.anotoki-disclosure--open) .anotoki-disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+.anotoki-disclosure__panel {
+  padding: 0.25rem 1rem 1rem;
+}
+
+.anotoki-disclosure__panel[hidden] {
+  display: none;
+}
+
+// Plain: no card - a quiet line in the link's ink, a button's 44 px high, what it opens under it.
+:host(.anotoki-disclosure--plain) {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+
+  .anotoki-disclosure__button {
+    width: auto;
+    min-height: kit.token(control-height);
+    padding: 0 0.25rem;
+    border-radius: kit.token(radius-sm);
+    color: kit.token(link);
+    font-weight: 600;
+
+    &:hover {
+      background: none;
+      text-decoration: underline;
+      text-underline-offset: 0.18em;
+    }
+
+    &:focus-visible {
+      outline-offset: 2px;
+    }
+  }
+
+  .anotoki-disclosure__chevron {
+    color: currentColor;
+  }
+
+  .anotoki-disclosure__panel {
+    padding: 0.5rem 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anotoki-disclosure__chevron {
+    transition: none;
+  }
+}

@@ -1,0 +1,117 @@
+@use "../../../../sass/kit";
+
+// The row knows its own width (a card's, a phone's): a container, so it folds where it is narrow, not where the
+// window is.
+:host {
+  display: block;
+  min-width: 0;
+  color: kit.token(text);
+  container-type: inline-size;
+}
+
+.anotoki-stepper__steps {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// To come in the muted ink (4.5:1 on every ground), done and current in the text's.
+.anotoki-stepper__step {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.anotoki-stepper__step--done,
+.anotoki-stepper__step--current {
+  color: kit.token(text);
+}
+
+// A finger's 44 px, a step done as a button too.
+.anotoki-stepper__item,
+.anotoki-stepper__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: kit.token(control-height);
+  padding: 0 0.6rem;
+}
+
+.anotoki-stepper__button {
+  @include kit.button-reset;
+  border-radius: 999px;
+  color: kit.token(text);
+  font-weight: 650;
+  transition: background-color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-3);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  @include kit.focus-ring;
+}
+
+// The mark: to come its number in a ring (border-strong, 3:1), current filled, done a check on the soft primary.
+.anotoki-stepper__mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1.5px solid kit.token(border-strong);
+  border-radius: 50%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.anotoki-stepper__step--current .anotoki-stepper__mark {
+  border-color: kit.token(primary);
+  background: kit.token(primary);
+  color: kit.token(primary-contrast);
+}
+
+.anotoki-stepper__step--done .anotoki-stepper__mark {
+  border-color: kit.token(primary-soft);
+  background: kit.token(primary-soft);
+  color: kit.token(primary-soft-text);
+}
+
+.anotoki-stepper__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}
+
+// Narrow: the steps are their marks, the current one its name too (the others' names still heard).
+@container (max-width: 36rem) {
+  .anotoki-stepper__step:not(.anotoki-stepper__step--current) {
+    flex: none;
+
+    .anotoki-stepper__label {
+      @include kit.visually-hidden;
+    }
+  }
+
+  .anotoki-stepper__step--current {
+    justify-content: flex-start;
+  }
+}

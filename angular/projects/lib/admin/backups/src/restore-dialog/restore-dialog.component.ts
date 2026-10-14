@@ -182,9 +182,11 @@ export class RestoreDialogComponent {
       this.typedError.set(this.tools.say(failure));
       return;
     }
+    // A failed restore's heading claims nothing of what stayed: the answer says it, in one of its two sentences - rolled
+    // back whole, or ended by a hook with what it had loaded perhaps still there (Backups' RESTORE_FAILED, RESTORE_ENDED).
     const heading =
       failure.code === 'restore_failed'
-        ? 'The restore failed - nothing of it stayed'
+        ? 'The restore failed'
         : failure.code === 'before_restore_failed'
           ? 'Nothing was restored'
           : failure.code === 'schema_differs'

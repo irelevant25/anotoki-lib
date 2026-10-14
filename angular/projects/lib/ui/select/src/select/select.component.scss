@@ -1,5 +1,5 @@
 @use "../../../../sass/kit";
-@use "../field";
+@use "../../../forms/src/field";
 
 @include field.styles;
 

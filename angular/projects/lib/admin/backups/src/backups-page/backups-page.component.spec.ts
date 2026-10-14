@@ -410,9 +410,10 @@ describe("<anotoki-backups-page>: made, downloaded, deleted and restored - each 
 
       click(restoreButton());
       await settle(fixture);
-      refuse(http.expectOne(`${BASE}/${MANUAL}/restore`), 500, 'restore_failed', 'The restore failed and nothing of it stayed: a deferred key was broken.');
+      refuse(http.expectOne(`${BASE}/${MANUAL}/restore`), 500, 'restore_failed', 'The restore failed, and nothing of it stayed. The error log says why.');
       await settle(fixture);
-      expect(words(host.querySelector('[data-failure]'))).toContain('The restore failed - nothing of it stayed');
+      expect(words(host.querySelector('[data-failure] .anotoki-alert__heading'))).toBe('The restore failed');
+      expect(words(host.querySelector('[data-failure] .anotoki-alert__text'))).toBe('The restore failed, and nothing of it stayed. The error log says why.');
       expect(restore()?.open).toBe(true);
 
       click(restoreButton());
@@ -424,6 +425,24 @@ describe("<anotoki-backups-page>: made, downloaded, deleted and restored - each 
       expect(host.querySelector('anotoki-backup-restore-dialog [data-sign-in-needed]')).not.toBeNull();
       expect(words(host.querySelector('[data-waiting]'))).toBe('Sign in again to go on.');
       expect(restoreButton().disabled).toBe(true);
+    });
+
+    it('a restore a hook ended: the heading claims nothing of what stayed - the answer says it may have', async () => {
+      setUp();
+      await openRestore('recent_sign_in');
+      type(host.querySelector('[data-confirm-word] input'), 'a1b2c3');
+      await wait(30);
+
+      click(restoreButton());
+      await settle(fixture);
+      const ended =
+        'The restore did not finish, and what it had loaded may have stayed (20261011-090000Z-before-restore-00112233445566778899aabbccddeeff holds the data as it was). The error log says why.';
+      refuse(http.expectOne(`${BASE}/${MANUAL}/restore`), 500, 'restore_failed', ended);
+      await settle(fixture);
+      expect(words(host.querySelector('[data-failure] .anotoki-alert__heading'))).toBe('The restore failed');
+      expect(words(host.querySelector('[data-failure] .anotoki-alert__text'))).toBe(ended);
+      expect(words(host.querySelector('[data-failure]'))).not.toContain('nothing of it stayed');
+      expect(restore()?.open).toBe(true);
     });
 
     it('tells a restore whose answer never came from one that failed: it may still be running', async () => {

@@ -1,0 +1,176 @@
+@use "../../../../sass/kit";
+
+// The calendar takes no room where it is written: its box is drawn over the page.
+:host {
+  display: contents;
+}
+
+@include kit.pop-in-keyframes;
+
+// In the top layer (popover="manual"), placed under the field's button by AnchoredPanel; the popover's own defaults
+// (centred, a border, Canvas colours) are set aside here.
+.anotoki-date-calendar__panel {
+  --_calendar-cell: 2.5rem;
+
+  position: fixed;
+  inset: auto;
+  z-index: 40;
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-lg);
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  text-align: left;
+  animation: pop-in 140ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  // A finger's target: every day 44 px square - seven of them and the padding fit a phone of 360 px.
+  @media (pointer: coarse) {
+    --_calendar-cell: #{kit.token(control-height)};
+  }
+}
+
+.anotoki-date-calendar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.anotoki-date-calendar__title {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: kit.token(text);
+  font-weight: 700;
+  text-align: center;
+
+  // "október 2026": a heading starts with a capital in every language the family writes.
+  &::first-letter {
+    text-transform: uppercase;
+  }
+}
+
+.anotoki-date-calendar__step {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--_calendar-cell);
+  height: var(--_calendar-cell);
+  border-radius: kit.token(radius);
+  color: kit.token(muted);
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+
+  // Kept in the tab order (the focus stays where it was when the last month is reached), dimmed and doing nothing.
+  &[aria-disabled="true"] {
+    background: none;
+    color: kit.token(muted);
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  @include kit.focus-ring(1px);
+}
+
+.anotoki-date-calendar__grid {
+  margin: 0 auto;
+  border: 0;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.anotoki-date-calendar__weekday {
+  width: var(--_calendar-cell);
+  padding: 0 0 0.25rem;
+  border: 0;
+  background: none;
+  color: kit.token(muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-align: center;
+  text-transform: none;
+}
+
+.anotoki-date-calendar__cell {
+  padding: 1px;
+  border: 0;
+  background: none;
+  text-align: center;
+}
+
+.anotoki-date-calendar__day {
+  @include kit.button-reset;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_calendar-cell);
+  height: var(--_calendar-cell);
+  border-radius: 50%;
+  color: kit.token(text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(surface-3);
+  }
+
+  // Today: its number bold in the primary colour, a dot under it - never a ring, which is the keyboard's focus.
+  &.anotoki-date-calendar__day--today {
+    color: kit.token(primary);
+    font-weight: 800;
+
+    &::after {
+      position: absolute;
+      bottom: 0.3rem;
+      left: 50%;
+      width: 0.25rem;
+      height: 0.25rem;
+      margin-left: -0.125rem;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+  }
+
+  &.anotoki-date-calendar__day--chosen {
+    background: kit.token(primary);
+    color: kit.token(primary-contrast);
+  }
+
+  // Outside the dates the field takes: struck through, not only paler.
+  &[aria-disabled="true"] {
+    background: none;
+    color: kit.token(muted);
+    cursor: not-allowed;
+    opacity: 0.55;
+    text-decoration: line-through;
+  }
+
+  @include kit.focus-ring(1px);
+}

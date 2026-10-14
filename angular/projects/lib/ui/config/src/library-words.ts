@@ -297,4 +297,13 @@ export type LibraryKey =
   | 'anotoki.stepper.stepOf'
   | 'anotoki.stepper.done'
   | 'anotoki.tabs.scrollBack'
-  | 'anotoki.tabs.scrollForward';
+  | 'anotoki.tabs.scrollForward'
+  | 'anotoki.dateField.choose'
+  | 'anotoki.dateField.previousMonth'
+  | 'anotoki.dateField.nextMonth'
+  | 'anotoki.dateField.invalid'
+  | 'anotoki.dateField.tooEarly'
+  | 'anotoki.dateField.tooLate'
+  | 'anotoki.colorField.picker'
+  | 'anotoki.colorField.swatches'
+  | 'anotoki.colorField.invalid';

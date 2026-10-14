@@ -1,0 +1,75 @@
+@if (isOpen()) {
+    <div
+        #panel
+        class="anotoki-date-calendar__panel"
+        role="dialog"
+        aria-modal="true"
+        popover="manual"
+        [id]="panelId"
+        [attr.aria-label]="label()"
+        (keydown)="onKeydown($event)"
+        (focusout)="onFocusOut($event)">
+        <div class="anotoki-date-calendar__head">
+            @let previous = word("anotoki.dateField.previousMonth");
+            <button
+                type="button"
+                class="anotoki-date-calendar__step"
+                [attr.aria-label]="previous.text"
+                [attr.title]="previous.text"
+                [attr.lang]="previous.lang"
+                [attr.aria-disabled]="canGoBack() ? null : 'true'"
+                (click)="step(-1)">
+                <anotoki-icon name="chevronLeft" [size]="18" />
+            </button>
+            <span class="anotoki-date-calendar__title" [id]="titleId" aria-live="polite">{{ title() }}</span>
+            @let next = word("anotoki.dateField.nextMonth");
+            <button
+                type="button"
+                class="anotoki-date-calendar__step"
+                [attr.aria-label]="next.text"
+                [attr.title]="next.text"
+                [attr.lang]="next.lang"
+                [attr.aria-disabled]="canGoForward() ? null : 'true'"
+                (click)="step(1)">
+                <anotoki-icon name="chevronRight" [size]="18" />
+            </button>
+        </div>
+        <table class="anotoki-date-calendar__grid" role="grid" [attr.aria-labelledby]="titleId" (keydown)="onGridKeydown($event)">
+            @if (!dayMonth()) {
+                <thead>
+                    <tr>
+                        @for (weekday of weekdays(); track $index) {
+                            <th class="anotoki-date-calendar__weekday" scope="col" [attr.abbr]="weekday.long">{{ weekday.short }}</th>
+                        }
+                    </tr>
+                </thead>
+            }
+            <tbody>
+                @for (row of rows(); track $index) {
+                    <tr>
+                        @for (cell of row; track $index) {
+                            @if (cell) {
+                                <td class="anotoki-date-calendar__cell" [attr.aria-selected]="cell.chosen ? 'true' : null">
+                                    <button
+                                        type="button"
+                                        class="anotoki-date-calendar__day"
+                                        [class.anotoki-date-calendar__day--chosen]="cell.chosen"
+                                        [class.anotoki-date-calendar__day--today]="cell.today"
+                                        [tabIndex]="cell.focus ? 0 : -1"
+                                        [attr.aria-label]="cell.name"
+                                        [attr.aria-current]="cell.today ? 'date' : null"
+                                        [attr.aria-disabled]="cell.out ? 'true' : null"
+                                        (click)="pick(cell)">
+                                        {{ cell.day.day }}
+                                    </button>
+                                </td>
+                            } @else {
+                                <td class="anotoki-date-calendar__cell"></td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

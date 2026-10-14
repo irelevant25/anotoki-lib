@@ -10,8 +10,9 @@
 //                                                  sign-in page), imported by that module alone, which registers
 //                                                  them with the translations module (provideLibraryWords) - or,
 //                                                  for words its lazy pages alone say (legal: pages of text), or a
-//                                                  kit piece of its own entry point (chips, progress, stepper, tabs),
-//                                                  read by those pages or that piece themselves (READ_BY_THEIR_PAGES).
+//                                                  kit piece of its own entry point (chips, progress, stepper, tabs,
+//                                                  dateField, colorField, ...), read by those pages or that piece
+//                                                  themselves (READ_BY_THEIR_PAGES).
 //   projects/lib/words/                            @anotoki/lib/words: LIBRARY_WORDS, every namespace's, for a
 //                                                  site's specs and the showcase - no module of the library's.
 //
@@ -56,10 +57,12 @@ const READ_BY_THEIR_PAGES = {
     progress: "the kit's progress bar (@anotoki/lib/ui/progress), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the progress bar alone.",
     stepper: "the kit's stepper and progress dots (@anotoki/lib/ui/stepper), which read them themselves, never registered - never by the kit's core nor by the translations module, so they reach a site with them alone.",
     tabs: "the kit's tabs and link tabs (@anotoki/lib/ui/tabs), which read them themselves, never registered - never by the kit's core nor by the translations module, so they reach a site with the tabs alone.",
+    dateField: "the kit's date field (@anotoki/lib/ui/date-field), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the date field alone.",
+    colorField: "the kit's colour field (@anotoki/lib/ui/color-field), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the colour field alone.",
 };
 
 /** The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages', and the kit's pieces' of 0.6.0). */
-const IMPERSONAL = ["legal", "legalLinks", "chips", "progress", "stepper", "tabs"];
+const IMPERSONAL = ["legal", "legalLinks", "chips", "progress", "stepper", "tabs", "dateField", "colorField"];
 
 /** Every file this writes says so: how a left-over one is known - and only such a one is ever removed. */
 const GENERATED = "GENERATED from php/resources/library-words.json by angular/scripts/library-words.mjs";

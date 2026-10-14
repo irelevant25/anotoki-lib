@@ -1,0 +1,174 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+// A field of the kit's: its frame, its label and its messages as every field has them (the same classes).
+@include field.frame;
+@include field.labels;
+@include field.messages;
+
+// The thumb's size is one number for three things placed against it: the thumb, the fill that ends under its centre
+// and the marks under its stops. Set on the host, which every part inherits from.
+:host {
+  --_slider-thumb: 1.375rem;
+  --_slider-rail: 0.375rem;
+}
+
+.anotoki-slider__value {
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.anotoki-slider__track {
+  position: relative;
+}
+
+// Room for the marks' words under the track.
+.anotoki-slider__track--labelled {
+  padding-bottom: 1.25rem;
+}
+
+// The input is the whole 44 px high box - a finger's target over all the track - and draws only its track and thumb.
+.anotoki-slider__range {
+  --_slider-at: calc(var(--_slider-thumb) / 2 + var(--_slider-fill, 0) * (100% - var(--_slider-thumb)));
+
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: kit.token(control-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// Written once for each engine: a browser that does not know one of these pseudo-elements throws a whole rule away.
+// The track: filled up to the thumb in the primary colour, the rest border-strong (3:1 on every ground).
+.anotoki-slider__range::-webkit-slider-runnable-track {
+  height: var(--_slider-rail);
+  border-radius: var(--_slider-rail);
+  background: linear-gradient(to right, #{kit.token(primary)} var(--_slider-at), #{kit.token(border-strong)} var(--_slider-at));
+}
+
+.anotoki-slider__range::-moz-range-track {
+  height: var(--_slider-rail);
+  border-radius: var(--_slider-rail);
+  background: linear-gradient(to right, #{kit.token(primary)} var(--_slider-at), #{kit.token(border-strong)} var(--_slider-at));
+}
+
+// The thumb: the primary colour, a ring of the ground round it, so it stands out of the fill under it.
+.anotoki-slider__range::-webkit-slider-thumb {
+  box-sizing: border-box;
+  width: var(--_slider-thumb);
+  height: var(--_slider-thumb);
+  margin-top: calc((var(--_slider-rail) - var(--_slider-thumb)) / 2);
+  border: 3px solid kit.token(surface);
+  border-radius: 50%;
+  background: kit.token(primary);
+  box-shadow:
+    0 0 0 1px kit.token(primary),
+    kit.token(shadow-sm);
+  appearance: none;
+  transition: box-shadow kit.token(duration) kit.token(ease);
+}
+
+.anotoki-slider__range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--_slider-thumb);
+  height: var(--_slider-thumb);
+  border: 3px solid kit.token(surface);
+  border-radius: 50%;
+  background: kit.token(primary);
+  box-shadow:
+    0 0 0 1px kit.token(primary),
+    kit.token(shadow-sm);
+  transition: box-shadow kit.token(duration) kit.token(ease);
+}
+
+// The focus ring round the thumb, where the keyboard is.
+.anotoki-slider__range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 1px kit.token(primary),
+    0 0 0 3px kit.token(surface),
+    0 0 0 5px kit.token(focus);
+}
+
+.anotoki-slider__range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 1px kit.token(primary),
+    0 0 0 3px kit.token(surface),
+    0 0 0 5px kit.token(focus);
+}
+
+// The marks: under the thumb's lowest edge, each where the thumb stands at its value; never in a pointer's way.
+.anotoki-slider__ticks {
+  position: absolute;
+  top: calc(#{kit.token(control-height)} / 2 + var(--_slider-thumb) / 2 + 2px);
+  right: 0;
+  left: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.anotoki-slider__tick {
+  position: absolute;
+  top: 0;
+  width: 0;
+}
+
+.anotoki-slider__mark {
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 2px;
+  height: 0.375rem;
+  border-radius: 1px;
+  background: kit.token(border-strong);
+}
+
+.anotoki-slider__tick--current .anotoki-slider__mark {
+  background: kit.token(primary);
+}
+
+// A mark's words, centred under it - the first and the last held inside the track's ends.
+.anotoki-slider__tick-label {
+  position: absolute;
+  top: 0.5rem;
+  left: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.anotoki-slider__tick-label--start {
+  transform: translateX(calc(var(--_slider-thumb) / -2));
+}
+
+.anotoki-slider__tick-label--end {
+  transform: translateX(calc(-100% + var(--_slider-thumb) / 2));
+}
+
+.anotoki-slider__tick--current .anotoki-slider__tick-label {
+  color: kit.token(text);
+  font-weight: 650;
+}
+
+:host(.anotoki-slider--disabled) {
+  .anotoki-slider__range,
+  .anotoki-slider__ticks {
+    opacity: 0.55;
+  }
+}

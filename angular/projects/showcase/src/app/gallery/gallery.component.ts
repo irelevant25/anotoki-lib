@@ -15,7 +15,9 @@ import {
   SpinnerComponent,
 } from '@anotoki/lib/ui';
 import { ChipComponent, ChipGroupComponent, ChipItem, ChipListComponent, ChipOption } from '@anotoki/lib/ui/chips';
+import { ColorFieldComponent, ColorSwatch } from '@anotoki/lib/ui/color-field';
 import { CopyButtonComponent } from '@anotoki/lib/ui/copy';
+import { DateFieldComponent, DateFieldFormat } from '@anotoki/lib/ui/date-field';
 import { ConfirmService, DialogComponent } from '@anotoki/lib/ui/dialog';
 import { AccordionComponent, DisclosureComponent, DisclosurePanelDirective } from '@anotoki/lib/ui/disclosure';
 import { DrawerComponent } from '@anotoki/lib/ui/drawer';
@@ -29,6 +31,7 @@ import { QrCodeComponent } from '@anotoki/lib/ui/qr';
 // The select alone (0.6.0): what a site draws where the first load is (the piano's box in Piano's bar) - not every field.
 import { SelectComponent } from '@anotoki/lib/ui/select';
 import { SideNavComponent, SideNavGroup, SideNavTriggerDirective } from '@anotoki/lib/ui/side-nav';
+import { SliderComponent, SliderTick } from '@anotoki/lib/ui/slider';
 import { StatTileComponent, StatTilesComponent } from '@anotoki/lib/ui/stat-tiles';
 import { StepDotsComponent, StepItem, StepperComponent } from '@anotoki/lib/ui/stepper';
 import { LinkTabItem, LinkTabsComponent, TabItem, TabsComponent } from '@anotoki/lib/ui/tabs';
@@ -50,7 +53,9 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     ChipGroupComponent,
     ChipListComponent,
     CodeInputComponent,
+    ColorFieldComponent,
     CopyButtonComponent,
+    DateFieldComponent,
     DialogComponent,
     DisclosureComponent,
     DisclosurePanelDirective,
@@ -78,6 +83,7 @@ import { TooltipDirective } from '@anotoki/lib/ui/tooltip';
     SelectComponent,
     SideNavComponent,
     SideNavTriggerDirective,
+    SliderComponent,
     SpinnerComponent,
     StatTileComponent,
     StatTilesComponent,
@@ -254,6 +260,45 @@ export class GalleryComponent {
   ];
   /** ?navButton=own: the side navigation's own button on a phone, in place of the site's in its bar. */
   protected readonly siteNavButton = new URLSearchParams(location.search).get('navButton') !== 'own';
+
+  // ── 0.6.0's input pieces ────────────────────────────────────────────────────
+
+  /** The account's date format (AccountPreferences' date_format in a site), or the page language's own. */
+  protected readonly dateFormats: SegmentedOption[] = [
+    { value: 'auto', label: 'The language’s' },
+    { value: 'dmy_dot', label: '6.10.2026' },
+    { value: 'dmy_slash', label: '06/10/2026' },
+    { value: 'mdy_slash', label: '10/06/2026' },
+    { value: 'ymd_dash', label: '2026-10-06' },
+  ];
+  protected readonly dateFormat = signal('dmy_dot');
+  protected readonly dateFormatValue = () => (this.dateFormat() === 'auto' ? null : (this.dateFormat() as DateFieldFormat));
+  protected readonly opens = signal('2026-10-14');
+  /** A character's birthday: a day and a month (genshin's). */
+  protected readonly birthday = signal('--02-29');
+  protected readonly released = signal('');
+  /** Genshin's minesweeper: three difficulties, a board of 5 to 30 squares a side. */
+  protected readonly difficulties: SliderTick[] = [
+    { value: 0, label: 'Easy' },
+    { value: 1, label: 'Medium' },
+    { value: 2, label: 'Hard' },
+  ];
+  protected readonly difficulty = signal(1);
+  protected readonly boardSizes: SliderTick[] = [5, 10, 15, 20, 25, 30].map((value) => ({ value, label: String(value) }));
+  protected readonly boardSize = signal(12);
+  protected readonly volume = signal(60);
+  /** Genshin's elements: each colour with its name, never a colour alone. */
+  protected readonly elementColors: ColorSwatch[] = [
+    { value: '#74c2a8', name: 'Anemo' },
+    { value: '#f0b232', name: 'Geo' },
+    { value: '#af8ec1', name: 'Electro' },
+    { value: '#a5c83b', name: 'Dendro' },
+    { value: '#4cc2f1', name: 'Hydro' },
+    { value: '#ef7938', name: 'Pyro' },
+    { value: '#9fd6e3', name: 'Cryo' },
+  ];
+  protected readonly ink = signal('#4cc2f1');
+  protected readonly paper = signal('');
 
   protected async ask(): Promise<void> {
     const sure = await this.confirm.ask({ title: 'Delete the survey?', message: 'Its 48 answers go with it. This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' });

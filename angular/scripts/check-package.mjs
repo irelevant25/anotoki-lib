@@ -21,7 +21,9 @@
 //   the footer's links, @anotoki/lib/legal), the kit's pieces, its dialog and its copy button, and the feedback form by
 //   import() alone. The kit's pieces of 0.6.0 are entry points of their own (ui/chips, ui/link-card, ui/stat-tiles,
 //   ui/progress, ..., ui/side-nav, ui/current-link), outside the core and its limit, each importing the core's pieces it
-//   draws; the tabs (lazy, no limit) gained the link tabs, the badge, the icon and the scroll hint in their own.
+//   draws; the tabs (lazy, no limit) gained the link tabs, the badge, the icon and the scroll hint in their own. Its input
+//   pieces (ui/date-field, ui/slider, ui/color-field, ...) too, each held to a limit of its own (LAZY_LIMITS): big
+//   pieces, lazy, kept from growing unseen.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -115,6 +117,19 @@ const LIMITS = {
 };
 const UI_AND_SHELL = 28.5;
 
+/**
+ * Gzipped kB each of the kit's input pieces of 0.6.0 may weigh - its code, without the comments. Lazy (no first load
+ * takes them), but big: a limit of its own, set with a little room over what it weighed when it came, keeps one from
+ * growing unseen. A limit crossed is a reason to look at what grew, not to raise the limit.
+ */
+const LAZY_LIMITS = {
+    // 9.4 at 0.6.0: the field and its calendar - two components, their templates and styles (each twice in the FESM,
+    // once more in the class metadata a site's production build drops) and the dates' reading and writing.
+    "@anotoki/lib/ui/date-field": 10,
+    "@anotoki/lib/ui/slider": 4,
+    "@anotoki/lib/ui/color-field": 4.5,
+};
+
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
 const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs", "@anotoki/lib/ui/labelled-group"];
 
@@ -171,6 +186,11 @@ const MAY_IMPORT = {
     // its words the kit's own (the top bar's "{count} new", ui/config).
     "@anotoki/lib/ui/current-link": [],
     "@anotoki/lib/ui/side-nav": [...PIECES, "@anotoki/lib/ui/drawer", "@anotoki/lib/ui/current-link"],
+    // The input pieces of 0.6.0: fields of the kit's (ui/field); the date field's calendar is a box under its button
+    // (ui/menu's AnchoredPanel, already in the bar's first load); each reads its own words (READ_BY_THEIR_PAGES).
+    "@anotoki/lib/ui/date-field": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/menu", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/date-field"],
+    "@anotoki/lib/ui/slider": [...PIECES, "@anotoki/lib/ui/field"],
+    "@anotoki/lib/ui/color-field": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/color-field"],
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
@@ -230,6 +250,8 @@ const READ_BY_THEIR_PAGES = {
     "@anotoki/lib/words/progress": ["@anotoki/lib/ui/progress"],
     "@anotoki/lib/words/stepper": ["@anotoki/lib/ui/stepper"],
     "@anotoki/lib/words/tabs": ["@anotoki/lib/ui/tabs"],
+    "@anotoki/lib/words/date-field": ["@anotoki/lib/ui/date-field"],
+    "@anotoki/lib/words/color-field": ["@anotoki/lib/ui/color-field"],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
@@ -325,7 +347,8 @@ for (const { name, file } of entries) {
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     codeOf[name] = code;
     weights[name] = gz(code) / 1024;
-    rows.push([name, kb(Buffer.byteLength(source)), weights[name].toFixed(1), name in LIMITS && name !== CORE ? `${LIMITS[name]}` : ""]);
+    const limit = name === CORE ? undefined : (LIMITS[name] ?? LAZY_LIMITS[name]);
+    rows.push([name, kb(Buffer.byteLength(source)), weights[name].toFixed(1), limit ? `${limit}` : ""]);
 
     if (!(name in MAY_IMPORT)) {
         problems.push(`${name}: an entry point check-package.mjs does not know - add it to MAY_IMPORT (and LIMITS if it is eager).`);
@@ -342,9 +365,12 @@ for (const { name, file } of entries) {
             problems.push(`${name} imports ${specifier}, which it may not.`);
         }
     }
-    if (name !== CORE && LIMITS[name] && weights[name] > LIMITS[name]) {
-        problems.push(`${name} is ${weights[name].toFixed(1)} kB gzipped, over its ${LIMITS[name]} kB.`);
+    if (limit && weights[name] > limit) {
+        problems.push(`${name} is ${weights[name].toFixed(1)} kB gzipped, over its ${limit} kB.`);
     }
+}
+for (const name of Object.keys(LAZY_LIMITS).filter((name) => !fileOf.has(name))) {
+    problems.push(`${name}: LAZY_LIMITS names an entry point the package does not have.`);
 }
 
 // The core's barrel holds re-exports alone: code of its own would be one more file every first page reaching it takes.

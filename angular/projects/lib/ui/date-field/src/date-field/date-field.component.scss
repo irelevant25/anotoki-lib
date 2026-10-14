@@ -1,0 +1,38 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+@include field.styles;
+
+// The button inside the field that opens the calendar: as the password field's Show is drawn.
+.anotoki-date-field__toggle {
+  @include kit.button-reset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 8px;
+  color: kit.token(muted);
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+
+  &[aria-expanded="true"] {
+    background: kit.token(primary-soft);
+    color: kit.token(primary-soft-text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  @include kit.focus-ring(0);
+
+  // A finger's target: as tall as the field allows and 44 px wide.
+  @media (pointer: coarse) {
+    width: kit.token(control-height);
+    height: calc(#{kit.token(control-height)} - 4px);
+  }
+}

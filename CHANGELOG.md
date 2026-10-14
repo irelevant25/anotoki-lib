@@ -231,6 +231,48 @@ apply `anotoki_translations/008` on the Migrations page (two keys; until then th
 words). A site's spec that reads a tab's `textContent` finds a badge's hidden words after it ("Issues 3, 3"): it reads
 the badge (`anotoki-badge`) or the name a screen reader is given.
 
+**The kit's input pieces** (the fifth part of 0.6.0): the inputs genshin and the build analyzer still drew themselves
+(README.md, "0.6.0's input pieces"). Each an entry point of its own, never re-exported by `@anotoki/lib/ui` and outside
+every first load; each a field of the kit's (label, hint, error, invalid, optional, disabled). What the browser checks
+in them is a convenience, never a defence: the server checks every value again.
+
+- `@anotoki/lib/ui/date-field` (new): `<anotoki-date-field>` - a date typed in the reader's date format (`format`: the
+  anotoki account's `date_format`, or null for the page language's own; typing lenient - any separator, a 0 or none, an
+  ISO date in any format) or chosen in a calendar opened by a button inside the field (or Alt+Down): a modal dialog
+  under it, a grid of the month's days (Intl's names, in the page's language) - the arrow keys, Home and End, Page Up
+  and Page Down (with Shift a year), Enter, Escape back to the field, Tab round the dialog; every day named whole, the
+  chosen one `aria-selected`, today `aria-current="date"`, `min` and `max` struck through and stopping the keyboard. The
+  value is ISO: `'YYYY-MM-DD'`, `''` for none; `dayMonth` (genshin's birthdays) a day and a month without a year,
+  `'--MM-DD'`, 29 February included. A text that is no date, or one outside `min` and `max`, is no value (`''`), and the
+  field says why once left. Genshin's `hideYear` stored its birthdays in year 4 (`0004-02-29`): it reads `--02-29` now.
+- `@anotoki/lib/ui/slider` (new): `<anotoki-slider>` - the native range input in the kit's look (the keyboard, a finger
+  and a screen reader as everywhere; a 44 px box), marks under the track with their words, the value shown and heard in
+  words where it has them (`aria-valuetext`: a tick's words, or the page's `valueText`) - genshin's three difficulties
+  were heard "0, 1, 2".
+- `@anotoki/lib/ui/color-field` (new): `<anotoki-color-field>` - the device's colour picker behind a colour box and
+  the colour's code beside it, kept in step (a typed code checked: `#rrggbb`, `#rgb`, with or without `#`), suggested
+  colours as a radio group, each with its name - never a colour alone. The value is `'#rrggbb'` lower-case, `''` for
+  none (the box crossed out, never black). `readColor()` reads a code the field's way.
+- The library's words: `anotoki.dateField.*` (6: the calendar's button and name "Choose a date: {field}", the month
+  buttons, "Write the date like {example}.", the earliest and latest date) and `anotoki.colorField.*` (3: the colour
+  box's and the swatches' names after the label, the code's message), English and impersonal Slovak, read by the pieces
+  themselves (`@anotoki/lib/words/date-field`, `/color-field`, `READ_BY_THEIR_PAGES`);
+  `anotoki_translations/009_input_words.sql` writes them by 002's rule, its gate naming its own keys (232 library keys).
+  Month and day names are never words: Intl writes them.
+- The package check: every first load as it was (ui + shell 28.34 kB of 28.5); the input pieces are lazy, each held to
+  a limit of its own (`LAZY_LIMITS`: `ui/date-field` 9.4 kB gzipped of 10 - the field, its calendar and the dates' reading
+  and writing -, `ui/slider` 3.5 of 4, `ui/color-field` 4.2 of 4.5). The date field's calendar icon is its own copy of
+  the family's (`own-copies.spec.ts` holds it to `iconCalendar`).
+- Tests: Vitest - the dates' reading and writing in the four formats and the languages' own, the field's typing, its
+  messages, min and max, the calendar's dialog, grid, keys, focus and words in English and Slovak, a day and a month; the
+  slider's label, words, marks and fill; the colour field's code, box, swatches and words (825 tests); PHPUnit for 009's
+  words, its rule and its gate (520, 1 skipped).
+
+What a site must do: nothing to keep building - the pieces are new. To word them in its own way, apply
+`anotoki_translations/009` on the Migrations page (until then they say the library's built-in words). Genshin, as it
+takes them: its birthdays from `0004-MM-DD` to `--MM-DD` (or back, at its API), the account's `date_format` into
+`format`.
+
 ## 0.5.2 - 2026-10-13
 
 Cloudflare's published ranges are every Cloudflare customer's, not the owner's zone alone: anybody's Worker can

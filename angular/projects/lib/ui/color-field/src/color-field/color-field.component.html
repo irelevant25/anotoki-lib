@@ -1,0 +1,65 @@
+<div class="anotoki-field">
+    <label class="anotoki-field__label" [id]="labelId" [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </label>
+    <div class="anotoki-color-field__row">
+        @let picker = word("anotoki.colorField.picker");
+        <!-- Heard after the label, never seen: "Text colour, pick from the palette". -->
+        <span hidden [id]="pickerId" [attr.lang]="picker.lang">{{ picker.text }}</span>
+        <input
+            class="anotoki-color-field__well"
+            [class.anotoki-color-field__well--none]="color() === null"
+            type="color"
+            [value]="well()"
+            [attr.aria-labelledby]="labelId + ' ' + pickerId"
+            [disabled]="disabled()"
+            (input)="onPick($event)" />
+        <div class="anotoki-field__control anotoki-color-field__code" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
+            <input
+                #control
+                class="anotoki-field__input"
+                type="text"
+                [id]="inputId"
+                [attr.name]="name() || null"
+                [value]="text()"
+                maxlength="7"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                [attr.aria-invalid]="isInvalid() ? 'true' : null"
+                [attr.aria-describedby]="describedBy()"
+                [required]="required()"
+                [disabled]="disabled()"
+                (input)="onType($event)"
+                (blur)="onBlur()" />
+        </div>
+    </div>
+    @if (swatches().length) {
+        @let named = word("anotoki.colorField.swatches");
+        <span hidden [id]="swatchesId" [attr.lang]="named.lang">{{ named.text }}</span>
+        <div class="anotoki-color-field__swatches" role="radiogroup" [attr.aria-labelledby]="labelId + ' ' + swatchesId">
+            @for (swatch of swatches(); track swatch.value) {
+                <label class="anotoki-color-field__swatch" [class.anotoki-color-field__swatch--chosen]="isChosen(swatch)">
+                    <input class="anotoki-color-field__radio" type="radio" [name]="radioName" [value]="swatch.value" [checked]="isChosen(swatch)" [disabled]="disabled()" (change)="choose(swatch)" />
+                    @if (isChosen(swatch)) {
+                        <anotoki-icon class="anotoki-color-field__check" name="check" [size]="14" [strokeWidth]="2.75" />
+                    }
+                    <span class="anotoki-color-field__dot" aria-hidden="true" [style.background-color]="swatch.value"></span>
+                    <span class="anotoki-color-field__name" [attr.lang]="swatch.lang || null">{{ swatch.name }}</span>
+                </label>
+            }
+        </div>
+    }
+    @if (hint() && !shownError()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (shownError(); as shown) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span [attr.lang]="shown.lang">{{ shown.text }}</span>
+        </p>
+    }
+</div>

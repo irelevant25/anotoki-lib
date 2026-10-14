@@ -83,7 +83,7 @@ final class TranslationsCommandTest extends DatabaseTestCase
     {
         self::assertSame(0, $this->command()->run(['translations.php', '--export', 'sk']));
         $export = $this->written();
-        self::assertStringStartsWith("{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.feedback.anonymous\": \"Poslať bez môjho mena\",", $export);
+        self::assertStringStartsWith("{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.colorField.invalid\": \"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.\",", $export);
         self::assertStringEndsWith("    \"home.title\": \"Domov\"\n}\n", $export);
 
         $file = $this->path('sk.json');

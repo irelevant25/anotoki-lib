@@ -225,6 +225,27 @@
         <anotoki-code-input label="The code from your app" [(value)]="code" hint="Six digits" />
     </section>
 
+    <section class="section" aria-labelledby="inputs-title">
+        <h2 class="section-title" id="inputs-title">Inputs (0.6.0)</h2>
+        <!-- The account's date format, as a site passes it (AccountPreferences' date_format), or the page language's own. -->
+        <anotoki-segmented data-date-format label="Date format" [options]="dateFormats" [(value)]="dateFormat" />
+        <div class="form-grid" data-date-fields>
+            <anotoki-date-field label="Opens" [(value)]="opens" [format]="dateFormatValue()" min="2026-10-01" max="2027-06-30" hint="From 1 October 2026 to the end of June 2027" />
+            <anotoki-date-field label="Birthday" [(value)]="birthday" [format]="dateFormatValue()" dayMonth hint="A day and a month, no year" />
+            <anotoki-date-field label="Released" [(value)]="released" [format]="dateFormatValue()" optional />
+        </div>
+        <p class="muted small" data-date-values>The values: {{ opens() || "''" }} · {{ birthday() || "''" }} · {{ released() || "''" }}</p>
+        <div class="form-grid" data-sliders>
+            <anotoki-slider label="Difficulty" [(value)]="difficulty" [min]="0" [max]="2" [ticks]="difficulties" [showValue]="false" hint="Harder boards pay more" />
+            <anotoki-slider label="Board size" [(value)]="boardSize" [min]="5" [max]="30" [ticks]="boardSizes" [valueText]="boardSize() + ' × ' + boardSize()" />
+            <anotoki-slider label="Volume" [(value)]="volume" [disabled]="true" />
+        </div>
+        <div class="form-grid" data-color-fields>
+            <anotoki-color-field label="Text colour" [(value)]="ink" [swatches]="elementColors" hint="An element's colour, or one of your own" />
+            <anotoki-color-field label="Background" [(value)]="paper" optional />
+        </div>
+    </section>
+
     <section class="section" aria-labelledby="choices-title">
         <h2 class="section-title" id="choices-title">Choices, menus, popovers</h2>
         <div class="cluster">

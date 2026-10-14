@@ -1,0 +1,55 @@
+<div class="anotoki-field">
+    <label class="anotoki-field__label" [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </label>
+    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
+        <input
+            #control
+            class="anotoki-field__input"
+            type="text"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            [value]="text()"
+            [attr.placeholder]="placeholder() || null"
+            [attr.autocomplete]="autocomplete() || 'off'"
+            spellcheck="false"
+            autocapitalize="off"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            [required]="required()"
+            [disabled]="disabled()"
+            (input)="onInput($event)"
+            (keydown)="onKeydown($event)"
+            (blur)="onBlur()" />
+        <span class="anotoki-field__affix">
+            @let choose = word("anotoki.dateField.choose", { field: label() });
+            <button
+                #toggle
+                type="button"
+                class="anotoki-date-field__toggle"
+                aria-haspopup="dialog"
+                [attr.aria-expanded]="days.isOpen()"
+                [attr.aria-controls]="days.isOpen() ? days.panelId : null"
+                [attr.aria-label]="choose.text"
+                [attr.title]="choose.text"
+                [attr.lang]="choose.lang"
+                [disabled]="disabled()"
+                (click)="days.toggle()">
+                <anotoki-icon name="calendar" [size]="18" />
+            </button>
+        </span>
+    </div>
+    <anotoki-date-calendar #days align="end" [label]="choose.text" [value]="value()" [dayMonth]="dayMonth()" [min]="min()" [max]="max()" (choose)="onChoose($event)" />
+    @if (hint() && !shownError()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (shownError(); as shown) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span [attr.lang]="shown.lang">{{ shown.text }}</span>
+        </p>
+    }
+</div>

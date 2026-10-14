@@ -7,7 +7,8 @@ package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., the pieces of 0.6.0 (`ui/chips`,
 `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`, `ui/labelled-group`,
-`ui/select`, `ui/field`, `ui/piece-words`, `ui/side-nav`, `ui/current-link`; `ui/tabs` gained the link tabs),
+`ui/select`, `ui/field`, `ui/piece-words`, `ui/side-nav`, `ui/current-link`; `ui/tabs` gained the link tabs;
+the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`),
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
@@ -65,7 +66,8 @@ bun run words           # the library's words from php/resources/library-words.j
   "Vy": they fit the formal survey too): words its lazy pages alone say, pages of
   text (the legal pages' `anotoki.legal.*`), and the words of the kit's pieces
   that are entry points of their own (0.6.0: `anotoki.chips.*`,
-  `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*` - a piece has no provide*(), and provideAnotokiUi is in
+  `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*`, `anotoki.dateField.*`, `anotoki.colorField.*` - a
+  piece has no provide*(), and provideAnotokiUi is in
   every first load), each read through `ui/piece-words`' `pieceWords()`, the
   site's string first. Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
@@ -97,7 +99,8 @@ bun run words           # the library's words from php/resources/library-words.j
   page uses). Top-level code a site's build cannot prove harmless - a call or a
   `new` of anything but an InjectionToken - is kept whether used or not: mark it
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
-  limits, every entry point to its imports (the shell imports only the core's
+  limits (and the big lazy input pieces of 0.6.0 to limits of their own, `LAZY_LIMITS`),
+  every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
   `migrations` and `error-report/marker` (a token, never the reporter); `people/page` the kit and `people`, which imports nothing;
   `legal/pages` the kit, `legal` and the feedback form by import() alone; a

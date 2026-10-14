@@ -119,6 +119,10 @@ final class LibraryWordsTest extends TestCase
             'anotoki.chips.remove', 'anotoki.progress.count', 'anotoki.stepper.stepOf', 'anotoki.stepper.done',
             // The tabs' arrows (angular/projects/lib/ui/tabs, read by the tabs themselves), from 008.
             'anotoki.tabs.scrollBack', 'anotoki.tabs.scrollForward',
+            // The kit's input pieces (angular/projects/lib/ui/date-field, /color-field, each read by the piece itself), from 009.
+            'anotoki.dateField.choose', 'anotoki.dateField.previousMonth', 'anotoki.dateField.nextMonth', 'anotoki.dateField.invalid',
+            'anotoki.dateField.tooEarly', 'anotoki.dateField.tooLate',
+            'anotoki.colorField.picker', 'anotoki.colorField.swatches', 'anotoki.colorField.invalid',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -138,6 +142,10 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['current', 'total'], LibraryWords::placeholders('anotoki.stepper.stepOf'));
         self::assertSame([], LibraryWords::placeholders('anotoki.tabs.scrollForward'));
         self::assertSame('More tabs', LibraryWords::english('anotoki.tabs.scrollForward'));
+        self::assertSame(['field'], LibraryWords::placeholders('anotoki.dateField.choose'));
+        self::assertSame(['example'], LibraryWords::placeholders('anotoki.dateField.invalid'));
+        self::assertSame(['date'], LibraryWords::placeholders('anotoki.dateField.tooEarly'));
+        self::assertSame([], LibraryWords::placeholders('anotoki.colorField.invalid'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

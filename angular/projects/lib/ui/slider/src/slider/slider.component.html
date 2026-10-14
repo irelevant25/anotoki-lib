@@ -1,0 +1,58 @@
+<div class="anotoki-field">
+    <div class="anotoki-field__label">
+        <label [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
+            {{ label() }}
+            @if (optional()) {
+                <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+            }
+        </label>
+        @if (showValue()) {
+            <!-- Seen alone: the slider itself says its value (aria-valuetext), once. -->
+            <span class="anotoki-slider__value" aria-hidden="true" [attr.lang]="said()?.lang ?? null">{{ shown() }}</span>
+        }
+    </div>
+    <div class="anotoki-slider__track" [class.anotoki-slider__track--labelled]="labelled()">
+        <input
+            #control
+            class="anotoki-slider__range"
+            type="range"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            [min]="min()"
+            [max]="max()"
+            [step]="step()"
+            [value]="current()"
+            [attr.aria-valuetext]="said()?.text ?? null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            [disabled]="disabled()"
+            (input)="onInput($event)" />
+        @if (marks().length) {
+            <div class="anotoki-slider__ticks" aria-hidden="true">
+                @for (mark of marks(); track mark.value) {
+                    <span class="anotoki-slider__tick" [class.anotoki-slider__tick--current]="mark.current" [style.left]="position(mark.along)">
+                        <span class="anotoki-slider__mark"></span>
+                        @if (mark.label) {
+                            <span
+                                class="anotoki-slider__tick-label"
+                                [class.anotoki-slider__tick-label--start]="mark.along === 0"
+                                [class.anotoki-slider__tick-label--end]="mark.along === 1"
+                                [attr.lang]="mark.lang || null">
+                                {{ mark.label }}
+                            </span>
+                        }
+                    </span>
+                }
+            </div>
+        }
+    </div>
+    @if (hint() && !error()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

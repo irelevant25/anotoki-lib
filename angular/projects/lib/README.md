@@ -18,8 +18,11 @@ version.
   0.6.0's `ui/chips`, `ui/link-card`, `ui/stat-tiles`, `ui/progress`,
   `ui/disclosure`, `ui/stepper`, `ui/labelled-group`, `ui/side-nav` (the side
   navigation and its phone drawer), `ui/select` (the select alone, for a first
-  page), `ui/field`, `ui/piece-words` (how those pieces read their own words) and
-  `ui/current-link` (which of a navigation's links is the page's).
+  page), `ui/field`, `ui/piece-words` (how those pieces read their own words),
+  `ui/current-link` (which of a navigation's links is the page's), and the input
+  pieces `ui/date-field` (a date typed in the reader's format or chosen in a
+  calendar; ISO values), `ui/slider` (the native range input with marks) and
+  `ui/color-field` (a colour, its code and suggested colours; `#rrggbb`).
 - `@anotoki/lib/shell` - the theme (service and switch), the language switcher, the
   brand, the family's top bar and the frame; `assets/theme-boot.js`.
 - `@anotoki/lib/migrations` - one behaviour for every site while its database waits
@@ -55,7 +58,8 @@ version.
   (`/site-status`, `/sign-in`, `/feedback`, `/legal-links`), imported by that module
   alone, which registers them with the translations module (`provideLibraryWords`),
   and `/legal`, which the legal pages read themselves, and `/chips`, `/progress`,
-  `/stepper` and `/tabs`, which those pieces read themselves. Generated from
+  `/stepper`, `/tabs`, `/date-field` and `/color-field`, which those pieces read
+  themselves. Generated from
   `php/resources/library-words.json`.
 
 Installed from the GitHub release's tarball, not from a registry. How a site

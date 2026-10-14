@@ -215,6 +215,7 @@ uses is in the first load again.
 | `@anotoki/lib/ui/select`, `/field` (0.6.0) | the select alone, for a first page (a widget in the bar), and `FieldBase` - both named by `ui/forms` too | `ui/select` where a first page draws a select |
 | `@anotoki/lib/ui/tabs`, `/pagination`, `/drawer`, `/tooltip`, `/copy`, `/qr` | one piece each (the tabs with, 0.6.0, the link tabs, icons, badges and the scroll hint) | lazy pages |
 | `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress`, `/disclosure`, `/stepper`, `/labelled-group`, `/side-nav` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar, the disclosure and the accordion, the stepper and the progress dots, the labelled group, the side navigation and its phone drawer - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
+| `@anotoki/lib/ui/date-field`, `/slider`, `/color-field` (0.6.0) | the input pieces: a date typed in the reader's format or chosen in a calendar, a slider with marks, a colour with its code and suggested colours - one each ("0.6.0's input pieces" below) | where a page draws one (not re-exported by `ui`) |
 | `@anotoki/lib/ui/piece-words`, `/current-link` (0.6.0) | `pieceWords()`: how a piece of its own entry point reads its own words, the site's string first; `currentLink()`: which of a navigation's links is the page's | with those pieces |
 | `@anotoki/lib/shell` | theme service and switch, language switcher, brand, top bar, frame, `latestChoiceSaver`; `assets/theme-boot.js` | yes (every page) |
 | `@anotoki/lib/migrations` | site status, interceptor, gate, status page, update banner | yes (the gate) |
@@ -238,7 +239,7 @@ uses is in the first load again.
 | `@anotoki/lib/error-report/marker` (0.6.0) | `ANOTOKI_ERROR_REPORT` alone, the mark on a report's request an interceptor reads (the auth module's) - without the reporter; `@anotoki/lib/error-report` names it too | with the reporter, and the auth module |
 | `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper` and `/tabs` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper`, `/tabs`, `/date-field` and `/color-field` (the kit's pieces', 0.6.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages and the kit's pieces read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -625,6 +626,58 @@ re-exported by `ui` (what the sites drew themselves until round 2's end):
   links (`{ id?, path?, exact? }`, each path read as `routerLink` reads it, relative to the page that
   draws it) is the page's, a signal following the links, `named` and every navigation - what the link
   tabs and the side navigation mark, for a site's own navigation too.
+
+**0.6.0's input pieces** - the inputs genshin and the build analyzer drew themselves, each an entry point
+of its own like the pieces above, and fields of the kit's: a label (a real `<label>`), `hint`, `error`
+(role="alert", aria-invalid), `invalid`, `optional`, `disabled`, `hideLabel`, `autofocus`, `focus()`. What
+the browser checks here is a convenience for the person, never a defence: the server checks every value it
+is sent again, as from any form.
+
+- `ui/date-field` - `<anotoki-date-field label [(value)] [format] dayMonth [min] [max] placeholder autocomplete (blurred)>`:
+  a date typed, or chosen in a calendar. **The value is ISO**: `'YYYY-MM-DD'`, or `''` while there is none;
+  with `dayMonth` (a birthday) a day and a month without a year, `'--MM-DD'` (29 February included) - no
+  year in the field nor in the calendar. The field writes the date, and reads what is typed, in the reader's
+  date format: `format` is the anotoki account's `date_format` (`AccountPreferences.preferences()?.date_format`
+  of `@anotoki/lib/auth` - `'dmy_dot'` 6.10.2026, `'dmy_slash'` 06/10/2026, `'mdy_slash'` 10/06/2026,
+  `'ymd_dash'` 2026-10-06), and null - a visitor, an account that chose none - is the page language's own
+  numbers (Intl: "6. 10. 2026" in Slovak, "10/6/2026" in English). Typing is lenient: any of `. / -` or a
+  space between the numbers, a 0 before one digit or none, an ISO date in any format; the year in four
+  digits. While the text is no date - or one before `min` or after `max` (`'YYYY-MM-DD'`, not with
+  `dayMonth`) - the value is `''`, and once the person leaves the field (or presses Enter) it says why under
+  itself: "Write the date like 31.12.2026.", "The earliest date is 1.10.2026." (the page's own `error`
+  comes first). What is typed is never rewritten under the caret: the field writes the date its way when
+  left, or when the value or the format changes. A button inside the field ("Choose a date: Opens";
+  `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls`) - or Alt+Down in it - opens the calendar under
+  it (in the top layer, above it where there is more room): a modal dialog named the same, a grid of the
+  month's days named by the month ("October 2026", announced as it changes). The focus goes onto the chosen
+  day, or today, or the nearest day the field takes; the arrow keys move a day and a week, Home and End to
+  the week's ends, Page Up and Page Down a month (with Shift a year), Enter or Space choose, and the focus
+  goes back to the field with its new text; Escape closes it, back to the field; Tab goes round the dialog.
+  Every day is named whole ("Wednesday, October 14, 2026"); the chosen one `aria-selected`, today
+  `aria-current="date"` (a dot under its bold number - never a ring, which is the focus); days outside
+  `min` and `max` struck through, not to be chosen, and the keyboard stops at them. Month and day names are
+  the browser's (Intl), in the page's language; the week starts on Monday unless the language names a
+  country that starts it otherwise (`en-US`: Sunday). With `dayMonth` the calendar is a month's days in
+  rows of seven, no weekdays, December before January. The button's, the month buttons' and the messages'
+  words are the library's `anotoki.dateField.*`, read by the field itself.
+- `ui/slider` - `<anotoki-slider label [(value)] [min] [max] [step] [ticks] valueText showValue>`: a
+  number (both ways, kept between `min` and `max`) on the native range input, drawn in the kit's look, so the
+  keyboard, a finger and a screen reader work as everywhere; the whole 44 px box takes a finger. `ticks`
+  (`{ value, label?, lang? }`) are marks under the track where the thumb stands at their values, with their
+  words (the first and last held inside the ends), the one at the value marked - for the eye alone. The
+  value is shown beside the label (`showValue`, on by default): the page's words (`valueText`: "12 × 12"),
+  else the words of the tick at it ("Hard"), else the number written the page's way - and the same words
+  are heard (`aria-valuetext`), so a slider of three named stops is never heard as "0, 1, 2". No words of
+  its own.
+- `ui/color-field` - `<anotoki-color-field label [(value)] [swatches]>`: a colour. **The value is
+  `'#rrggbb'`, lower-case** (`''` for none). The device's own colour picker behind a colour box (heard
+  "Text colour, pick from the palette"); the code beside it, the field the label names, kept in step -
+  typed as `#1f5fbf`, `1F5FBF` or `#1f5`, written the field's way once left; while it is no colour the value
+  is `''`, the box crossed out (no colour is never drawn black), and once left the field says how to write
+  one. `swatches` (`{ value, name, lang? }`): suggested colours under it, a radio group ("Text colour,
+  suggested colours": one Tab stop, the arrow keys choose), each with its name beside its colour - never a
+  colour alone - and a check on the chosen one. `readColor(text)` reads a code the field's way. Words:
+  `anotoki.colorField.*`.
 
 ### `@anotoki/lib/shell`
 
@@ -1037,6 +1090,11 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
 - `008_tab_words.sql` (0.6.0) adds the tabs' `anotoki.tabs.scrollBack` and
   `anotoki.tabs.scrollForward` - the tooltips of the arrows of a row of tabs that scrolls sideways,
   "Earlier tabs" and "More tabs" -, in English and impersonal Slovak, by 002's rule.
+- `009_input_words.sql` (0.6.0) adds the words of the kit's input pieces: the date field's
+  `anotoki.dateField.*` (its calendar's button and name "Choose a date: {field}", "Previous month",
+  "Next month", and what it says of a text that is no date or one outside its dates) and the colour
+  field's `anotoki.colorField.*` (what a screen reader hears for its colour box and its suggested colours,
+  and what it says of a code that is no colour), in English and impersonal Slovak, by 002's rule.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -1175,7 +1233,8 @@ import it:
   read by those pieces alone, never registered: `@anotoki/lib/words/chips` (by
   `ui/chips`), `@anotoki/lib/words/progress` (by `ui/progress`),
   `@anotoki/lib/words/stepper` (by `ui/stepper`), `@anotoki/lib/words/tabs` (by
-  `ui/tabs`, the tabs' and link tabs' arrows). A piece has no
+  `ui/tabs`, the tabs' and link tabs' arrows), `@anotoki/lib/words/date-field` (by
+  `ui/date-field`), `@anotoki/lib/words/color-field` (by `ui/color-field`). A piece has no
   provide*() function, and the kit's own (provideAnotokiUi) is in every first
   load: a registration there would bring every piece's words into every first
   load. Each piece reads its words through `pieceWords()` (`ui/piece-words`) -

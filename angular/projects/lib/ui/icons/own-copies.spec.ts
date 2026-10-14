@@ -18,8 +18,9 @@ describe("the lazy pages' own icons: the family's, path for path", () => {
   };
   const familyIcon = (name: string): IconPaths | undefined => (family as Record<string, IconPaths>)[`icon${name[0].toUpperCase()}${name.slice(1)}`];
 
+  // The admin tools' 19 since 0.6.0: their upload is the family's iconUpload now, drawn the same.
   for (const [pages, register, copies] of [
-    ['the admin tools', registerAdminIcons, 18],
+    ['the admin tools', registerAdminIcons, 19],
     ['the People page', registerPeopleIcons, 1],
     ['the translations admin', registerTranslationsIcons, 7],
   ] as const) {
@@ -32,4 +33,23 @@ describe("the lazy pages' own icons: the family's, path for path", () => {
       }
     });
   }
+});
+
+describe("the family's set (0.6.0): the build analyzer's own icons, drawn as the others are", () => {
+  it('rocket, upload, lightbulb, pause, minus, wrench, gamepad and save: paths on the 24-unit grid, data alone', () => {
+    const icons = family as Record<string, IconPaths>;
+    for (const name of ['iconRocket', 'iconUpload', 'iconLightbulb', 'iconPause', 'iconMinus', 'iconWrench', 'iconGamepad', 'iconSave']) {
+      const paths = icons[name];
+      expect(Array.isArray(paths) && paths.length > 0, name).toBe(true);
+      for (const d of paths) {
+        expect(d, name).toMatch(/^M[0-9.]/);
+        // On the grid: the first number after every absolute move or line (M, H, V, L) within 0..24.
+        const numbers = [...d.matchAll(/[MHVL]\s*(-?[0-9.]+)/g)].map((match) => Number(match[1]));
+        expect(
+          numbers.every((n) => n >= 0 && n <= 24),
+          `${name}: ${d}`,
+        ).toBe(true);
+      }
+    }
+  });
 });

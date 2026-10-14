@@ -27,6 +27,13 @@
   letter-spacing: 0.01em;
 }
 
+// Its corners half the height of one line: round on one line, a rounded box on more.
+:host(.anotoki-badge--wrap) {
+  border-radius: 0.7rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 :host([data-tone="primary"]),
 :host([data-tone="info"]) {
   --_bg: #{kit.token(primary-soft)};

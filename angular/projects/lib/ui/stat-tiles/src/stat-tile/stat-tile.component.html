@@ -1,0 +1,8 @@
+<span class="anotoki-stat-tile__value">{{ shown() }}</span>
+<!-- Spaces between the parts, for the tile's reading: "12/40 Known notes" (the column draws none). -->
+&ngsp;
+<span class="anotoki-stat-tile__label">{{ label() }}</span>
+@if (note()) {
+    &ngsp;
+    <span class="anotoki-stat-tile__note">{{ note() }}</span>
+}

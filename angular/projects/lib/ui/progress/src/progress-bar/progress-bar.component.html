@@ -1,0 +1,22 @@
+@if (showLabel() || (showValue() && said())) {
+    <div class="anotoki-progress-bar__head">
+        @if (showLabel()) {
+            <span class="anotoki-progress-bar__label" [id]="labelId">{{ label() }}</span>
+        }
+        <!-- Seen beside the label; heard as the bar's own value (aria-valuetext), once. -->
+        @if (showValue() && said(); as shown) {
+            <span class="anotoki-progress-bar__value" aria-hidden="true" [attr.lang]="shown.lang">{{ shown.text }}</span>
+        }
+    </div>
+}
+<div
+    class="anotoki-progress-bar__track"
+    role="progressbar"
+    [attr.aria-labelledby]="showLabel() ? labelId : null"
+    [attr.aria-label]="showLabel() ? null : label()"
+    [attr.aria-valuemin]="min()"
+    [attr.aria-valuemax]="max()"
+    [attr.aria-valuenow]="indeterminate() ? null : now()"
+    [attr.aria-valuetext]="said()?.text ?? null">
+    <div class="anotoki-progress-bar__fill" [style.width.%]="indeterminate() ? null : fraction() * 100"></div>
+</div>

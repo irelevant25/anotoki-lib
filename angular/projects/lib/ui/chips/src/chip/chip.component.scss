@@ -1,0 +1,92 @@
+@use "../../../../sass/kit";
+
+// The chip is the host itself (a <button>): every property it relies on is set here, so a site's own `button {}`
+// rules do not show through. Its edge is border-strong, 3:1 on every ground (WCAG 1.4.11); a tone's edge is its fill
+// and its words the tone's ink, 4.5:1 at least.
+:host {
+  --_edge: #{kit.token(border-strong)};
+  --_ink: #{kit.token(text)};
+
+  @include kit.button-reset;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--_edge);
+  border-radius: 1rem;
+  background: kit.token(surface);
+  color: var(--_ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: start;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    border-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+}
+
+:host(:hover) {
+  border-color: color-mix(in srgb, #{kit.token(primary)} 55%, var(--_edge));
+  background: kit.token(surface-2);
+}
+
+:host(:focus-visible) {
+  outline: 2px solid kit.token(focus);
+  outline-offset: 2px;
+}
+
+:host(:focus:not(:focus-visible)) {
+  outline: none;
+}
+
+:host([data-tone="primary"]) {
+  --_edge: #{kit.token(primary)};
+  --_ink: #{kit.token(primary-soft-text)};
+}
+
+:host([data-tone="success"]) {
+  --_edge: #{kit.token(success)};
+  --_ink: #{kit.token(success-text)};
+}
+
+:host([data-tone="warning"]) {
+  --_edge: #{kit.token(warning)};
+  --_ink: #{kit.token(warning-text)};
+}
+
+:host([data-tone="danger"]) {
+  --_edge: #{kit.token(danger)};
+  --_ink: #{kit.token(danger-text)};
+}
+
+// Chosen: the soft primary ground and its ink, and the check before the words (the state in a shape, not a colour).
+:host(.anotoki-chip--on),
+:host(.anotoki-chip--on:hover) {
+  --_edge: #{kit.token(primary)};
+  --_ink: #{kit.token(primary-soft-text)};
+  border-color: var(--_edge);
+  background: kit.token(primary-soft);
+  font-weight: 650;
+}
+
+:host([disabled]) {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.anotoki-chip__check {
+  margin-left: -0.15rem;
+}
+
+// A finger's target: 44 px where the pointer is one.
+@media (pointer: coarse) {
+  :host {
+    min-height: kit.token(control-height);
+  }
+}

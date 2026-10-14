@@ -291,4 +291,6 @@ export type LibraryKey =
   | 'anotoki.legal.contactResponseTitle'
   | 'anotoki.legal.contactResponseText'
   | 'anotoki.legal.contactAboutTitle'
-  | 'anotoki.legal.contactAboutText';
+  | 'anotoki.legal.contactAboutText'
+  | 'anotoki.chips.remove'
+  | 'anotoki.progress.count';

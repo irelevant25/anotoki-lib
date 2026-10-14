@@ -8,7 +8,9 @@
  *
  * - and nothing else lands in its bundle. Written out as plain strings (no
  * function runs when the module loads), so an icon nobody imports is left out.
- * Generated from the IAM's and the survey's icon sets.
+ * Generated from the IAM's and the survey's icon sets; 0.6.0 took the build
+ * analyzer's own (rocket, upload, lightbulb, pause, minus, wrench, gamepad,
+ * save), drawn the same way.
  */
 
 import type { IconPaths } from '@anotoki/lib/ui/config';
@@ -50,6 +52,13 @@ export const iconExpand: IconPaths = ['M7 15l5 5 5-5', 'M7 9l5-5 5 5'];
 export const iconFileText: IconPaths = ['M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z', 'M14 2v4a2 2 0 0 0 2 2h4', 'M10 9H8', 'M16 13H8', 'M16 17H8'];
 export const iconFilter: IconPaths = ['M10 20a1 1 0 0 0 .55.9l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .52-1.34l7.22-7.99A1 1 0 0 0 21 3H3a1 1 0 0 0-.74 1.67l7.22 7.99A2 2 0 0 1 10 14z'];
 export const iconFlask: IconPaths = ['M14 2v6a2 2 0 0 0 .25.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.76-2.96l5.51-10.08A2 2 0 0 0 10 8V2', 'M6.45 15h11.1', 'M8.5 2h7'];
+export const iconGamepad: IconPaths = [
+  'M6 11h4',
+  'M8 9v4',
+  'M15 12h.01',
+  'M18 10h.01',
+  'M17.32 5H6.68a4 4 0 0 0-3.98 3.59C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 9.83 16h4.34a2 2 0 0 1 1.41.59L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.55-.6-6.58-.69-7.26A4 4 0 0 0 17.32 5z',
+];
 export const iconGlobe: IconPaths = ['M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0', 'M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20', 'M2 12h20'];
 export const iconGrid: IconPaths = [
   'M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z',
@@ -89,18 +98,32 @@ export const iconKey: IconPaths = ['M2 15.5a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11
 export const iconLanguages: IconPaths = ['M5 8l6 6', 'M4 14l6-6 2-3', 'M2 5h12', 'M7 2h1', 'M22 22l-5-10-5 10', 'M14 18h6'];
 export const iconLaptop: IconPaths = ['M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16'];
 export const iconLayers: IconPaths = ['M12 2 2 7l10 5 10-5-10-5z', 'M2 17l10 5 10-5', 'M2 12l10 5 10-5'];
+export const iconLightbulb: IconPaths = ['M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5', 'M9 18h6', 'M10 22h4'];
 export const iconLink: IconPaths = ['M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'];
 export const iconListBullets: IconPaths = ['M3 6h.01', 'M3 12h.01', 'M3 18h.01', 'M8 6h13', 'M8 12h13', 'M8 18h13'];
 export const iconListOrdered: IconPaths = ['M10 6h11', 'M10 12h11', 'M10 18h11', 'M4 6h1v4', 'M4 10h2', 'M6 18H4c0-1 2-2 2-3s-1-1.5-2-1'];
 export const iconLock: IconPaths = ['M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z', 'M7 11V7a5 5 0 0 1 10 0v4'];
 export const iconMail: IconPaths = ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z', 'M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7'];
 export const iconMessage: IconPaths = ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'];
+export const iconMinus: IconPaths = ['M5 12h14'];
 export const iconMoreHorizontal: IconPaths = ['M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0', 'M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0', 'M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0'];
+export const iconPause: IconPaths = ['M15 4h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z', 'M7 4h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z'];
 export const iconPencil: IconPaths = ['M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z', 'M15 5l4 4'];
 export const iconPlay: IconPaths = ['M6 3l14 9-14 9z'];
 export const iconRadio: IconPaths = ['M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0', 'M8.5 12a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0'];
 export const iconRedo: IconPaths = ['M15 14l5-5-5-5', 'M20 9H9.5a5.5 5.5 0 0 0 0 11H13'];
+export const iconRocket: IconPaths = [
+  'M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z',
+  'M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z',
+  'M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0',
+  'M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5',
+];
 export const iconRotateCcw: IconPaths = ['M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8', 'M3 3v5h5'];
+export const iconSave: IconPaths = [
+  'M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z',
+  'M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7',
+  'M7 3v4a1 1 0 0 0 1 1h7',
+];
 export const iconScale: IconPaths = ['M3 12h18', 'M3 8v8', 'M21 8v8', 'M12 9v6', 'M7.5 10v4', 'M16.5 10v4'];
 export const iconSend: IconPaths = ['M14.54 21.69a.5.5 0 0 0 .94-.03l6.5-19a.5.5 0 0 0-.64-.64l-19 6.5a.5.5 0 0 0-.02.94l7.93 3.18a2 2 0 0 1 1.11 1.11z', 'M21.85 2.15 10.91 13.09'];
 export const iconShieldCheck: IconPaths = [
@@ -124,6 +147,8 @@ export const iconUnlink: IconPaths = [
   'M16 19v3',
   'M19 16h3',
 ];
+export const iconUpload: IconPaths = ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12'];
 export const iconUserPlus: IconPaths = ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0', 'M19 8v6', 'M22 11h-6'];
 export const iconUsers: IconPaths = ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'];
+export const iconWrench: IconPaths = ['M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'];
 export const iconZoomIn: IconPaths = ['M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0', 'M21 21l-4.35-4.35', 'M11 8v6', 'M8 11h6'];

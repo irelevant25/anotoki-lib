@@ -26,6 +26,17 @@
             <button anotokiButton iconOnly aria-label="Delete" anotokiTooltip="Delete"><anotoki-icon name="trash" /></button>
             <button anotokiButton iconOnly size="sm" aria-label="Search" anotokiTooltip="Search"><anotoki-icon name="search" [size]="16" /></button>
         </div>
+        <!-- 0.6.0: the quiet red of a row's Delete; a small link button 44 px high on a touch screen. -->
+        <div class="cluster" data-quiet-red>
+            <button anotokiButton variant="danger-ghost" iconOnly size="sm" aria-label="Delete the row" anotokiTooltip="Delete the row"><anotoki-icon name="trash" [size]="16" /></button>
+            <button anotokiButton variant="danger-ghost" iconOnly aria-label="Delete the survey" anotokiTooltip="Delete the survey"><anotoki-icon name="trash" /></button>
+            <button anotokiButton variant="danger-ghost">
+                <anotoki-icon name="trash" [size]="16" />
+                Remove
+            </button>
+            <button anotokiButton variant="link" size="sm" data-touch-link>All</button>
+            <button anotokiButton variant="link" size="sm">None</button>
+        </div>
     </section>
 
     <section class="section" aria-labelledby="badges-title">
@@ -38,6 +49,11 @@
             <anotoki-badge tone="warning">Pending</anotoki-badge>
             <anotoki-badge tone="danger">Blocked</anotoki-badge>
             <anotoki-badge mono>2FA</anotoki-badge>
+        </div>
+        <!-- 0.6.0: a badge whose words may wrap, in a narrow line (a paper's section). -->
+        <div class="narrow" data-wrap-badge>
+            <anotoki-badge tone="info" wrap>Vocabulary, kanji and grammar in context</anotoki-badge>
+            <anotoki-badge tone="success" dot wrap>Passed with a score of 92 out of 100</anotoki-badge>
         </div>
         <div class="cluster">
             <anotoki-spinner size="sm" />
@@ -114,6 +130,28 @@
             </div>
             <anotoki-pagination [page]="page()" [pageSize]="2" [total]="12" (pageChange)="page.set($event)" />
         </anotoki-card>
+        <!-- 0.6.0: the page's call to action, and cards that are each one link. -->
+        <div class="grid-2" data-cards-060>
+            <anotoki-card tone="highlight" heading="Continue where you stopped" subheading="Unit 3 · Step 2: play the C major scale">
+                <div class="cluster">
+                    <button anotokiButton variant="primary" size="lg">Continue</button>
+                </div>
+            </anotoki-card>
+            <div class="link-cards">
+                <a anotokiLinkCard href="#cards-title" data-link-card>
+                    <strong class="link-card-name">Furina</strong>
+                    <span class="muted small">Hydro · Sword · 12 builds</span>
+                </a>
+                <a anotokiLinkCard href="#cards-title">
+                    <strong class="link-card-name">Neuvillette</strong>
+                    <span class="muted small">Hydro · Catalyst · 9 builds</span>
+                </a>
+                <a anotokiLinkCard tone="highlight" href="#cards-title">
+                    <strong class="link-card-name">Import your account</strong>
+                    <span class="muted small">Your characters and their builds, from the game</span>
+                </a>
+            </div>
+        </div>
         <dl class="facts">
             <dt>Account</dt>
             <dd>
@@ -170,6 +208,11 @@
             <anotoki-language-switcher appearance="segmented" />
             <anotoki-language-switcher appearance="select" />
         </div>
+        <!-- 0.6.0: a grade's colour mark, an option that cannot be chosen, and more than a phone's line holds: it wraps. -->
+        <div class="cluster" data-segmented-060>
+            <anotoki-segmented label="Grade" [options]="grades" [(value)]="grade" />
+            <anotoki-segmented label="Period" [options]="periods" [(value)]="period" />
+        </div>
         <div class="cluster">
             <button anotokiButton [anotokiMenuTrigger]="more">
                 More
@@ -208,6 +251,48 @@
                 </div>
             </anotoki-popover>
         </div>
+    </section>
+
+    <section class="section" aria-labelledby="chips-title">
+        <h2 class="section-title" id="chips-title">Chips (0.6.0)</h2>
+        <div class="grid-2">
+            <anotoki-chip-group data-stage label="Stage" [options]="stages" [(value)]="stage" hint="One at a time: the arrow keys move the choice." />
+            <anotoki-chip-group data-lessons label="Lessons" [options]="lessonOptions" [multiple]="true" [(values)]="lessons" [optional]="true" />
+        </div>
+        <div class="cluster" data-steps>
+            <button anotokiChip tone="success">1 · Listen</button>
+            <button anotokiChip tone="primary">2 · Play</button>
+            <button anotokiChip disabled>3 · Read</button>
+            <button anotokiChip [pressed]="pyro()" (click)="pyro.set(!pyro())">Pyro</button>
+        </div>
+        <div class="stack-sm stack">
+            <span class="chip-list-label" aria-hidden="true">Your answers</span>
+            <anotoki-chip-list data-answers label="Your answers" [items]="answers()" (remove)="removeAnswer($event)" />
+        </div>
+    </section>
+
+    <section class="section" aria-labelledby="figures-title">
+        <h2 class="section-title" id="figures-title">Figures and progress (0.6.0)</h2>
+        <anotoki-stat-tiles data-tiles>
+            <anotoki-stat-tile label="Known notes" value="12/40" />
+            <anotoki-stat-tile label="Accuracy" value="87 %" note="the last 50 answers" />
+            <anotoki-stat-tile label="Minutes practised" [value]="1234" />
+            <anotoki-stat-tile label="Day streak" [value]="4" />
+        </anotoki-stat-tiles>
+        <div class="stack" data-progress>
+            <anotoki-progress-bar label="Uploading the export" [value]="45" showLabel showValue />
+            <anotoki-progress-bar label="Files read" [value]="3" [max]="10" format="count" showLabel showValue tone="success" />
+            <anotoki-progress-bar class="grade-c" label="Artifacts" [value]="64" valueText="64" showLabel showValue />
+            <anotoki-progress-bar label="Reading the account" [value]="null" showLabel />
+        </div>
+        <ul class="icon-samples" data-icons>
+            @for (icon of newIcons; track icon) {
+                <li>
+                    <anotoki-icon [name]="icon" [size]="22" />
+                    {{ icon }}
+                </li>
+            }
+        </ul>
     </section>
 
     <section class="section" aria-labelledby="overlays-title">

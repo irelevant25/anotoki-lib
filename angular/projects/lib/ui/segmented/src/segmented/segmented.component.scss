@@ -11,14 +11,16 @@
   --_segment-height: 26px;
 }
 
-// Three round icons in one pill: 102 by 38 in the bar.
+// Three round icons in one pill: 102 by 38 in the bar. Too wide for its line, the segments wrap onto another: the
+// corners are half one line's height - a pill on one line, a rounded box on two.
 .anotoki-segmented__segmented {
   display: inline-flex;
+  flex-wrap: wrap;
   max-width: 100%;
   gap: 2px;
   padding: 3px;
   border: 1px solid kit.token(border-strong);
-  border-radius: 999px;
+  border-radius: calc(var(--_segment-height) / 2 + 4px);
   background: kit.token(surface-2);
 }
 
@@ -52,7 +54,19 @@
     box-shadow: kit.token(shadow-sm);
   }
 
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
   @include kit.focus-ring(1px);
+}
+
+.anotoki-segmented__mark {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
 }
 
 .anotoki-segmented__segment.anotoki-segmented__segment--icon {

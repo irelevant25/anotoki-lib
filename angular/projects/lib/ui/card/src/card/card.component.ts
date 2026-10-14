@@ -22,6 +22,10 @@ export class CardComponent {
   readonly headingId = input<string | null>(null);
   readonly headingLevel = input<2 | 3>(2);
   readonly flush = input(false, { transform: booleanAttribute });
-  /** `danger` for the card of something that cannot be undone (deleting an account). */
-  readonly tone = input<'danger' | null>(null);
+  /**
+   * `danger` for the card of something that cannot be undone (deleting an account); `highlight` (0.6.0) for the one
+   * card a page wants found first - its call to action ("Continue where you stopped"): the primary edge and a soft
+   * glow from its corner. One a page.
+   */
+  readonly tone = input<'danger' | 'highlight' | null>(null);
 }

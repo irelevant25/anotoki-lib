@@ -1,0 +1,47 @@
+@use "../../../../sass/kit";
+
+// The card is the host itself (an <a>): every property it relies on is set here, so a site's own `a {}` rules -
+// its link colour, its underline - do not show through.
+:host {
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-sm);
+  text-decoration: none;
+  transition:
+    border-color kit.token(duration) kit.token(ease),
+    box-shadow kit.token(duration) kit.token(ease);
+}
+
+:host(:hover) {
+  border-color: kit.token(primary);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow);
+  text-decoration: none;
+}
+
+// The ring round the whole card: the link is the card.
+:host(:focus-visible) {
+  outline: 2px solid kit.token(focus);
+  outline-offset: 2px;
+}
+
+:host(:focus:not(:focus-visible)) {
+  outline: none;
+}
+
+:host([data-tone="highlight"]) {
+  border-color: kit.token(primary);
+  background: linear-gradient(135deg, #{kit.token(primary-soft)}, transparent 60%) kit.token(surface);
+}
+
+@media (max-width: 520px) {
+  :host {
+    padding: 1rem;
+  }
+}

@@ -1084,6 +1084,16 @@
             "description": "The anotoki library's Contact page: who runs the site, and from where. {site}: the site's name as the site gives it (\"anotoki survey\"). {operator}: who runs the site (\"Code Hero s.r.o.\"), a link to its own site. Placeholders: {site}, {operator}.",
             "en": "{site} is run by {operator}, from Slovakia.",
             "sk": "Stránku {site} prevádzkuje {operator} zo Slovenska."
+        },
+        "anotoki.chips.remove": {
+            "description": "The anotoki library's removable chips (the things a person chose or added, each with a small button that takes it away): what a screen reader hears for that button, and its tooltip - the chip's own words in it, so a list of buttons says which. {name}: the chip's words (\"Furina\", an answer the learner added), as they are shown. Placeholders: {name}.",
+            "en": "Remove: {name}",
+            "sk": "Odstrániť: {name}"
+        },
+        "anotoki.progress.count": {
+            "description": "The anotoki library's progress bar, counting things done: the words beside the bar, and what a screen reader hears for its value - \"3 of 10\". {value}: how many are done; {max}: how many there are - both numbers written the page's way. Placeholders: {value}, {max}.",
+            "en": "{value} of {max}",
+            "sk": "{value} z {max}"
         }
     }
 }

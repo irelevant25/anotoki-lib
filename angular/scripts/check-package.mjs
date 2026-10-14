@@ -19,15 +19,17 @@
 //   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
 //   the feedback form imports its configuration and the kit's fields. The legal pages import their configuration (and
 //   the footer's links, @anotoki/lib/legal), the kit's pieces, its dialog and its copy button, and the feedback form by
-//   import() alone.
+//   import() alone. The kit's pieces of 0.6.0 are entry points of their own (ui/chips, ui/link-card, ui/stat-tiles,
+//   ui/progress, ...), outside the core and its limit, each importing the core's pieces it draws.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
 //   which imports none and holds the kit's alone; @anotoki/lib/words, every namespace's, is for a site's specs and
 //   the showcase. Every first load carries the words of the namespaces its page says, and no others: a module that
-//   brings words weighs neither on the kit's first loads nor on the translations module's. One namespace is read by
-//   its pages alone and never registered (READ_BY_THEIR_PAGES: the legal pages', pages of text - a registration comes
-//   with the eager configuration): only those pages may import it, and no first load carries it.
+//   brings words weighs neither on the kit's first loads nor on the translations module's. Some namespaces are read
+//   by their readers alone and never registered (READ_BY_THEIR_PAGES: the legal pages', pages of text - a registration
+//   comes with the eager configuration -, and the kit's pieces' of their own entry points, which have no provide*()):
+//   only those readers may import them, and no first load carries them.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Text, never markup: no bundle names one of the ways to put a string into a page as HTML, or to switch Angular's
@@ -65,6 +67,12 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * at 0.3.0 with the kit's own class names and every library word in ui/config; 27.4 at 0.4.0, ui/config holding the
  * kit's words alone - each other module's are an entry point of their own, @anotoki/lib/words/<namespace>). Room to
  * grow a little; a limit crossed is a reason to move something into an entry point of its own, not to raise the limit.
+ * Raised once, at 0.6.0, from 28 to 28.5 for the ui and the shell together (27.96 before, 28.3 after): the sites asked
+ * for what can only be the core pieces' own - the segmented control's disabled options, colour marks and wrapping, the
+ * button's quiet red and a small link button's 44 px on touch, the badge's wrapping, the card's highlight - each a
+ * binding and a few rules (a component's styles stand twice in its FESM: once more in the class metadata a site's
+ * build drops). Every new piece of 0.6.0 is an entry point of its own, outside this sum; the bar's own first load (a
+ * site's real one, below) stays well under its limit.
  *
  * auth: the IAM's browser client (the SDK, ported), the session, the interceptor, the guards, the preferences - 14.9
  * at 0.4.0 before the screen, 15.3 with it. Every site that signs in loads it on its first page, with its shared part
@@ -104,7 +112,7 @@ const LIMITS = {
     "@anotoki/lib/error-report": 3,
     "@anotoki/lib/legal": 3,
 };
-const UI_AND_SHELL = 28;
+const UI_AND_SHELL = 28.5;
 
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
 const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs"];
@@ -141,6 +149,14 @@ const MAY_IMPORT = {
     "@anotoki/lib/ui/tooltip": PIECES,
     "@anotoki/lib/ui/copy": [...PIECES, "@anotoki/lib/ui/toast"],
     "@anotoki/lib/ui/qr": PIECES,
+    // 0.6.0's pieces, each an entry point of its own: how a piece reads its own words (the site's string first), and
+    // the pieces - those that say words import their namespace and read it through ui/piece-words, never registered
+    // (READ_BY_THEIR_PAGES below).
+    "@anotoki/lib/ui/piece-words": ["@anotoki/lib/ui/config"],
+    "@anotoki/lib/ui/chips": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/chips"],
+    "@anotoki/lib/ui/link-card": [],
+    "@anotoki/lib/ui/stat-tiles": ["@anotoki/lib/ui/config"],
+    "@anotoki/lib/ui/progress": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/progress"],
     "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
     "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
     "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
@@ -188,11 +204,17 @@ const WORDS = "@anotoki/lib/words";
 const KIT_WORDS = ["language", "ui", "topbar", "theme"];
 
 /**
- * The words entry points a module's lazy pages read themselves, never registering them: pages of text, which a
- * registration would bring with the module's eager configuration into every first load. No other entry point may
- * import them, and no first load carries their namespace (each FIRST_LOADS row names the namespaces it may carry).
+ * The words entry points their readers read themselves, never registering them: a module's lazy pages (pages of text,
+ * which a registration would bring with the module's eager configuration into every first load), and the kit's pieces
+ * of their own entry points (0.6.0: a piece has no provide*() of its own, and provideAnotokiUi is in every first load -
+ * each reads its words through ui/piece-words). No other entry point may import them, and no first load carries their
+ * namespace (each FIRST_LOADS row names the namespaces it may carry).
  */
-const READ_BY_THEIR_PAGES = { "@anotoki/lib/words/legal": ["@anotoki/lib/legal/pages"] };
+const READ_BY_THEIR_PAGES = {
+    "@anotoki/lib/words/legal": ["@anotoki/lib/legal/pages"],
+    "@anotoki/lib/words/chips": ["@anotoki/lib/ui/chips"],
+    "@anotoki/lib/words/progress": ["@anotoki/lib/ui/progress"],
+};
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
 const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][A-Za-z0-9_-]*)\./g)].map((match) => match[1]));

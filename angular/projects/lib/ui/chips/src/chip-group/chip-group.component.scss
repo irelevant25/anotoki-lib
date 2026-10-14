@@ -1,0 +1,25 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+// A field of the kit's: its frame, its label and its messages as every field has them (the same classes).
+@include field.frame;
+@include field.labels;
+@include field.messages;
+
+// The chips wrap onto lines; a gap a finger can tell apart.
+.anotoki-chip-group__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.anotoki-chip-group__note {
+  color: kit.token(muted);
+  font-weight: 500;
+}
+
+// A chosen chip's note takes the chosen ink, as its words do.
+.anotoki-chip-group__chip.anotoki-chip--on .anotoki-chip-group__note {
+  color: inherit;
+}

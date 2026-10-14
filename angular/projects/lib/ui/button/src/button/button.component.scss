@@ -96,6 +96,15 @@
   --_hover-border: #{kit.token(danger-hover)};
 }
 
+// The quiet red (0.6.0): a row's Delete among its quiet buttons - the danger words' ink (4.5:1 on every ground and on
+// its hover's danger-soft), no ground until hovered.
+:host(.anotoki-button--danger-ghost) {
+  --_bg: transparent;
+  --_fg: #{kit.token(danger-text)};
+  --_border: transparent;
+  --_hover-bg: #{kit.token(danger-soft)};
+}
+
 // A button that reads as a link ("Forgot your password?"), where a full button
 // would shout - with a button's 44 px height all the same, so it is as easy to hit.
 :host(.anotoki-button--link) {
@@ -121,10 +130,17 @@
   font-size: 0.875rem;
 }
 
-// The smallest target WCAG 2.5.8 allows.
+// The smallest target WCAG 2.5.8 allows - and a finger's 44 px where the pointer is one (0.6.0).
 :host(.anotoki-button--sm.anotoki-button--link) {
   min-height: 24px;
   padding: 0.125rem;
+}
+
+@media (pointer: coarse) {
+  :host(.anotoki-button--sm.anotoki-button--link) {
+    min-width: kit.token(control-height);
+    min-height: kit.token(control-height);
+  }
 }
 
 :host(.anotoki-button--lg) {

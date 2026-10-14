@@ -1,0 +1,8 @@
+// As many tiles to a row as fit, each at least --_stat-tiles-min wide (the host's `min`) - one a row on a phone
+// narrower than that.
+:host {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--_stat-tiles-min, 9rem)), 1fr));
+  gap: 1rem;
+  min-width: 0;
+}

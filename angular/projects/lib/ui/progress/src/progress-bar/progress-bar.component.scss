@@ -1,0 +1,89 @@
+@use "../../../../sass/kit";
+
+// The fill: the tone's colour - 3:1 at least on the track in both themes (WCAG 1.4.11) - or the site's own.
+:host {
+  --_fill: var(--anotoki-progress-color, #{kit.token(primary)});
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+  color: kit.token(text);
+}
+
+:host([data-tone="success"]) {
+  --_fill: var(--anotoki-progress-color, #{kit.token(success)});
+}
+
+:host([data-tone="warning"]) {
+  --_fill: var(--anotoki-progress-color, #{kit.token(warning)});
+}
+
+:host([data-tone="danger"]) {
+  --_fill: var(--anotoki-progress-color, #{kit.token(danger)});
+}
+
+.anotoki-progress-bar__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.anotoki-progress-bar__label {
+  min-width: 0;
+  font-weight: 650;
+}
+
+.anotoki-progress-bar__value {
+  color: kit.token(muted);
+  font-variant-numeric: tabular-nums;
+}
+
+// The track's own edge shows where the bar ends, whatever the fill.
+.anotoki-progress-bar__track {
+  position: relative;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: kit.token(surface-3);
+  box-shadow: inset 0 0 0 1px kit.token(border);
+}
+
+.anotoki-progress-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--_fill);
+  transition: width kit.token(duration) kit.token(ease);
+}
+
+// Nobody knows how far: a piece of the fill crosses the track, again and again.
+:host(.anotoki-progress-bar--indeterminate) .anotoki-progress-bar__fill {
+  width: 40%;
+  animation: anotoki-progress-cross 1.4s ease-in-out infinite;
+}
+
+@keyframes anotoki-progress-cross {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+// Under reduced motion it still moves, slowly: a bar that stands still reads as one that stopped.
+@media (prefers-reduced-motion: reduce) {
+  :host(.anotoki-progress-bar--indeterminate) .anotoki-progress-bar__fill {
+    animation-duration: 4s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  .anotoki-progress-bar__fill {
+    transition: none;
+  }
+}

@@ -1,12 +1,15 @@
 ////
 /// What every field of the kit shares: the label, the control's border and
 /// ring, the input, the hint and the error. Each field's own stylesheet
-/// includes it, so a field depends on no global class.
+/// includes it, so a field depends on no global class. A control of the kit
+/// that is no field of a native input (the chip group) takes the frame, the
+/// label and the messages alone - the same classes, so it reads as a field.
 ////
 
 @use "../../../sass/kit";
 
-@mixin styles {
+/// The field's host and its column: the label, the control, the hint or the error.
+@mixin frame {
   :host {
     display: block;
     min-width: 0;
@@ -19,7 +22,10 @@
     gap: 0.375rem;
     min-width: 0;
   }
+}
 
+/// The label and its "optional".
+@mixin labels {
   .anotoki-field__label {
     display: flex;
     align-items: baseline;
@@ -36,7 +42,10 @@
     font-size: 0.8125rem;
     font-weight: 500;
   }
+}
 
+/// The edge, the ring and the input of a native control.
+@mixin control {
   .anotoki-field__control {
     display: flex;
     align-items: center;
@@ -121,7 +130,10 @@
       padding-right: 0.25rem;
     }
   }
+}
 
+/// The hint and the error under the control, and the words kept for screen readers alone.
+@mixin messages {
   .anotoki-field__hint {
     margin: 0;
     color: kit.token(muted);
@@ -145,4 +157,12 @@
   .anotoki-visually-hidden {
     @include kit.visually-hidden;
   }
+}
+
+/// Every part, in this order: a field's whole stylesheet.
+@mixin styles {
+  @include frame;
+  @include labels;
+  @include control;
+  @include messages;
 }

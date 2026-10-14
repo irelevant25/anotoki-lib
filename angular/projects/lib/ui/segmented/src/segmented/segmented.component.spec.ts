@@ -102,3 +102,70 @@ describe('<anotoki-segmented>: one choice out of a few, a radio group', () => {
     expect(segments()[0].getAttribute('aria-label')).toBeNull();
   });
 });
+
+@Component({
+  selector: 'anotoki-test-grades',
+  imports: [SegmentedComponent],
+  template: '<anotoki-segmented label="Grade" [options]="grades" [value]="value()" (valueChange)="value.set($event)" />',
+})
+class GradesPageComponent {
+  readonly grades: SegmentedOption[] = [
+    { value: 'S', label: 'S', mark: 'var(--grade-s)', disabled: true },
+    { value: 'A', label: 'A', mark: 'rgb(63, 174, 106)' },
+    { value: 'B', label: 'B', mark: 'rgb(59, 154, 217)', disabled: true },
+    { value: 'C', label: 'C' },
+  ];
+  readonly value = signal<string | null>(null);
+}
+
+describe('<anotoki-segmented>: options that cannot be chosen, and colour marks (0.6.0)', () => {
+  let host: HTMLElement;
+  let page: GradesPageComponent;
+  let fixture: Awaited<ReturnType<typeof draw<GradesPageComponent>>>;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({ providers: kitProviders() });
+    fixture = await draw(GradesPageComponent);
+    host = fixture.nativeElement;
+    page = fixture.componentInstance;
+  });
+
+  afterEach(() => host.remove());
+
+  const segments = () => Array.from(host.querySelectorAll<HTMLButtonElement>('[role=radio]'));
+
+  it('a disabled option is shown and cannot be chosen; the Tab stop is the first that can be', () => {
+    expect(segments().map((segment) => segment.disabled)).toEqual([true, false, true, false]);
+    expect(segments().map((segment) => segment.tabIndex)).toEqual([-1, 0, -1, -1]);
+    segments()[0].click();
+    expect(page.value()).toBeNull();
+  });
+
+  it('the arrows pass over a disabled option, round the ends too', async () => {
+    // Nothing chosen yet: the first arrow lands on the first option that can be chosen.
+    segments()[1].focus();
+    press(segments()[1], 'ArrowRight');
+    await settle(fixture);
+    expect(page.value()).toBe('A');
+
+    press(segments()[1], 'ArrowRight');
+    await settle(fixture);
+    expect(page.value()).toBe('C');
+    expect(document.activeElement).toBe(segments()[3]);
+
+    press(segments()[3], 'ArrowRight');
+    await settle(fixture);
+    expect(page.value()).toBe('A');
+    press(segments()[1], 'ArrowLeft');
+    await settle(fixture);
+    expect(page.value()).toBe('C');
+  });
+
+  it('a mark before the label, in the site’s colour - nothing a screen reader says; the label says the grade', () => {
+    const marks = segments().map((segment) => segment.querySelector<HTMLElement>('.anotoki-segmented__mark'));
+    expect(marks[1]?.style.background).toBe('rgb(63, 174, 106)');
+    expect(marks[3]).toBeNull();
+    expect(marks[1]?.textContent).toBe('');
+    expect(segments()[1].textContent?.trim()).toBe('A');
+  });
+});

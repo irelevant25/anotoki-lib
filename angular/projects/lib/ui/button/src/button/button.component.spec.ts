@@ -12,6 +12,7 @@ import { ButtonComponent } from './button.component';
     <a anotokiButton id="link" href="/somewhere" variant="link" size="sm" [disabled]="disabled()">Somewhere</a>
     <button anotokiButton id="submit" type="submit" block>Send</button>
     <button anotokiButton id="icon" iconOnly aria-label="Close">x</button>
+    <button anotokiButton id="delete" variant="danger-ghost" size="sm" iconOnly aria-label="Delete">x</button>
   `,
 })
 class ButtonsComponent {
@@ -49,6 +50,8 @@ describe('[anotokiButton]: the look of a button on a real <button> or <a>', () =
     expect(button('link').classList).toContain('anotoki-button--sm');
     expect(button('submit').classList).toContain('anotoki-button--block');
     expect(button('icon').classList).toContain('anotoki-button--icon');
+    // The quiet red (0.6.0): its own class, and none of the loud red's.
+    expect([...button('delete').classList]).toEqual(['anotoki-button', 'anotoki-button--danger-ghost', 'anotoki-button--sm', 'anotoki-button--icon']);
   });
 
   it('loading: a spinner beside the words, aria-busy, and it cannot be pressed meanwhile', async () => {

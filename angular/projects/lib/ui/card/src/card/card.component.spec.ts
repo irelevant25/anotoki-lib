@@ -43,4 +43,20 @@ describe('<anotoki-card>', () => {
     expect(card.querySelector('header')).toBeNull();
     fixture.nativeElement.remove();
   });
+
+  it('the call to action (0.6.0): the highlight tone, a card like any other inside', async () => {
+    @Component({
+      selector: 'anotoki-test-highlight',
+      imports: [CardComponent],
+      template: '<anotoki-card tone="highlight" heading="Continue where you stopped"><button type="button">Continue</button></anotoki-card>',
+    })
+    class HighlightComponent {}
+    TestBed.configureTestingModule({ providers: kitProviders() });
+    const fixture = await draw(HighlightComponent);
+    const card = fixture.nativeElement.querySelector('anotoki-card') as HTMLElement;
+    expect(card.getAttribute('data-tone')).toBe('highlight');
+    expect(words(card.querySelector('h2'))).toBe('Continue where you stopped');
+    expect(card.querySelector('.anotoki-card__body button')).not.toBeNull();
+    fixture.nativeElement.remove();
+  });
 });

@@ -1,0 +1,36 @@
+@use "../../../../sass/kit";
+
+// The number first and large, what it counts under it; the muted words reach 4.5:1 on the tile's ground in both themes.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-3);
+  color: kit.token(text);
+}
+
+.anotoki-stat-tile__value {
+  font-size: 1.6rem;
+  font-weight: 650;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-stat-tile__label {
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.anotoki-stat-tile__note {
+  color: kit.token(muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}

@@ -11,7 +11,7 @@ import { provideAnotokiPeople } from '@anotoki/lib/people';
 import { AnotokiThemeMode, ThemeService, provideAnotokiShell } from '@anotoki/lib/shell';
 import { TranslationService, anotokiUnsavedChangesGuard, provideAnotokiTranslations, siteStatusWords } from '@anotoki/lib/translations';
 import { provideAnotokiUi } from '@anotoki/lib/ui';
-import { iconLanguages, iconTrash, iconUsers } from '@anotoki/lib/ui/icons';
+import { iconGamepad, iconLanguages, iconLightbulb, iconMinus, iconPause, iconRocket, iconSave, iconTrash, iconUpload, iconUsers, iconWrench } from '@anotoki/lib/ui/icons';
 import { ToastService } from '@anotoki/lib/ui/toast';
 import { delay, of } from 'rxjs';
 import { IAM_CASE, adminServer } from './app/admin-server';
@@ -183,7 +183,23 @@ bootstrapApplication(AppComponent, {
         groups: SHOWCASE_GROUPS,
       },
     })),
-    provideAnotokiUi(() => ({ ...inject(TranslationService).forKit(), icons: { trash: iconTrash, users: iconUsers, languages: iconLanguages } })),
+    provideAnotokiUi(() => ({
+      ...inject(TranslationService).forKit(),
+      icons: {
+        trash: iconTrash,
+        users: iconUsers,
+        languages: iconLanguages,
+        // 0.6.0: the build analyzer's own, the family's now.
+        rocket: iconRocket,
+        upload: iconUpload,
+        lightbulb: iconLightbulb,
+        pause: iconPause,
+        minus: iconMinus,
+        wrench: iconWrench,
+        gamepad: iconGamepad,
+        save: iconSave,
+      },
+    })),
     provideAnotokiShell(() => ({
       theme: {
         storageKey: 'anotoki-showcase:theme',

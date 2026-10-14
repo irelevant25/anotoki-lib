@@ -99,6 +99,58 @@ badged link's `textContent` finds the hidden words after the number ("Feedback 3
 `after_restore_error`'s or the People scrub's words for what failed reads its `onError` (the error log) instead; one
 that reads `invalid_json`'s words in brackets, the plain sentence.
 
+**The kit's simple pieces** (the third part of 0.6.0): what the sites still drew themselves at round 2's end
+(README.md, "0.6.0's pieces" and the core's pieces). Every new piece is an entry point of its own, never re-exported by
+`@anotoki/lib/ui` and outside every first load; the core's pieces gained what only they can hold.
+
+- `@anotoki/lib/ui/chips` (new): `button[anotokiChip]` - a small round-ended button with a `tone` (a step's state),
+  `pressed` (a toggle) or `checked` (a radio), a check before the words of a chosen one, 44 px where the pointer is a
+  finger; `<anotoki-chip-group>` - choice chips that wrap, one at a time (a radio group: one Tab stop, the arrows, Home
+  and End over the chips that cannot be chosen) or several (`multiple`, toggles, `[(values)]` in the options' order),
+  a field of the kit's (label, hint, error, required, optional, disabled), an option's words in another language
+  (`lang`), a quieter note (a count); `<anotoki-chip-list>` - removable chips, each button named with its chip's words
+  ("Remove: Furina"), the focus going on to the next chip once the page takes one away. (Piano's step chips,
+  Japanese Academy's choice rows, genshin's chips and toggle groups.)
+- `@anotoki/lib/ui/segmented`: options may be `disabled` (shown, passed over by the arrows; the Tab stop the first that
+  can be chosen) and carry a colour `mark` (a CSS colour of the site's, the build analyzer's grades), and options too
+  wide for their line wrap onto another instead of running off it (the pill a rounded box then) - nothing changes
+  where they fit. The kit's select shows no marks: a native `<option>` holds words alone.
+- `@anotoki/lib/ui/badge`: `wrap` - long words wrap inside the badge (Japanese Academy's paper).
+- `@anotoki/lib/ui/button`: `variant="danger-ghost"`, the quiet red of a row's Delete (genshin); a small link button
+  (`variant="link" size="sm"`) is 44 px high and wide where the pointer is a finger (`pointer: coarse`; 24 px for a
+  mouse, as before) - Japanese Academy's "All", "None" and "▶ Listen".
+- `@anotoki/lib/ui/card`: `tone="highlight"`, the page's call to action (Piano's Continue card); `@anotoki/lib/ui/link-card`
+  (new): `a[anotokiLinkCard]`, a card that is one link as a whole, its focus ring round the card, development warning
+  about a control inside (the build analyzer's grid of characters).
+- `@anotoki/lib/ui/stat-tiles` (new): `<anotoki-stat-tiles>` of `<anotoki-stat-tile label value note>` - figures in a
+  grid as wide as the page allows, a number written the page's way (Piano's Stats).
+- `@anotoki/lib/ui/progress` (new): `<anotoki-progress-bar>` - `role="progressbar"` with its value, ends and name, the
+  value said as "45 %", "3 of 10" or the page's own words, moving on its own with no value, a tone or the site's own
+  colour (`--anotoki-progress-color`) (the build analyzer's score bars).
+- `@anotoki/lib/ui/icons`: the build analyzer's own icons, the family's now - `iconRocket`, `iconUpload`,
+  `iconLightbulb`, `iconPause`, `iconMinus`, `iconWrench`, `iconGamepad`, `iconSave` (the admin pages' own copy of
+  upload is the same drawing).
+- `@anotoki/lib/ui/piece-words` (new): `pieceWords()`, how a piece of its own entry point reads its own words - the
+  site's string first (provideAnotokiUi's `lookup`: the database's), then the built-in words of the page's language,
+  then English. Such a piece has no provide*() function, and provideAnotokiUi is in every first load: its words are
+  read by the piece itself, never registered, as the legal pages read theirs (`READ_BY_THEIR_PAGES` in both scripts).
+- The library's words: `anotoki.chips.remove` and `anotoki.progress.count`, English and impersonal Slovak, in
+  `php/resources/library-words.json`, generated into `@anotoki/lib/words/chips` and `/progress`;
+  `anotoki_translations/007_kit_piece_words.sql` writes them by 002's rule, its gate naming its own keys (219 library
+  keys).
+- The package check: the ui and the shell together may weigh 28.5 kB gzipped (28 before; 28.3 now, 27.96 before): the
+  segmented control's, the button's, the badge's and the card's additions are the core pieces' own. The bar's first
+  load is 20.2 kB of its 21.5 (19.9 before), a button's 5.0 of 5.5 (4.9), the gate's 8.5 of 9 (8.4); every new piece
+  stays out of every first load.
+- Tests: Vitest for every piece - its roles, its aria states, its keyboard, its words in English and Slovak and the
+  site's own - and the segmented control's disabled options and marks (741 tests); PHPUnit for 007's words, its rule
+  and its gate (515).
+
+What a site must do: nothing to keep building - everything is new, and the defaults are as before but two that change
+how a page looks where it was broken or small: a segmented control too wide for its line wraps instead of running off
+it, and a small link button is 44 px on a touch screen. To use the new words in a site's own wording, apply
+`anotoki_translations/007` on the Migrations page (two keys; until then the pieces say the library's built-in words).
+
 ## 0.5.2 - 2026-10-13
 
 Cloudflare's published ranges are every Cloudflare customer's, not the owner's zone alone: anybody's Worker can

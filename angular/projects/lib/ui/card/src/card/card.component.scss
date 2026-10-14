@@ -14,6 +14,12 @@
   border-color: kit.token(danger-border);
 }
 
+// The call to action: the soft primary from its corner, over the surface - the words on it stay at 4.5:1 and more.
+:host([data-tone="highlight"]) {
+  border-color: kit.token(primary);
+  background: linear-gradient(135deg, #{kit.token(primary-soft)}, transparent 60%) kit.token(surface);
+}
+
 @include kit.slot-wrappers(cardActions);
 
 .anotoki-card__header {

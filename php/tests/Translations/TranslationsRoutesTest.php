@@ -218,7 +218,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame(200, $export->getStatusCode());
         self::assertSame('attachment; filename="translations-sk.json"', $export->getHeaderLine('Content-Disposition'));
         self::assertSame('no-store', $export->getHeaderLine('Cache-Control'));
-        self::assertStringStartsWith("{\n    \"anotoki.feedback.anonymous\": \"Poslať bez môjho mena\",\n", (string) $export->getBody());
+        self::assertStringStartsWith("{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.feedback.anonymous\": \"Poslať bez môjho mena\",\n", (string) $export->getBody());
         self::assertStringEndsWith("}\n", (string) $export->getBody());
         self::assertSame(404, $this->request($app, 'GET', '/api/admin/translations/de/export')->getStatusCode());
         self::assertSame(404, $this->request($app, 'GET', '/api/admin/translations/DE/export')->getStatusCode());

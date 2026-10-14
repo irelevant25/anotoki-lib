@@ -8,13 +8,16 @@ export type BadgeTone = 'neutral' | 'primary' | 'success' | 'warning' | 'danger'
  * The colour repeats what the word says and never replaces it: a badge must
  * read the same to somebody who cannot tell green from red. Its words stand
  * on a soft ground at 4.5:1 at least (the -text inks for success and warning).
+ * Its words stay on one line, unless it may `wrap` (0.6.0): words that may be
+ * long - a section's name in the narrow line of a paper - wrap inside it
+ * instead of running out of it.
  */
 @Component({
   selector: 'anotoki-badge',
   templateUrl: './badge.component.html',
   styleUrl: './badge.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'anotoki-badge', '[attr.data-tone]': 'tone()', '[class.anotoki-badge--mono]': 'mono()' },
+  host: { class: 'anotoki-badge', '[attr.data-tone]': 'tone()', '[class.anotoki-badge--mono]': 'mono()', '[class.anotoki-badge--wrap]': 'wrap()' },
 })
 export class BadgeComponent {
   readonly tone = input<BadgeTone>('neutral');
@@ -22,4 +25,6 @@ export class BadgeComponent {
   readonly dot = input(false, { transform: booleanAttribute });
   /** Monospaced: a code, a version. */
   readonly mono = input(false, { transform: booleanAttribute });
+  /** Its words wrap onto more lines where the line is too narrow for them. */
+  readonly wrap = input(false, { transform: booleanAttribute });
 }

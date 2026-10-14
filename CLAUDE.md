@@ -5,7 +5,8 @@ Academy, the build analyzer), in two halves with one version: the Composer
 package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
 `@anotoki/lib` (`angular/projects/lib/`, one secondary entry point per family of
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
-`ui/button`, ...), `ui/menu`, `ui/dialog`, ..., `shell`, `migrations`,
+`ui/button`, ...), `ui/menu`, `ui/dialog`, ..., the pieces of 0.6.0 (`ui/chips`,
+`ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/piece-words`, ...), `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
 `feedback/form`, `error-report`, `error-report/marker`, `legal`, `legal/pages`, and the generated `words`,
@@ -57,11 +58,14 @@ bun run words           # the library's words from php/resources/library-words.j
   (`anotoki_translations/003` brought `anotoki.signIn.*`; released files are never
   edited); a module's new words are a namespace of its own and its registration,
   never the kit's - no first load of the kit or of the translations module carries
-  them. One exception: words its lazy pages alone say, pages of text (the legal
-  pages' `anotoki.legal.*`), are read by those pages themselves and never
-  registered (`READ_BY_THEIR_PAGES` in both scripts), and their Slovak is
-  impersonal (no "ty", no "Vy": the legal pages fit the formal survey too).
-  Names (a site's sections, brand area) are never kit words.
+  them. Two exceptions, read by their readers themselves and never registered
+  (`READ_BY_THEIR_PAGES` in both scripts), their Slovak impersonal (no "ty", no
+  "Vy": they fit the formal survey too): words its lazy pages alone say, pages of
+  text (the legal pages' `anotoki.legal.*`), and the words of the kit's pieces
+  that are entry points of their own (0.6.0: `anotoki.chips.*`,
+  `anotoki.progress.*` - a piece has no provide*(), and provideAnotokiUi is in
+  every first load), each read through `ui/piece-words`' `pieceWords()`, the
+  site's string first. Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says

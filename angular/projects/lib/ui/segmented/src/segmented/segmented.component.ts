@@ -18,14 +18,23 @@ export interface SegmentedOption {
   name?: string;
   /** The language of the label, where it is not the page's ("Slovenčina" on an English page). */
   lang?: string | null;
+  /** Shown, and not to be chosen (0.6.0): the arrows pass over it. */
+  disabled?: boolean;
+  /**
+   * A colour mark before the label (0.6.0), a CSS colour - a grade's, `var(--grade-s)`. The label says what it means;
+   * the mark repeats it, and a site's own colour reaches 3:1 on the control (WCAG 1.4.11).
+   */
+  mark?: string | null;
 }
 
 /**
  * One choice out of a few, side by side: light | dark | auto, EN | SK.
  *
  * A radio group underneath (role="radiogroup" of role="radio" buttons): one
- * Tab stop - the chosen segment, or the first when none is - and the arrow
- * keys move the choice, and the focus with it once the choice is made.
+ * Tab stop - the chosen segment, or the first that can be chosen when none is -
+ * and the arrow keys move the choice, over a disabled one, and the focus with
+ * it once the choice is made. Too wide for its line (a phone), the segments
+ * wrap onto another instead of running off it.
  *
  * `value` is what the page says is chosen; a choice is asked for with
  * `valueChange` (`[(value)]` binds both). A page that refuses or delays a
@@ -52,10 +61,10 @@ export class SegmentedComponent {
   /** A choice is on its way (aria-busy). */
   readonly busy = input(false, { transform: booleanAttribute });
 
-  /** The segment a Tab lands on: the chosen one, or the first while none is (a group nobody can Tab into is out of a keyboard's reach). */
+  /** The segment a Tab lands on: the chosen one, or the first that can be chosen while none is (a group nobody can Tab into is out of a keyboard's reach). */
   protected readonly focusable = computed(() => {
     const value = this.value();
-    const options = this.options();
+    const options = this.options().filter((option) => !option.disabled);
     return options.some((option) => option.value === value) ? value : (options[0]?.value ?? null);
   });
 
@@ -86,10 +95,18 @@ export class SegmentedComponent {
       return;
     }
     event.preventDefault();
-    const index = options.findIndex((option) => option.value === this.value());
-    // From a value that is not among the options, the first arrow lands on the first or the last.
-    const next = index < 0 ? (step > 0 ? 0 : options.length - 1) : (index + step + options.length) % options.length;
-    this.followFocus = options[next].value;
-    this.choose(options[next].value);
+    let index = options.findIndex((option) => option.value === this.value());
+    // From a value that is not among the options, the first arrow lands on the first or the last; a disabled one is passed over.
+    if (index < 0) {
+      index = step > 0 ? -1 : options.length;
+    }
+    for (let tries = options.length; tries > 0; tries--) {
+      index = (index + step + options.length) % options.length;
+      if (!options[index].disabled) {
+        this.followFocus = options[index].value;
+        this.choose(options[index].value);
+        return;
+      }
+    }
   }
 }

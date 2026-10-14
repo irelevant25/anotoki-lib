@@ -1,0 +1,19 @@
+@for (item of items(); track item.value; let index = $index) {
+    <span class="anotoki-chip-list__chip" role="listitem">
+        <span class="anotoki-chip-list__label" [attr.lang]="item.lang || null">{{ item.label }}</span>
+        @if (item.removable !== false) {
+            @let name = word("anotoki.chips.remove", { name: item.label });
+            <button
+                #removeButton
+                type="button"
+                class="anotoki-chip-list__remove"
+                [attr.aria-label]="name.text"
+                [attr.title]="name.text"
+                [attr.lang]="name.lang"
+                [disabled]="disabled()"
+                (click)="ask(item, index)">
+                <anotoki-icon name="x" [size]="14" [strokeWidth]="2.25" />
+            </button>
+        }
+    </span>
+}

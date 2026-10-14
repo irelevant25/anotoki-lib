@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, booleanAttribute, computed, inject, input, isDevMode } from '@angular/core';
 import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost' | 'link';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 /**
@@ -21,7 +21,10 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
  * deaf to the pointer, since a link has no disabled state of its own.
  *
  * Every size is a target a finger can hit: 44 px (34 for `sm`), and a `link`
- * button reads as a link but keeps the 44 px height (24 px for `sm`).
+ * button reads as a link but keeps the 44 px height (24 px for `sm`, and 44
+ * again where the pointer is a finger). `danger-ghost` is the quiet red of a
+ * row's Delete beside its other quiet buttons: no ground until hovered, its
+ * words and icon in the ink of what cannot be undone.
  */
 @Component({
   selector: 'button[anotokiButton], a[anotokiButton]',
@@ -35,6 +38,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
     '[class.anotoki-button--secondary]': 'variant() === "secondary"',
     '[class.anotoki-button--ghost]': 'variant() === "ghost"',
     '[class.anotoki-button--danger]': 'variant() === "danger"',
+    '[class.anotoki-button--danger-ghost]': 'variant() === "danger-ghost"',
     '[class.anotoki-button--link]': 'variant() === "link"',
     '[class.anotoki-button--sm]': 'size() === "sm"',
     '[class.anotoki-button--lg]': 'size() === "lg"',

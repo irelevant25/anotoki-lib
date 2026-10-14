@@ -1,0 +1,90 @@
+@use "../../../../sass/kit";
+
+// The list is the host: its chips wrap onto lines.
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+  color: kit.token(text);
+}
+
+// It takes the focus only when its last chip went: a ring for the keyboard, none for a pointer.
+:host(:focus) {
+  outline: none;
+}
+
+:host(:focus-visible) {
+  outline: 2px solid kit.token(focus);
+  outline-offset: 2px;
+}
+
+// Its edge border-strong (3:1 on every ground, WCAG 1.4.11).
+.anotoki-chip-list__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.2rem 0.25rem 0.2rem 0.75rem;
+  border: 1px solid kit.token(border-strong);
+  border-radius: 1rem;
+  background: kit.token(surface-2);
+  color: kit.token(text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.anotoki-chip-list__chip:not(:has(.anotoki-chip-list__remove)) {
+  padding-right: 0.75rem;
+}
+
+// Long words (an answer of 80 characters) wrap inside their chip.
+.anotoki-chip-list__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-chip-list__remove {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  color: kit.token(muted);
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    background: kit.token(danger-soft);
+    color: kit.token(danger-text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @include kit.focus-ring(1px);
+}
+
+// A finger's target: the chip 44 px high and its button 44 px square, over the chip's own edge.
+@media (pointer: coarse) {
+  .anotoki-chip-list__chip {
+    min-height: kit.token(control-height);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .anotoki-chip-list__remove {
+    width: kit.token(control-height);
+    height: kit.token(control-height);
+    margin: -1px -1px -1px 0;
+  }
+}

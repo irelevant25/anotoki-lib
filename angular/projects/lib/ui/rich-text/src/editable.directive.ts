@@ -120,8 +120,17 @@ export class RichTextEditableDirective {
       return;
     }
     const data = event.dataTransfer;
-    const types = Array.from(data?.types ?? []);
-    if (!data || types.every((type) => type === 'text/plain')) {
+    if (!data) {
+      // Nothing to read the plain text from (no browser does this on a contenteditable today): let in at most the
+      // event's own text, never whatever the browser brought - the kit fails closed (the 0.6.0 review).
+      event.preventDefault();
+      if (typeof event.data === 'string' && event.data !== '') {
+        this.exec('insertText', event.data);
+      }
+      return;
+    }
+    const types = Array.from(data.types);
+    if (types.every((type) => type === 'text/plain')) {
       // Plain text alone: the browser inserts it as text.
       return;
     }

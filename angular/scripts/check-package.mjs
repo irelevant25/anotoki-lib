@@ -515,9 +515,12 @@ problems.push(...invalid);
 // ---------------------------------------------------------------------------------------------------------------------
 // Text, never markup: every bundle the package ships (fesm2022/*.mjs, as the IAM's deploy check reads them), line by
 // line as it is - comments too - against the IAM's own pattern. The fix is code that draws text, never a spelling or
-// a comment that slips past this.
+// a comment that slips past this. Every way a string becomes markup counts, as the IAM's deploy check counts them:
+// innerHTML / outerHTML, the newer setHTMLUnsafe, inserting HTML, an iframe's srcdoc, document.write, parsing it
+// (DOMParser, parseFromString, Document.parseHTMLUnsafe, a Range's createContextualFragment), and the sanitizer's
+// bypasses (the 0.6.0 review: for the five sites with no deploy check of their own, this is the only gate).
 
-const HTML_SINK = /innerHTML|outerHTML|insertAdjacentHTML|bypassSecurityTrust/i;
+const HTML_SINK = /innerHTML|outerHTML|setHTMLUnsafe|parseHTMLUnsafe|insertAdjacentHTML|bypassSecurityTrust|srcdoc|document\.write|DOMParser|parseFromString|createContextualFragment/i;
 const bundles = join(dist, "fesm2022");
 for (const bundleName of readdirSync(bundles).filter((file) => file.endsWith(".mjs"))) {
     readFileSync(join(bundles, bundleName), "utf8")

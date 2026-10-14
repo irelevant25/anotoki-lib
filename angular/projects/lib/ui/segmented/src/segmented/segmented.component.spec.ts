@@ -163,9 +163,31 @@ describe('<anotoki-segmented>: options that cannot be chosen, and colour marks (
 
   it('a mark before the label, in the site’s colour - nothing a screen reader says; the label says the grade', () => {
     const marks = segments().map((segment) => segment.querySelector<HTMLElement>('.anotoki-segmented__mark'));
-    expect(marks[1]?.style.background).toBe('rgb(63, 174, 106)');
+    expect(marks[1]?.style.backgroundColor).toBe('rgb(63, 174, 106)');
     expect(marks[3]).toBeNull();
     expect(marks[1]?.textContent).toBe('');
     expect(segments()[1].textContent?.trim()).toBe('A');
+  });
+});
+
+@Component({
+  selector: 'anotoki-test-url-mark',
+  imports: [SegmentedComponent],
+  template: '<anotoki-segmented label="Grade" [options]="options" [value]="null" />',
+})
+class UrlMarkPageComponent {
+  readonly options: SegmentedOption[] = [{ value: 'A', label: 'A', mark: 'url(https://tracker.example/pixel.png)' }];
+}
+
+describe('<anotoki-segmented>: a mark is a colour, never a picture (the 0.6.0 review)', () => {
+  it('a mark that names a picture draws nothing - no request to another host', async () => {
+    TestBed.configureTestingModule({ providers: kitProviders() });
+    const fixture = await draw(UrlMarkPageComponent);
+    const host: HTMLElement = fixture.nativeElement;
+    const mark = host.querySelector<HTMLElement>('.anotoki-segmented__mark');
+    expect(mark).not.toBeNull();
+    expect(mark?.style.backgroundImage).toBe('');
+    expect(mark?.getAttribute('style') ?? '').not.toContain('url(');
+    host.remove();
   });
 });

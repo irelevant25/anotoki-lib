@@ -15,7 +15,7 @@
             [disabled]="!!option.disabled"
             (click)="choose(option.value)">
             @if (option.mark) {
-                <span class="anotoki-segmented__mark" [style.background]="option.mark"></span>
+                <span class="anotoki-segmented__mark" [style.background-color]="option.mark"></span>
             }
             @if (option.icon) {
                 <anotoki-icon [name]="option.icon" [size]="16" />

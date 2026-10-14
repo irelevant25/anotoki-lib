@@ -304,6 +304,22 @@ takes them: its birthdays from `0004-MM-DD` to `--MM-DD` (or back, at its API), 
 editor's `execCommand` calls through `[anotokiRichTextEditable]` - its paste then plain text -, and its own allow-list
 kept for showing the editor's text.
 
+**The security review of 0.6.0** (the whole of it, read-only, 2026-10-14): no High, no Medium; its three Lows fixed.
+
+- `[anotokiRichTextEditable]`: a paste or a drop that comes with no data transfer (no browser does this on a
+  contenteditable today) lets in at most the event's own text as text, never what the browser brought - it failed open.
+- `<anotoki-segmented>`: an option's colour mark is bound as `background-color`, so a mark is a colour and never a
+  picture (`url(...)` from another host).
+- The package check refuses every way a string becomes markup, as the IAM's deploy check does: `setHTMLUnsafe`,
+  `parseHTMLUnsafe`, `srcdoc`, `document.write`, `DOMParser`, `parseFromString` and `createContextualFragment` beside
+  `innerHTML`, `outerHTML`, `insertAdjacentHTML` and the sanitizer's bypasses - for the five sites with no deploy check
+  of their own, it is the only gate.
+
+What a site must do, from the review: keep every address it gives `provideAnotokiLegal()` (the account's pages, the
+processors', the operator's) in its code, never in a string an administrator can reword; a site that takes the file
+picker checks each file's kind by its content, and its size, on its server; genshin keeps its server's allow-list for
+the editor's HTML (`href` schemes too) and the one that shows it - the kit is no defence for either.
+
 ## 0.5.2 - 2026-10-13
 
 Cloudflare's published ranges are every Cloudflare customer's, not the owner's zone alone: anybody's Worker can

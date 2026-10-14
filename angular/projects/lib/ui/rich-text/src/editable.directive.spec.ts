@@ -124,4 +124,22 @@ describe('[anotokiRichTextEditable]: the toolbar’s commands on a plain content
     const typed = before('insertText', {});
     expect(typed.defaultPrevented).toBe(false);
   });
+
+  it('a paste or a drop with no data transfer lets nothing in but the event’s own text - never what the browser brought', () => {
+    const bare = (inputType: string, data: string | null) => {
+      const event = new InputEvent('beforeinput', { inputType, data, bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: null });
+      editor().dispatchEvent(event);
+      return event;
+    };
+    const nothing = bare('insertFromPaste', null);
+    expect(nothing.defaultPrevented).toBe(true);
+    expect(exec).not.toHaveBeenCalled();
+    const dropped = bare('insertFromDrop', '');
+    expect(dropped.defaultPrevented).toBe(true);
+    expect(exec).not.toHaveBeenCalled();
+    const text = bare('insertFromPaste', '<b>Hi</b>');
+    expect(text.defaultPrevented).toBe(true);
+    expect(exec).toHaveBeenLastCalledWith('insertText', false, '<b>Hi</b>');
+  });
 });

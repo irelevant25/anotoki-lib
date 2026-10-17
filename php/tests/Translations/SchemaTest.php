@@ -191,7 +191,7 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertSame('anotoki_translations', $set->name);
         self::assertTrue($set->library);
-        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql', '006_top_bar_words.sql', '007_kit_piece_words.sql', '008_tab_words.sql', '009_input_words.sql', '010_backups_where_words.sql'], $this->migrator([$set])->files($set));
+        self::assertSame(['001_languages_and_strings.sql', '002_library_words.sql', '003_sign_in_words.sql', '004_feedback_words.sql', '005_legal_words.sql', '006_top_bar_words.sql', '007_kit_piece_words.sql', '008_tab_words.sql', '009_input_words.sql', '010_backups_where_words.sql', '011_privacy_words_made_true.sql'], $this->migrator([$set])->files($set));
     }
 
     // ─── A new database ─────────────────────────────────────────────────────
@@ -214,13 +214,14 @@ final class SchemaTest extends DatabaseTestCase
                 ['set' => 'anotoki_translations', 'name' => '008_tab_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '009_input_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '010_backups_where_words.sql'],
+                ['set' => 'anotoki_translations', 'name' => '011_privacy_words_made_true.sql'],
             ],
             $result['applied'],
             (string) $result['error']
         );
         self::assertTrue(Schema::ready($this->pdo));
         self::assertSame(
-            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql', 'anotoki_translations/006_top_bar_words.sql', 'anotoki_translations/007_kit_piece_words.sql', 'anotoki_translations/008_tab_words.sql', 'anotoki_translations/009_input_words.sql', 'anotoki_translations/010_backups_where_words.sql'],
+            ['anotoki_translations/001_languages_and_strings.sql', 'anotoki_translations/002_library_words.sql', 'anotoki_translations/003_sign_in_words.sql', 'anotoki_translations/004_feedback_words.sql', 'anotoki_translations/005_legal_words.sql', 'anotoki_translations/006_top_bar_words.sql', 'anotoki_translations/007_kit_piece_words.sql', 'anotoki_translations/008_tab_words.sql', 'anotoki_translations/009_input_words.sql', 'anotoki_translations/010_backups_where_words.sql', 'anotoki_translations/011_privacy_words_made_true.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
         );
         self::assertSame(
@@ -286,7 +287,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator(['split' => false])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(10, $result['applied']);
+        self::assertCount(11, $result['applied']);
         self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
@@ -308,7 +309,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertNull($result['error'], (string) $result['error']);
-        self::assertCount(10, $result['applied']);
+        self::assertCount(11, $result['applied']);
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
@@ -772,6 +773,48 @@ final class SchemaTest extends DatabaseTestCase
         self::assertStringContainsString("anotoki_translations 010: the library's keys without an English string: anotoki.legal.backupsWherePlain", (string) $result['error']);
     }
 
+    // ─── 011, three sentences of the Privacy page made true: 005's words reworded, nobody's save touched ─
+
+    public function testThePrivacyWordsAreRewordedWhereTheyAre005sAndNobodySavedThem(): void
+    {
+        // A site on 0.6.1: every file before 011, the three sentences in 005's words ...
+        $before011 = $this->siteMigrator(['ready' => static fn ($set, string $file): bool => $set->name !== 'anotoki_translations' || strcmp($file, '011') < 0])->apply();
+        self::assertNull($before011['error'], (string) $before011['error']);
+        $string = fn (string $key, string $language): string => (string) $this->value("SELECT value FROM translations WHERE key_name = '$key' AND language_code = '$language'");
+        $saved005 = $string('anotoki.legal.privacyAccountRecord', 'en');
+        self::assertStringContainsString('does not keep your account', $saved005, 'the site is in 005\'s words');
+        // ... where an administrator saved one in 005's very words, and the site worded another its own way.
+        $this->pdo->exec("UPDATE translations SET updated_by = 7 WHERE key_name = 'anotoki.legal.privacyAccountRecord' AND language_code = 'en'");
+        $this->pdo->exec("UPDATE translations SET value = 'Prihlásenie a jeho poznámky.', updated_by = 7 WHERE key_name = 'anotoki.legal.storageSignInPurpose' AND language_code = 'sk'");
+        $everythingElse = "SELECT md5(string_agg(key_name || '|' || language_code || '|' || value, '/' ORDER BY key_name, language_code)) FROM translations WHERE key_name NOT IN ('anotoki.legal.backupsKept', 'anotoki.legal.privacyAccountRecord', 'anotoki.legal.storageSignInPurpose')";
+        $before = $this->value($everythingElse);
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '011_privacy_words_made_true.sql']], $this->siteMigrator()->apply()['applied']);
+
+        $words = LibraryWords::all();
+        self::assertSame([$words['anotoki.legal.backupsKept']['en'], $words['anotoki.legal.backupsKept']['sk']], [$string('anotoki.legal.backupsKept', 'en'), $string('anotoki.legal.backupsKept', 'sk')], 'by count, in both languages');
+        self::assertSame($words['anotoki.legal.backupsKept']['description'], $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.legal.backupsKept'"), 'the description is the library\'s');
+        self::assertSame($saved005, $string('anotoki.legal.privacyAccountRecord', 'en'), 'an administrator\'s save of 005\'s words stays');
+        self::assertSame(7, (int) $this->value("SELECT updated_by FROM translations WHERE key_name = 'anotoki.legal.privacyAccountRecord' AND language_code = 'en'"), 'with its writer');
+        self::assertSame($words['anotoki.legal.privacyAccountRecord']['sk'], $string('anotoki.legal.privacyAccountRecord', 'sk'), 'the Slovak nobody saved is made true');
+        self::assertStringContainsString('reply address', $words['anotoki.legal.privacyAccountRecord']['en'], 'the new words say what feedback keeps');
+        self::assertSame($words['anotoki.legal.storageSignInPurpose']['en'], $string('anotoki.legal.storageSignInPurpose', 'en'));
+        self::assertSame('Prihlásenie a jeho poznámky.', $string('anotoki.legal.storageSignInPurpose', 'sk'), 'the site\'s own words stay');
+        self::assertSame($before, $this->value($everythingElse), 'nothing else touched');
+    }
+
+    public function testAPrivacyKeyWithoutEnglishIsRefusedBy011sGate(): void
+    {
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/011_privacy_words_made_true.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.legal.storageSignInPurpose' AND language_code = 'en'");
+
+        $result = $this->siteMigrator()->apply();
+
+        self::assertSame(['set' => 'anotoki_translations', 'name' => '011_privacy_words_made_true.sql'], $result['failed']);
+        self::assertStringContainsString("anotoki_translations 011: the library's keys without an English string: anotoki.legal.storageSignInPurpose", (string) $result['error']);
+    }
+
     public function testTheTopBarsWordNamesTheSideNavigationToo(): void
     {
         // 006 is 0.6.0's own file, still unreleased when the side navigation came to share its word: its description
@@ -835,6 +878,7 @@ final class SchemaTest extends DatabaseTestCase
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/008_tab_words.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/009_input_words.sql")));
         self::assertCount(2, Splitter::split((string) file_get_contents("$directory/010_backups_where_words.sql")));
+        self::assertCount(3, Splitter::split((string) file_get_contents("$directory/011_privacy_words_made_true.sql")));
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

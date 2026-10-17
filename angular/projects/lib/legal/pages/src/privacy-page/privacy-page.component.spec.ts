@@ -78,7 +78,7 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
     expect(duration('feedback')).toContain('then 90 days after it is resolved, or 30 days after it is marked as spam');
     expect(duration('error-log')).toBe('30 days.');
     expect(duration('audit-log')).toBe('With no set time limit.');
-    expect(duration('backups')).toContain('The daily copies for 14 days; the 5 newest made before an update and the 5 newest made before a restore');
+    expect(duration('backups')).toContain('The 14 newest daily copies (a daily copy is made on a day the site is used); the 5 newest made before an update and the 5 newest made before a restore');
     expect(duration('backups')).toContain('What is deleted on the site stays in the copies made before, until they go.');
   });
 
@@ -86,7 +86,8 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
     drawn = await drawPage(PrivacyPageComponent);
     expect(words(section('account'))).toContain("The account itself - your e-mail address, your password, how you sign in - is kept by the anotoki account's own site, not by Piano Academy");
     expect(section('account')?.querySelector('[data-account-privacy]')?.getAttribute('href')).toBe('https://iam.example.test/privacy');
-    expect(words(section('account'))).toContain("Piano Academy never sees your password, and it does not keep your account's e-mail address.");
+    expect(words(section('account'))).toContain("Piano Academy never sees your password, and it keeps your account's e-mail address only as the reply address of a feedback message you send, if you leave it in the form (on a site that takes feedback).");
+    expect(words(section('account'))).toContain('takes your name and any reply address out of what it keeps');
 
     drawn.facts.update((facts) => ({ ...facts, account: { isIam: true, deleteUrl: '/account/security' } }));
     await settle(drawn.fixture);

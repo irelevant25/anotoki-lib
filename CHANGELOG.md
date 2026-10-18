@@ -23,8 +23,8 @@ the top border."): `@anotoki/lib/footer` (new), `<anotoki-site-footer>`, the bui
   the footer's own, 0.9 kB gzipped) - the button busy meanwhile, and the focus is back on the button once the dialog
   goes. With the dialog drawn by the footer itself its first load took 2.0 kB more beside lazy pages, which use the rest
   of ui/dialog's one file.
-- Its words: `anotoki.footer.version` ("Version {version}"), `anotoki.footer.whatsNew`, `anotoki.footer.feedback` ("Send
-  feedback") and `anotoki.footer.fanHoyoverse` (the fan clause's first sentence), English and impersonal Slovak, in
+- Its words: `anotoki.footer.version` ("Version {version}"), `anotoki.footer.whatsNew`, `anotoki.footer.feedback`
+  ("Feedback", the build analyzer's word) and `anotoki.footer.fanHoyoverse` (the fan clause's first sentence), English and impersonal Slovak, in
   `php/resources/library-words.json`, generated into `@anotoki/lib/words/footer` and read by the footer itself through
   `pieceWords()` - the site's string first, then the built-in words - never registered (`READ_BY_THEIR_PAGES`: the
   footer has no provide*() of its own); `anotoki_translations/012_footer_words.sql` writes them by 002's rule, its gate

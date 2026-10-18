@@ -2837,7 +2837,7 @@ keeps them as keys of its own in its database, English and Slovak:
 | `account` | `deleteUrl` - the IAM's account page (`AnotokiAuth.accountUrl()`; on the IAM its own path, which the router follows); `privacyUrl` - the IAM's own Privacy page (every site but the IAM); `isIam` on the IAM; `deletionDays` (the IAM's 30) |
 | `data` | the site's own, each `{ name, what?, why, kept }`: its record of the people who sign in (the IAM's id, the name, when first and last seen), their progress, ... |
 | `visitors` | `{ what, why?, kept }` on a site people use without an account |
-| `feedback` | `true` on a site with the feedback form (or `{ resolvedDays, spamDays }` where it changed Feedback's `keep`): Privacy describes it, and Contact opens it in the kit's dialog (`@anotoki/lib/feedback/form`, loaded with the press, configured by the site's `provideAnotokiFeedback()`). Without it the Contact page gives the address alone (the IAM, the survey) |
+| `feedback` | `true` on a site with the feedback form (or `{ resolvedDays, spamDays }` where it changed Feedback's `keep`): Privacy describes it, and Contact opens it in the kit's dialog (`@anotoki/lib/feedback/form`, loaded with the press, configured by the site's `provideAnotokiFeedback()`). Without it the Contact page gives the address alone (the IAM) |
 | `errorLog`, `auditLog`, `backups` | every site has them: shown in the library's words with the library's defaults (the error log 30 days; the audit log with no set limit; backups daily 14 days, the 5 newest before an update and before a restore, by hand until deleted); `false` leaves one out, `{ what, why, kept }` puts the site's own words (the IAM's audit log keeps people's own security changes and the address), `backups: { encrypted: true }` the IAM's |
 | `storage` | each cookie and stored item by its name: a preset in the library's words - `signInHint` (the IAM's cookie for every site), `signIn` (the auth module's tokens and its notes), `theme`, `language`, `visitorKey` - or the site's own `{ name, kind: 'cookie' \| 'local' \| 'session', purpose, kept }` |
 | `analytics` | the family's Umami by default (`{ host }`, umami.anotoki.eu); `false`: "counts no visits" |
@@ -2940,7 +2940,7 @@ provideAnotokiFeedback(() => ({ /* "The visitors' feedback form" above */ })),
 | --- | --- |
 | `version` | the version of the site the page runs (`'0.3'`): "Version 0.3", first in the row; null or empty - neither it nor its dot |
 | `whatsNew`, `(whatsNew)` | "What's new" after the version, a link button naming the dialog it opens (`aria-haspopup="dialog"`); pressed, `(whatsNew)`: the site opens its own What's new |
-| `feedback` | "Feedback", last in the row: the library's feedback form in the kit's dialog, named by the button's words, the form with its Cancel and - after the thanks - its Close (the site's `provideAnotokiFeedback()` as it is). The dialog's and the form's code come with the first press (`@anotoki/lib/footer/feedback`, the footer's own: no first load carries them), the button busy meanwhile; the focus is back on the button once the dialog goes. Left out on a site that takes no feedback (the IAM, the survey) |
+| `feedback` | "Feedback", last in the row: the library's feedback form in the kit's dialog, named by the button's words, the form with its Cancel and - after the thanks - its Close (the site's `provideAnotokiFeedback()` as it is). The dialog's and the form's code come with the first press (`@anotoki/lib/footer/feedback`, the footer's own: no first load carries them), the button busy meanwhile; the focus is back on the button once the dialog goes. Left out on a site that takes no feedback (the IAM) |
 | `fan` | `'hoyoverse'`: the fan clause, last (genshin, the build analyzer); Terms and Contact say it longer (`fanDisclaimer`) |
 
 - **Drawn**: a top border (`--anotoki-border`), everything centred in the muted
@@ -2952,8 +2952,8 @@ provideAnotokiFeedback(() => ({ /* "The visitors' feedback form" above */ })),
   paths of the site's `provideAnotokiLegal()`); the fan clause at 0.75rem, at most
   40rem wide. A `<footer>` landmark of its own, the dialog outside it; wraps at
   390 px; not printed, as the bar is not. Light and dark from the tokens.
-- **Words** (`anotoki.footer.*`): "Version {version}", "What's new", "Send
-  feedback" and the fan clause, English and impersonal Slovak - in every site's
+- **Words** (`anotoki.footer.*`): "Version {version}", "What's new",
+  "Feedback" and the fan clause, English and impersonal Slovak - in every site's
   database through `anotoki_translations/012`, reworded on its Translations page.
   The footer reads them itself (no provide*() of its own, no registration): the
   site's string first, through provideAnotokiUi's `lookup` (the translations

@@ -6,10 +6,10 @@ version:
 
 | Half | Package | Where |
 | --- | --- | --- |
-| PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `php/src/`, `php/migrations/`, `php/resources/`, `php/testing/` |
-| Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `angular/projects/lib/` |
+| PHP 8.2+, Slim 4, PostgreSQL | `anotoki/lib` (Composer) | `composer.json`, `backend/src/`, `backend/migrations/`, `backend/resources/`, `backend/testing/` |
+| Angular 21 (standalone, zoneless, signals) | `@anotoki/lib` (npm tarball) | `frontend/projects/lib/` |
 
-Version 0.6.3 holds:
+Version 0.7.0 holds:
 
 - **migrations** - the engine that brings a site's database up to date, with
   the library's own migration sets beside a site's, and one behaviour for every
@@ -36,8 +36,8 @@ Version 0.6.3 holds:
   Terms, Privacy and Contact for every site, the family's
   wording around each site's facts, and the footer's three links (the section
   "Legal pages");
-- **the footer** (Angular, with its words in both halves; 0.6.3, not released
-  yet) - `<anotoki-site-footer>`, one footer under every page and admin panel of
+- **the footer** (Angular, with its words in both halves; 0.6.3) -
+  `<anotoki-site-footer>`, one footer under every page and admin panel of
   every site: the version, What's new, Feedback, Terms · Privacy · Contact
   and the fan clause; and the status page, with no header and no footer (the
   section "Footer").
@@ -87,9 +87,9 @@ PHP - in `backend/composer.json`:
 
 then `php composer.phar update anotoki/lib --prefer-dist` in `backend/`. Composer
 takes the version from the git tag and installs GitHub's archive of it, which
-holds the PHP half only - its code (`php/src`), the migration files of the
-library's sets (`php/migrations`), its resources (`php/resources`) and, from
-0.4.0, the stand-in IAM a site's tests start (`php/testing`), with
+holds the PHP half only - its code (`backend/src`), the migration files of the
+library's sets (`backend/migrations`), its resources (`backend/resources`) and, from
+0.4.0, the stand-in IAM a site's tests start (`backend/testing`), with
 `composer.json`, this README and CHANGELOG.md: `.gitattributes` is an
 allow-list, and CI builds the archive and checks it
 (`.github/scripts/check-archive.sh`). Where the site uploads `vendor/`,
@@ -419,7 +419,7 @@ The keys: `ui.close`, `ui.dismiss`, `ui.notifications`, `ui.cancel`,
 `language.notSaved`, `theme.label`, `theme.light`, `theme.dark`, `theme.auto`,
 `theme.autoHint`, `theme.notSaved` - the library's words under the namespaces
 `anotoki.ui|topbar|language|theme.*`, English and Slovak generated from
-`php/resources/library-words.json` ("The library's own words" below;
+`backend/resources/library-words.json` ("The library's own words" below;
 `KIT_LIBRARY_WORDS` has them by their library keys, `@anotoki/lib/words`'
 `LIBRARY_WORDS` every module's). A site words its own menu items with them too:
 `words.t('topbar.account')` is "Tvoj anotoki účet" in Slovak.
@@ -1279,23 +1279,23 @@ TranslationsRoutes::languages($app, '/api/admin', $translations, $error, $audit)
 
 ### The library's own words
 
-`php/resources/library-words.json`, `{"keys": {name: {description, en, sk}}}`,
+`backend/resources/library-words.json`, `{"keys": {name: {description, en, sk}}}`,
 is the one source of the `anotoki.*` keys: `LibraryWords` reads it (and
 `LibraryKeyRules` takes the placeholders from it), and a test holds what the
 library's migrations write on a new database to it. A new library string is an
 entry there and a new library migration; a rewording of a released one is a
 migration that changes it only where it still has the earlier words. The
 Angular half reads the same file and keeps no copy by hand: `bun run words`
-(`angular/scripts/library-words.mjs`) generates its built-in words a namespace
+(`frontend/scripts/library-words.mjs`) generates its built-in words a namespace
 at a time (`anotoki.<namespace>.<word>`; committed), each where only its readers
 import it:
 
 - the kit's namespaces (`language`, `ui`, `topbar`, `theme`) in
-  `angular/projects/lib/ui/config/src/library-words.ts` - `KIT_LIBRARY_WORDS`
+  `frontend/projects/lib/ui/config/src/library-words.ts` - `KIT_LIBRARY_WORDS`
   and `LibraryKey` (every key's name, a type) of `@anotoki/lib/ui/config`, which
   the kit reads (`AnotokiWords`), and the translations module too;
 - every other namespace in an entry point of its own,
-  `angular/projects/lib/words/<namespace>/` - `@anotoki/lib/words/site-status`
+  `frontend/projects/lib/words/<namespace>/` - `@anotoki/lib/words/site-status`
   (the status page's), `@anotoki/lib/words/sign-in` (the sign-in page's),
   `@anotoki/lib/words/feedback` (the feedback form's), `@anotoki/lib/words/legal-links`
   (the footer's legal links', 0.6.0) - which its module alone
@@ -1328,7 +1328,7 @@ import it:
 - the footer's (0.6.3), `@anotoki/lib/words/footer`, read by `@anotoki/lib/footer`
   alone the same way - it has no provide*() either - and so in the footer's first
   load, and in no other; impersonal Slovak;
-- `@anotoki/lib/words` (`angular/projects/lib/words/`): `LIBRARY_WORDS`, every
+- `@anotoki/lib/words` (`frontend/projects/lib/words/`): `LIBRARY_WORDS`, every
   namespace's, for a site's specs and the showcase - no module imports it.
 
 A spec (`library-words.spec.ts`), CI (`bun run words --check`, which also finds a
@@ -1643,13 +1643,13 @@ $app->add(new SiteGate($state, $app->getResponseFactory(), [AuthRoutes::openPath
   pair, `token($sub, $roles, $claims)`, `sign()` for the tokens that must be
   refused, `client()` (an IamClient on its files), `signInRule(false)`,
   `anonymized([...])`; `StandInIam::start($dir)` - **the family's one stand-in
-  IAM** (`php/testing/stand-in-iam.php`) on a free port: discovery, keys,
+  IAM** (`backend/testing/stand-in-iam.php`) on a free port: discovery, keys,
   authorize with PKCE (and `prompt=none`'s `login_required` /
   `interaction_required`), token with rotation, revoke, logout, preferences,
   the public application answer, the paged deleted accounts, and the sign-in
   hint set and cleared as the IAM does; its state is `POST /_test/state`. For a
   browser check: `STAND_IN_DIR=<dir> STAND_IN_ISSUER=http://localhost:8597 php -S
-  localhost:8597 vendor/anotoki/lib/php/testing/stand-in-iam.php`. It answers
+  localhost:8597 vendor/anotoki/lib/backend/testing/stand-in-iam.php`. It answers
   nothing but under PHP's built-in server.
 
 ### The browser: `@anotoki/lib/auth`
@@ -1781,7 +1781,7 @@ show.
   site that lets visitors in may send a visitor there itself when
   `signInFailure()` says a sign-in of theirs failed.
 - The words of both are the library's
-  `anotoki.signIn.*` (`php/resources/library-words.json`, every site's database
+  `anotoki.signIn.*` (`backend/resources/library-words.json`, every site's database
   through `anotoki_translations/003`, built in from `@anotoki/lib/words/sign-in`):
   an owner's rewording through `translate`, then the site's `words`, then the
   built-in English and informal Slovak - in the visitor's language (`language`).
@@ -3018,9 +3018,9 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 #   PHPRC=<its folder>, never -c (a child process does not get -c, and its server would have none).
 #   CI runs the tests on PHP 8.2 too: write no newer syntax, and run them on 8.2 before a release.
 
-# Angular (from angular/)
+# Angular (from frontend/)
 bun install
-bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs: each entry point's
+bun run build           # ng build lib -> frontend/dist/lib, then scripts/check-package.mjs: each entry point's
                         # size (gzipped code; limits for the eager ones) and import boundaries; what a site's
                         # build keeps of an entry point nothing is used of (nothing); no bundle naming innerHTML,
                         # outerHTML, insertAdjacentHTML or bypassSecurityTrust, comments too (the IAM's deploy
@@ -3042,8 +3042,8 @@ bun run showcase        # projects/showcase on http://localhost:4320: every piec
                         # account's own, ?fan=1 the fan clause, ?feedback=0 a site without feedback); the family's
                         # footer under every page (the library's version, What's new, Feedback; the same
                         # ?fan=1 and ?feedback=0) and its samples in the gallery; never published)
-bun run build:showcase  # the same, built into angular/dist/showcase
-bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)
+bun run build:showcase  # the same, built into frontend/dist/showcase
+bun run words           # the Angular half's library words from backend/resources/library-words.json (--check: stale?)
 ```
 
 CI (`.github/workflows/ci.yml`) runs the PHP tests on 8.2 and 8.4 against
@@ -3054,8 +3054,8 @@ Angular half's library words are the JSON's (`bun run words --check`), and build
 
 ## Releasing
 
-1. Bump the version in `angular/projects/lib/package.json` and
-   `ANOTOKI_LIB_VERSION` (`angular/projects/lib/src/public-api.ts`; a test keeps
+1. Bump the version in `frontend/projects/lib/package.json` and
+   `ANOTOKI_LIB_VERSION` (`frontend/projects/lib/src/public-api.ts`; a test keeps
    them equal), and add it to `CHANGELOG.md`.
 2. Commit, `git tag vX.Y.Z`, push the commit and the tag.
 3. The release workflow builds and tests the library, refuses a tag that is not

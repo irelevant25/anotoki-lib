@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: angular
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -86,7 +86,7 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      # ui/config/src/library-words.ts is generated from php/resources/library-words.json and committed: a JSON
+      # ui/config/src/library-words.ts is generated from backend/resources/library-words.json and committed: a JSON
       # changed without `bun run words` would leave the Angular half's words behind the PHP half's.
       - name: Check the library's words
         run: bun run words --check

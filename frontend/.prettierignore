@@ -1,0 +1,7 @@
+.angular/
+dist/
+node_modules/
+# Generated from backend/resources/library-words.json by scripts/library-words.mjs and held to it byte for byte
+# (`bun run words --check`, LibraryWordsTest): `bun run format` must leave them as the script wrote them.
+projects/lib/ui/config/src/library-words.ts
+projects/lib/words/

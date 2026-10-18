@@ -5,11 +5,11 @@
 /.phpunit.result.cache
 
 # Angular
-/angular/node_modules/
-/angular/dist/
-/angular/.angular/
-/angular/out-tsc/
-/angular/coverage/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.angular/
+/frontend/out-tsc/
+/frontend/coverage/
 *.tgz
 
 # Editors and systems

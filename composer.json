@@ -25,12 +25,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Anotoki\\Lib\\": "php/src/"
+            "Anotoki\\Lib\\": "backend/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Anotoki\\Lib\\Tests\\": "php/tests/"
+            "Anotoki\\Lib\\Tests\\": "backend/tests/"
         }
     },
     "config": {

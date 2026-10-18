@@ -5,7 +5,7 @@
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="php/tests/bootstrap.php"
+         bootstrap="backend/tests/bootstrap.php"
          cacheDirectory=".phpunit.cache"
          colors="true"
          executionOrder="default"
@@ -19,12 +19,12 @@
          displayDetailsOnTestsThatTriggerWarnings="true">
     <testsuites>
         <testsuite name="anotoki-lib">
-            <directory>php/tests</directory>
+            <directory>backend/tests</directory>
         </testsuite>
     </testsuites>
     <source>
         <include>
-            <directory>php/src</directory>
+            <directory>backend/src</directory>
         </include>
     </source>
 </phpunit>

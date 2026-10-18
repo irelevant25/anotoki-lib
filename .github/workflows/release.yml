@@ -27,31 +27,31 @@ jobs:
       - name: The tag must be the library's version
         id: version
         run: |
-          version="$(node -p "require('./angular/projects/lib/package.json').version")"
+          version="$(node -p "require('./frontend/projects/lib/package.json').version")"
           if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error::The tag $GITHUB_REF_NAME is not v$version, the version in angular/projects/lib/package.json. Bump it there (and in CHANGELOG.md), or tag v$version."
+            echo "::error::The tag $GITHUB_REF_NAME is not v$version, the version in frontend/projects/lib/package.json. Bump it there (and in CHANGELOG.md), or tag v$version."
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install
-        working-directory: angular
+        working-directory: frontend
         run: bun install --frozen-lockfile
 
       - name: Build the library
-        working-directory: angular
+        working-directory: frontend
         run: bun run build
 
       - name: Test the library
-        working-directory: angular
+        working-directory: frontend
         run: bun run test
 
       - name: Pack
-        working-directory: angular/dist/lib
+        working-directory: frontend/dist/lib
         run: npm pack
 
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
-          files: angular/dist/lib/anotoki-lib-${{ steps.version.outputs.version }}.tgz
+          files: frontend/dist/lib/anotoki-lib-${{ steps.version.outputs.version }}.tgz
           fail_on_unmatched_files: true

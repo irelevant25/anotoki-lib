@@ -14,12 +14,12 @@ list=$(tar -tf "$archive")
 status=0
 
 # Nothing from the Angular workspace, the tests, the workflows - or a folder added later.
-unexpected=$(printf '%s\n' "$list" | grep -v -E '^(composer\.json|README\.md|CHANGELOG\.md|php/|php/(src|migrations|resources|testing)/.*)$' || true)
+unexpected=$(printf '%s\n' "$list" | grep -v -E '^(composer\.json|README\.md|CHANGELOG\.md|backend/|backend/(src|migrations|resources|testing)/.*)$' || true)
 if [ -n "$unexpected" ]; then
     printf '::error::The Composer archive holds what no site needs:\n%s\n' "$unexpected"
     status=1
 fi
-if printf '%s\n' "$list" | grep -q -E '^(angular|php/tests)/'; then
+if printf '%s\n' "$list" | grep -q -E '^(frontend|backend/tests)/'; then
     echo '::error::The Composer archive holds the Angular workspace or the tests.'
     status=1
 fi
@@ -28,29 +28,29 @@ fi
 # its tests: the stand-in IAM.
 for file in \
     composer.json README.md CHANGELOG.md \
-    php/src/Migrations/Migrator.php \
-    php/src/Support/JsonResponse.php \
-    php/src/Translations/Translations.php \
-    php/src/Translations/Http/TranslationsRoutes.php \
-    php/src/Auth/AccessTokens.php \
-    php/src/Auth/Http/Identify.php \
-    php/src/Auth/Testing/TestIam.php \
-    php/testing/stand-in-iam.php \
-    php/src/People/Scrubber.php \
-    php/src/People/Http/PeopleRoutes.php \
-    php/migrations/people/001_people.sql \
-    php/migrations/translations/001_languages_and_strings.sql \
-    php/migrations/translations/002_library_words.sql \
-    php/migrations/translations/003_sign_in_words.sql \
-    php/migrations/admin/001_audit_log.sql \
-    php/migrations/admin/002_feedback.sql \
-    php/src/Admin/Schema.php \
-    php/src/Audit/AuditLog.php \
-    php/src/Backups/Backups.php \
-    php/src/ErrorLog/ErrorLog.php \
-    php/src/Feedback/Feedback.php \
-    php/src/Files/FileExplorer.php \
-    php/resources/library-words.json
+    backend/src/Migrations/Migrator.php \
+    backend/src/Support/JsonResponse.php \
+    backend/src/Translations/Translations.php \
+    backend/src/Translations/Http/TranslationsRoutes.php \
+    backend/src/Auth/AccessTokens.php \
+    backend/src/Auth/Http/Identify.php \
+    backend/src/Auth/Testing/TestIam.php \
+    backend/testing/stand-in-iam.php \
+    backend/src/People/Scrubber.php \
+    backend/src/People/Http/PeopleRoutes.php \
+    backend/migrations/people/001_people.sql \
+    backend/migrations/translations/001_languages_and_strings.sql \
+    backend/migrations/translations/002_library_words.sql \
+    backend/migrations/translations/003_sign_in_words.sql \
+    backend/migrations/admin/001_audit_log.sql \
+    backend/migrations/admin/002_feedback.sql \
+    backend/src/Admin/Schema.php \
+    backend/src/Audit/AuditLog.php \
+    backend/src/Backups/Backups.php \
+    backend/src/ErrorLog/ErrorLog.php \
+    backend/src/Feedback/Feedback.php \
+    backend/src/Files/FileExplorer.php \
+    backend/resources/library-words.json
 do
     if ! printf '%s\n' "$list" | grep -q -x -F "$file"; then
         echo "::error::$file is not in the Composer archive."
@@ -60,7 +60,7 @@ done
 
 # Byte for byte, whatever the checkout: a migration's last line is read, and the words are held to the SQL.
 cr=$(printf '\r')
-for file in $(printf '%s\n' "$list" | grep -E '^php/(migrations|resources)/.*[^/]$'); do
+for file in $(printf '%s\n' "$list" | grep -E '^backend/(migrations|resources)/.*[^/]$'); do
     if tar -xOf "$archive" "$file" | grep -q "$cr"; then
         echo "::error::$file has CR line endings in the archive."
         status=1

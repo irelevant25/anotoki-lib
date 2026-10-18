@@ -5,7 +5,7 @@ and the npm package `@anotoki/lib` (`angular/projects/lib/package.json`). While 
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
-## Unreleased - 0.6.3
+## 0.6.3 - 2026-10-18
 
 **The family's footer** (the owner's choice of 2026-10-18, after the deploy: the six live sites' footers differed - their
 order, their words, a top border or none, links missing - "I like the footer of builder the most. The order, texts and

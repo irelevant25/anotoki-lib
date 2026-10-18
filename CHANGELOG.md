@@ -5,6 +5,14 @@ and the npm package `@anotoki/lib` (`frontend/projects/lib/package.json`). While
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.7.1 - 2026-10-19
+
+**The footer says its version short** (the owner, 2026-10-19: "display version like v0.5.0 ... not the whole word
+version"): `<anotoki-site-footer>` shows "v0.5.0" where it showed "Version 0.5.0". Its words
+`anotoki.footer.version` ("Version {version}", the site's own rewording first) stay, for a screen reader alone, in
+their language as before - so no translation changes and nothing to apply. What a site must do: take the 0.7.1
+tarball (Composer's `^0.7.0` reaches 0.7.1); nothing else.
+
 ## 0.7.0 - 2026-10-18
 
 **The library's folders named as in every other anotoki project** (the owner's choice of 2026-10-18): the Angular

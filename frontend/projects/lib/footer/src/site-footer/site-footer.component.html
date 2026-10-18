@@ -7,7 +7,10 @@
                 }
                 @switch (part) {
                     @case ("version") {
-                        <span class="anotoki-site-footer__version" data-version [attr.lang]="said().version.lang">{{ said().version.text }}</span>
+                        <span class="anotoki-site-footer__version" data-version>
+                            <span aria-hidden="true">v{{ versionNumber() }}</span>
+                            <span class="anotoki-visually-hidden" [attr.lang]="said().version.lang">{{ said().version.text }}</span>
+                        </span>
                     }
                     @case ("whatsNew") {
                         <button

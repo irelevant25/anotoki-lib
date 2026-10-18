@@ -5,6 +5,11 @@
   display: block;
 }
 
+// The version as the owner wants it seen ("v0.5.0", 0.7.1), its words ("Version 0.5.0") for a screen reader alone.
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}
+
 // A site's own `footer {}` must not show through: everything the footer relies on is set here.
 .anotoki-site-footer__footer {
   display: flex;

@@ -89,7 +89,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     const footer = host.querySelector('anotoki-site-footer > footer.anotoki-site-footer__footer')!;
     expect(footer).not.toBeNull();
     expect(host.querySelector('anotoki-site-footer')?.classList).toContain('anotoki-site-footer');
-    expect(row(host)).toEqual(['Version 0.3', '·', "What's new", '·', 'Feedback']);
+    expect(row(host)).toEqual(['v0.3Version 0.3', '·', "What's new", '·', 'Feedback']);
     // The version's figures are of one width (tabular, the footer's styles); the dots are drawn, never read.
     expect(host.querySelector('.anotoki-site-footer__row > .anotoki-site-footer__version')).not.toBeNull();
     const dots = Array.from(host.querySelectorAll('.anotoki-site-footer__dot'));
@@ -128,16 +128,16 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
 
     page.version.set('1.2.0');
     await settle(fixture);
-    expect(row(host)).toEqual(['Version 1.2.0', '·', "What's new"]);
+    expect(row(host)).toEqual(['v1.2.0Version 1.2.0', '·', "What's new"]);
 
     page.whatsNew.set(false);
     page.feedback.set(true);
     await settle(fixture);
-    expect(row(host)).toEqual(['Version 1.2.0', '·', 'Feedback']);
+    expect(row(host)).toEqual(['v1.2.0Version 1.2.0', '·', 'Feedback']);
 
     page.feedback.set(false);
     await settle(fixture);
-    expect(row(host)).toEqual(['Version 1.2.0']);
+    expect(row(host)).toEqual(['v1.2.0Version 1.2.0']);
     expect(host.querySelector('.anotoki-site-footer__dot')).toBeNull();
 
     // A version of blanks is none: no "Version", and no row at all with nothing else in it - the legal links stay.
@@ -158,7 +158,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
 
   it('takes the bare attributes too: whatsNew, feedback, fan="hoyoverse"', async () => {
     const { fixture, host, page } = await setUp(FooterAttributesComponent);
-    expect(row(host)).toEqual(['Version 1.2.0', '·', "What's new", '·', 'Feedback']);
+    expect(row(host)).toEqual(['v1.2.0Version 1.2.0', '·', "What's new", '·', 'Feedback']);
     expect(words(host.querySelector('[data-fan]'))).toBe('This site is a fan-made project and is not affiliated with or endorsed by HoYoverse.');
     host.querySelector<HTMLButtonElement>('[data-whats-new]')!.click();
     await settle(fixture);
@@ -222,7 +222,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     const { fixture, host, page } = await setUp(FooterPageComponent, { language: 'sk' });
     page.fan.set('hoyoverse');
     await settle(fixture);
-    expect(row(host)).toEqual(['Verzia 0.3', '·', 'Čo je nové', '·', 'Spätná väzba']);
+    expect(row(host)).toEqual(['v0.3Verzia 0.3', '·', 'Čo je nové', '·', 'Spätná väzba']);
     expect(legalLinks(host).map(([label]) => label)).toEqual(['Podmienky', 'Súkromie', 'Kontakt']);
     expect(words(host.querySelector('[data-fan]'))).toBe('Táto stránka je fanúšikovský projekt a nie je prepojená so spoločnosťou HoYoverse ani ňou schválená.');
     expect(host.querySelector('[lang]')).toBeNull();
@@ -235,7 +235,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
   it("puts the site's own words first - the database's, through the kit's lookup - and marks English on a page of another language", async () => {
     // The site's Slovak rewording of the button, as the translations module's forKit() answers it.
     const reworded = await setUp(FooterPageComponent, { language: 'sk', lookup: (key) => (key === 'footer.feedback' ? 'Napíšte nám' : null) });
-    expect(row(reworded.host)).toEqual(['Verzia 0.3', '·', 'Čo je nové', '·', 'Napíšte nám']);
+    expect(row(reworded.host)).toEqual(['v0.3Verzia 0.3', '·', 'Čo je nové', '·', 'Napíšte nám']);
     const named = await openFeedback(reworded.host);
     expect(words(named.querySelector('.anotoki-dialog__title'))).toBe('Napíšte nám');
     fixture.destroy();
@@ -246,8 +246,13 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     const { host, page } = await setUp(FooterPageComponent, { language: 'de' });
     page.fan.set('hoyoverse');
     await settle(fixture);
-    expect(row(host)).toEqual(['Version 0.3', '·', "What's new", '·', 'Feedback']);
-    for (const part of [host.querySelector('[data-version]'), host.querySelector('[data-whats-new]'), host.querySelector('[data-open-feedback]'), host.querySelector('[data-fan]')]) {
+    expect(row(host)).toEqual(['v0.3Version 0.3', '·', "What's new", '·', 'Feedback']);
+    for (const part of [
+      host.querySelector('[data-version] .anotoki-visually-hidden'),
+      host.querySelector('[data-whats-new]'),
+      host.querySelector('[data-open-feedback]'),
+      host.querySelector('[data-fan]'),
+    ]) {
       expect(part?.getAttribute('lang')).toBe('en');
     }
     expect(host.querySelector('.anotoki-site-footer__dot')?.hasAttribute('lang')).toBe(false);

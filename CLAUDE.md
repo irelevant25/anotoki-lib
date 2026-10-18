@@ -2,8 +2,8 @@
 
 What the anotoki sites share (the IAM, genshin, survey, Piano Academy, Japanese
 Academy, the build analyzer), in two halves with one version: the Composer
-package `anotoki/lib` (`php/src/`, namespace `Anotoki\Lib\`) and the npm package
-`@anotoki/lib` (`angular/projects/lib/`, one secondary entry point per family of
+package `anotoki/lib` (`backend/src/`, namespace `Anotoki\Lib\`) and the npm package
+`@anotoki/lib` (`frontend/projects/lib/`, one secondary entry point per family of
 pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., the pieces of 0.6.0 (`ui/chips`,
 `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`, `ui/labelled-group`,
@@ -28,15 +28,19 @@ vendor/bin/phpunit      # needs ANOTOKI_LIB_TEST_DB_CONFIG (a PHP file returning
                         # ANOTOKI_LIB_TEST_PGHOST/PGPORT/PGUSER/PGPASSWORD; every test case makes
                         # anotoki_lib_test_<random> and drops it
 
-# Angular (angular/)
+# Angular (frontend/)
 bun install             # bun.lock is committed
-bun run build           # ng build lib -> angular/dist/lib, then scripts/check-package.mjs (sizes, boundaries,
+bun run build           # ng build lib -> frontend/dist/lib, then scripts/check-package.mjs (sizes, boundaries,
                         # floors, first loads - through Angular's own linker and esbuild)
 bun run test            # ng test lib --watch=false (Vitest + jsdom)
 bun run showcase        # projects/showcase on :4320 - every piece, from the source; never published
-bun run words           # the library's words from php/resources/library-words.json, a namespace at a time:
+bun run words           # the library's words from backend/resources/library-words.json, a namespace at a time:
                         # ui/config/src/library-words.ts (the kit's), words/<namespace>/, words/ (--check, in CI;
                         # a spec and LibraryWordsTest fail when stale)
+
+# Formatting (repository root; bun install there first)
+bun run format:check    # the family's Prettier setup, both halves (bun run format writes); .prettierignore keeps out
+                        # the generated words, the SQL and the Markdown
 ```
 
 ## Conventions
@@ -60,7 +64,7 @@ bun run words           # the library's words from php/resources/library-words.j
   `SchemaTest` applies the library's sets on `en-US-u-ka-shifted` (PostgreSQL 15+).
 - **Words**: the administrators' words are English; the visitors' words are built
   in for `en` and `sk` (Slovak informal, "ty") and overridable per language. The
-  library's words (`anotoki.*`) have one source, `php/resources/library-words.json`:
+  library's words (`anotoki.*`) have one source, `backend/resources/library-words.json`:
   the SQL of `anotoki_translations` is held to it by a test, and the Angular half's
   built-in words are generated from it a namespace at a time (`bun run words`;
   prettier leaves them alone): the kit's namespaces into `ui/config/src/library-words.ts`
@@ -92,7 +96,7 @@ bun run words           # the library's words from php/resources/library-words.j
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
 - **Versions**: semver; while 0.x a minor bump may break, and CHANGELOG.md says
-  how. Both halves share one version: `angular/projects/lib/package.json`,
+  how. Both halves share one version: `frontend/projects/lib/package.json`,
   `ANOTOKI_LIB_VERSION` and the git tag `vX.Y.Z` (the release workflow refuses a
   tag that does not match).
 - **Sites install from GitHub**: Composer's VCS repository (GitHub's archive of

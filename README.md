@@ -82,7 +82,7 @@ PHP - in `backend/composer.json`:
 
 ```json
 "repositories": [{ "type": "vcs", "url": "https://github.com/irelevant25/anotoki-lib" }],
-"require": { "anotoki/lib": "^0.4.1" }
+"require": { "anotoki/lib": "^0.7.0" }
 ```
 
 then `php composer.phar update anotoki/lib --prefer-dist` in `backend/`. Composer

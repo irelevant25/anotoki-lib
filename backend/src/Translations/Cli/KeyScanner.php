@@ -146,10 +146,7 @@ final class KeyScanner
             throw new RuntimeException("There is no frontend to read the keys from at {$this->root}.");
         }
 
-        $pageKeys = array_values(array_filter(
-            array_map('strval', $databaseKeys),
-            fn (string $key): bool => !in_array(self::namespaceOf($key), $this->ignoreNamespaces, true)
-        ));
+        $pageKeys = array_values(array_filter(array_map('strval', $databaseKeys), fn(string $key): bool => !in_array(self::namespaceOf($key), $this->ignoreNamespaces, true)));
         $has = array_fill_keys($pageKeys, true);
         $namespaces = [];
         foreach ($pageKeys as $key) {
@@ -210,8 +207,7 @@ final class KeyScanner
             // be missing from the database and nothing would say so.
             foreach (self::built($text, $html) as $built) {
                 if (isset($namespaces[self::namespaceOf($built['prefix'])]) && !isset($dynamic['prefixes'][$built['prefix']])) {
-                    $problems[] = "$relative:{$built['line']}: a key is put together from '{$built['prefix']}', which "
-                        . ($this->dynamicKeys ?? 'no file of dynamic keys') . ' does not declare';
+                    $problems[] = "$relative:{$built['line']}: a key is put together from '{$built['prefix']}', which " . ($this->dynamicKeys ?? 'no file of dynamic keys') . ' does not declare';
                 }
             }
         }
@@ -227,8 +223,8 @@ final class KeyScanner
         $missing = [];
         foreach ($asked as $literal => $where) {
             $literal = (string) $literal;
-            $family = array_map(static fn (string $form): string => "$literal.$form", $this->pluralForms);
-            $forms = array_values(array_filter($family, static fn (string $key): bool => isset($has[$key])));
+            $family = array_map(static fn(string $form): string => "$literal.$form", $this->pluralForms);
+            $forms = array_values(array_filter($family, static fn(string $key): bool => isset($has[$key])));
 
             if (isset($has[$literal])) {
                 $used[$literal] = array_merge($used[$literal] ?? [], $where);
@@ -250,7 +246,7 @@ final class KeyScanner
 
         ksort($used, SORT_STRING);
         ksort($missing, SORT_STRING);
-        $unused = array_values(array_filter($pageKeys, static fn (string $key): bool => !isset($used[$key])));
+        $unused = array_values(array_filter($pageKeys, static fn(string $key): bool => !isset($used[$key])));
         sort($unused, SORT_STRING);
 
         return ['used' => $used, 'missing' => $missing, 'unused' => $unused, 'problems' => $problems];
@@ -295,15 +291,15 @@ final class KeyScanner
     public static function sourceText(string $source, bool $html): string
     {
         $source = str_replace(["\r\n", "\r"], "\n", $source);
-        $blank = static fn (string $text): string => str_repeat("\n", substr_count($text, "\n"));
+        $blank = static fn(string $text): string => str_repeat("\n", substr_count($text, "\n"));
 
         if ($html) {
-            $text = preg_replace_callback('/<!--.*?-->/s', static fn (array $m): string => $blank($m[0]), $source);
+            $text = preg_replace_callback('/<!--.*?-->/s', static fn(array $m): string => $blank($m[0]), $source);
         } else {
             $text = preg_replace_callback(
                 '~("[^"\\\\\n]*(?:\\\\.[^"\\\\\n]*)*"|\'[^\'\\\\\n]*(?:\\\\.[^\'\\\\\n]*)*\'|`[^`\\\\]*(?:\\\\.[^`\\\\]*)*`)|//[^\n]*|/\*[^*]*\*+(?:[^/*][^*]*\*+)*/~s',
-                static fn (array $m): string => ($m[1] ?? '') !== '' ? $m[0] : $blank($m[0]),
-                $source
+                static fn(array $m): string => ($m[1] ?? '') !== '' ? $m[0] : $blank($m[0]),
+                $source,
             );
         }
         if ($text === null) {
@@ -338,7 +334,7 @@ final class KeyScanner
             }
             $prefixes[$prefix] = [];
             foreach ($tails as $tail) {
-                $tail = ($tail[1] ?? '') !== '' ? $tail[1] : ($tail[2] ?? '');
+                $tail = ($tail[1] ?? '') !== '' ? $tail[1] : $tail[2] ?? '';
                 if (!self::shapeOk($prefix . $tail)) {
                     $problems[] = "'$prefix' + '$tail' is not a key";
                     continue;
@@ -392,12 +388,10 @@ final class KeyScanner
         }
         // Longest first: translatePlural before translate.
         $list = array_keys($names);
-        usort($list, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
-        $alternatives = implode('|', array_map(static fn (string $name): string => preg_quote($name, '~'), $list));
+        usort($list, static fn(string $a, string $b): int => strlen($b) <=> strlen($a));
+        $alternatives = implode('|', array_map(static fn(string $name): string => preg_quote($name, '~'), $list));
 
-        $pattern = $html
-            ? '~([\'"`])(' . self::KEY_SHAPE . ')\1\s*\|\s*(' . $alternatives . ')\b~'
-            : '~\.(' . $alternatives . ')\(\s*([\'"`])(' . self::KEY_SHAPE . ')\2~';
+        $pattern = $html ? '~([\'"`])(' . self::KEY_SHAPE . ')\1\s*\|\s*(' . $alternatives . ')\b~' : '~\.(' . $alternatives . ')\(\s*([\'"`])(' . self::KEY_SHAPE . ')\2~';
         preg_match_all($pattern, $text, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
 
         $asks = [];
@@ -465,12 +459,9 @@ final class KeyScanner
         }
         // The attribute's whole value, however many lines it is written on - and
         // only the value: a translated string elsewhere on the line is drawn as text.
-        $pipes = array_map(static fn (string $name): string => preg_quote($name, '~'), array_keys($this->pipes));
-        $calls = array_map(static fn (string $name): string => preg_quote($name, '~'), array_keys($this->calls));
-        $translated = '~' . implode('|', array_filter([
-            $pipes === [] ? '' : '\|\s*(?:' . implode('|', $pipes) . ')\b',
-            $calls === [] ? '' : '\.(?:' . implode('|', $calls) . ')\(',
-        ])) . '~';
+        $pipes = array_map(static fn(string $name): string => preg_quote($name, '~'), array_keys($this->pipes));
+        $calls = array_map(static fn(string $name): string => preg_quote($name, '~'), array_keys($this->calls));
+        $translated = '~' . implode('|', array_filter([$pipes === [] ? '' : '\|\s*(?:' . implode('|', $pipes) . ')\b', $calls === [] ? '' : '\.(?:' . implode('|', $calls) . ')\('])) . '~';
         preg_match_all('~\[?innerHTML\]?\s*=\s*(["\'])(.*?)\1~is', $text, $bindings, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
         foreach ($bindings as $binding) {
             if ($translated !== '~~' && preg_match($translated, $binding[2][0]) === 1) {

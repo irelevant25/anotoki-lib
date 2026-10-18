@@ -60,147 +60,167 @@ final class FilesRoutes
                 $audit?->record($request, $context->actorId($request), $action, 'file', $root . ':' . $path, ['root' => $root, 'path' => $path] + $details);
             };
 
-            Routes::plain($group->get('/roots', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer): ResponseInterface {
-                return JsonResponse::write($response, 200, ['roots' => $explorer->roots()]);
-            }));
+            Routes::plain(
+                $group->get('/roots', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer): ResponseInterface {
+                    return JsonResponse::write($response, 200, ['roots' => $explorer->roots()]);
+                }),
+            );
 
-            Routes::plain($group->get(self::ROOT, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer): ResponseInterface {
-                $query = $request->getQueryParams();
+            Routes::plain(
+                $group->get(self::ROOT, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer): ResponseInterface {
+                    $query = $request->getQueryParams();
 
-                return $answer($response, $explorer->list(
-                    (string) $request->getAttribute('root'),
-                    Routes::text($query['path'] ?? null, 1024),
-                    Routes::text($query['search'] ?? null, 200),
-                    Routes::int($query['page'] ?? null, 1, 1, 1_000_000),
-                    ($query['mode'] ?? null) === 'new',
-                ));
-            }));
+                    return $answer(
+                        $response,
+                        $explorer->list(
+                            (string) $request->getAttribute('root'),
+                            Routes::text($query['path'] ?? null, 1024),
+                            Routes::text($query['search'] ?? null, 200),
+                            Routes::int($query['page'] ?? null, 1, 1, 1_000_000),
+                            ($query['mode'] ?? null) === 'new',
+                        ),
+                    );
+                }),
+            );
 
-            Routes::plain($group->post(self::ROOT . '/rescan', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer): ResponseInterface {
-                return $answer($response, $explorer->rescan((string) $request->getAttribute('root')));
-            }));
+            Routes::plain(
+                $group->post(self::ROOT . '/rescan', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer): ResponseInterface {
+                    return $answer($response, $explorer->rescan((string) $request->getAttribute('root')));
+                }),
+            );
 
-            Routes::plain($group->post(self::ROOT . '/upload', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
-                $root = (string) $request->getAttribute('root');
-                $fields = $request->getParsedBody();
-                $fields = is_array($fields) ? $fields : [];
-                $folder = is_string($fields['path'] ?? null) ? $fields['path'] : '';
-                $replace = in_array($fields['replace'] ?? null, ['1', 'true', 'yes', 'on'], true);
-                $result = $explorer->upload($root, $folder, self::uploadedFiles($request->getUploadedFiles()), $replace);
-                if (is_array($result)) {
-                    foreach ($result['files'] as $file) {
-                        if ($file['status'] !== 'refused') {
-                            $record($request, 'file.uploaded', $root, (string) $file['path'], ['size' => $file['size'] ?? null, 'replaced' => $file['status'] === 'replaced']);
+            Routes::plain(
+                $group->post(self::ROOT . '/upload', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
+                    $root = (string) $request->getAttribute('root');
+                    $fields = $request->getParsedBody();
+                    $fields = is_array($fields) ? $fields : [];
+                    $folder = is_string($fields['path'] ?? null) ? $fields['path'] : '';
+                    $replace = in_array($fields['replace'] ?? null, ['1', 'true', 'yes', 'on'], true);
+                    $result = $explorer->upload($root, $folder, self::uploadedFiles($request->getUploadedFiles()), $replace);
+                    if (is_array($result)) {
+                        foreach ($result['files'] as $file) {
+                            if ($file['status'] !== 'refused') {
+                                $record($request, 'file.uploaded', $root, (string) $file['path'], ['size' => $file['size'] ?? null, 'replaced' => $file['status'] === 'replaced']);
+                            }
                         }
                     }
-                }
 
-                return $answer($response, $result);
-            }));
+                    return $answer($response, $result);
+                }),
+            );
 
-            Routes::plain($group->post(self::ROOT . '/folder', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
-                $body = Routes::body($request, 4096);
-                if ($body instanceof Refusal) {
-                    return $answer($response, $body);
-                }
-                $root = (string) $request->getAttribute('root');
-                $result = $explorer->makeFolder($root, is_string($body['path'] ?? null) ? $body['path'] : '');
-                if (is_array($result)) {
-                    $record($request, 'folder.created', $root, $result['path']);
-                }
+            Routes::plain(
+                $group->post(self::ROOT . '/folder', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
+                    $body = Routes::body($request, 4096);
+                    if ($body instanceof Refusal) {
+                        return $answer($response, $body);
+                    }
+                    $root = (string) $request->getAttribute('root');
+                    $result = $explorer->makeFolder($root, is_string($body['path'] ?? null) ? $body['path'] : '');
+                    if (is_array($result)) {
+                        $record($request, 'folder.created', $root, $result['path']);
+                    }
 
-                return $answer($response, $result, 201);
-            }));
+                    return $answer($response, $result, 201);
+                }),
+            );
 
-            Routes::plain($group->post(self::ROOT . '/move', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
-                $body = Routes::body($request, 8192);
-                if ($body instanceof Refusal) {
-                    return $answer($response, $body);
-                }
-                $root = (string) $request->getAttribute('root');
-                $result = $explorer->move($root, is_string($body['from'] ?? null) ? $body['from'] : '', is_string($body['to'] ?? null) ? $body['to'] : '');
-                if (is_array($result)) {
-                    $record($request, $result['op'] === 'rename' ? 'file.renamed' : 'file.moved', $root, $result['to'], ['from' => $result['from']]);
-                }
+            Routes::plain(
+                $group->post(self::ROOT . '/move', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
+                    $body = Routes::body($request, 8192);
+                    if ($body instanceof Refusal) {
+                        return $answer($response, $body);
+                    }
+                    $root = (string) $request->getAttribute('root');
+                    $result = $explorer->move($root, is_string($body['from'] ?? null) ? $body['from'] : '', is_string($body['to'] ?? null) ? $body['to'] : '');
+                    if (is_array($result)) {
+                        $record($request, $result['op'] === 'rename' ? 'file.renamed' : 'file.moved', $root, $result['to'], ['from' => $result['from']]);
+                    }
 
-                return $answer($response, $result);
-            }));
+                    return $answer($response, $result);
+                }),
+            );
 
-            Routes::plain($group->delete(self::ROOT, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
-                $root = (string) $request->getAttribute('root');
-                $result = $explorer->delete($root, Routes::text($request->getQueryParams()['path'] ?? null, 1024));
-                if (is_array($result)) {
-                    $record($request, 'file.deleted', $root, $result['path'], ['trashed' => $result['trashed']]);
-                }
+            Routes::plain(
+                $group->delete(self::ROOT, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
+                    $root = (string) $request->getAttribute('root');
+                    $result = $explorer->delete($root, Routes::text($request->getQueryParams()['path'] ?? null, 1024));
+                    if (is_array($result)) {
+                        $record($request, 'file.deleted', $root, $result['path'], ['trashed' => $result['trashed']]);
+                    }
 
-                return $answer($response, $result);
-            }));
+                    return $answer($response, $result);
+                }),
+            );
 
-            Routes::plain($group->get(self::ROOT . '/trash', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer): ResponseInterface {
-                $items = $explorer->trash((string) $request->getAttribute('root'));
+            Routes::plain(
+                $group->get(self::ROOT . '/trash', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer): ResponseInterface {
+                    $items = $explorer->trash((string) $request->getAttribute('root'));
 
-                return $answer($response, is_array($items) ? ['items' => $items] : $items);
-            }));
+                    return $answer($response, is_array($items) ? ['items' => $items] : $items);
+                }),
+            );
 
-            Routes::plain($group->post(self::ROOT . '/trash/restore', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
-                $body = Routes::body($request, 4096);
-                if ($body instanceof Refusal) {
-                    return $answer($response, $body);
-                }
-                $root = (string) $request->getAttribute('root');
-                $trashed = is_string($body['trashed'] ?? null) ? $body['trashed'] : '';
-                $result = $explorer->restore($root, $trashed);
-                if (is_array($result)) {
-                    $record($request, 'file.restored', $root, $result['path'], ['trashed' => $trashed]);
-                }
+            Routes::plain(
+                $group->post(self::ROOT . '/trash/restore', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
+                    $body = Routes::body($request, 4096);
+                    if ($body instanceof Refusal) {
+                        return $answer($response, $body);
+                    }
+                    $root = (string) $request->getAttribute('root');
+                    $trashed = is_string($body['trashed'] ?? null) ? $body['trashed'] : '';
+                    $result = $explorer->restore($root, $trashed);
+                    if (is_array($result)) {
+                        $record($request, 'file.restored', $root, $result['path'], ['trashed' => $trashed]);
+                    }
 
-                return $answer($response, $result);
-            }));
+                    return $answer($response, $result);
+                }),
+            );
 
-            Routes::plain($group->delete(self::ROOT . '/trash', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
-                $root = (string) $request->getAttribute('root');
-                $one = Routes::text($request->getQueryParams()['trashed'] ?? null, 1024);
-                $result = $explorer->emptyTrash($root, $one === '' ? null : $one);
-                if (is_array($result) && $result['deleted'] > 0) {
-                    $record($request, 'file.trash_emptied', $root, $one, ['deleted' => $result['deleted'], 'bytes' => $result['bytes']]);
-                }
+            Routes::plain(
+                $group->delete(self::ROOT . '/trash', function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $answer, $record): ResponseInterface {
+                    $root = (string) $request->getAttribute('root');
+                    $one = Routes::text($request->getQueryParams()['trashed'] ?? null, 1024);
+                    $result = $explorer->emptyTrash($root, $one === '' ? null : $one);
+                    if (is_array($result) && $result['deleted'] > 0) {
+                        $record($request, 'file.trash_emptied', $root, $one, ['deleted' => $result['deleted'], 'bytes' => $result['bytes']]);
+                    }
 
-                return $answer($response, $result);
-            }));
+                    return $answer($response, $result);
+                }),
+            );
         });
     }
 
     /** GET $path?root=&path=&exp=&sig= - a preview by its signed link (see the class). */
-    public static function raw(
-        RouteCollectorProxyInterface $app,
-        string $path,
-        FileExplorer $explorer,
-        AdminContext $context,
-        ?StreamFactoryInterface $streams = null,
-    ): RouteInterface {
-        $route = Routes::plain($app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $context, $streams): ResponseInterface {
-            $query = $request->getQueryParams();
-            $file = $explorer->raw(
-                is_string($query['root'] ?? null) ? $query['root'] : '',
-                is_string($query['path'] ?? null) ? $query['path'] : '',
-                is_string($query['exp'] ?? null) ? $query['exp'] : '',
-                is_string($query['sig'] ?? null) ? $query['sig'] : '',
-            );
-            $response = $response
-                ->withHeader('Content-Security-Policy', "sandbox; default-src 'none'")
-                ->withHeader('X-Content-Type-Options', 'nosniff')
-                ->withHeader('Cross-Origin-Resource-Policy', 'same-origin')
-                ->withHeader('Cache-Control', 'private, no-store')
-                ->withHeader('Referrer-Policy', 'no-referrer');
-            if ($file === null) {
-                return $context->refuse($response, new Refusal(404, 'not_found', 'This preview link is no longer good. Open the folder again.'));
-            }
-            $name = str_replace(['"', '\\', "\r", "\n"], '_', $file['name']);
+    public static function raw(RouteCollectorProxyInterface $app, string $path, FileExplorer $explorer, AdminContext $context, ?StreamFactoryInterface $streams = null): RouteInterface
+    {
+        $route = Routes::plain(
+            $app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($explorer, $context, $streams): ResponseInterface {
+                $query = $request->getQueryParams();
+                $file = $explorer->raw(
+                    is_string($query['root'] ?? null) ? $query['root'] : '',
+                    is_string($query['path'] ?? null) ? $query['path'] : '',
+                    is_string($query['exp'] ?? null) ? $query['exp'] : '',
+                    is_string($query['sig'] ?? null) ? $query['sig'] : '',
+                );
+                $response = $response
+                    ->withHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+                    ->withHeader('X-Content-Type-Options', 'nosniff')
+                    ->withHeader('Cross-Origin-Resource-Policy', 'same-origin')
+                    ->withHeader('Cache-Control', 'private, no-store')
+                    ->withHeader('Referrer-Policy', 'no-referrer');
+                if ($file === null) {
+                    return $context->refuse($response, new Refusal(404, 'not_found', 'This preview link is no longer good. Open the folder again.'));
+                }
+                $name = str_replace(['"', '\\', "\r", "\n"], '_', $file['name']);
 
-            return FileStreams::send($request, $response, $file['path'], FileStreams::factory($streams), ranges: true)
-                ->withHeader('Content-Type', $file['type'])
-                ->withHeader('Content-Disposition', ($file['inline'] ? 'inline' : 'attachment') . '; filename="' . $name . '"; filename*=UTF-8\'\'' . rawurlencode($file['name']));
-        }));
+                return FileStreams::send($request, $response, $file['path'], FileStreams::factory($streams), ranges: true)
+                    ->withHeader('Content-Type', $file['type'])
+                    ->withHeader('Content-Disposition', ($file['inline'] ? 'inline' : 'attachment') . '; filename="' . $name . '"; filename*=UTF-8\'\'' . rawurlencode($file['name']));
+            }),
+        );
         // The route's whole pattern holds the groups it is mounted in; the base path comes before them all.
         $explorer->servedAt($app->getBasePath() . $route->getPattern());
 

@@ -23,7 +23,10 @@ use PDOException;
  */
 final class SiteState
 {
-    public const READY = 'ready', NOT_SET_UP = 'not_set_up', UPDATE_PENDING = 'update_pending', UNAVAILABLE = 'unavailable';
+    public const READY = 'ready',
+        NOT_SET_UP = 'not_set_up',
+        UPDATE_PENDING = 'update_pending',
+        UNAVAILABLE = 'unavailable';
 
     /**
      * @param Closure(): ?string  $settingsProblem  null when the settings are complete
@@ -31,13 +34,7 @@ final class SiteState
      * @param Closure(): Migrator $migrator         only called once the settings are complete
      * @param bool $blockWhilePending  false for a site that keeps answering while an update waits (the IAM)
      */
-    public function __construct(
-        private readonly Closure $settingsProblem,
-        private readonly Closure $installed,
-        private readonly Closure $migrator,
-        public readonly bool $blockWhilePending = true,
-    ) {
-    }
+    public function __construct(private readonly Closure $settingsProblem, private readonly Closure $installed, private readonly Closure $migrator, public readonly bool $blockWhilePending = true) {}
 
     /**
      * The state now. Never remembered: one PHP process may serve many

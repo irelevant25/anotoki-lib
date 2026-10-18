@@ -132,7 +132,7 @@ final class PathAndUploadRulesTest extends FilesTestCase
     public function testAnUploadKeepsOneExtensionOfItsRootsList(): void
     {
         $root = new FileRoot('assets', $this->assets, write: true, extensions: ['png', 'jpg']);
-        $code = static fn (string|Refusal $name): string => $name instanceof Refusal ? $name->code : $name;
+        $code = static fn(string|Refusal $name): string => $name instanceof Refusal ? $name->code : $name;
 
         self::assertSame('5-0 - Epitome Invocation.png', $code(UploadPolicy::storedName('5.0 - Epitome Invocation.PNG', $root)), 'one extension, small; every other dot a dash');
         self::assertSame('name_runs_on_server', $code(UploadPolicy::storedName('shell.php.png', $root)));
@@ -190,7 +190,7 @@ final class PathAndUploadRulesTest extends FilesTestCase
         $png = (string) base64_decode(self::PNG);
         // Put together here: a page that runs a script the moment it is read as one.
         $page = '<' . 'img src=x on' . 'error=alert(1)>';
-        $chunk = static fn (string $type, string $data): string => pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
+        $chunk = static fn(string $type, string $data): string => pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
 
         // An ISO box whose size is a comment's opening: ftyp at 4 is not enough.
         self::assertSame('content_mismatch', $check('<!--' . 'ftypavif' . str_repeat(' ', 8) . '-->' . $page, 'avif'), 'an AVIF that is a page');
@@ -201,7 +201,7 @@ final class PathAndUploadRulesTest extends FilesTestCase
 
         // Text: no markup at all in its first kilobyte, nor at its start after a byte order mark and white space.
         self::assertSame('content_mismatch', $check("Notes\n\n" . $page . "\n", 'md'));
-        self::assertSame('content_mismatch', $check("\xEF\xBB\xBF  \n<!" . "DOCTYPE html>", 'txt'));
+        self::assertSame('content_mismatch', $check("\xEF\xBB\xBF  \n<!" . 'DOCTYPE html>', 'txt'));
         self::assertSame('content_mismatch', $check('{"x": "<' . 'script>"}', 'json'));
         self::assertSame('content_mismatch', $check('a,b' . "\n" . '<!-- x -->', 'csv'));
         self::assertNull($check("a < b, 3 <5, x<=y: no tag\n", 'txt'), 'a less-than sign is no markup');
@@ -219,14 +219,15 @@ final class PathAndUploadRulesTest extends FilesTestCase
         mkdir($folder);
 
         self::assertTrue(UploadPolicy::ensureGuard($folder));
-        $rules = array_values(array_filter(
-            preg_split('/\R/', (string) file_get_contents($folder . '/.htaccess')) ?: [],
-            static fn (string $line): bool => $line !== '' && $line[0] !== '#'
-        ));
-        self::assertSame([
-            'RemoveHandler .php .phtml .phar .pht .php3 .php4 .php5 .php6 .php7 .php8 .phps .cgi .pl .py .sh .asp .aspx .jsp .shtml',
-            'RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php6 .php7 .php8 .phps .cgi .pl .py .sh .asp .aspx .jsp .shtml',
-        ], array_slice($rules, 0, 2), 'genshin\'s rules word for word');
+        $rules = array_values(array_filter(preg_split('/\R/', (string) file_get_contents($folder . '/.htaccess')) ?: [], static fn(string $line): bool => $line !== '' && $line[0] !== '#'));
+        self::assertSame(
+            [
+                'RemoveHandler .php .phtml .phar .pht .php3 .php4 .php5 .php6 .php7 .php8 .phps .cgi .pl .py .sh .asp .aspx .jsp .shtml',
+                'RemoveType .php .phtml .phar .pht .php3 .php4 .php5 .php6 .php7 .php8 .phps .cgi .pl .py .sh .asp .aspx .jsp .shtml',
+            ],
+            array_slice($rules, 0, 2),
+            'genshin\'s rules word for word',
+        );
         self::assertSame(['<IfModule mod_headers.c>', '    Header set X-Content-Type-Options nosniff', '</IfModule>'], array_slice($rules, -3), 'nosniff, where Apache has mod_headers');
         $typed = [];
         foreach (array_slice($rules, 2, -3) as $line) {
@@ -237,7 +238,11 @@ final class PathAndUploadRulesTest extends FilesTestCase
             }
         }
         self::assertEqualsCanonicalizing(array_keys(UploadPolicy::TYPES), array_keys($typed), 'every extension the explorer takes has its type');
-        self::assertSame(['text/plain', 'text/plain', 'text/plain', 'text/plain', 'application/json'], [$typed['txt'], $typed['csv'], $typed['md'], $typed['log'], $typed['json']], 'text as plain text');
+        self::assertSame(
+            ['text/plain', 'text/plain', 'text/plain', 'text/plain', 'application/json'],
+            [$typed['txt'], $typed['csv'], $typed['md'], $typed['log'], $typed['json']],
+            'text as plain text',
+        );
         self::assertSame('image/avif', $typed['avif'], 'the type an old Apache does not know');
 
         file_put_contents($folder . '/.htaccess', "# the site's own\n");

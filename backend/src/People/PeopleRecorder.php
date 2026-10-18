@@ -37,9 +37,7 @@ final class PeopleRecorder
     /** How old a last-seen may grow before a request writes it again, in seconds. */
     public const EVERY = 300;
 
-    public function __construct(private readonly PeopleTable $table)
-    {
-    }
+    public function __construct(private readonly PeopleTable $table) {}
 
     /**
      * @param array<string, scalar|null> $extra  the site's own columns and their values
@@ -63,11 +61,11 @@ final class PeopleRecorder
         $table = PeopleTable::quote($t->table);
         $id = PeopleTable::quote($t->id);
         $name = PeopleTable::quote($t->name);
-        $row = static fn (string $column): string => $table . '.' . PeopleTable::quote($column);
+        $row = static fn(string $column): string => $table . '.' . PeopleTable::quote($column);
         $claimed = self::clip($person->name, $t->nameMax($pdo));
 
         // Each value cast to its column's type: a parameter in a SELECT list would otherwise be text.
-        $cast = static fn (string $column): string => 'CAST(? AS ' . $columns[$column]['type'] . ')';
+        $cast = static fn(string $column): string => 'CAST(? AS ' . $columns[$column]['type'] . ')';
         $insertColumns = [$id, $name];
         $insertValues = ['CAST(? AS bigint)', $cast($t->name)];
         $insertParameters = [$person->sub, $claimed ?? $t->fallbackName($pdo, $person->sub)];
@@ -109,19 +107,25 @@ final class PeopleRecorder
 
         $listed = PeopleTable::libraryReady($pdo);
         $guarded = isset($columns[$t->anonymizedAt]);
-        $sql = 'INSERT INTO ' . $table . ' (' . implode(', ', $insertColumns) . ')'
-            . ' SELECT ' . implode(', ', $insertValues)
-            . ($listed ? ' WHERE NOT EXISTS (SELECT 1 FROM anotoki_people_anonymized WHERE sub = CAST(? AS bigint))' : '')
-            . " ON CONFLICT ($id) DO UPDATE SET " . implode(', ', $set)
-            . ' WHERE ' . ($guarded ? $row($t->anonymizedAt) . ' IS NULL AND ' : '') . '(' . implode(' OR ', $when) . ')';
+        $sql =
+            'INSERT INTO ' .
+            $table .
+            ' (' .
+            implode(', ', $insertColumns) .
+            ')' .
+            ' SELECT ' .
+            implode(', ', $insertValues) .
+            ($listed ? ' WHERE NOT EXISTS (SELECT 1 FROM anotoki_people_anonymized WHERE sub = CAST(? AS bigint))' : '') .
+            " ON CONFLICT ($id) DO UPDATE SET " .
+            implode(', ', $set) .
+            ' WHERE ' .
+            ($guarded ? $row($t->anonymizedAt) . ' IS NULL AND ' : '') .
+            '(' .
+            implode(' OR ', $when) .
+            ')';
 
         $statement = $pdo->prepare($sql);
-        $statement->execute([
-            ...$insertParameters,
-            ...($listed ? [$person->sub] : []),
-            ...$setParameters,
-            ...$whenParameters,
-        ]);
+        $statement->execute([...$insertParameters, ...$listed ? [$person->sub] : [], ...$setParameters, ...$whenParameters]);
 
         return $statement->rowCount() > 0;
     }

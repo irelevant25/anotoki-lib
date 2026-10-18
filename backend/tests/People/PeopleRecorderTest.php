@@ -130,7 +130,7 @@ final class PeopleRecorderTest extends DatabaseTestCase
         $this->applyPeopleSet();
         $recorder = new PeopleRecorder(SiteShapes::table('survey'));
         $this->pdo->exec("INSERT INTO users (id, preferred_username, anonymized_at) VALUES (12, 'deleted-12', now())");
-        $this->pdo->exec("INSERT INTO anotoki_people_anonymized (sub, anonymized_at, had_row) VALUES (12, now(), true), (13, now(), false)");
+        $this->pdo->exec('INSERT INTO anotoki_people_anonymized (sub, anonymized_at, had_row) VALUES (12, now(), true), (13, now(), false)');
 
         self::assertFalse($recorder->seen($this->pdo, $this->person(12, 'bob')));
         self::assertSame('deleted-12', $this->value('SELECT preferred_username FROM users WHERE id = 12'));

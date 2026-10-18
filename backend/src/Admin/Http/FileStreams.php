@@ -40,13 +40,8 @@ final class FileStreams
      * The whole file - or, with a Range header of one range, that range (206), or 416 when it cannot be
      * satisfied. Content-Length always; Accept-Ranges when $ranges.
      */
-    public static function send(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        string $path,
-        StreamFactoryInterface $streams,
-        bool $ranges = false,
-    ): ResponseInterface {
+    public static function send(ServerRequestInterface $request, ResponseInterface $response, string $path, StreamFactoryInterface $streams, bool $ranges = false): ResponseInterface
+    {
         $size = @filesize($path);
         if ($size === false) {
             throw new RuntimeException('The file cannot be read.');
@@ -64,7 +59,10 @@ final class FileStreams
                     $end = $match[2] === '' ? $size - 1 : min((int) $match[2], $size - 1);
                 }
                 if ($size === 0 || $start > $end || $start >= $size) {
-                    return $response->withStatus(416)->withHeader('Content-Range', 'bytes */' . $size)->withHeader('Content-Length', '0');
+                    return $response
+                        ->withStatus(416)
+                        ->withHeader('Content-Range', 'bytes */' . $size)
+                        ->withHeader('Content-Length', '0');
                 }
                 $length = $end - $start + 1;
                 $source = @fopen($path, 'rb');
@@ -85,8 +83,6 @@ final class FileStreams
             }
         }
 
-        return $response
-            ->withHeader('Content-Length', (string) $size)
-            ->withBody($streams->createStreamFromFile($path, 'rb'));
+        return $response->withHeader('Content-Length', (string) $size)->withBody($streams->createStreamFromFile($path, 'rb'));
     }
 }

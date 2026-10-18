@@ -57,12 +57,9 @@ final class TestDatabase
     {
         $settings = self::settings();
 
-        return new PDO(
-            sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $database),
-            $settings['username'],
-            $settings['password'],
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-        );
+        return new PDO(sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $database), $settings['username'], $settings['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
     }
 
     /** Drops a database this made, whoever is still connected to it. */
@@ -84,7 +81,7 @@ final class TestDatabase
             if (!is_file($file)) {
                 throw new RuntimeException('ANOTOKI_LIB_TEST_DB_CONFIG names no file.');
             }
-            $config = (static fn (string $path): mixed => require $path)($file);
+            $config = (static fn(string $path): mixed => require $path)($file);
             if (!is_array($config)) {
                 throw new RuntimeException('The file ANOTOKI_LIB_TEST_DB_CONFIG names must return an array.');
             }
@@ -108,9 +105,9 @@ final class TestDatabase
         }
 
         throw new RuntimeException(
-            'These tests need a PostgreSQL server: set ANOTOKI_LIB_TEST_DB_CONFIG to a PHP file returning'
-            . ' [host, port, username, password], or ANOTOKI_LIB_TEST_PGHOST, ANOTOKI_LIB_TEST_PGPORT,'
-            . ' ANOTOKI_LIB_TEST_PGUSER and ANOTOKI_LIB_TEST_PGPASSWORD.'
+            'These tests need a PostgreSQL server: set ANOTOKI_LIB_TEST_DB_CONFIG to a PHP file returning' .
+                ' [host, port, username, password], or ANOTOKI_LIB_TEST_PGHOST, ANOTOKI_LIB_TEST_PGPORT,' .
+                ' ANOTOKI_LIB_TEST_PGUSER and ANOTOKI_LIB_TEST_PGPASSWORD.',
         );
     }
 

@@ -53,7 +53,7 @@ final class PeopleTable
         public readonly string $id = 'id',
         public readonly string $anonymizedAt = 'anonymized_at',
     ) {
-        $columns = array_filter([$id, $name, $firstSeen, $lastSeen, $updatedAt, $anonymizedAt], static fn (?string $column): bool => $column !== null);
+        $columns = array_filter([$id, $name, $firstSeen, $lastSeen, $updatedAt, $anonymizedAt], static fn(?string $column): bool => $column !== null);
         foreach ([$table, ...$columns] as $identifier) {
             self::checkName($identifier);
         }
@@ -98,7 +98,7 @@ final class PeopleTable
                FROM pg_catalog.pg_class c
                JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-              WHERE n.nspname = current_schema() AND c.relname = ? AND c.relkind IN ('r', 'p')"
+              WHERE n.nspname = current_schema() AND c.relname = ? AND c.relkind IN ('r', 'p')",
         );
         $statement->execute([$this->table]);
         $columns = [];
@@ -189,7 +189,7 @@ final class PeopleTable
             return ($this->nameFallback)($sub);
         }
 
-        return ($this->columns($pdo)[$this->name]['notNull'] ?? false) ? 'user ' . $sub : null;
+        return $this->columns($pdo)[$this->name]['notNull'] ?? false ? 'user ' . $sub : null;
     }
 
     /** The most characters the name column holds, or null for no limit. */

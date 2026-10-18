@@ -15,13 +15,7 @@ namespace Anotoki\Lib\Support;
 final class Refusal
 {
     /** @param array<string, mixed> $extra */
-    public function __construct(
-        public readonly int $status,
-        public readonly string $code,
-        public readonly string $message,
-        public readonly array $extra = [],
-    ) {
-    }
+    public function __construct(public readonly int $status, public readonly string $code, public readonly string $message, public readonly array $extra = []) {}
 
     /** @param array<string, mixed> $extra */
     public static function invalid(string $code, string $message, array $extra = []): self

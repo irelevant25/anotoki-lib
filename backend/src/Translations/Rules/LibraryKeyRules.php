@@ -17,7 +17,7 @@ final class LibraryKeyRules implements KeyRules
 {
     public function placeholders(string $key): ?array
     {
-        return LibraryWords::isLibraryKey($key) ? (LibraryWords::placeholders($key) ?? []) : null;
+        return LibraryWords::isLibraryKey($key) ? LibraryWords::placeholders($key) ?? [] : null;
     }
 
     public function checkFirst(string $key, string $code, string $text, string $languageName, array $placeholders): ?Refusal

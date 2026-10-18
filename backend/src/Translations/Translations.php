@@ -166,7 +166,7 @@ final class Translations
             // back, and no error that would end the transaction.
             $insert = $this->pdo->prepare(
                 'INSERT INTO languages (code, name, native_name, enabled, sort_order) VALUES (?, ?, ?, ?, ?)
-                 ON CONFLICT (code) DO NOTHING RETURNING code'
+                 ON CONFLICT (code) DO NOTHING RETURNING code',
             );
             $insert->execute([$code, $name, $nativeName, $enabled ? 'true' : 'false', $sortOrder]);
 
@@ -236,8 +236,8 @@ final class Translations
 
         if ($changes !== []) {
             // The columns are this method's own names, never a body's.
-            $sets = implode(', ', array_map(static fn (string $column): string => $column . ' = ?', array_keys($changes)));
-            $values = array_map(static fn (mixed $value): mixed => is_bool($value) ? ($value ? 'true' : 'false') : $value, array_values($changes));
+            $sets = implode(', ', array_map(static fn(string $column): string => $column . ' = ?', array_keys($changes)));
+            $values = array_map(static fn(mixed $value): mixed => is_bool($value) ? ($value ? 'true' : 'false') : $value, array_values($changes));
             $this->pdo->prepare("UPDATE languages SET $sets WHERE code = ?")->execute([...$values, $code]);
         }
 
@@ -289,7 +289,7 @@ final class Translations
                 return $refused;
             }
 
-            $extras = $usage === null ? [] : ($usage->extras($this->pdo, [$code])[$code] ?? []);
+            $extras = $usage === null ? [] : $usage->extras($this->pdo, [$code])[$code] ?? [];
             $strings = $this->own($code, false);
             $extras = ($usage === null ? [] : $usage->beforeDelete($this->pdo, $code, $strings)) + $extras;
 
@@ -342,7 +342,7 @@ final class Translations
 
         $bundle = [
             'language' => $language,
-            'languages' => array_map(static fn (array $row): array => ['code' => (string) $row['code'], 'name' => (string) $row['name'], 'native_name' => (string) $row['native_name']], $offered),
+            'languages' => array_map(static fn(array $row): array => ['code' => (string) $row['code'], 'name' => (string) $row['name'], 'native_name' => (string) $row['native_name']], $offered),
         ];
 
         if ($language === self::FALLBACK) {
@@ -383,10 +383,7 @@ final class Translations
 
         return [
             'languages' => $this->languages(),
-            'keys' => array_map(
-                static fn (array $key): array => ['name' => $key['name'], 'description' => $key['description'], 'values' => (object) $key['values']],
-                array_values($keys)
-            ),
+            'keys' => array_map(static fn(array $key): array => ['name' => $key['name'], 'description' => $key['description'], 'values' => (object) $key['values']], array_values($keys)),
         ];
     }
 
@@ -434,7 +431,7 @@ final class Translations
                 'INSERT INTO translations (key_name, language_code, value, updated_by) VALUES (?, ?, ?, ?)
                  ON CONFLICT (key_name, language_code) DO UPDATE
                     SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP, updated_by = EXCLUDED.updated_by
-                  WHERE translations.value IS DISTINCT FROM EXCLUDED.value'
+                  WHERE translations.value IS DISTINCT FROM EXCLUDED.value',
             );
 
             foreach ($changes as $change) {
@@ -570,7 +567,7 @@ final class Translations
         $statement = $this->pdo->prepare(
             'SELECT k.name FROM translation_keys k
               WHERE NOT EXISTS (SELECT 1 FROM translations t WHERE t.key_name = k.name AND t.language_code = ?)
-              ORDER BY k.name COLLATE "C"'
+              ORDER BY k.name COLLATE "C"',
         );
         $statement->execute([$code]);
 
@@ -642,9 +639,9 @@ final class Translations
      */
     private function shapes(array $rows): array
     {
-        $extras = $this->config->usage?->extras($this->pdo, array_map(static fn (array $row): string => (string) $row['code'], $rows)) ?? [];
+        $extras = $this->config->usage?->extras($this->pdo, array_map(static fn(array $row): string => (string) $row['code'], $rows)) ?? [];
 
-        return array_map(fn (array $row): array => $this->shape($row, $extras[(string) $row['code']] ?? []), $rows);
+        return array_map(fn(array $row): array => $this->shape($row, $extras[(string) $row['code']] ?? []), $rows);
     }
 
     /**
@@ -683,7 +680,7 @@ final class Translations
 
         // Whole, as long as the admin pages let such a string be; the clip is for
         // a string that reached the table without them (SQL), which must not bloat the log.
-        $clip = fn (?string $text): ?string => $text === null ? null : Text::clip($text, $this->config->auditTextMax);
+        $clip = fn(?string $text): ?string => $text === null ? null : Text::clip($text, $this->config->auditTextMax);
         foreach ($this->config->serverNamespaces as $namespace) {
             $cells = [];
             foreach ($written as $cell) {

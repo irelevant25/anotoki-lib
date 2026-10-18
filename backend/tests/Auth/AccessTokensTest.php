@@ -37,9 +37,9 @@ final class AccessTokensTest extends TestCase
 
     public function testEveryCaseOfTheSdkSuite(): void
     {
-        $other = TestIam::create($this->folder('forger'), 'https://iam.example.test', 'app', 'test-key');   // the same kid, another key
+        $other = TestIam::create($this->folder('forger'), 'https://iam.example.test', 'app', 'test-key'); // the same kid, another key
         $good = $this->iam->claims(7, ['EDITOR', 'editor', 'ADMIN']);
-        $sign = fn (array $claims, string $typ = 'at+jwt', ?TestIam $key = null, string $alg = 'RS256'): string => ($key ?? $this->iam)->sign($claims, $typ, $alg);
+        $sign = fn(array $claims, string $typ = 'at+jwt', ?TestIam $key = null, string $alg = 'RS256'): string => ($key ?? $this->iam)->sign($claims, $typ, $alg);
         $tampered = (function () use ($sign, $good): string {
             [$head, , $signature] = explode('.', $sign($good));
 
@@ -96,29 +96,35 @@ final class AccessTokensTest extends TestCase
             return $head . '.' . Base64Url::encode(json_encode($good)) . '.';
         })();
 
-        foreach ([
-            'HS256 keyed with the public key' => [$hmac, 'algorithm is not RS256'],
-            'alg none, no signature' => [$unsigned, 'unreadable header, payload or signature'],
-            'typ missing' => [$this->iam->sign($good, ''), 'not an access token (typ missing)'],
-            'an ID token' => [$this->iam->sign($good, 'JWT'), 'not an access token (typ jwt)'],
-            'no kid' => [$this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => '']), 'no kid'],
-            'critical extensions' => [$this->iam->sign($good, 'at+jwt', 'RS256', ['crit' => ['b64']]), 'a header with critical extensions'],
-            'a token for another client' => [$this->iam->sign(['aud' => 'another-site', 'client_id' => 'another-site'] + $good), 'meant for another application'],
-            'issued to another client, naming this one too' => [$this->iam->sign(['aud' => ['another-site', 'app'], 'client_id' => 'another-site'] + $good), 'issued to another application'],
-            'expired an hour ago' => [$this->iam->sign(['exp' => time() - 3600] + $good), 'expired'],
-            'no expiry' => [$this->iam->sign(array_diff_key($good, ['exp' => true])), 'no expiry'],
-            'an expiry that is text' => [$this->iam->sign(['exp' => (string) (time() + 600)] + $good), 'no expiry'],
-            'issued in the future' => [$this->iam->sign(['iat' => time() + 600] + $good), 'issued in the future'],
-            'a subject of 19 digits' => [$this->iam->sign(['sub' => '1234567890123456789'] + $good), 'no usable subject'],
-            'subject 0' => [$this->iam->sign(['sub' => '0'] + $good), 'no usable subject'],
-            'a subject with a leading zero' => [$this->iam->sign(['sub' => '07'] + $good), 'no usable subject'],
-            'a subject that is a number, not text' => [$this->iam->sign(['sub' => 7] + $good), 'no usable subject'],
-            'a negative subject (a visitor\'s id)' => [$this->iam->sign(['sub' => '-3'] + $good), 'no usable subject'],
-            'four parts' => [$this->iam->token(7) . '.x', 'not a JWT'],
-            'nothing' => ['', 'not a JWT'],
-            'too long' => [str_repeat('a', AccessTokens::MAX_LENGTH + 1), 'too long'],
-            'a payload that is a list' => [Base64Url::encode('{"alg":"RS256","typ":"at+jwt","kid":"test-key"}') . '.' . Base64Url::encode('[1]') . '.c2ln', 'unreadable header, payload or signature'],
-        ] as $name => [$token, $reason]) {
+        foreach (
+            [
+                'HS256 keyed with the public key' => [$hmac, 'algorithm is not RS256'],
+                'alg none, no signature' => [$unsigned, 'unreadable header, payload or signature'],
+                'typ missing' => [$this->iam->sign($good, ''), 'not an access token (typ missing)'],
+                'an ID token' => [$this->iam->sign($good, 'JWT'), 'not an access token (typ jwt)'],
+                'no kid' => [$this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => '']), 'no kid'],
+                'critical extensions' => [$this->iam->sign($good, 'at+jwt', 'RS256', ['crit' => ['b64']]), 'a header with critical extensions'],
+                'a token for another client' => [$this->iam->sign(['aud' => 'another-site', 'client_id' => 'another-site'] + $good), 'meant for another application'],
+                'issued to another client, naming this one too' => [$this->iam->sign(['aud' => ['another-site', 'app'], 'client_id' => 'another-site'] + $good), 'issued to another application'],
+                'expired an hour ago' => [$this->iam->sign(['exp' => time() - 3600] + $good), 'expired'],
+                'no expiry' => [$this->iam->sign(array_diff_key($good, ['exp' => true])), 'no expiry'],
+                'an expiry that is text' => [$this->iam->sign(['exp' => (string) (time() + 600)] + $good), 'no expiry'],
+                'issued in the future' => [$this->iam->sign(['iat' => time() + 600] + $good), 'issued in the future'],
+                'a subject of 19 digits' => [$this->iam->sign(['sub' => '1234567890123456789'] + $good), 'no usable subject'],
+                'subject 0' => [$this->iam->sign(['sub' => '0'] + $good), 'no usable subject'],
+                'a subject with a leading zero' => [$this->iam->sign(['sub' => '07'] + $good), 'no usable subject'],
+                'a subject that is a number, not text' => [$this->iam->sign(['sub' => 7] + $good), 'no usable subject'],
+                'a negative subject (a visitor\'s id)' => [$this->iam->sign(['sub' => '-3'] + $good), 'no usable subject'],
+                'four parts' => [$this->iam->token(7) . '.x', 'not a JWT'],
+                'nothing' => ['', 'not a JWT'],
+                'too long' => [str_repeat('a', AccessTokens::MAX_LENGTH + 1), 'too long'],
+                'a payload that is a list' => [
+                    Base64Url::encode('{"alg":"RS256","typ":"at+jwt","kid":"test-key"}') . '.' . Base64Url::encode('[1]') . '.c2ln',
+                    'unreadable header, payload or signature',
+                ],
+            ]
+            as $name => [$token, $reason]
+        ) {
             self::assertNull($tokens->verify($token), $name);
             self::assertSame($reason, $tokens->lastReason(), $name);
         }
@@ -159,13 +165,19 @@ final class AccessTokensTest extends TestCase
     public function testAPersonIsWhatTheTokenSays(): void
     {
         $tokens = new AccessTokens($this->iam->client());
-        $person = $tokens->verify($this->iam->token(12, ['member', ' Editor '], [
-            'preferred_username' => '  Alice ',
-            'locale' => 'sk',
-            'preferences' => ['theme' => 'dark', 'date_format' => null, 'time_format' => '24'],
-            'auth_time' => time() - 100,
-            'sid' => 'abc',
-        ]));
+        $person = $tokens->verify(
+            $this->iam->token(
+                12,
+                ['member', ' Editor '],
+                [
+                    'preferred_username' => '  Alice ',
+                    'locale' => 'sk',
+                    'preferences' => ['theme' => 'dark', 'date_format' => null, 'time_format' => '24'],
+                    'auth_time' => time() - 100,
+                    'sid' => 'abc',
+                ],
+            ),
+        );
 
         self::assertInstanceOf(Person::class, $person);
         self::assertSame(12, $person->sub);
@@ -203,16 +215,19 @@ final class AccessTokensTest extends TestCase
 
     public function testTheBearerHeader(): void
     {
-        foreach ([
-            ['Bearer abc.def.ghi', true, 'abc.def.ghi'],
-            ['bearer abc', true, 'abc'],
-            ['  BEARER abc', true, 'abc'],
-            ['Bearer', true, null],
-            ['Bearer ', true, null],
-            ['Basic dXNlcjpwYXNz', false, null],
-            ['Bearerabc', false, null],
-            ['', false, null],
-        ] as [$header, $sent, $token]) {
+        foreach (
+            [
+                ['Bearer abc.def.ghi', true, 'abc.def.ghi'],
+                ['bearer abc', true, 'abc'],
+                ['  BEARER abc', true, 'abc'],
+                ['Bearer', true, null],
+                ['Bearer ', true, null],
+                ['Basic dXNlcjpwYXNz', false, null],
+                ['Bearerabc', false, null],
+                ['', false, null],
+            ]
+            as [$header, $sent, $token]
+        ) {
             self::assertSame($sent, Bearer::sent($header), var_export($header, true));
             self::assertSame($token, Bearer::token($header), var_export($header, true));
         }
@@ -229,15 +244,18 @@ final class AccessTokensTest extends TestCase
         $cache = $this->folder('cache');
         file_put_contents(
             $cache . '/anotoki-iam-jwks-' . sha1('https://iam.example.test/.well-known/jwks.json') . '.json',
-            json_encode(['fetched_at' => time(), 'keys' => Jwks::usable($this->iam->jwks())])
+            json_encode(['fetched_at' => time(), 'keys' => Jwks::usable($this->iam->jwks())]),
         );
         $fetched = 0;
         $client = IamClient::fromArray(['issuer' => 'https://iam.example.test', 'client_id' => 'app', 'cache_dir' => $cache]);
-        $tokens = new AccessTokens($client, new Jwks($client, function () use (&$fetched): array {
-            $fetched++;
+        $tokens = new AccessTokens(
+            $client,
+            new Jwks($client, function () use (&$fetched): array {
+                $fetched++;
 
-            return ['status' => 0, 'body' => null];
-        }));
+                return ['status' => 0, 'body' => null];
+            }),
+        );
 
         self::assertNotNull($tokens->verify($this->iam->token(7)), (string) $tokens->lastReason());
         self::assertSame(0, $fetched, 'a fresh copy is not fetched again');
@@ -298,11 +316,14 @@ final class AccessTokensTest extends TestCase
         $file = $cache . '/anotoki-iam-jwks-' . sha1('https://iam.example.test/.well-known/jwks.json') . '.json';
         $rotated = TestIam::create($this->folder('rotated'), 'https://iam.example.test', 'app', 'new-key');
         $fetched = 0;
-        $tokens = new AccessTokens($client, new Jwks($client, function () use (&$fetched, $rotated): array {
-            $fetched++;
+        $tokens = new AccessTokens(
+            $client,
+            new Jwks($client, function () use (&$fetched, $rotated): array {
+                $fetched++;
 
-            return ['status' => 200, 'body' => json_encode(['keys' => array_merge($this->iam->jwks()['keys'], $rotated->jwks()['keys'])])];
-        }));
+                return ['status' => 200, 'body' => json_encode(['keys' => array_merge($this->iam->jwks()['keys'], $rotated->jwks()['keys'])])];
+            }),
+        );
 
         foreach (['fetched_at' => ['fetched_at' => time() + 3600, 'failed_at' => 0], 'failed_at' => ['fetched_at' => time() - 600, 'failed_at' => time() + 3600]] as $stamp => $record) {
             $fetched = 0;
@@ -319,16 +340,18 @@ final class AccessTokensTest extends TestCase
     public function testOnlyRsaSignatureKeysForRs256AreKept(): void
     {
         $key = $this->iam->jwks()['keys'][0];
-        $keys = Jwks::usable(['keys' => [
-            $key,
-            ['use' => 'enc', 'kid' => 'enc'] + $key,
-            ['alg' => 'RS512', 'kid' => 'rs512'] + $key,
-            ['kty' => 'EC', 'kid' => 'ec'] + $key,
-            ['kid' => ''] + $key,
-            ['n' => ''] + $key + ['kid' => 'no-n'],
-            'not a key',
-            ['kid' => 'plain', 'kty' => 'RSA', 'n' => $key['n'], 'e' => $key['e']],
-        ]]);
+        $keys = Jwks::usable([
+            'keys' => [
+                $key,
+                ['use' => 'enc', 'kid' => 'enc'] + $key,
+                ['alg' => 'RS512', 'kid' => 'rs512'] + $key,
+                ['kty' => 'EC', 'kid' => 'ec'] + $key,
+                ['kid' => ''] + $key,
+                ['n' => ''] + $key + ['kid' => 'no-n'],
+                'not a key',
+                ['kid' => 'plain', 'kty' => 'RSA', 'n' => $key['n'], 'e' => $key['e']],
+            ],
+        ]);
 
         self::assertSame(['test-key', 'plain'], array_keys($keys));
         self::assertNotNull(Jwks::pem($keys['plain']));

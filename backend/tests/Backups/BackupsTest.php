@@ -37,7 +37,10 @@ final class BackupsTest extends BackupsTestCase
         $backup = $backups->create(Backups::MANUAL, 'Before the big change', 7);
         self::assertIsArray($backup);
         self::assertMatchesRegularExpression('/^\d{8}-\d{6}Z-manual-[0-9a-f]{32}$/D', $backup['id']);
-        self::assertSame(['shop', 'manual', 'complete', false, 'Before the big change', 7], [$backup['site'], $backup['kind'], $backup['status'], $backup['encrypted'], $backup['description'], $backup['created_by']]);
+        self::assertSame(
+            ['shop', 'manual', 'complete', false, 'Before the big change', 7],
+            [$backup['site'], $backup['kind'], $backup['status'], $backup['encrypted'], $backup['description'], $backup['created_by']],
+        );
         self::assertSame(hash_file('sha256', $backups->path($backup['id'])), $backup['sha256']);
         self::assertSame(filesize($backups->path($backup['id'])), $backup['size']);
         self::assertEquals(['people' => 4, 'notes' => 500, 'roles' => 5], array_intersect_key(array_column($backup['tables'], 'rows', 'name'), ['people' => 1, 'notes' => 1, 'roles' => 1]));
@@ -53,8 +56,16 @@ final class BackupsTest extends BackupsTestCase
         $result = $backups->restore($backup['id'], 7);
 
         self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
-        self::assertSame([$backup['id'], 4, null], [$result['restored'], $result['tables'], $result['after_restore_error']], 'people, notes, roles and the feedback; never the audit log or the bookkeeping');
-        self::assertSame(array_diff_key($before, array_flip(self::KEPT)), array_diff_key($this->snapshot(), array_flip(self::KEPT)), 'every row as it was: updated_at untouched, no MEMBER row added by the trigger');
+        self::assertSame(
+            [$backup['id'], 4, null],
+            [$result['restored'], $result['tables'], $result['after_restore_error']],
+            'people, notes, roles and the feedback; never the audit log or the bookkeeping',
+        );
+        self::assertSame(
+            array_diff_key($before, array_flip(self::KEPT)),
+            array_diff_key($this->snapshot(), array_flip(self::KEPT)),
+            'every row as it was: updated_at untouched, no MEMBER row added by the trigger',
+        );
         // Every sequence where the later of the backup and today leaves it: a value handed out since is never handed
         // out again - the kept audit log may name it (and the kept tables' own are not touched at all).
         $keptSequences = array_flip(['anotoki_audit_log_id_seq', 'migrations_id_seq']);
@@ -62,11 +73,21 @@ final class BackupsTest extends BackupsTestCase
         foreach (array_keys(array_diff_key($sequences, $keptSequences)) as $name) {
             self::assertSame(max(self::nextOf($sequences[$name]), self::nextOf($scrambled[$name])), self::nextOf($restored[$name]), "$name never goes back");
         }
-        self::assertSame(['anotoki_feedback_id_seq' => 1, 'notes_id_seq' => 501, 'people_id_seq' => 6, 'ticket_numbers' => 103], array_map(self::nextOf(...), array_intersect_key($restored, array_flip(['people_id_seq', 'ticket_numbers', 'notes_id_seq', 'anotoki_feedback_id_seq']))));
+        self::assertSame(
+            ['anotoki_feedback_id_seq' => 1, 'notes_id_seq' => 501, 'people_id_seq' => 6, 'ticket_numbers' => 103],
+            array_map(self::nextOf(...), array_intersect_key($restored, array_flip(['people_id_seq', 'ticket_numbers', 'notes_id_seq', 'anotoki_feedback_id_seq']))),
+        );
         self::assertGreaterThan(1, (int) $this->value('SELECT last_value FROM anotoki_audit_log_id_seq'), 'the audit log\'s ids go on');
-        self::assertSame(['O', 'O'], $this->pdo->query("SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'people'::regclass AND NOT tgisinternal ORDER BY tgname")->fetchAll(PDO::FETCH_COLUMN), 'the triggers on again');
+        self::assertSame(
+            ['O', 'O'],
+            $this->pdo->query("SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'people'::regclass AND NOT tgisinternal ORDER BY tgname")->fetchAll(PDO::FETCH_COLUMN),
+            'the triggers on again',
+        );
         self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'kept.entry'"), 'the audit log kept as it is');
-        self::assertSame(['backup.created', 'backup.created', 'backup.restored'], $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(
+            ['backup.created', 'backup.created', 'backup.restored'],
+            $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN),
+        );
         self::assertSame(3, (int) $this->value('SELECT count(*) FROM migrations'), 'the bookkeeping kept');
         self::assertStringContainsString('-before-restore-', $result['before_restore']);
         self::assertSame(['before-restore', 'manual'], array_column($backups->list(), 'kind'));
@@ -284,18 +305,21 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame(
             array_diff_key($live, array_flip(self::KEPT)),
             array_diff_key($this->snapshot(), array_flip(self::KEPT)),
-            'rolled back whole: the tables emptied and half loaded are as they were'
+            'rolled back whole: the tables emptied and half loaded are as they were',
         );
         self::assertSame(['O', 'O'], $this->pdo->query("SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'people'::regclass AND NOT tgisinternal ORDER BY tgname")->fetchAll(PDO::FETCH_COLUMN));
-        self::assertSame(['backup.created', 'backup.created', 'backup.restore_failed'], $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN));
-        self::assertCount(1, array_filter($backups->list(), static fn (array $b): bool => $b['kind'] === 'before-restore'), 'never without a copy of what was there');
+        self::assertSame(
+            ['backup.created', 'backup.created', 'backup.restore_failed'],
+            $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN),
+        );
+        self::assertCount(1, array_filter($backups->list(), static fn(array $b): bool => $b['kind'] === 'before-restore'), 'never without a copy of what was there');
     }
 
     public function testAFailuresOwnWordsGoToTheErrorLogAndNeverIntoAnAnswer(): void
     {
         // A hook that fails as code fails: PHP's TypeError names the absolute path of the file it was called in - what
         // a site's mutation run found in a restore's answer.
-        $named = static fn (string $name): string => $name;
+        $named = static fn(string $name): string => $name;
         $failing = static function () use ($named): void {
             $named(null);
         };
@@ -328,10 +352,11 @@ final class BackupsTest extends BackupsTestCase
         $backup = $backups->create();
         self::assertIsArray($backup);
         // The database's own words: its host, its user and a file of the server's.
-        $theDatabases = 'SQLSTATE[08006] [7] connection to server at "db.internal" (10.0.0.5), port 5432 failed: FATAL: password authentication failed for user "shop_owner" (/var/www/shop/config/database.local.php)';
-        $down = new Backups(static fn (): PDO => throw new PDOException($theDatabases), $this->backups, [
+        $theDatabases =
+            'SQLSTATE[08006] [7] connection to server at "db.internal" (10.0.0.5), port 5432 failed: FATAL: password authentication failed for user "shop_owner" (/var/www/shop/config/database.local.php)';
+        $down = new Backups(static fn(): PDO => throw new PDOException($theDatabases), $this->backups, [
             'site' => 'shop',
-            'migrator' => fn (PDO $pdo): Migrator => $this->siteMigrator($pdo),
+            'migrator' => fn(PDO $pdo): Migrator => $this->siteMigrator($pdo),
             'onError' => function (\Throwable $e): void {
                 $this->failures[] = $e->getMessage();
             },
@@ -454,7 +479,10 @@ final class BackupsTest extends BackupsTestCase
         $refused = $backups->restore($backup['id']);
         self::assertSame([422, 'archive_invalid', self::UNREADABLE], [$refused->status ?? null, $refused->code ?? null, $refused->message ?? null]);
         self::assertStringContainsString('no seal of this site', (string) end($this->failures));
-        self::assertContains('It carries no seal of this site\'s - it was not made here, or it was changed since - so it is not restored here: restore it offline (README).', $backups->preview($backup['id'])['reasons']);
+        self::assertContains(
+            'It carries no seal of this site\'s - it was not made here, or it was changed since - so it is not restored here: restore it offline (README).',
+            $backups->preview($backup['id'])['reasons'],
+        );
         self::assertSame($backup['id'], $backups->extractTo($backup['id'], $this->path('offline'))['id'], 'offline, its owner may still read it');
     }
 
@@ -475,7 +503,12 @@ final class BackupsTest extends BackupsTestCase
         $bytes = (string) file_get_contents($backups->path($made['id']));
         file_put_contents($backups->path($forged), str_replace($made['id'], $forged, $bytes));
         $sidecar = json_decode((string) file_get_contents($backups->path($made['id']) . '.json'), true);
-        $sidecar = ['id' => $forged, 'sha256' => hash_file('sha256', $backups->path($forged)), 'seal' => hash_hmac('sha256', $forged . "\n" . hash_file('sha256', $backups->path($forged)), 'a key that is not this site\'s')] + $sidecar;
+        $sidecar =
+            [
+                'id' => $forged,
+                'sha256' => hash_file('sha256', $backups->path($forged)),
+                'seal' => hash_hmac('sha256', $forged . "\n" . hash_file('sha256', $backups->path($forged)), 'a key that is not this site\'s'),
+            ] + $sidecar;
         file_put_contents($backups->path($forged) . '.json', (string) json_encode($sidecar));
         $listed = array_column($backups->list(), 'sealed', 'id');
         self::assertSame([true, false], [$listed[$made['id']], $listed[$forged]]);
@@ -555,7 +588,7 @@ final class BackupsTest extends BackupsTestCase
         self::assertArrayNotHasKey('seal', json_decode((string) file_get_contents($backups->path($made['id']) . '.json'), true));
         self::assertCount(1, $this->failures);
         self::assertStringContainsString('without its seal', $this->failures[0], 'and the site is told');
-        self::assertSame([[$made['id'], false]], array_map(static fn (array $backup): array => [$backup['id'], $backup['sealed']], $backups->list()), 'listed, never a failure');
+        self::assertSame([[$made['id'], false]], array_map(static fn(array $backup): array => [$backup['id'], $backup['sealed']], $backups->list()), 'listed, never a failure');
         self::assertSame('archive_invalid', $backups->restore($made['id'])->code ?? null, 'restored offline only');
         self::assertCount(2, $this->failures, 'the refused restore is told too');
         self::assertStringContainsString('no seal of this site', $this->failures[1]);
@@ -611,9 +644,11 @@ final class BackupsTest extends BackupsTestCase
     {
         $this->fill();
         $deferred = [];
-        $backups = $this->backupsWith(['defer' => static function (callable $work) use (&$deferred): void {
-            $deferred[] = $work;
-        }]);
+        $backups = $this->backupsWith([
+            'defer' => static function (callable $work) use (&$deferred): void {
+                $deferred[] = $work;
+            },
+        ]);
 
         self::assertTrue($backups->dailyIfDue());
         self::assertTrue($backups->dailyIfDue(), 'two requests at once both queue it');
@@ -634,7 +669,7 @@ final class BackupsTest extends BackupsTestCase
         $deferred = [];
         try {
             self::assertTrue($backups->dailyIfDue());
-            ($deferred[0])();
+            $deferred[0]();
         } finally {
             flock($claim, LOCK_UN);
             fclose($claim);
@@ -642,9 +677,12 @@ final class BackupsTest extends BackupsTestCase
         self::assertCount(1, $backups->list());
 
         // A site that is not ready (an update waits) gets none.
-        $waiting = $this->backupsWith(['ready' => static fn (): bool => false, 'defer' => static function (callable $work): void {
-            $work();
-        }]);
+        $waiting = $this->backupsWith([
+            'ready' => static fn(): bool => false,
+            'defer' => static function (callable $work): void {
+                $work();
+            },
+        ]);
         $waiting->dailyIfDue();
         self::assertCount(1, $backups->list());
     }
@@ -676,10 +714,13 @@ final class BackupsTest extends BackupsTestCase
 
         // A backup that cannot be made stops the update before anything runs.
         $this->siteSet = $this->set('shop', ['002_broken.sql' => 'CREATE TABLE extra (id INT);']);
-        $failing = new Backups(static function (): PDO {
-            throw new \RuntimeException('could not connect to server');
-        }, $this->backups, ['migrator' => fn (PDO $pdo): Migrator => $this->siteMigrator($pdo), 'onError' => static function (): void {
-        }]);
+        $failing = new Backups(
+            static function (): PDO {
+                throw new \RuntimeException('could not connect to server');
+            },
+            $this->backups,
+            ['migrator' => fn(PDO $pdo): Migrator => $this->siteMigrator($pdo), 'onError' => static function (): void {}],
+        );
         $stopped = (new Migrator($this->pdo, [\Anotoki\Lib\Admin\Schema::migrationSet(), $this->siteSet], ['beforeApply' => $failing->beforeApplyHook()]))->apply();
         self::assertSame([], $stopped['applied']);
         // The Migrations page shows the Apply's error: the library's sentence, never the failure's words.
@@ -715,17 +756,19 @@ final class BackupsTest extends BackupsTestCase
 
         self::assertTrue($preview['restorable']);
         self::assertSame(self::KEPT, $preview['kept']);
-        self::assertSame(['people' => [5, 4, 1], 'notes' => [334, 500, -166]], array_combine(
-            array_column($preview['differences'], 'name'),
-            array_map(static fn (array $d): array => [$d['live'], $d['backup'], $d['delta']], $preview['differences'])
-        ));
+        self::assertSame(
+            ['people' => [5, 4, 1], 'notes' => [334, 500, -166]],
+            array_combine(array_column($preview['differences'], 'name'), array_map(static fn(array $d): array => [$d['live'], $d['backup'], $d['delta']], $preview['differences'])),
+        );
         self::assertSame(1, $preview['lost'], 'the person added since');
         self::assertSame('not_found', $backups->preview('20261008-101530Z-manual-' . str_repeat('0', 32))->code ?? null);
     }
 
     public function testACircleOfKeysThatCannotBeDeferredIsNamed(): void
     {
-        $this->pdo->exec('CREATE TABLE eggs (id INT PRIMARY KEY, hen INT); CREATE TABLE hens (id INT PRIMARY KEY, egg INT REFERENCES eggs (id)); ALTER TABLE eggs ADD FOREIGN KEY (hen) REFERENCES hens (id)');
+        $this->pdo->exec(
+            'CREATE TABLE eggs (id INT PRIMARY KEY, hen INT); CREATE TABLE hens (id INT PRIMARY KEY, egg INT REFERENCES eggs (id)); ALTER TABLE eggs ADD FOREIGN KEY (hen) REFERENCES hens (id)',
+        );
 
         $refused = $this->backupsWith()->create();
 
@@ -745,7 +788,9 @@ final class BackupsTest extends BackupsTestCase
     {
         $this->fill();
         $settings = \Anotoki\Lib\Tests\Support\TestDatabase::settings();
-        $plain = new PDO(sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $this->database), $settings['username'], $settings['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $plain = new PDO(sprintf('pgsql:host=%s;port=%d;dbname=%s', $settings['host'], $settings['port'], $this->database), $settings['username'], $settings['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
         $before = $this->snapshot();
         $backups = $this->backupsWith([], $plain);
 
@@ -770,12 +815,12 @@ final class BackupsTest extends BackupsTestCase
         self::assertSame($backup['id'], $manifest['id']);
         self::assertFileExists($into . '/schema/shop/001_init.sql');
         self::assertFileExists($into . '/schema/anotoki_admin/001_audit_log.sql');
-        $people = array_values(array_filter($manifest['tables'], static fn (array $t): bool => $t['name'] === 'people'))[0];
+        $people = array_values(array_filter($manifest['tables'], static fn(array $t): bool => $t['name'] === 'people'))[0];
         $copy = (string) file_get_contents($into . '/' . $people['file']);
         self::assertStringContainsString("Zuzana\\tTab", $copy, 'PostgreSQL\'s COPY text, loadable by psql \\copy');
         self::assertStringContainsString('\\N', $copy);
         self::assertSame(['id', 'name', 'photo', 'data', 'tags', 'scores', 'born', 'updated_at', 'manager_id'], $people['columns']);
-        $notes = array_values(array_filter($manifest['tables'], static fn (array $t): bool => $t['name'] === 'notes'))[0];
+        $notes = array_values(array_filter($manifest['tables'], static fn(array $t): bool => $t['name'] === 'notes'))[0];
         self::assertNotContains('loud', $notes['columns'], 'a generated column is never copied');
         $order = array_flip(array_column($manifest['tables'], 'name'));
         self::assertLessThan($order['notes'], $order['people'], 'parents first');
@@ -792,7 +837,7 @@ final class BackupsTest extends BackupsTestCase
 
         $manifest = $backups->extractTo($backup['id'], $this->path('plain'));
 
-        $files = array_column(array_filter($manifest['schema_files'], static fn (array $f): bool => $f['set'] === 'shop'), 'file', 'name');
+        $files = array_column(array_filter($manifest['schema_files'], static fn(array $f): bool => $f['set'] === 'shop'), 'file', 'name');
         self::assertSame('schema/shop/001_init.sql', $files['001_init.sql']);
         self::assertEqualsCanonicalizing(['schema/shop/002_a_b.sql', 'schema/shop/2-002_a_b.sql'], [$files['002_a b.sql'], $files['002_a_b.sql']], 'one part each');
         self::assertSame('SELECT 2;', file_get_contents($this->path('plain/' . $files['002_a b.sql'])));
@@ -822,7 +867,7 @@ final class BackupsTest extends BackupsTestCase
         $chunks = [];
         while ($offset < strlen($bytes)) {
             $word = unpack('N', substr($bytes, $offset, 4))[1];
-            $length = 4 + ChunkCipher::NONCE + ($word & 0x7FFFFFFF) + ChunkCipher::TAG;
+            $length = 4 + ChunkCipher::NONCE + ($word & 0x7fffffff) + ChunkCipher::TAG;
             $chunks[] = [$offset, $length];
             $offset += $length;
         }
@@ -843,7 +888,7 @@ final class BackupsTest extends BackupsTestCase
     private function withoutLastFlag(string $bytes, array $chunks): string
     {
         [$last] = $chunks[count($chunks) - 1];
-        $word = unpack('N', substr($bytes, $last, 4))[1] & 0x7FFFFFFF;
+        $word = unpack('N', substr($bytes, $last, 4))[1] & 0x7fffffff;
 
         return substr_replace($bytes, pack('N', $word), $last, 4);
     }

@@ -46,11 +46,21 @@ final class FeedbackTest extends DatabaseTestCase
     {
         $app = $this->app();
 
-        $response = $this->post($app, [
-            'kind' => 'bug', 'section' => 'Characters', 'subject' => ' Wrong talent ', 'message' => "  The numbers\nare off.  ",
-            'page' => '/characters/raiden?token=SECRET#talents', 'language' => 'SK', 'user_id' => 999, 'id' => 5,
-            'details' => ['steps' => 'Open it', 'unknown' => 'dropped'],
-        ], person: ['id' => 42, 'email' => 'ana@example.com']);
+        $response = $this->post(
+            $app,
+            [
+                'kind' => 'bug',
+                'section' => 'Characters',
+                'subject' => ' Wrong talent ',
+                'message' => "  The numbers\nare off.  ",
+                'page' => '/characters/raiden?token=SECRET#talents',
+                'language' => 'SK',
+                'user_id' => 999,
+                'id' => 5,
+                'details' => ['steps' => 'Open it', 'unknown' => 'dropped'],
+            ],
+            person: ['id' => 42, 'email' => 'ana@example.com'],
+        );
 
         self::assertSame(201, $response->getStatusCode());
         self::assertSame(['ok' => true], $this->json($response), 'no id handed out');
@@ -58,7 +68,7 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(
             ['bug', 'new', 'Characters', 'Wrong talent', "The numbers\nare off.", null, 42, '/characters/raiden', 'sk', 'TestBrowser/1.0'],
             [$row['kind'], $row['status'], $row['section'], $row['subject'], $row['message'], $row['contact_email'], $row['user_id'], $row['page'], $row['language'], $row['user_agent']],
-            'the id from the token, never the body; no address the form did not send - never the account\'s filled in here; the page without its query'
+            'the id from the token, never the body; no address the form did not send - never the account\'s filled in here; the page without its query',
         );
         self::assertSame(['steps' => 'Open it'], json_decode($row['details'], true));
         self::assertArrayNotHasKey('client_hash', $row, 'nothing of where it came from on the message: no address, no hash of one');
@@ -92,10 +102,19 @@ final class FeedbackTest extends DatabaseTestCase
             self::assertSame([422, $code], [$response->getStatusCode(), $this->json($response)['code']], $code);
         }
         // An address a mail link would read as more than an address: "?bcc=" adds a recipient, the rest end it.
-        foreach ([
-            'jan.novak%40gmail.com?bcc=attacker%40evil.example&x=@example.com', 'a?b@example.com', 'a&b@example.com',
-            'a=b@example.com', 'a%b@example.com', 'a#b@example.com', "a\tb@example.com", 'a b@example.com',
-        ] as $address) {
+        foreach (
+            [
+                'jan.novak%40gmail.com?bcc=attacker%40evil.example&x=@example.com',
+                'a?b@example.com',
+                'a&b@example.com',
+                'a=b@example.com',
+                'a%b@example.com',
+                'a#b@example.com',
+                "a\tb@example.com",
+                'a b@example.com',
+            ]
+            as $address
+        ) {
             $refused = $this->post($app, ['kind' => 'idea', 'message' => 'x', 'email' => $address]);
             self::assertSame([422, 'email_invalid', 'email'], [$refused->getStatusCode(), $this->json($refused)['code'], $this->json($refused)['field']], $address);
         }
@@ -155,7 +174,10 @@ final class FeedbackTest extends DatabaseTestCase
         $this->post($app, ['kind' => 'idea', 'message' => 'one']);
         $this->post($app, ['kind' => 'idea', 'message' => 'two'], address: '198.51.100.4');
 
-        self::assertFalse(in_array('client_hash', array_column($this->rows("SELECT column_name FROM information_schema.columns WHERE table_name = 'anotoki_feedback'"), 'column_name'), true), 'no column for it');
+        self::assertFalse(
+            in_array('client_hash', array_column($this->rows("SELECT column_name FROM information_schema.columns WHERE table_name = 'anotoki_feedback'"), 'column_name'), true),
+            'no column for it',
+        );
         $count = $this->limits();
         self::assertSame(['v', 'visitors', 'accounts'], array_keys($count), 'a keyed hash of each sender and when - nothing else');
         self::assertEqualsCanonicalizing([hash_hmac('sha256', '203.0.113.9', self::KEY), hash_hmac('sha256', '198.51.100.4', self::KEY)], array_keys($count['visitors']));
@@ -190,7 +212,11 @@ final class FeedbackTest extends DatabaseTestCase
             self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => $network], address: $network)->getStatusCode());
         }
         self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'one more'], address: '2001:db8:4::1')->getStatusCode(), 'the visitors\' budget is spent');
-        self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'anonymously', 'anonymous' => true], person: ['id' => 42], address: '2001:db8:5::1')->getStatusCode(), '"without my name" is a visitor\'s message, counted with theirs');
+        self::assertSame(
+            429,
+            $this->post($app, ['kind' => 'idea', 'message' => 'anonymously', 'anonymous' => true], person: ['id' => 42], address: '2001:db8:5::1')->getStatusCode(),
+            '"without my name" is a visitor\'s message, counted with theirs',
+        );
 
         // People with an account are counted by it, in a day of their own that the visitors' spent budget leaves be.
         self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'd'], person: ['id' => 42], address: '2001:db8:4::1')->getStatusCode());
@@ -204,7 +230,10 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(['d', 'e', 'g'], $this->pdo->query('SELECT message FROM anotoki_feedback WHERE user_id IS NOT NULL ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
 
         // A count 0.4.1 wrote (`sent`) is read as the visitors'.
-        file_put_contents($this->path('storage/' . Feedback::LIMITS_FILE), (string) json_encode(['v' => 1, 'sent' => [hash_hmac('sha256', '198.51.100.20', self::KEY) => [time() - 90, time() - 60, time() - 30]]]));
+        file_put_contents(
+            $this->path('storage/' . Feedback::LIMITS_FILE),
+            (string) json_encode(['v' => 1, 'sent' => [hash_hmac('sha256', '198.51.100.20', self::KEY) => [time() - 90, time() - 60, time() - 30]]]),
+        );
         self::assertSame(429, $this->post($app, ['kind' => 'idea', 'message' => 'i'], address: '198.51.100.21')->getStatusCode(), 'three visitors already today');
     }
 
@@ -224,7 +253,7 @@ final class FeedbackTest extends DatabaseTestCase
     public function testFeedbackNeedsTheStorageFolderToCountIn(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new Feedback(fn (): PDO => $this->pdo, ['key' => self::KEY]);
+        new Feedback(fn(): PDO => $this->pdo, ['key' => self::KEY]);
     }
 
     public function testOnlySignedInWhereTheSiteSaysSo(): void
@@ -237,7 +266,7 @@ final class FeedbackTest extends DatabaseTestCase
 
     public function testTheAdminPage(): void
     {
-        $audit = new AuditLog(fn (): PDO => $this->pdo);
+        $audit = new AuditLog(fn(): PDO => $this->pdo);
         $app = $this->app([], $audit);
         $this->post($app, ['kind' => 'bug', 'subject' => 'Broken', 'message' => 'It broke', 'section' => 'Characters', 'details' => ['steps' => 'Click the talent']], person: ['id' => 42]);
         $this->post($app, ['kind' => 'idea', 'message' => 'More weapons']);
@@ -282,10 +311,10 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(2, (int) $this->value('SELECT count(*) FROM anotoki_feedback'), 'neither deleted anything');
 
         $entries = $this->rows('SELECT actor_id, action, target_type, target_id, details FROM anotoki_audit_log ORDER BY id');
-        self::assertSame([[7, 'feedback.status_changed', 'feedback', (string) $id], [7, 'feedback.deleted', 'feedback', (string) $id]], array_map(
-            static fn (array $row): array => [$row['actor_id'], $row['action'], $row['target_type'], $row['target_id']],
-            $entries
-        ));
+        self::assertSame(
+            [[7, 'feedback.status_changed', 'feedback', (string) $id], [7, 'feedback.deleted', 'feedback', (string) $id]],
+            array_map(static fn(array $row): array => [$row['actor_id'], $row['action'], $row['target_type'], $row['target_id']], $entries),
+        );
         self::assertSame(['to' => 'resolved', 'from' => 'read'], json_decode((string) $entries[0]['details'], true));
         $deleted = json_decode((string) $entries[1]['details'], true);
         self::assertMatchesRegularExpression('/^[0-9]+$/D', $deleted['_txid'], 'written inside the delete\'s transaction, which it names');
@@ -300,9 +329,11 @@ final class FeedbackTest extends DatabaseTestCase
     public function testWithTheLibrarysAuditLogADeleteIsNeverMadeWithoutItsEntry(): void
     {
         $moved = false;
-        $audit = new AuditLog(fn (): PDO => $this->pdo, ['ready' => static function () use (&$moved): bool {
-            return $moved;
-        }]);
+        $audit = new AuditLog(fn(): PDO => $this->pdo, [
+            'ready' => static function () use (&$moved): bool {
+                return $moved;
+            },
+        ]);
         $app = $this->app([], $audit);
         $this->post($app, ['kind' => 'bug', 'message' => 'Delete me at my asking']);
         $this->post($app, ['kind' => 'idea', 'message' => 'Keep me']);
@@ -360,10 +391,19 @@ final class FeedbackTest extends DatabaseTestCase
         self::assertSame(['new old', 'resolved new', 'spam new'], $this->pdo->query('SELECT message FROM anotoki_feedback ORDER BY message')->fetchAll(PDO::FETCH_COLUMN));
 
         self::assertSame(3, $feedback->forgetPeople([5, 'x']));
-        self::assertSame([[null, null, 5]], array_values(array_unique(array_map(
-            static fn (array $row): array => [$row['contact_email'], $row['user_agent'], $row['user_id']],
-            $this->rows('SELECT contact_email, user_agent, user_id FROM anotoki_feedback')
-        ), SORT_REGULAR)), 'the message stays; the address and the browser go');
+        self::assertSame(
+            [[null, null, 5]],
+            array_values(
+                array_unique(
+                    array_map(
+                        static fn(array $row): array => [$row['contact_email'], $row['user_agent'], $row['user_id']],
+                        $this->rows('SELECT contact_email, user_agent, user_id FROM anotoki_feedback'),
+                    ),
+                    SORT_REGULAR,
+                ),
+            ),
+            'the message stays; the address and the browser go',
+        );
     }
 
     public function testThePruneRunsOnceADayAfterTheAnswer(): void
@@ -374,15 +414,17 @@ final class FeedbackTest extends DatabaseTestCase
         $feedback->pruneIfDue();
         $feedback->pruneIfDue();
         self::assertCount(1, $this->deferred, 'once a day');
-        ($this->deferred[0])();
+        $this->deferred[0]();
         self::assertFileExists($storage . '/cache/anotoki-feedback-prune.stamp');
     }
 
     public function testASiteMayBeToldOfEveryMessageAfterTheAnswer(): void
     {
-        $app = $this->app(['notify' => function (array $message): void {
-            $this->notified[] = $message;
-        }]);
+        $app = $this->app([
+            'notify' => function (array $message): void {
+                $this->notified[] = $message;
+            },
+        ]);
 
         $this->post($app, ['kind' => 'idea', 'message' => 'Tell me']);
 
@@ -396,9 +438,12 @@ final class FeedbackTest extends DatabaseTestCase
     public function testANotifyThatFailsWithNoRunnerIsTheLibrarysLogLineRedacted(): void
     {
         LogLines::take();
-        $app = $this->app(['defer' => null, 'notify' => static function (array $message): void {
-            throw new \RuntimeException('no mail went to owner@example.test');
-        }]);
+        $app = $this->app([
+            'defer' => null,
+            'notify' => static function (array $message): void {
+                throw new \RuntimeException('no mail went to owner@example.test');
+            },
+        ]);
 
         self::assertSame(201, $this->post($app, ['kind' => 'idea', 'message' => 'Tell me'])->getStatusCode(), 'the message is kept all the same');
         self::assertSame(['[feedback] no mail went to {email}'], LogLines::take());
@@ -409,15 +454,18 @@ final class FeedbackTest extends DatabaseTestCase
     /** @param array<string, mixed> $options */
     private function feedback(array $options = []): Feedback
     {
-        return new Feedback(fn (): PDO => $this->pdo, $options + [
-            'key' => self::KEY,
-            'storage' => $this->path('storage'),
-            'sections' => ['Characters', 'Weapons'],
-            'fields' => ['steps' => 2000, 'expected' => 2000],
-            'defer' => function (callable $work): void {
-                $this->deferred[] = $work;
-            },
-        ]);
+        return new Feedback(
+            fn(): PDO => $this->pdo,
+            $options + [
+                'key' => self::KEY,
+                'storage' => $this->path('storage'),
+                'sections' => ['Characters', 'Weapons'],
+                'fields' => ['steps' => 2000, 'expected' => 2000],
+                'defer' => function (callable $work): void {
+                    $this->deferred[] = $work;
+                },
+            ],
+        );
     }
 
     /** @param array<string, mixed> $options */
@@ -426,7 +474,7 @@ final class FeedbackTest extends DatabaseTestCase
         $feedback = $this->feedback($options);
         $context = new AdminContext(
             // X-Test-Admin: yes is the site's ADMIN (7); any other value somebody else (9); none, nobody.
-            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? ($request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : 9) : null,
+            static fn(ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? ($request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : 9) : null,
             null,
             AdminContext::PROOF_RECENT_SIGN_IN,
             // The site's address: a trusted proxy's header from the trusted proxy alone, else the connection's.
@@ -436,7 +484,7 @@ final class FeedbackTest extends DatabaseTestCase
 
                 return $address === self::PROXY && filter_var($forwarded, FILTER_VALIDATE_IP) !== false ? $forwarded : $address;
             },
-            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+            isAdmin: static fn(ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
         );
         $app = AppFactory::create();
         FeedbackRoutes::public($app, '/api/feedback', $feedback, $context, static function (ServerRequestInterface $request): ?array {
@@ -445,7 +493,7 @@ final class FeedbackTest extends DatabaseTestCase
             return $person === '' ? null : json_decode($person, true);
         });
         // Nothing of the site's on the group: the library's own check is the ADMIN's.
-        FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, static fn (array $ids): array => array_intersect_key([42 => 'Ana', 7 => 'Bo'], array_flip($ids)));
+        FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, static fn(array $ids): array => array_intersect_key([42 => 'Ana', 7 => 'Bo'], array_flip($ids)));
 
         return $app;
     }
@@ -466,7 +514,7 @@ final class FeedbackTest extends DatabaseTestCase
         $count = $this->limits();
         foreach (['visitors', 'accounts'] as $kind) {
             foreach ($count[$kind] as $sender => $times) {
-                $count[$kind][$sender] = array_map(static fn (int $at): int => $at - $seconds, $times);
+                $count[$kind][$sender] = array_map(static fn(int $at): int => $at - $seconds, $times);
             }
             $count[$kind] = (object) array_diff_key($count[$kind], array_flip($without));
         }

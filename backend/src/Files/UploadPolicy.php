@@ -43,36 +43,97 @@ final class UploadPolicy
 {
     /** Parts of a name a server could run, or read as its configuration, or a browser could run as a page. */
     public const DENIED_PARTS = [
-        'php', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8', 'phtml', 'pht', 'phps', 'phar', 'cgi', 'pl', 'py', 'rb', 'sh',
-        'asp', 'aspx', 'jsp', 'shtml', 'htaccess', 'htpasswd', 'ini', 'html', 'htm', 'xhtml', 'svg', 'svgz', 'js', 'mjs',
-        'xml', 'exe', 'dll',
+        'php',
+        'php3',
+        'php4',
+        'php5',
+        'php6',
+        'php7',
+        'php8',
+        'phtml',
+        'pht',
+        'phps',
+        'phar',
+        'cgi',
+        'pl',
+        'py',
+        'rb',
+        'sh',
+        'asp',
+        'aspx',
+        'jsp',
+        'shtml',
+        'htaccess',
+        'htpasswd',
+        'ini',
+        'html',
+        'htm',
+        'xhtml',
+        'svg',
+        'svgz',
+        'js',
+        'mjs',
+        'xml',
+        'exe',
+        'dll',
     ];
 
     /** The handlers the guard takes away - genshin's list, word for word (upload_guard.php). */
-    public const GUARDED_HANDLERS = [
-        'php', 'phtml', 'phar', 'pht', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8', 'phps', 'cgi', 'pl', 'py', 'sh',
-        'asp', 'aspx', 'jsp', 'shtml',
-    ];
+    public const GUARDED_HANDLERS = ['php', 'phtml', 'phar', 'pht', 'php3', 'php4', 'php5', 'php6', 'php7', 'php8', 'phps', 'cgi', 'pl', 'py', 'sh', 'asp', 'aspx', 'jsp', 'shtml'];
 
     /** What each extension a root may take is, and what its bytes must look like. */
     public const FAMILIES = [
-        'jpg' => 'image', 'jpeg' => 'image', 'png' => 'image', 'gif' => 'image', 'webp' => 'image', 'avif' => 'image',
-        'bmp' => 'image', 'ico' => 'image',
-        'ogg' => 'audio', 'oga' => 'audio', 'opus' => 'audio', 'mp3' => 'audio', 'wav' => 'audio', 'm4a' => 'audio',
-        'flac' => 'audio', 'weba' => 'audio',
-        'mp4' => 'video', 'webm' => 'video',
-        'txt' => 'text', 'csv' => 'text', 'md' => 'text', 'json' => 'text', 'log' => 'text',
+        'jpg' => 'image',
+        'jpeg' => 'image',
+        'png' => 'image',
+        'gif' => 'image',
+        'webp' => 'image',
+        'avif' => 'image',
+        'bmp' => 'image',
+        'ico' => 'image',
+        'ogg' => 'audio',
+        'oga' => 'audio',
+        'opus' => 'audio',
+        'mp3' => 'audio',
+        'wav' => 'audio',
+        'm4a' => 'audio',
+        'flac' => 'audio',
+        'weba' => 'audio',
+        'mp4' => 'video',
+        'webm' => 'video',
+        'txt' => 'text',
+        'csv' => 'text',
+        'md' => 'text',
+        'json' => 'text',
+        'log' => 'text',
         'pdf' => 'pdf',
     ];
 
     /** What each extension is served as. */
     public const TYPES = [
-        'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp',
-        'avif' => 'image/avif', 'bmp' => 'image/bmp', 'ico' => 'image/x-icon',
-        'ogg' => 'audio/ogg', 'oga' => 'audio/ogg', 'opus' => 'audio/ogg', 'mp3' => 'audio/mpeg', 'wav' => 'audio/wav',
-        'm4a' => 'audio/mp4', 'flac' => 'audio/flac', 'weba' => 'audio/webm',
-        'mp4' => 'video/mp4', 'webm' => 'video/webm',
-        'txt' => 'text/plain', 'csv' => 'text/csv', 'md' => 'text/markdown', 'json' => 'application/json', 'log' => 'text/plain',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'avif' => 'image/avif',
+        'bmp' => 'image/bmp',
+        'ico' => 'image/x-icon',
+        'ogg' => 'audio/ogg',
+        'oga' => 'audio/ogg',
+        'opus' => 'audio/ogg',
+        'mp3' => 'audio/mpeg',
+        'wav' => 'audio/wav',
+        'm4a' => 'audio/mp4',
+        'flac' => 'audio/flac',
+        'weba' => 'audio/webm',
+        'mp4' => 'video/mp4',
+        'webm' => 'video/webm',
+        'txt' => 'text/plain',
+        'csv' => 'text/csv',
+        'md' => 'text/markdown',
+        'json' => 'application/json',
+        'log' => 'text/plain',
         'pdf' => 'application/pdf',
     ];
 
@@ -81,8 +142,13 @@ final class UploadPolicy
 
     /** What getimagesize() must say each picture is. */
     private const IMAGE_TYPES = [
-        'jpg' => [IMAGETYPE_JPEG], 'jpeg' => [IMAGETYPE_JPEG], 'png' => [IMAGETYPE_PNG], 'gif' => [IMAGETYPE_GIF],
-        'webp' => [IMAGETYPE_WEBP], 'bmp' => [IMAGETYPE_BMP], 'ico' => [IMAGETYPE_ICO],
+        'jpg' => [IMAGETYPE_JPEG],
+        'jpeg' => [IMAGETYPE_JPEG],
+        'png' => [IMAGETYPE_PNG],
+        'gif' => [IMAGETYPE_GIF],
+        'webp' => [IMAGETYPE_WEBP],
+        'bmp' => [IMAGETYPE_BMP],
+        'ico' => [IMAGETYPE_ICO],
     ];
 
     /**
@@ -279,7 +345,7 @@ final class UploadPolicy
     {
         return match ($extension) {
             'ogg', 'oga', 'opus' => str_starts_with($head, 'OggS'),
-            'mp3' => str_starts_with($head, 'ID3') || (strlen($head) > 1 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0),
+            'mp3' => str_starts_with($head, 'ID3') || (strlen($head) > 1 && ord($head[0]) === 0xff && (ord($head[1]) & 0xe0) === 0xe0),
             'wav' => str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WAVE',
             'm4a', 'mp4' => self::isoFile($head),
             'flac' => str_starts_with($head, 'fLaC'),

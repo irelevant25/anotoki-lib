@@ -55,7 +55,7 @@ final class PeopleRoutesTest extends DatabaseTestCase
         $this->iam->signInRule(true);
         SiteShapes::create($this->pdo, 'piano');
         self::assertNull($this->migrator([$this->set('site'), Schema::migrationSet()])->apply()['error']);
-        $this->people = new People(SiteShapes::table('piano'), fn (): PDO => $this->pdo, $this->iam->client());
+        $this->people = new People(SiteShapes::table('piano'), fn(): PDO => $this->pdo, $this->iam->client());
     }
 
     protected function tearDown(): void
@@ -109,7 +109,7 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertSame(['1000'], array_column($this->json($this->send('GET', self::BASE . '?q=' . rawurlencode('ľudmila'), $this->admin()))['people'], 'sub'), 'any case, anywhere in the name');
         $fives = $this->json($this->send('GET', self::BASE . '?q=5', $this->admin()));
         self::assertSame(11, $fives['total'], 'person 5, 15, 25, 35, 45, 50 to 55 - and id 5 among them');
-        self::assertSame([], array_filter(array_column($fives['people'], 'name'), static fn (string $name): bool => !str_contains($name, '5')));
+        self::assertSame([], array_filter(array_column($fives['people'], 'name'), static fn(string $name): bool => !str_contains($name, '5')));
         $byId = array_column($this->json($this->send('GET', self::BASE . '?q=1000', $this->admin()))['people'], 'sub');
         self::assertSame(['1000'], $byId, 'an id');
         self::assertSame([], $this->json($this->send('GET', self::BASE . '?q=' . rawurlencode("' OR 1=1 --"), $this->admin()))['people']);
@@ -187,12 +187,20 @@ final class PeopleRoutesTest extends DatabaseTestCase
     {
         $this->person(7, 'alice', '1 hour');
         $this->iam->anonymized(['7' => '2026-11-06T10:00:00Z']);
-        $audit = new class () implements AuditRecorder {
+        $audit = new class implements AuditRecorder {
             /** @var list<array{int|string|null, string, ?string, int|string|null, array<string, mixed>}> */
             public array $entries = [];
 
-            public function record(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType = null, int|string|null $targetId = null, array $details = [], ?array $scope = null, ?string $session = null): void
-            {
+            public function record(
+                ?ServerRequestInterface $request,
+                int|string|null $actorId,
+                string $action,
+                ?string $targetType = null,
+                int|string|null $targetId = null,
+                array $details = [],
+                ?array $scope = null,
+                ?string $session = null,
+            ): void {
                 $this->entries[] = [$actorId, $action, $targetType, $targetId, $details];
             }
         };
@@ -201,14 +209,15 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertSame(404, $this->sendTo($app, 'DELETE', self::BASE . '/8', $this->admin())->getStatusCode());
         self::assertSame(200, $this->sendTo($app, 'DELETE', self::BASE . '/7', $this->admin())->getStatusCode());
         self::assertSame(200, $this->sendTo($app, 'POST', self::BASE . '/sync', $this->admin())->getStatusCode());
-        self::assertSame([
-            [1, 'person.data_deleted', 'user', '7', ['deleted' => ['Progress' => 0]]],
-            [1, 'people.synced', null, null, ['state' => 'done', 'handled' => 1, 'scrubbed' => 1]],
-        ], $audit->entries, 'who acted - the token\'s sub - and what went; nobody found is nothing done');
+        self::assertSame(
+            [[1, 'person.data_deleted', 'user', '7', ['deleted' => ['Progress' => 0]]], [1, 'people.synced', null, null, ['state' => 'done', 'handled' => 1, 'scrubbed' => 1]]],
+            $audit->entries,
+            'who acted - the token\'s sub - and what went; nobody found is nothing done',
+        );
 
         // The site's AdminContext names who acts, where it gives one.
         $audit->entries = [];
-        $withContext = $this->app(audit: $audit, context: new AdminContext(static fn (): string => 'admin-1'));
+        $withContext = $this->app(audit: $audit, context: new AdminContext(static fn(): string => 'admin-1'));
         $this->sendTo($withContext, 'POST', self::BASE . '/sync', $this->admin());
         self::assertSame('admin-1', $audit->entries[0][0]);
         self::assertSame('people.synced', $audit->entries[0][1]);
@@ -221,7 +230,7 @@ final class PeopleRoutesTest extends DatabaseTestCase
         foreach ([7, 8] as $sub) {
             $this->pdo->exec("INSERT INTO progress (user_id, notes) VALUES ($sub, '{}')");
         }
-        $app = $this->app(audit: new AuditLog(fn (): PDO => $this->pdo));
+        $app = $this->app(audit: new AuditLog(fn(): PDO => $this->pdo));
 
         // The audit log's table waits for its update: nothing is deleted, as no entry could say so.
         $waiting = $this->sendTo($app, 'DELETE', self::BASE . '/7', $this->admin());
@@ -262,7 +271,11 @@ final class PeopleRoutesTest extends DatabaseTestCase
             self::assertSame(422, $response->getStatusCode(), $case);
             self::assertSame(['code' => 'invalid_query', 'message' => 'That search is not text a name could hold.'], $this->json($response), $case);
         }
-        self::assertSame(['7'], array_column($this->json($this->send('GET', self::BASE . '?q=' . rawurlencode("\0ALI "), $this->admin()))['people'], 'sub'), 'a NUL at an end is trimmed, as a space is');
+        self::assertSame(
+            ['7'],
+            array_column($this->json($this->send('GET', self::BASE . '?q=' . rawurlencode("\0ALI "), $this->admin()))['people'], 'sub'),
+            'a NUL at an end is trimmed, as a space is',
+        );
     }
 
     public function testWithoutTheTableOrTheColumn(): void
@@ -332,7 +345,7 @@ final class PeopleRoutesTest extends DatabaseTestCase
         // A site's own runner, given as `defer`, gets the work instead.
         AfterResponse::shared()->clear();
         $own = [];
-        $withOwn = new PeopleUpkeep($this->people, static fn (): bool => true, function (callable $work) use (&$own): void {
+        $withOwn = new PeopleUpkeep($this->people, static fn(): bool => true, function (callable $work) use (&$own): void {
             $own[] = $work;
         });
         touch($stamp, time() - 3601);
@@ -340,8 +353,8 @@ final class PeopleRoutesTest extends DatabaseTestCase
         self::assertCount(1, $own);
         self::assertSame(0, AfterResponse::shared()->pending());
 
-        $noCache = new People(SiteShapes::table('piano'), fn (): PDO => $this->pdo, $this->iam->client(['cache_dir' => null]));
-        self::assertFalse((new PeopleUpkeep($noCache, static fn (): bool => true))->soon(), 'no cache folder, no stamp, no run');
+        $noCache = new People(SiteShapes::table('piano'), fn(): PDO => $this->pdo, $this->iam->client(['cache_dir' => null]));
+        self::assertFalse((new PeopleUpkeep($noCache, static fn(): bool => true))->soon(), 'no cache folder, no stamp, no run');
     }
 
     public function testAPieceOfWorkAfterTheAnswerThatFailsStopsNothing(): void
@@ -375,8 +388,13 @@ final class PeopleRoutesTest extends DatabaseTestCase
      * @param ?RequireRole $siteCheck  the site's own check on the group (none: the group's own alone)
      * @param bool $inStaffGroup  mounted inside the site's admin group, which lets EDITORs in
      */
-    private function app(?PeopleUpkeep $upkeep = null, ?RequireRole $siteCheck = new RequireRole(['ADMIN']), bool $inStaffGroup = false, ?AuditRecorder $audit = null, ?AdminContext $context = null): App
-    {
+    private function app(
+        ?PeopleUpkeep $upkeep = null,
+        ?RequireRole $siteCheck = new RequireRole(['ADMIN']),
+        bool $inStaffGroup = false,
+        ?AuditRecorder $audit = null,
+        ?AdminContext $context = null,
+    ): App {
         $app = AppFactory::create();
         $client = $this->iam->client();
         $echo = static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
@@ -393,10 +411,17 @@ final class PeopleRoutesTest extends DatabaseTestCase
                 $where,
                 $base,
                 $this->people,
-                columns: [new PeopleColumn('notes', 'Notes', 'count', static fn (PDO $pdo, array $subs): array => $pdo->query(
-                    'SELECT user_id, (SELECT count(*) FROM jsonb_object_keys(notes)) FROM progress WHERE user_id IN (' . implode(',', array_map('intval', $subs)) . ')'
-                )->fetchAll(PDO::FETCH_KEY_PAIR))],
-                visitors: static fn (PDO $pdo): array => ['count' => (int) $pdo->query('SELECT count(*) FROM users WHERE id < 0')->fetchColumn()],
+                columns: [
+                    new PeopleColumn(
+                        'notes',
+                        'Notes',
+                        'count',
+                        static fn(PDO $pdo, array $subs): array => $pdo
+                            ->query('SELECT user_id, (SELECT count(*) FROM jsonb_object_keys(notes)) FROM progress WHERE user_id IN (' . implode(',', array_map('intval', $subs)) . ')')
+                            ->fetchAll(PDO::FETCH_KEY_PAIR),
+                    ),
+                ],
+                visitors: static fn(PDO $pdo): array => ['count' => (int) $pdo->query('SELECT count(*) FROM users WHERE id < 0')->fetchColumn()],
                 delete: function (PDO $pdo, int $sub): ?array {
                     $this->deleted[] = $sub;
                     $this->transactions[] = (string) $pdo->query('SELECT txid_current()')->fetchColumn();
@@ -442,7 +467,8 @@ final class PeopleRoutesTest extends DatabaseTestCase
 
     private function person(int $sub, ?string $name, string $seenAgo): void
     {
-        $this->pdo->prepare("INSERT INTO users (id, preferred_username, last_seen_at, created_at) VALUES (?, ?, now() - CAST(? AS interval), now() - interval '1 year')")
+        $this->pdo
+            ->prepare("INSERT INTO users (id, preferred_username, last_seen_at, created_at) VALUES (?, ?, now() - CAST(? AS interval), now() - interval '1 year')")
             ->execute([$sub, $name, $seenAgo]);
     }
 

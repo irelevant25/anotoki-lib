@@ -28,12 +28,8 @@ final class PeopleColumn
     /**
      * @param Closure(\PDO $pdo, list<int> $subs): array<int|string, mixed> $values
      */
-    public function __construct(
-        public readonly string $key,
-        public readonly string $label,
-        public readonly string $kind,
-        public readonly Closure $values,
-    ) {
+    public function __construct(public readonly string $key, public readonly string $label, public readonly string $kind, public readonly Closure $values)
+    {
         if (preg_match('/^[a-z][a-z0-9_]{0,40}$/D', $key) !== 1 || in_array($key, self::RESERVED, true)) {
             throw new InvalidArgumentException("PeopleColumn: \"$key\" is no key of the site's own (snake_case, and not " . implode(', ', self::RESERVED) . ').');
         }

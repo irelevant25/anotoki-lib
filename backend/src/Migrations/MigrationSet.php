@@ -30,21 +30,14 @@ final class MigrationSet
     /**
      * @param bool $library  a set the library ships - MigrationSet::library() says it more plainly
      */
-    public function __construct(
-        public readonly string $name,
-        public readonly string $directory,
-        public readonly bool $library = false,
-    ) {
+    public function __construct(public readonly string $name, public readonly string $directory, public readonly bool $library = false)
+    {
         // At most 64 characters: genshin's `folder` column is a VARCHAR(64).
         if ($library && preg_match('/^anotoki_[a-z0-9_]{1,56}$/D', $name) !== 1) {
-            throw new InvalidArgumentException(
-                "A library migration set is named anotoki_ and small letters, digits or _, at most 64 characters: \"$name\" is not."
-            );
+            throw new InvalidArgumentException("A library migration set is named anotoki_ and small letters, digits or _, at most 64 characters: \"$name\" is not.");
         }
         if (!$library && str_starts_with($name, self::LIBRARY_PREFIX)) {
-            throw new InvalidArgumentException(
-                "The names that begin with anotoki_ are kept for the library's migration sets: give the set \"$name\" another name."
-            );
+            throw new InvalidArgumentException("The names that begin with anotoki_ are kept for the library's migration sets: give the set \"$name\" another name.");
         }
     }
 

@@ -23,7 +23,7 @@ final class Throttle
      */
     public static function due(string $stampFile, int $seconds): bool
     {
-        return self::claim($stampFile, static fn (string $stamp): bool => !ctype_digit($stamp) || (int) $stamp <= time() - $seconds || (int) $stamp > time(), (string) time());
+        return self::claim($stampFile, static fn(string $stamp): bool => !ctype_digit($stamp) || (int) $stamp <= time() - $seconds || (int) $stamp > time(), (string) time());
     }
 
     /**
@@ -32,7 +32,7 @@ final class Throttle
      */
     public static function once(string $stampFile, string $period): bool
     {
-        return self::claim($stampFile, static fn (string $stamp): bool => $stamp !== $period, $period);
+        return self::claim($stampFile, static fn(string $stamp): bool => $stamp !== $period, $period);
     }
 
     /** @param \Closure(string): bool $isDue */

@@ -21,17 +21,17 @@ final class SqlLiteralsTest extends TestCase
     public function testTheRuleCatchesWhatBroke(): void
     {
         $broke = <<<'PHP'
-            "action LIKE ? ESCAPE '\\'"
-            PHP;
+        "action LIKE ? ESCAPE '\\'"
+        PHP;
         $fixed = <<<'PHP'
-            'action LIKE ?'
-            PHP;
+        'action LIKE ?'
+        PHP;
         $quotesEscapedForPhp = <<<'PHP'
-            'SELECT 1 WHERE a.attgenerated <> \'\''
-            PHP;
+        'SELECT 1 WHERE a.attgenerated <> \'\''
+        PHP;
         $backslashesForCopy = <<<'PHP'
-            'SELECT \\\\N'
-            PHP;
+        'SELECT \\\\N'
+        PHP;
 
         self::assertTrue(self::misread($broke), '0.4.0\'s clause');
         self::assertFalse(self::misread($fixed));

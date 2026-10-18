@@ -66,12 +66,16 @@ final class IamClient
         // No issuer is a site not set up yet (every token refused, signing in required); a wrong one is refused here.
         foreach (['issuer' => $this->issuer === '' ? null : $this->issuer, 'jwks_url' => $jwksUrl] as $name => $address) {
             if ($address !== null && !self::secureAddress($address)) {
-                throw new InvalidArgumentException("IamClient: the $name is an https address - http only on this computer (localhost, 127.0.0.1, [::1]) - and \"" . self::shown($address) . '" is not.');
+                throw new InvalidArgumentException(
+                    "IamClient: the $name is an https address - http only on this computer (localhost, 127.0.0.1, [::1]) - and \"" . self::shown($address) . '" is not.',
+                );
             }
         }
 
-        foreach (['cacheTtl' => $cacheTtl, 'httpTimeout' => $httpTimeout, 'applicationTtl' => $applicationTtl,
-            'applicationTimeout' => $applicationTimeout, 'anonymizedTimeout' => $anonymizedTimeout] as $name => $value) {
+        foreach (
+            ['cacheTtl' => $cacheTtl, 'httpTimeout' => $httpTimeout, 'applicationTtl' => $applicationTtl, 'applicationTimeout' => $applicationTimeout, 'anonymizedTimeout' => $anonymizedTimeout]
+            as $name => $value
+        ) {
             if ($value < 1) {
                 throw new InvalidArgumentException("IamClient: $name must be at least 1 second.");
             }
@@ -90,8 +94,8 @@ final class IamClient
      */
     public static function fromArray(array $config): self
     {
-        $text = static fn (string $key): ?string => isset($config[$key]) && is_string($config[$key]) && trim($config[$key]) !== '' ? trim($config[$key]) : null;
-        $int = static fn (string $key, int $default): int => isset($config[$key]) && is_numeric($config[$key]) ? (int) $config[$key] : $default;
+        $text = static fn(string $key): ?string => isset($config[$key]) && is_string($config[$key]) && trim($config[$key]) !== '' ? trim($config[$key]) : null;
+        $int = static fn(string $key, int $default): int => isset($config[$key]) && is_numeric($config[$key]) ? (int) $config[$key] : $default;
 
         return new self(
             issuer: $text('issuer') ?? '',
@@ -196,9 +200,7 @@ final class IamClient
             return $directory;
         }
 
-        $why = $directory === null || $directory === ''
-            ? 'no cache_dir is configured'
-            : "the cache_dir $directory cannot be made";
+        $why = $directory === null || $directory === '' ? 'no cache_dir is configured' : "the cache_dir $directory cannot be made";
         if (!isset($said[$why])) {
             $said[$why] = true;
             Log::say("[anotoki auth] $why: the IAM's keys and its answer about signing in are asked on every request.");

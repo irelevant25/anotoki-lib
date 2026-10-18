@@ -120,10 +120,7 @@ final class Identify implements MiddlewareInterface
                 return $this->refuse(new Refusal(401, 'invalid_token', 'Your sign-in has run out. Please sign in again.'));
             }
 
-            return $handler->handle($request
-                ->withAttribute(self::PERSON, $person)
-                ->withAttribute(self::VISITOR, null)
-                ->withAttribute(self::CALLER, 'person'));
+            return $handler->handle($request->withAttribute(self::PERSON, $person)->withAttribute(self::VISITOR, null)->withAttribute(self::CALLER, 'person'));
         }
 
         $nobody = $request->withAttribute(self::PERSON, null)->withAttribute(self::VISITOR, null)->withAttribute(self::CALLER, 'nobody');
@@ -157,14 +154,14 @@ final class Identify implements MiddlewareInterface
     /** person, visitor or nobody. */
     public static function caller(ServerRequestInterface $request): string
     {
-        return (string) (self::of($request)->callerOf($request));
+        return (string) self::of($request)->callerOf($request);
     }
 
     /** The Identify a request went through; a LogicException when it went through none (a route set up wrong). */
     public static function of(ServerRequestInterface $request): self
     {
         $identify = $request->getAttribute(self::SELF);
-        if (!$identify instanceof self) {
+        if (!($identify instanceof self)) {
             throw new LogicException('Who a request is is not known here: add Identify in front of RequirePerson, RequireRole, RequireCaller and SignInGate.');
         }
 
@@ -184,9 +181,7 @@ final class Identify implements MiddlewareInterface
     public function refuse(Refusal $refusal): ResponseInterface
     {
         $response = $this->responses->createResponse();
-        $response = $this->responder !== null
-            ? ($this->responder)($response->withStatus($refusal->status), $refusal)
-            : JsonResponse::write($response, $refusal->status, $refusal->body());
+        $response = $this->responder !== null ? ($this->responder)($response->withStatus($refusal->status), $refusal) : JsonResponse::write($response, $refusal->status, $refusal->body());
 
         if ($refusal->status === 401) {
             $challenge = 'Bearer realm="' . $this->realm . '"' . ($refusal->code === 'invalid_token' ? ', error="invalid_token"' : '');

@@ -91,8 +91,24 @@ final class ErrorLog
     public const EXPECTED_CODES = ['update_pending', 'feature_unavailable', 'not_set_up'];
 
     private const OPTIONS = [
-        'root', 'context', 'clientKey', 'actorId', 'days', 'responses', 'key', 'storage', 'maxBytes', 'totalBytes',
-        'ignore', 'ignoreExceptions', 'app', 'clientLimits', 'perFingerprintDay', 'expected', 'trustedProxies', 'clientHeader',
+        'root',
+        'context',
+        'clientKey',
+        'actorId',
+        'days',
+        'responses',
+        'key',
+        'storage',
+        'maxBytes',
+        'totalBytes',
+        'ignore',
+        'ignoreExceptions',
+        'app',
+        'clientLimits',
+        'perFingerprintDay',
+        'expected',
+        'trustedProxies',
+        'clientHeader',
     ];
 
     private readonly string $directory;
@@ -189,7 +205,7 @@ final class ErrorLog
         $this->root = is_string($root) && $root !== '' ? str_replace('\\', '/', rtrim((string) (realpath($root) ?: $root), '/\\')) . '/' : null;
 
         $context = $options['context'] ?? null;
-        if ($context !== null && !$context instanceof AdminContext) {
+        if ($context !== null && !($context instanceof AdminContext)) {
             throw new InvalidArgumentException('The option context must be an AdminContext.');
         }
         $this->clientKey = $options['clientKey'] ?? ($context !== null ? $context->clientKey(...) : null);
@@ -204,7 +220,7 @@ final class ErrorLog
             $this->responses = $responses;
         } elseif (is_array($responses)) {
             $list = array_map('intval', $responses);
-            $this->responses = static fn (int $status): bool => $status >= 500 || in_array($status, $list, true);
+            $this->responses = static fn(int $status): bool => $status >= 500 || in_array($status, $list, true);
         } else {
             throw new InvalidArgumentException('The option responses is a list of statuses or a closure.');
         }
@@ -221,7 +237,7 @@ final class ErrorLog
         $this->ignored = array_values(array_map('strval', $options['ignore'] ?? []));
         $this->ignoreExceptions = array_values($options['ignoreExceptions'] ?? []);
         $app = $options['app'] ?? null;
-        if ($app !== null && !$app instanceof App) {
+        if ($app !== null && !($app instanceof App)) {
             throw new InvalidArgumentException('The option app must be the Slim App.');
         }
         $this->app = $app;
@@ -298,17 +314,20 @@ final class ErrorLog
                 $code = is_string($state) && preg_match('/^[0-9A-Z]{5}$/D', $state) === 1 ? $state : null;
             }
 
-            $this->write([
-                'source' => 'server',
-                'level' => $status >= 500 ? 'error' : 'warning',
-                'status' => $status,
-                'type' => $this->className($exception::class),
-                'code' => $code,
-                'message' => Redactor::text($exception->getMessage()),
-                'file' => $this->relative($exception->getFile()),
-                'line' => $exception->getLine(),
-                'trace' => $this->traceWithCauses($exception),
-            ], $request);
+            $this->write(
+                [
+                    'source' => 'server',
+                    'level' => $status >= 500 ? 'error' : 'warning',
+                    'status' => $status,
+                    'type' => $this->className($exception::class),
+                    'code' => $code,
+                    'message' => Redactor::text($exception->getMessage()),
+                    'file' => $this->relative($exception->getFile()),
+                    'line' => $exception->getLine(),
+                    'trace' => $this->traceWithCauses($exception),
+                ],
+                $request,
+            );
             $this->markHandled($request);
         });
     }
@@ -331,14 +350,17 @@ final class ErrorLog
                 return;
             }
 
-            $this->write([
-                'source' => 'server',
-                'level' => $status >= 500 ? 'error' : 'warning',
-                'status' => $status,
-                'type' => 'Response',
-                'code' => $code,
-                'message' => $sentence === null ? '' : Redactor::text($sentence),
-            ], $request);
+            $this->write(
+                [
+                    'source' => 'server',
+                    'level' => $status >= 500 ? 'error' : 'warning',
+                    'status' => $status,
+                    'type' => 'Response',
+                    'code' => $code,
+                    'message' => $sentence === null ? '' : Redactor::text($sentence),
+                ],
+                $request,
+            );
         });
     }
 
@@ -365,15 +387,18 @@ final class ErrorLog
             // A fatal error's message may carry its own trace ("Stack trace:\n#0 ..."), arguments and all.
             $message = preg_split('/\R(?:Stack trace:|#0 )/', $message, 2)[0] ?? $message;
 
-            $this->write([
-                'source' => 'php',
-                'level' => $fatal ? 'error' : (($type & self::WARNING) !== 0 ? 'warning' : 'notice'),
-                'status' => $fatal ? 500 : 0,
-                'type' => self::phpErrorName($type),
-                'message' => Redactor::text($message),
-                'file' => $this->relative((string) ($error['file'] ?? '')),
-                'line' => (int) ($error['line'] ?? 0),
-            ], $request);
+            $this->write(
+                [
+                    'source' => 'php',
+                    'level' => $fatal ? 'error' : (($type & self::WARNING) !== 0 ? 'warning' : 'notice'),
+                    'status' => $fatal ? 500 : 0,
+                    'type' => self::phpErrorName($type),
+                    'message' => Redactor::text($message),
+                    'file' => $this->relative((string) ($error['file'] ?? '')),
+                    'line' => (int) ($error['line'] ?? 0),
+                ],
+                $request,
+            );
             if ($fatal) {
                 $this->markHandled($request);
             }
@@ -408,14 +433,18 @@ final class ErrorLog
                 }
             }
 
-            $this->write([
-                'source' => 'client',
-                'level' => 'error',
-                'status' => $status,
-                'type' => $type,
-                'message' => Redactor::text($message),
-                'trace' => $frames === [] ? null : $frames,
-            ], $request, Redactor::path(str_starts_with($page, '/') ? $page : '/'));
+            $this->write(
+                [
+                    'source' => 'client',
+                    'level' => 'error',
+                    'status' => $status,
+                    'type' => $type,
+                    'message' => Redactor::text($message),
+                    'trace' => $frames === [] ? null : $frames,
+                ],
+                $request,
+                Redactor::path(str_starts_with($page, '/') ? $page : '/'),
+            );
         });
     }
 
@@ -492,7 +521,13 @@ final class ErrorLog
      */
     public function wrapHandler(callable $siteHandler): Closure
     {
-        return function (ServerRequestInterface $request, Throwable $exception, bool $displayErrorDetails = false, bool $logErrors = true, bool $logErrorDetails = true) use ($siteHandler): ResponseInterface {
+        return function (
+            ServerRequestInterface $request,
+            Throwable $exception,
+            bool $displayErrorDetails = false,
+            bool $logErrors = true,
+            bool $logErrorDetails = true,
+        ) use ($siteHandler): ResponseInterface {
             try {
                 $response = $siteHandler($request, $exception, $displayErrorDetails, $logErrors, $logErrorDetails);
             } catch (Throwable $failure) {
@@ -605,7 +640,7 @@ final class ErrorLog
             return;
         }
         $this->writing = true;
-        set_error_handler(static fn (): bool => true);
+        set_error_handler(static fn(): bool => true);
         try {
             $work();
         } catch (Throwable) {
@@ -640,10 +675,10 @@ final class ErrorLog
         if ($request !== null) {
             $method = strtoupper($request->getMethod());
             $entry['method'] = preg_match('/^[A-Z]{1,12}$/D', $method) === 1 ? $method : '?';
-            $entry['route'] = self::quietly(fn (): ?string => $this->routePattern($request));
+            $entry['route'] = self::quietly(fn(): ?string => $this->routePattern($request));
             $entry['path'] = $path ?? Redactor::path($request->getUri()->getPath());
-            $entry['user_id'] = self::quietly(fn (): int|string|null => $this->actor($request));
-            $entry['client'] = self::quietly(fn (): ?string => $this->clientHash($request));
+            $entry['user_id'] = self::quietly(fn(): int|string|null => $this->actor($request));
+            $entry['client'] = self::quietly(fn(): ?string => $this->clientHash($request));
         }
         $entry['fingerprint'] = self::fingerprint((string) $entry['type'], (string) ($entry['file'] ?? ''), (int) ($entry['line'] ?? 0), (string) $entry['message'], (int) $entry['status']);
 
@@ -792,7 +827,7 @@ final class ErrorLog
             $today = gmdate('Y-m-d');
             $counts[$today] = (int) ($counts[$today] ?? 0) + 1;
             $cutoff = gmdate('Y-m-d', time() - $this->days * 86400);
-            $counts = array_filter($counts, static fn (mixed $count, string|int $day): bool => (string) $day >= $cutoff, ARRAY_FILTER_USE_BOTH);
+            $counts = array_filter($counts, static fn(mixed $count, string|int $day): bool => (string) $day >= $cutoff, ARRAY_FILTER_USE_BOTH);
             ftruncate($handle, 0);
             rewind($handle);
             fwrite($handle, (string) json_encode($counts));
@@ -863,7 +898,7 @@ final class ErrorLog
             $requests[] = $later;
         }
         foreach ($requests as $each) {
-            $actor = $this->actorId === null ? null : self::quietly(fn (): mixed => ($this->actorId)($each));
+            $actor = $this->actorId === null ? null : self::quietly(fn(): mixed => ($this->actorId)($each));
             if (is_int($actor) || (is_string($actor) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $actor) === 1)) {
                 return $actor;
             }
@@ -958,7 +993,7 @@ final class ErrorLog
      */
     private static function framesNotShared(array $frames, array $enclosing): array
     {
-        $key = static fn (array $frame): string => ($frame['file'] ?? '') . ':' . ($frame['line'] ?? '') . ' ' . ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? '');
+        $key = static fn(array $frame): string => ($frame['file'] ?? '') . ':' . ($frame['line'] ?? '') . ' ' . ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? '');
         $own = count($frames);
         for ($shared = count($enclosing); $own > 0 && $shared > 0 && $key($frames[$own - 1]) === $key($enclosing[$shared - 1]); $own--, $shared--) {
             // Back from the bottom of both stacks while they are the same.
@@ -1085,11 +1120,9 @@ final class ErrorLog
      */
     public static function fingerprint(string $type, string $file, int $line, string $message, int $status = 0): string
     {
-        $shape = preg_replace_callback(
-            '/"[^"]*"|\'[^\']*\'/',
-            static fn (array $match): string => preg_match('/[\d\/\\\\]/', $match[0]) === 1 ? $match[0][0] . '…' . $match[0][0] : $match[0],
-            $message
-        ) ?? $message;
+        $shape =
+            preg_replace_callback('/"[^"]*"|\'[^\']*\'/', static fn(array $match): string => preg_match('/[\d\/\\\\]/', $match[0]) === 1 ? $match[0][0] . '…' . $match[0][0] : $match[0], $message) ??
+            $message;
         $shape = preg_replace(['/\d+/', '/\s+/'], ['#', ' '], $shape) ?? $shape;
 
         return substr(md5($type . '|' . $file . '|' . $line . '|' . $status . '|' . $shape), 0, 12);
@@ -1113,7 +1146,7 @@ final class ErrorLog
             return [null, null];
         }
         $code = is_string($data['code'] ?? null) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $data['code']) === 1 ? $data['code'] : null;
-        $sentence = $data['error'] ?? $data['message'] ?? null;
+        $sentence = $data['error'] ?? ($data['message'] ?? null);
         if (is_array($sentence)) {
             $sentence = $sentence['message'] ?? null;
         }
@@ -1141,11 +1174,21 @@ final class ErrorLog
     private static function phpErrorName(int $type): string
     {
         return match ($type) {
-            E_ERROR => 'E_ERROR', E_WARNING => 'E_WARNING', E_PARSE => 'E_PARSE', E_NOTICE => 'E_NOTICE',
-            E_CORE_ERROR => 'E_CORE_ERROR', E_CORE_WARNING => 'E_CORE_WARNING', E_COMPILE_ERROR => 'E_COMPILE_ERROR',
-            E_COMPILE_WARNING => 'E_COMPILE_WARNING', E_USER_ERROR => 'E_USER_ERROR', E_USER_WARNING => 'E_USER_WARNING',
-            E_USER_NOTICE => 'E_USER_NOTICE', E_RECOVERABLE_ERROR => 'E_RECOVERABLE_ERROR', E_DEPRECATED => 'E_DEPRECATED',
-            E_USER_DEPRECATED => 'E_USER_DEPRECATED', default => 'E_' . $type,
+            E_ERROR => 'E_ERROR',
+            E_WARNING => 'E_WARNING',
+            E_PARSE => 'E_PARSE',
+            E_NOTICE => 'E_NOTICE',
+            E_CORE_ERROR => 'E_CORE_ERROR',
+            E_CORE_WARNING => 'E_CORE_WARNING',
+            E_COMPILE_ERROR => 'E_COMPILE_ERROR',
+            E_COMPILE_WARNING => 'E_COMPILE_WARNING',
+            E_USER_ERROR => 'E_USER_ERROR',
+            E_USER_WARNING => 'E_USER_WARNING',
+            E_USER_NOTICE => 'E_USER_NOTICE',
+            E_RECOVERABLE_ERROR => 'E_RECOVERABLE_ERROR',
+            E_DEPRECATED => 'E_DEPRECATED',
+            E_USER_DEPRECATED => 'E_USER_DEPRECATED',
+            default => 'E_' . $type,
         };
     }
 

@@ -34,9 +34,7 @@ final class TarReader
      * @param Closure(string $name, int $size): (string|Closure) $place  where an entry goes: a path (or a spool's
      *        url) to write it to, or a closure that takes its bytes
      */
-    public function __construct(private readonly Closure $place)
-    {
-    }
+    public function __construct(private readonly Closure $place) {}
 
     /** A ustar header block for a plain file. */
     public static function headerBlock(string $name, int $size, int $mtime): string
@@ -72,7 +70,7 @@ final class TarReader
             '',
             '',
             $prefix,
-            ''
+            '',
         );
         $sum = 0;
         for ($i = 0; $i < self::BLOCK; $i++) {
@@ -153,7 +151,7 @@ final class TarReader
         }
         $sum = 0;
         for ($i = 0; $i < self::BLOCK; $i++) {
-            $sum += ($i >= 148 && $i < 156) ? 32 : ord($block[$i]);
+            $sum += $i >= 148 && $i < 156 ? 32 : ord($block[$i]);
         }
         $stored = trim((string) $fields['sum'], " \0");
         if (preg_match('/^[0-7]{1,7}$/D', $stored) !== 1 || (int) octdec($stored) !== $sum) {
@@ -190,7 +188,7 @@ final class TarReader
             $this->out = $out;
         }
         $this->left = $size;
-        $this->padding = (self::BLOCK - $size % self::BLOCK) % self::BLOCK;
+        $this->padding = (self::BLOCK - ($size % self::BLOCK)) % self::BLOCK;
         if ($size === 0) {
             $this->closeEntry();
         }

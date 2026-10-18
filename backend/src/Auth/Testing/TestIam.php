@@ -43,8 +43,7 @@ final class TestIam
         public readonly string $kid,
         private readonly string $privatePem,
         private readonly array $jwks,
-    ) {
-    }
+    ) {}
 
     /**
      * A test IAM keeping its files in $dir (made when missing): the key pair
@@ -59,8 +58,7 @@ final class TestIam
 
         $keyFile = $dir . '/' . self::KEY_FILE;
         $kept = is_file($keyFile) ? json_decode((string) file_get_contents($keyFile), true) : null;
-        if (!is_array($kept) || !is_string($kept['private_pem'] ?? null) || !is_string($kept['kid'] ?? null) || !is_array($kept['jwks'] ?? null)
-            || ($kid !== null && $kept['kid'] !== $kid)) {
+        if (!is_array($kept) || !is_string($kept['private_pem'] ?? null) || !is_string($kept['kid'] ?? null) || !is_array($kept['jwks'] ?? null) || ($kid !== null && $kept['kid'] !== $kid)) {
             $kept = self::keypair($kid);
             file_put_contents($keyFile, json_encode($kept, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
         }
@@ -103,14 +101,18 @@ final class TestIam
         return [
             'kid' => $kid,
             'private_pem' => (string) $privatePem,
-            'jwks' => ['keys' => [[
-                'kty' => 'RSA',
-                'use' => 'sig',
-                'alg' => 'RS256',
-                'kid' => $kid,
-                'n' => Base64Url::encode($details['rsa']['n']),
-                'e' => Base64Url::encode($details['rsa']['e']),
-            ]]],
+            'jwks' => [
+                'keys' => [
+                    [
+                        'kty' => 'RSA',
+                        'use' => 'sig',
+                        'alg' => 'RS256',
+                        'kid' => $kid,
+                        'n' => Base64Url::encode($details['rsa']['n']),
+                        'e' => Base64Url::encode($details['rsa']['e']),
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -123,14 +125,16 @@ final class TestIam
      */
     public function client(array $overrides = []): IamClient
     {
-        return IamClient::fromArray($overrides + [
-            'issuer' => $this->issuer,
-            'client_id' => $this->clientId,
-            'cache_dir' => $this->dir . '/cache',
-            'jwks_file' => $this->dir . '/' . self::JWKS_FILE,
-            'application_file' => $this->dir . '/' . self::APPLICATION_FILE,
-            'anonymized_file' => $this->dir . '/' . self::ANONYMIZED_FILE,
-        ]);
+        return IamClient::fromArray(
+            $overrides + [
+                'issuer' => $this->issuer,
+                'client_id' => $this->clientId,
+                'cache_dir' => $this->dir . '/cache',
+                'jwks_file' => $this->dir . '/' . self::JWKS_FILE,
+                'application_file' => $this->dir . '/' . self::APPLICATION_FILE,
+                'anonymized_file' => $this->dir . '/' . self::ANONYMIZED_FILE,
+            ],
+        );
     }
 
     /**
@@ -144,25 +148,28 @@ final class TestIam
     public function claims(int $sub, array $roles = ['MEMBER'], array $extra = []): array
     {
         $now = time();
-        $claims = array_merge([
-            'iss' => $this->issuer,
-            'sub' => (string) $sub,
-            'aud' => $this->clientId,
-            'client_id' => $this->clientId,
-            'iat' => $now,
-            'exp' => $now + 600,
-            'jti' => bin2hex(random_bytes(8)),
-            'sid' => bin2hex(random_bytes(16)),
-            'auth_time' => $now,
-            'scope' => 'openid profile email',
-            'roles' => array_values($roles),
-            'preferred_username' => 'user' . $sub,
-            'email' => 'user' . $sub . '@example.test',
-            'email_verified' => true,
-            'locale' => 'en',
-        ], $extra);
+        $claims = array_merge(
+            [
+                'iss' => $this->issuer,
+                'sub' => (string) $sub,
+                'aud' => $this->clientId,
+                'client_id' => $this->clientId,
+                'iat' => $now,
+                'exp' => $now + 600,
+                'jti' => bin2hex(random_bytes(8)),
+                'sid' => bin2hex(random_bytes(16)),
+                'auth_time' => $now,
+                'scope' => 'openid profile email',
+                'roles' => array_values($roles),
+                'preferred_username' => 'user' . $sub,
+                'email' => 'user' . $sub . '@example.test',
+                'email_verified' => true,
+                'locale' => 'en',
+            ],
+            $extra,
+        );
 
-        return array_filter($claims, static fn (mixed $value): bool => $value !== null);
+        return array_filter($claims, static fn(mixed $value): bool => $value !== null);
     }
 
     /**

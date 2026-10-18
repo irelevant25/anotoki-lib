@@ -75,7 +75,10 @@ final class TranslationsCommandTest extends DatabaseTestCase
         $out = $this->written();
         self::assertStringContainsString("Used by the frontend, not in the database - the page shows the key itself:\n    home.missing\n        home.component.html:2\n", $out);
         self::assertStringContainsString("No English string, so nothing to fall back to:\n    home.bare\n", $out);
-        self::assertStringContainsString("Stored as a save would not take them - reword them in the admin pages:\n    anotoki.language.button (en): placeholder_changed - The English string of \"anotoki.language.button\" must keep {code}: the page puts a value there.\n", $out);
+        self::assertStringContainsString(
+            "Stored as a save would not take them - reword them in the admin pages:\n    anotoki.language.button (en): placeholder_changed - The English string of \"anotoki.language.button\" must keep {code}: the page puts a value there.\n",
+            $out,
+        );
         self::assertStringEndsWith("  Not clean.\n", $out);
     }
 
@@ -83,24 +86,37 @@ final class TranslationsCommandTest extends DatabaseTestCase
     {
         self::assertSame(0, $this->command()->run(['translations.php', '--export', 'sk']));
         $export = $this->written();
-        self::assertStringStartsWith("{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.colorField.invalid\": \"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.\",", $export);
+        self::assertStringStartsWith(
+            "{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.colorField.invalid\": \"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.\",",
+            $export,
+        );
         self::assertStringEndsWith("    \"home.title\": \"Domov\"\n}\n", $export);
 
         $file = $this->path('sk.json');
         self::assertSame(0, $this->command()->run(['translations.php', '--export=sk', $file]));
-        self::assertStringContainsString((1 + count(LibraryWords::keys())) . " strings of \"sk\" written to $file", $this->written());
+        self::assertStringContainsString(1 + count(LibraryWords::keys()) . " strings of \"sk\" written to $file", $this->written());
         self::assertSame('Domov', json_decode((string) file_get_contents($file), true)['home.title']);
 
         file_put_contents($file, "\u{FEFF}" . json_encode(['home.title' => 'Domovská stránka', 'home.unused' => '', 'mail.reset.subject' => 'Obnov heslo'], JSON_UNESCAPED_UNICODE));
         self::assertSame(0, $this->command()->run(['translations.php', '--import', 'sk', $file]), $this->errors());
         self::assertStringContainsString("3 strings in $file: 2 changed in \"sk\", the rest as they were (or empty, and passed over).", $this->written());
-        self::assertSame([['translations.imported', 'language', 'sk', [
-            'languages' => ['sk'],
-            'count' => 2,
-            'keys' => ['home.title', 'mail.reset.subject'],
-            'mail' => [['key' => 'mail.reset.subject', 'language' => 'sk', 'old' => null, 'new' => 'Obnov heslo']],
-            'via' => 'command line',
-        ]]], $this->audited);
+        self::assertSame(
+            [
+                [
+                    'translations.imported',
+                    'language',
+                    'sk',
+                    [
+                        'languages' => ['sk'],
+                        'count' => 2,
+                        'keys' => ['home.title', 'mail.reset.subject'],
+                        'mail' => [['key' => 'mail.reset.subject', 'language' => 'sk', 'old' => null, 'new' => 'Obnov heslo']],
+                        'via' => 'command line',
+                    ],
+                ],
+            ],
+            $this->audited,
+        );
         self::assertNull($this->value("SELECT updated_by FROM translations WHERE key_name = 'home.title' AND language_code = 'sk'"), 'written by nobody');
 
         self::assertSame(0, $this->command()->run(['translations.php', '--import=sk', $file]));
@@ -115,9 +131,9 @@ final class TranslationsCommandTest extends DatabaseTestCase
         $read = static function (string $path, string $code): array {
             $document = json_decode((string) file_get_contents($path), true);
 
-            return is_array($document['translations'] ?? null) ? ($document['translations']['values'][$code] ?? []) : \Anotoki\Lib\Translations\TranslationFile::read($path);
+            return is_array($document['translations'] ?? null) ? $document['translations']['values'][$code] ?? [] : \Anotoki\Lib\Translations\TranslationFile::read($path);
         };
-        $command = new TranslationsCommand(fn (): Translations => new Translations($this->pdo), new KeyScanner($this->path('app')), out: $this->out, err: $this->err, read: $read);
+        $command = new TranslationsCommand(fn(): Translations => new Translations($this->pdo), new KeyScanner($this->path('app')), out: $this->out, err: $this->err, read: $read);
 
         self::assertSame(0, $command->run(['translations.php', '--import', 'sk', $backup]), $this->errors());
         self::assertSame('Domov!', $this->value("SELECT value FROM translations WHERE key_name = 'home.title' AND language_code = 'sk'"));
@@ -153,12 +169,15 @@ final class TranslationsCommandTest extends DatabaseTestCase
 
     public function testWhatItRefusesBeforeAnything(): void
     {
-        foreach ([
-            [['translations.php', '--export'], 'usage: php translations.php --export CODE [FILE]'],
-            [['translations.php', '--import', 'sk'], 'usage: php translations.php --import CODE FILE'],
-            [['translations.php', '--status', 'extra'], 'usage:'],
-            [['translations.php', '--frobnicate'], 'Unknown command --frobnicate.'],
-        ] as [$argv, $says]) {
+        foreach (
+            [
+                [['translations.php', '--export'], 'usage: php translations.php --export CODE [FILE]'],
+                [['translations.php', '--import', 'sk'], 'usage: php translations.php --import CODE FILE'],
+                [['translations.php', '--status', 'extra'], 'usage:'],
+                [['translations.php', '--frobnicate'], 'Unknown command --frobnicate.'],
+            ]
+            as [$argv, $says]
+        ) {
             self::assertSame(1, $this->command()->run($argv), implode(' ', $argv));
             self::assertStringContainsString($says, $this->errors());
         }
@@ -171,9 +190,14 @@ final class TranslationsCommandTest extends DatabaseTestCase
         self::assertStringContainsString('The database needs an update first (002_next.sql): php migration.php', $this->errors());
         $this->pending = [];
 
-        $dead = new TranslationsCommand(static function (): Translations {
-            throw new PDOException('could not connect');
-        }, new KeyScanner($this->path('app')), out: $this->out, err: $this->err);
+        $dead = new TranslationsCommand(
+            static function (): Translations {
+                throw new PDOException('could not connect');
+            },
+            new KeyScanner($this->path('app')),
+            out: $this->out,
+            err: $this->err,
+        );
         self::assertSame(1, $dead->run(['translations.php']));
         self::assertStringContainsString('Cannot reach the database: could not connect', $this->errors());
 
@@ -185,12 +209,12 @@ final class TranslationsCommandTest extends DatabaseTestCase
     private function command(): TranslationsCommand
     {
         return new TranslationsCommand(
-            fn (): Translations => new Translations($this->pdo, new TranslationsConfig(serverNamespaces: ['mail'])),
+            fn(): Translations => new Translations($this->pdo, new TranslationsConfig(serverNamespaces: ['mail'])),
             new KeyScanner($this->path('app'), ignoreNamespaces: ['mail']),
             function (string $action, ?string $type, ?string $id, array $details): void {
                 $this->audited[] = [$action, $type, $id, $details];
             },
-            fn (): array => $this->pending,
+            fn(): array => $this->pending,
             'survey: the site\'s own strings',
             $this->out,
             $this->err,

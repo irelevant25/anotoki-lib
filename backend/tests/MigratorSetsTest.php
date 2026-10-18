@@ -119,9 +119,7 @@ final class MigratorSetsTest extends DatabaseTestCase
         $migrator = $this->migrator($sets);
 
         $libraryFiles = [['set' => 'anotoki_words', 'name' => '001_tables.sql'], ['set' => 'anotoki_words', 'name' => '002_rows.sql']];
-        $ownFiles = $folder
-            ? [['set' => 'users', 'name' => '002_more_people.sql'], ['set' => 'genshin_impact', 'name' => '002_weapons.sql']]
-            : [['set' => 'site', 'name' => '002_more_people.sql']];
+        $ownFiles = $folder ? [['set' => 'users', 'name' => '002_more_people.sql'], ['set' => 'genshin_impact', 'name' => '002_weapons.sql']] : [['set' => 'site', 'name' => '002_more_people.sql']];
         $order = $libraryFirst ? [...$libraryFiles, ...$ownFiles] : [...$ownFiles, ...$libraryFiles];
 
         self::assertSame($order, $migrator->applicable(), 'in the order of the sets');
@@ -133,16 +131,19 @@ final class MigratorSetsTest extends DatabaseTestCase
 
         // Recorded: the site's files as they always were, the library's under its set.
         if ($folder) {
-            $recorded = array_map(static fn (array $row): string => $row['folder'] . ' | ' . $row['filename'], $this->rows('SELECT folder, filename FROM migrations'));
+            $recorded = array_map(static fn(array $row): string => $row['folder'] . ' | ' . $row['filename'], $this->rows('SELECT folder, filename FROM migrations'));
             sort($recorded);
-            self::assertSame([
-                'anotoki_words | 001_tables.sql',
-                'anotoki_words | 002_rows.sql',
-                'genshin_impact | 001_characters.sql',
-                'genshin_impact | 002_weapons.sql',
-                'users | 001_people.sql',
-                'users | 002_more_people.sql',
-            ], $recorded);
+            self::assertSame(
+                [
+                    'anotoki_words | 001_tables.sql',
+                    'anotoki_words | 002_rows.sql',
+                    'genshin_impact | 001_characters.sql',
+                    'genshin_impact | 002_weapons.sql',
+                    'users | 001_people.sql',
+                    'users | 002_more_people.sql',
+                ],
+                $recorded,
+            );
         } else {
             $recorded = $this->pdo->query("SELECT $file FROM migrations")->fetchAll(PDO::FETCH_COLUMN);
             sort($recorded);
@@ -151,8 +152,8 @@ final class MigratorSetsTest extends DatabaseTestCase
 
         // And read back, each with its set.
         $status = $migrator->status();
-        self::assertSame(array_map(static fn (MigrationSet $set): string => $set->name, $sets), $status['sets']);
-        $applied = array_map(static fn (array $record): string => $record['set'] . '/' . $record['name'], $status['applied']);
+        self::assertSame(array_map(static fn(MigrationSet $set): string => $set->name, $sets), $status['sets']);
+        $applied = array_map(static fn(array $record): string => $record['set'] . '/' . $record['name'], $status['applied']);
         sort($applied);
         $expected = $folder
             ? ['anotoki_words/001_tables.sql', 'anotoki_words/002_rows.sql', 'genshin_impact/001_characters.sql', 'genshin_impact/002_weapons.sql', 'users/001_people.sql', 'users/002_more_people.sql']
@@ -172,7 +173,7 @@ final class MigratorSetsTest extends DatabaseTestCase
         self::assertSame([], $without->applicable());
         self::assertSame(
             [['set' => 'anotoki_words', 'name' => '001_tables.sql'], ['set' => 'anotoki_words', 'name' => '002_rows.sql']],
-            array_map(static fn (array $record): array => ['set' => $record['set'], 'name' => $record['name']], $without->status()['missing'])
+            array_map(static fn(array $record): array => ['set' => $record['set'], 'name' => $record['name']], $without->status()['missing']),
         );
     }
 
@@ -189,12 +190,9 @@ final class MigratorSetsTest extends DatabaseTestCase
         self::assertSame(
             ['id integer NOT NULL DEFAULT nextval(\'migrations_id_seq\'::regclass)', 'filename character varying(255) NOT NULL', 'applied_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP'],
             $this->shapeOf('migrations')['columns'],
-            'one set of the site\'s own: the one-set table, no folder'
+            'one set of the site\'s own: the one-set table, no folder',
         );
-        self::assertSame(
-            ['anotoki_more/001_more.sql', '001_a.sql', 'anotoki_words/001_words.sql'],
-            $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN)
-        );
+        self::assertSame(['anotoki_more/001_more.sql', '001_a.sql', 'anotoki_words/001_words.sql'], $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
     }
 
     public function testANewTableForTwoSetsOfTheSitesOwnHasFolder(): void
@@ -207,7 +205,7 @@ final class MigratorSetsTest extends DatabaseTestCase
 
         self::assertSame(
             [['folder' => 'users', 'filename' => '001_a.sql'], ['folder' => 'genshin_impact', 'filename' => '001_b.sql'], ['folder' => 'anotoki_words', 'filename' => '001_words.sql']],
-            $this->rows('SELECT folder, filename FROM migrations ORDER BY id')
+            $this->rows('SELECT folder, filename FROM migrations ORDER BY id'),
         );
     }
 
@@ -218,17 +216,14 @@ final class MigratorSetsTest extends DatabaseTestCase
 
         self::assertSame([['set' => 'anotoki_words', 'name' => '001_words.sql']], $migrator->apply()['applied']);
         self::assertSame(['anotoki_words/001_words.sql'], $this->pdo->query('SELECT filename FROM migrations')->fetchAll(PDO::FETCH_COLUMN));
-        self::assertSame([['set' => 'anotoki_words', 'name' => '001_words.sql']], array_map(
-            static fn (array $record): array => ['set' => $record['set'], 'name' => $record['name']],
-            $migrator->status()['applied']
-        ));
+        self::assertSame(
+            [['set' => 'anotoki_words', 'name' => '001_words.sql']],
+            array_map(static fn(array $record): array => ['set' => $record['set'], 'name' => $record['name']], $migrator->status()['applied']),
+        );
 
         // A record of a site's file, with no set of the site's own configured: no set has it.
         $this->pdo->exec("INSERT INTO migrations (filename) VALUES ('001_site.sql')");
-        self::assertSame([['set' => '', 'name' => '001_site.sql']], array_map(
-            static fn (array $record): array => ['set' => $record['set'], 'name' => $record['name']],
-            $migrator->status()['missing']
-        ));
+        self::assertSame([['set' => '', 'name' => '001_site.sql']], array_map(static fn(array $record): array => ['set' => $record['set'], 'name' => $record['name']], $migrator->status()['missing']));
     }
 
     // ─── What the table without folder still cannot do ─────────────────────
@@ -261,21 +256,21 @@ final class MigratorSetsTest extends DatabaseTestCase
                 ('001_a.sql', '2026-10-01 08:00:00'),
                 ('anotoki_gone/001_x.sql', '2026-10-02 08:00:00'),
                 ('anotoki_words/001_words.sql', '2026-10-03 08:00:00'),
-                ('anotoki_words/009_removed.sql', '2026-10-04 08:00:00')"
+                ('anotoki_words/009_removed.sql', '2026-10-04 08:00:00')",
         );
         $site = $this->set('site', ['001_a.sql' => '']);
         $library = $this->librarySet('anotoki_words', ['001_words.sql' => '']);
 
         $status = $this->migrator([$site, $library])->status();
 
-        self::assertSame([
-            ['set' => 'site', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T08:00:00Z'],
-            ['set' => 'anotoki_words', 'name' => '001_words.sql', 'applied_at' => '2026-10-03T08:00:00Z'],
-        ], $status['applied']);
-        self::assertSame([
-            ['set' => 'anotoki_gone', 'name' => '001_x.sql', 'applied_at' => '2026-10-02T08:00:00Z'],
-            ['set' => 'anotoki_words', 'name' => '009_removed.sql', 'applied_at' => '2026-10-04T08:00:00Z'],
-        ], $status['missing']);
+        self::assertSame(
+            [['set' => 'site', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T08:00:00Z'], ['set' => 'anotoki_words', 'name' => '001_words.sql', 'applied_at' => '2026-10-03T08:00:00Z']],
+            $status['applied'],
+        );
+        self::assertSame(
+            [['set' => 'anotoki_gone', 'name' => '001_x.sql', 'applied_at' => '2026-10-02T08:00:00Z'], ['set' => 'anotoki_words', 'name' => '009_removed.sql', 'applied_at' => '2026-10-04T08:00:00Z']],
+            $status['missing'],
+        );
         self::assertSame([], $status['pending']);
     }
 
@@ -286,10 +281,7 @@ final class MigratorSetsTest extends DatabaseTestCase
 
         $status = $this->migrator([$this->set('users', ['001_a.sql' => '']), $this->set('genshin_impact')])->status();
 
-        self::assertSame([['set' => 'anotoki_gone', 'name' => '001_x.sql']], array_map(
-            static fn (array $record): array => ['set' => $record['set'], 'name' => $record['name']],
-            $status['missing']
-        ));
+        self::assertSame([['set' => 'anotoki_gone', 'name' => '001_x.sql']], array_map(static fn(array $record): array => ['set' => $record['set'], 'name' => $record['name']], $status['missing']));
     }
 
     // ─── The hooks see the library's files with their set ──────────────────
@@ -314,11 +306,14 @@ final class MigratorSetsTest extends DatabaseTestCase
         };
         $migrator = $this->migrator([$site, $library], ['ready' => $ready, 'split' => false]);
 
-        self::assertSame([
-            ['set' => 'academy', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
-            ['set' => 'academy', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false],
-            ['set' => 'anotoki_words', 'name' => '001_words.sql', 'ready' => true, 'blocked' => true],
-        ], $migrator->status()['pending']);
+        self::assertSame(
+            [
+                ['set' => 'academy', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
+                ['set' => 'academy', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false],
+                ['set' => 'anotoki_words', 'name' => '001_words.sql', 'ready' => true, 'blocked' => true],
+            ],
+            $migrator->status()['pending'],
+        );
         self::assertSame([['academy', false, '001_a.sql'], ['academy', false, '002_b.sql'], ['anotoki_words', true, '001_words.sql']], $asked);
 
         // The site's draft holds the library's file back, as it holds the site's own.
@@ -326,10 +321,7 @@ final class MigratorSetsTest extends DatabaseTestCase
         self::assertFalse($this->tableExists('words'));
 
         file_put_contents($site->directory . '/002_b.sql', "CREATE TABLE b (id int);\n-- end of 002\n");
-        self::assertSame(
-            [['set' => 'academy', 'name' => '002_b.sql'], ['set' => 'anotoki_words', 'name' => '001_words.sql']],
-            $migrator->apply()['applied']
-        );
+        self::assertSame([['set' => 'academy', 'name' => '002_b.sql'], ['set' => 'anotoki_words', 'name' => '001_words.sql']], $migrator->apply()['applied']);
         self::assertSame(['001_a.sql', '002_b.sql', 'anotoki_words/001_words.sql'], $this->pdo->query('SELECT name FROM migrations ORDER BY applied_at, name')->fetchAll(PDO::FETCH_COLUMN));
 
         // A library draft first holds the site's files back just the same.
@@ -344,22 +336,28 @@ final class MigratorSetsTest extends DatabaseTestCase
         $library = $this->librarySet('anotoki_words', ['001_words.sql' => 'CREATE TABLE words (id int);']);
         $seen = [];
 
-        $this->migrator([$site, $library], [
-            'beforeApply' => function (PDO $pdo, array $files) use (&$seen): ?string {
-                $seen[] = ['apply', $files];
+        $this->migrator(
+            [$site, $library],
+            [
+                'beforeApply' => function (PDO $pdo, array $files) use (&$seen): ?string {
+                    $seen[] = ['apply', $files];
 
-                return null;
-            },
-            'beforeFile' => function (PDO $pdo, MigrationSet $set, string $name) use (&$seen): void {
-                $seen[] = ['file', $set->name, $set->library, $name];
-            },
-        ])->apply();
+                    return null;
+                },
+                'beforeFile' => function (PDO $pdo, MigrationSet $set, string $name) use (&$seen): void {
+                    $seen[] = ['file', $set->name, $set->library, $name];
+                },
+            ],
+        )->apply();
 
-        self::assertSame([
-            ['apply', [['set' => 'site', 'name' => '001_a.sql'], ['set' => 'anotoki_words', 'name' => '001_words.sql']]],
-            ['file', 'site', false, '001_a.sql'],
-            ['file', 'anotoki_words', true, '001_words.sql'],
-        ], $seen);
+        self::assertSame(
+            [
+                ['apply', [['set' => 'site', 'name' => '001_a.sql'], ['set' => 'anotoki_words', 'name' => '001_words.sql']]],
+                ['file', 'site', false, '001_a.sql'],
+                ['file', 'anotoki_words', true, '001_words.sql'],
+            ],
+            $seen,
+        );
     }
 
     public function testTheLibrarysFilesTakeTheSitesLock(): void
@@ -385,11 +383,16 @@ final class MigratorSetsTest extends DatabaseTestCase
         $library = $this->librarySet('anotoki_words', ['001_words.sql' => 'SELECT 1/0;', '002_more.sql' => 'CREATE TABLE more (id int);']);
         $other = $this->connect();
 
-        $result = $this->migrator([$this->set('site'), $library], ['beforeApply' => function () use ($other): ?string {
-            $other->exec("INSERT INTO migrations (filename) VALUES ('anotoki_words/001_words.sql')");
+        $result = $this->migrator(
+            [$this->set('site'), $library],
+            [
+                'beforeApply' => function () use ($other): ?string {
+                    $other->exec("INSERT INTO migrations (filename) VALUES ('anotoki_words/001_words.sql')");
 
-            return null;
-        }])->apply();
+                    return null;
+                },
+            ],
+        )->apply();
 
         self::assertSame([['set' => 'anotoki_words', 'name' => '002_more.sql']], $result['applied']);
         self::assertNull($result['failed']);

@@ -83,17 +83,20 @@ final class IdentifyTest extends TestCase
         $other = TestIam::create($this->folder('forger'), 'https://iam.test', 'test-site', $this->iam->kid);
         $good = $this->iam->claims(7, ['ADMIN']);
 
-        foreach ([
-            'forged: another key, the same kid' => $other->token(7, ['ADMIN']),
-            'expired' => $this->iam->sign(['exp' => time() - 3600] + $good),
-            'an ID token' => $this->iam->sign($good, 'JWT'),
-            'alg none' => $this->iam->sign($good, 'at+jwt', 'none'),
-            'HS256' => $this->iam->sign($good, 'at+jwt', 'HS256'),
-            'for another client' => $this->iam->sign(['aud' => 'genshin', 'client_id' => 'genshin'] + $good),
-            'another issuer' => $this->iam->sign(['iss' => 'https://iam.evil'] + $good),
-            'garbage' => 'garbage',
-            'nothing after Bearer' => '',
-        ] as $case => $token) {
+        foreach (
+            [
+                'forged: another key, the same kid' => $other->token(7, ['ADMIN']),
+                'expired' => $this->iam->sign(['exp' => time() - 3600] + $good),
+                'an ID token' => $this->iam->sign($good, 'JWT'),
+                'alg none' => $this->iam->sign($good, 'at+jwt', 'none'),
+                'HS256' => $this->iam->sign($good, 'at+jwt', 'HS256'),
+                'for another client' => $this->iam->sign(['aud' => 'genshin', 'client_id' => 'genshin'] + $good),
+                'another issuer' => $this->iam->sign(['iss' => 'https://iam.evil'] + $good),
+                'garbage' => 'garbage',
+                'nothing after Bearer' => '',
+            ]
+            as $case => $token
+        ) {
             $response = $this->send($app, 'GET', '/api/progress', $token, ['X-Visitor-Key' => 'vk-good']);
             self::assertSame(401, $response->getStatusCode(), $case);
             self::assertSame(['code' => 'invalid_token', 'message' => 'Your sign-in has run out. Please sign in again.'], $this->json($response), $case);
@@ -142,14 +145,16 @@ final class IdentifyTest extends TestCase
 
         // A site's own log hears every reason - in the library's words alone.
         $heard = [];
-        $own = $this->app(log: function (string $reason) use (&$heard): void {
-            $heard[] = $reason;
-        });
+        $own = $this->app(
+            log: function (string $reason) use (&$heard): void {
+                $heard[] = $reason;
+            },
+        );
         foreach (range(1, 3) as $n) {
             $this->send($own, 'GET', '/api/progress', $this->iam->sign($good, 'at+jwt', 'RS256', ['kid' => $forged . $n]));
         }
         self::assertCount(3, $heard);
-        self::assertSame([], array_filter($heard, static fn (string $reason): bool => preg_match('/[^\x20-\x7E]/', $reason) === 1 || strlen($reason) > 100));
+        self::assertSame([], array_filter($heard, static fn(string $reason): bool => preg_match('/[^\x20-\x7E]/', $reason) === 1 || strlen($reason) > 100));
         self::assertSame([], LogLines::take());
     }
 
@@ -157,7 +162,9 @@ final class IdentifyTest extends TestCase
     {
         $app = $this->app();
 
-        $basic = $this->request('GET', '/api/open')->withHeader('Authorization', 'Basic ' . base64_encode('user:pass'))->withHeader('X-Visitor-Key', 'vk-good');
+        $basic = $this->request('GET', '/api/open')
+            ->withHeader('Authorization', 'Basic ' . base64_encode('user:pass'))
+            ->withHeader('X-Visitor-Key', 'vk-good');
         self::assertSame(['caller' => 'visitor', 'sub' => null, 'visitor' => -5], $this->json($app->handle($basic)), 'a host\'s password is nobody');
         $query = $this->request('GET', '/api/me?access_token=' . $this->iam->token(7));
         self::assertSame(401, $app->handle($query)->getStatusCode(), 'a token in the query string is never read');
@@ -173,9 +180,9 @@ final class IdentifyTest extends TestCase
             'anotoki_iam' => 'a-session-of-the-iam',
             'token' => $this->iam->token(9, ['ADMIN']),
         ];
-        $withCookies = fn (string $path): ServerRequestInterface => $this->request('GET', $path)
+        $withCookies = fn(string $path): ServerRequestInterface => $this->request('GET', $path)
             ->withCookieParams($cookies)
-            ->withHeader('Cookie', implode('; ', array_map(static fn (string $name, string $value): string => "$name=$value", array_keys($cookies), $cookies)));
+            ->withHeader('Cookie', implode('; ', array_map(static fn(string $name, string $value): string => "$name=$value", array_keys($cookies), $cookies)));
 
         self::assertSame(['caller' => 'nobody', 'sub' => null, 'visitor' => null], $this->json($app->handle($withCookies('/api/open'))));
         foreach (['/api/me', '/api/admin', '/api/admin/migrations', '/api/progress'] as $path) {
@@ -258,9 +265,13 @@ final class IdentifyTest extends TestCase
 
             return $response->withHeader('Content-Type', 'application/json');
         };
-        $app = $this->app(responder: $responder, realm: 'genshin', routes: function (App $app): void {
-            $app->get('/api/admin/people', $this->echo(...))->add(RequireRole::admin()->refusing('admin_only', 'Only an administrator may do this.'));
-        });
+        $app = $this->app(
+            responder: $responder,
+            realm: 'genshin',
+            routes: function (App $app): void {
+                $app->get('/api/admin/people', $this->echo(...))->add(RequireRole::admin()->refusing('admin_only', 'Only an administrator may do this.'));
+            },
+        );
 
         $refused = $this->send($app, 'GET', '/api/admin/people', $this->iam->token(7, ['EDITOR']));
         self::assertSame(403, $refused->getStatusCode());
@@ -313,7 +324,7 @@ final class IdentifyTest extends TestCase
             $standIn->state(['application_missing' => true]);
             self::assertSame(
                 ['issuer' => $standIn->issuer, 'client_id' => 'test-site', 'login_required' => true, 'sign_in_available' => false],
-                AuthRoutes::configBody(new SignInRule($client), $client)
+                AuthRoutes::configBody(new SignInRule($client), $client),
             );
         } finally {
             $standIn->stop();
@@ -331,12 +342,15 @@ final class IdentifyTest extends TestCase
 
     public function testWhatCannotBeConfigured(): void
     {
-        foreach ([
-            static fn () => new RequireRole([]),
-            static fn () => new RequireRole(['ADMIN OR 1=1']),
-            static fn () => RequireRole::admin()->refusing('Not A Code'),
-            static fn () => new RequireCaller('maybe'),
-        ] as $index => $make) {
+        foreach (
+            [
+                static fn() => new RequireRole([]),
+                static fn() => new RequireRole(['ADMIN OR 1=1']),
+                static fn() => RequireRole::admin()->refusing('Not A Code'),
+                static fn() => new RequireCaller('maybe'),
+            ]
+            as $index => $make
+        ) {
             try {
                 $make();
                 self::fail("case $index was taken");
@@ -368,7 +382,7 @@ final class IdentifyTest extends TestCase
         $app->get('/api/save', $this->echo(...))->add(new RequireCaller('make'));
         $app->get('/api/translations/{code}', $this->echo(...));
         $app->get('/api/translations/{code}/x', $this->echo(...));
-        AuthRoutes::config($app, $rule, $client, extra: static fn (): array => ['visitor_days' => 30]);
+        AuthRoutes::config($app, $rule, $client, extra: static fn(): array => ['visitor_days' => 30]);
         if ($routes !== null) {
             $routes($app);
         }
@@ -376,19 +390,23 @@ final class IdentifyTest extends TestCase
         if ($gate !== null) {
             $app->add(new SignInGate($gate));
         }
-        $app->add(new Identify(
-            new AccessTokens($client),
-            $rule,
-            $app->getResponseFactory(),
-            visitor: $visitors ? function (string $key): ?int {
-                $this->looked[] = $key;
+        $app->add(
+            new Identify(
+                new AccessTokens($client),
+                $rule,
+                $app->getResponseFactory(),
+                visitor: $visitors
+                    ? function (string $key): ?int {
+                        $this->looked[] = $key;
 
-                return $key === 'vk-good' ? -5 : null;
-            } : null,
-            responder: $responder,
-            realm: $realm,
-            log: $log,
-        ));
+                        return $key === 'vk-good' ? -5 : null;
+                    }
+                    : null,
+                responder: $responder,
+                realm: $realm,
+                log: $log,
+            ),
+        );
 
         return $app;
     }

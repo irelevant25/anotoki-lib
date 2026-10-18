@@ -115,12 +115,14 @@ final class HttpGet
         if (!self::allowed($url)) {
             return ['status' => 0, 'body' => null];
         }
-        $context = stream_context_create(['http' => [
-            'timeout' => $timeout,
-            'ignore_errors' => true,
-            'follow_location' => 0,
-            'header' => implode("\r\n", $headers) . "\r\n",
-        ]]);
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => $timeout,
+                'ignore_errors' => true,
+                'follow_location' => 0,
+                'header' => implode("\r\n", $headers) . "\r\n",
+            ],
+        ]);
         $stream = @fopen($url, 'rb', false, $context);
         if ($stream === false) {
             return ['status' => 0, 'body' => null];

@@ -20,8 +20,8 @@ final class Utf8
         // Each valid sequence kept, each stray byte replaced.
         return (string) preg_replace_callback(
             '/[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2}|(.)/s',
-            static fn (array $match): string => isset($match[1]) ? '?' : $match[0],
-            $text
+            static fn(array $match): string => isset($match[1]) ? '?' : $match[0],
+            $text,
         );
     }
 

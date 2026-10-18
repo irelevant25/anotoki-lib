@@ -89,8 +89,8 @@ final class JsonBody
     private static function size(int $bytes): string
     {
         return match (true) {
-            $bytes >= 1024 * 1024 && $bytes % (1024 * 1024) === 0 => ($bytes / (1024 * 1024)) . ' MB',
-            $bytes >= 1024 && $bytes % 1024 === 0 => ($bytes / 1024) . ' KB',
+            $bytes >= 1024 * 1024 && $bytes % (1024 * 1024) === 0 => $bytes / (1024 * 1024) . ' MB',
+            $bytes >= 1024 && $bytes % 1024 === 0 => $bytes / 1024 . ' KB',
             default => $bytes . ' bytes',
         };
     }

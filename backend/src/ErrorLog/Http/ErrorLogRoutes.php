@@ -47,39 +47,40 @@ final class ErrorLogRoutes
     /** The most a page's error report may weigh. */
     public const CLIENT_BODY_LIMIT = 8 * 1024;
 
-    public static function admin(
-        RouteCollectorProxyInterface $app,
-        string $base,
-        ErrorLog $log,
-        AdminContext $context,
-        ?AuditRecorder $audit = null,
-    ): RouteGroupInterface {
+    public static function admin(RouteCollectorProxyInterface $app, string $base, ErrorLog $log, AdminContext $context, ?AuditRecorder $audit = null): RouteGroupInterface
+    {
         $reader = $log->reader();
 
         $routes = Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($reader, $context, $audit): void {
-            Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader): ResponseInterface {
-                return JsonResponse::write($response, 200, $reader->report(self::filter($request)));
-            }));
+            Routes::plain(
+                $group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader): ResponseInterface {
+                    return JsonResponse::write($response, 200, $reader->report(self::filter($request)));
+                }),
+            );
 
-            Routes::plain($group->get('/{fingerprint:[0-9a-f]{12}}', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader, $context): ResponseInterface {
-                $occurrences = $reader->occurrences((string) $request->getAttribute('fingerprint'), self::filter($request));
-                if ($occurrences === []) {
-                    return $context->refuse($response, new Refusal(404, 'not_found', 'Nothing of that kind in these days.'));
-                }
+            Routes::plain(
+                $group->get('/{fingerprint:[0-9a-f]{12}}', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader, $context): ResponseInterface {
+                    $occurrences = $reader->occurrences((string) $request->getAttribute('fingerprint'), self::filter($request));
+                    if ($occurrences === []) {
+                        return $context->refuse($response, new Refusal(404, 'not_found', 'Nothing of that kind in these days.'));
+                    }
 
-                return JsonResponse::write($response, 200, $occurrences);
-            }));
+                    return JsonResponse::write($response, 200, $occurrences);
+                }),
+            );
 
-            Routes::plain($group->delete('', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader, $context, $audit): ResponseInterface {
-                $before = Routes::text($request->getQueryParams()['before'] ?? null, 10);
-                if ($before !== '' && !ErrorLogReader::isDay($before)) {
-                    return $context->refuse($response, Refusal::invalid('date_invalid', 'Say the first day to keep as a date: 2026-10-11.'));
-                }
-                $deleted = $reader->clear($before === '' ? null : $before);
-                $audit?->record($request, $context->actorId($request), 'errors.cleared', 'error_log', null, ['files' => $deleted] + ($before === '' ? [] : ['before' => $before]));
+            Routes::plain(
+                $group->delete('', function (ServerRequestInterface $request, ResponseInterface $response) use ($reader, $context, $audit): ResponseInterface {
+                    $before = Routes::text($request->getQueryParams()['before'] ?? null, 10);
+                    if ($before !== '' && !ErrorLogReader::isDay($before)) {
+                        return $context->refuse($response, Refusal::invalid('date_invalid', 'Say the first day to keep as a date: 2026-10-11.'));
+                    }
+                    $deleted = $reader->clear($before === '' ? null : $before);
+                    $audit?->record($request, $context->actorId($request), 'errors.cleared', 'error_log', null, ['files' => $deleted] + ($before === '' ? [] : ['before' => $before]));
 
-                return JsonResponse::write($response, 200, ['deleted' => $deleted]);
-            }));
+                    return JsonResponse::write($response, 200, ['deleted' => $deleted]);
+                }),
+            );
         });
         // Added after the guard, so it runs before it: a refusal of the guard is the log's own too.
         $routes->add(ErrorLogMiddleware::own($log));
@@ -95,29 +96,31 @@ final class ErrorLogRoutes
      */
     public static function client(RouteCollectorProxyInterface $app, string $path, ErrorLog $log, AdminContext $context): RouteInterface
     {
-        $route = Routes::plain($app->post($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($log, $context): ResponseInterface {
-            $body = JsonBody::read($request, self::CLIENT_BODY_LIMIT);
-            if ($body instanceof Refusal) {
-                return $context->refuse($response, $body);
-            }
-            $report = JsonBody::map($body);
-            if ($report === null || !is_string($report['message'] ?? null) || trim($report['message']) === '') {
-                return $context->refuse($response, Refusal::invalid('message_required', 'Say what went wrong: a message.'));
-            }
-            $allowance = $log->clientAllowance($request);
-            if ($allowance !== null) {
-                return $context->refuse($response, $allowance);
-            }
-            $log->recordClient($request, [
-                'type' => $report['type'] ?? null,
-                'message' => $report['message'],
-                'page' => $report['page'] ?? null,
-                'stack' => $report['stack'] ?? null,
-                'status' => $report['status'] ?? null,
-            ]);
+        $route = Routes::plain(
+            $app->post($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($log, $context): ResponseInterface {
+                $body = JsonBody::read($request, self::CLIENT_BODY_LIMIT);
+                if ($body instanceof Refusal) {
+                    return $context->refuse($response, $body);
+                }
+                $report = JsonBody::map($body);
+                if ($report === null || !is_string($report['message'] ?? null) || trim($report['message']) === '') {
+                    return $context->refuse($response, Refusal::invalid('message_required', 'Say what went wrong: a message.'));
+                }
+                $allowance = $log->clientAllowance($request);
+                if ($allowance !== null) {
+                    return $context->refuse($response, $allowance);
+                }
+                $log->recordClient($request, [
+                    'type' => $report['type'] ?? null,
+                    'message' => $report['message'],
+                    'page' => $report['page'] ?? null,
+                    'stack' => $report['stack'] ?? null,
+                    'status' => $report['status'] ?? null,
+                ]);
 
-            return $response->withStatus(204)->withHeader('Cache-Control', 'no-store');
-        }));
+                return $response->withStatus(204)->withHeader('Cache-Control', 'no-store');
+            }),
+        );
         $route->add(ErrorLogMiddleware::own($log));
         $log->ignorePath($app->getBasePath() . $route->getPattern());
 

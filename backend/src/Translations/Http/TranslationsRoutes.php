@@ -71,32 +71,34 @@ final class TranslationsRoutes
      */
     public static function bundle(RouteCollectorProxyInterface $app, Closure $translations, ?Closure $error = null, string $path = '/api/translations'): void
     {
-        self::plain($app->get($path . '/{code}', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
-            $code = (string) $request->getAttribute('code');
-            if (!LanguageCode::ok($code)) {
-                return self::refuse($response, Translations::notFound(), $error);
-            }
+        self::plain(
+            $app->get($path . '/{code}', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
+                $code = (string) $request->getAttribute('code');
+                if (!LanguageCode::ok($code)) {
+                    return self::refuse($response, Translations::notFound(), $error);
+                }
 
-            try {
-                $bundle = $translations()->bundle($code);
-            } catch (PDOException) {
-                $bundle = Translations::unavailable();
-            }
-            if ($bundle instanceof Refusal) {
-                return self::refuse($response, $bundle, $error);
-            }
+                try {
+                    $bundle = $translations()->bundle($code);
+                } catch (PDOException) {
+                    $bundle = Translations::unavailable();
+                }
+                if ($bundle instanceof Refusal) {
+                    return self::refuse($response, $bundle, $error);
+                }
 
-            $body = json_encode($bundle, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-            $etag = ETag::of($body);
-            // Both headers before the 304 too: without them it would go out as no-store.
-            $response = $response->withHeader('ETag', $etag)->withHeader('Cache-Control', 'no-cache');
-            if (ETag::notModified($request->getHeaderLine('If-None-Match'), $etag)) {
-                return $response->withStatus(304);
-            }
-            $response->getBody()->write($body);
+                $body = json_encode($bundle, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                $etag = ETag::of($body);
+                // Both headers before the 304 too: without them it would go out as no-store.
+                $response = $response->withHeader('ETag', $etag)->withHeader('Cache-Control', 'no-cache');
+                if (ETag::notModified($request->getHeaderLine('If-None-Match'), $etag)) {
+                    return $response->withStatus(304);
+                }
+                $response->getBody()->write($body);
 
-            return $response->withHeader('Content-Type', 'application/json; charset=utf-8');
-        }));
+                return $response->withHeader('Content-Type', 'application/json; charset=utf-8');
+            }),
+        );
     }
 
     /**
@@ -108,102 +110,106 @@ final class TranslationsRoutes
      *   GET $base/translations/{code}/export   the language's own strings as a file, {key: text}
      *   PUT $base/translations/{code}/import   {key: text} -> TranslationGrid
      */
-    public static function strings(
-        RouteCollectorProxyInterface $app,
-        string $base,
-        Closure $translations,
-        Closure $actor,
-        ?Closure $error = null,
-        ?Closure $audit = null,
-    ): RouteGroupInterface {
+    public static function strings(RouteCollectorProxyInterface $app, string $base, Closure $translations, Closure $actor, ?Closure $error = null, ?Closure $audit = null): RouteGroupInterface
+    {
         return $app->group($base, function (RouteCollectorProxyInterface $group) use ($translations, $actor, $error, $audit): void {
-            self::plain($group->get('/languages', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
-                $words = $translations();
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->get('/languages', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
+                    $words = $translations();
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                return JsonResponse::write($response, 200, ['languages' => $words->languages()]);
-            }));
+                    return JsonResponse::write($response, 200, ['languages' => $words->languages()]);
+                }),
+            );
 
-            self::plain($group->get('/translations', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
-                $words = $translations();
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->get('/translations', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
+                    $words = $translations();
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                return JsonResponse::write($response, 200, $words->grid());
-            }));
+                    return JsonResponse::write($response, 200, $words->grid());
+                }),
+            );
 
-            self::plain($group->put('/translations', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $actor, $error, $audit): ResponseInterface {
-                $words = $translations();
-                $body = JsonBody::read($request, $words->config()->bodyLimit);
-                if ($body instanceof Refusal) {
-                    return self::refuse($response, $body, $error);
-                }
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->put('/translations', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $actor, $error, $audit): ResponseInterface {
+                    $words = $translations();
+                    $body = JsonBody::read($request, $words->config()->bodyLimit);
+                    if ($body instanceof Refusal) {
+                        return self::refuse($response, $body, $error);
+                    }
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                $result = $words->save(self::values($body), $actor($request));
-                if ($result instanceof Refusal) {
-                    return self::refuse($response, $result, $error);
-                }
-                if ($audit !== null && $result['count'] > 0) {
-                    $audit($request, 'translations.saved', null, null, $result);
-                }
+                    $result = $words->save(self::values($body), $actor($request));
+                    if ($result instanceof Refusal) {
+                        return self::refuse($response, $result, $error);
+                    }
+                    if ($audit !== null && $result['count'] > 0) {
+                        $audit($request, 'translations.saved', null, null, $result);
+                    }
 
-                return JsonResponse::write($response, 200, $words->grid());
-            }));
+                    return JsonResponse::write($response, 200, $words->grid());
+                }),
+            );
 
-            self::plain($group->get('/translations/{code}/export', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
-                $code = (string) $request->getAttribute('code');
-                if (!LanguageCode::ok($code)) {
-                    return self::refuse($response, Translations::notFound(), $error);
-                }
-                $words = $translations();
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->get('/translations/{code}/export', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error): ResponseInterface {
+                    $code = (string) $request->getAttribute('code');
+                    if (!LanguageCode::ok($code)) {
+                        return self::refuse($response, Translations::notFound(), $error);
+                    }
+                    $words = $translations();
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                $result = $words->export($code);
-                if ($result instanceof Refusal) {
-                    return self::refuse($response, $result, $error);
-                }
-                $response->getBody()->write(TranslationFile::text($result['values']));
+                    $result = $words->export($code);
+                    if ($result instanceof Refusal) {
+                        return self::refuse($response, $result, $error);
+                    }
+                    $response->getBody()->write(TranslationFile::text($result['values']));
 
-                return $response
-                    ->withHeader('Content-Type', 'application/json; charset=utf-8')
-                    ->withHeader('Cache-Control', 'no-store')
-                    ->withHeader('Content-Disposition', 'attachment; filename="translations-' . $code . '.json"');
-            }));
+                    return $response
+                        ->withHeader('Content-Type', 'application/json; charset=utf-8')
+                        ->withHeader('Cache-Control', 'no-store')
+                        ->withHeader('Content-Disposition', 'attachment; filename="translations-' . $code . '.json"');
+                }),
+            );
 
-            self::plain($group->put('/translations/{code}/import', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $actor, $error, $audit): ResponseInterface {
-                $code = (string) $request->getAttribute('code');
-                if (!LanguageCode::ok($code)) {
-                    return self::refuse($response, Translations::notFound(), $error);
-                }
-                $words = $translations();
-                $body = JsonBody::read($request, $words->config()->bodyLimit);
-                if ($body instanceof Refusal) {
-                    return self::refuse($response, $body, $error);
-                }
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->put('/translations/{code}/import', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $actor, $error, $audit): ResponseInterface {
+                    $code = (string) $request->getAttribute('code');
+                    if (!LanguageCode::ok($code)) {
+                        return self::refuse($response, Translations::notFound(), $error);
+                    }
+                    $words = $translations();
+                    $body = JsonBody::read($request, $words->config()->bodyLimit);
+                    if ($body instanceof Refusal) {
+                        return self::refuse($response, $body, $error);
+                    }
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                // An object's members; a list's items, numbered - keys no site has, refused as such (unknown_key).
-                // An empty list holds nothing to import and is no object: refused as the shape it is.
-                $result = $words->import($code, JsonBody::map($body) ?? (is_array($body) && $body !== [] ? $body : null), $actor($request));
-                if ($result instanceof Refusal) {
-                    return self::refuse($response, $result, $error);
-                }
-                if ($audit !== null && $result['count'] > 0) {
-                    $audit($request, 'translations.imported', 'language', $code, $result);
-                }
+                    // An object's members; a list's items, numbered - keys no site has, refused as such (unknown_key).
+                    // An empty list holds nothing to import and is no object: refused as the shape it is.
+                    $result = $words->import($code, JsonBody::map($body) ?? (is_array($body) && $body !== [] ? $body : null), $actor($request));
+                    if ($result instanceof Refusal) {
+                        return self::refuse($response, $result, $error);
+                    }
+                    if ($audit !== null && $result['count'] > 0) {
+                        $audit($request, 'translations.imported', 'language', $code, $result);
+                    }
 
-                return JsonResponse::write($response, 200, $words->grid());
-            }));
+                    return JsonResponse::write($response, 200, $words->grid());
+                }),
+            );
         });
     }
 
@@ -214,85 +220,86 @@ final class TranslationsRoutes
      *   PUT    $base/languages/{code}   {name?, native_name?, enabled?, sort_order?} -> {language: AdminLanguage}
      *   DELETE $base/languages/{code}   -> {strings, ...the site's fields}: the strings that went with it
      */
-    public static function languages(
-        RouteCollectorProxyInterface $app,
-        string $base,
-        Closure $translations,
-        ?Closure $error = null,
-        ?Closure $audit = null,
-    ): RouteGroupInterface {
+    public static function languages(RouteCollectorProxyInterface $app, string $base, Closure $translations, ?Closure $error = null, ?Closure $audit = null): RouteGroupInterface
+    {
         return $app->group($base, function (RouteCollectorProxyInterface $group) use ($translations, $error, $audit): void {
-            self::plain($group->post('/languages', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error, $audit): ResponseInterface {
-                $words = $translations();
-                $body = JsonBody::read($request, $words->config()->bodyLimit);
-                if ($body instanceof Refusal) {
-                    return self::refuse($response, $body, $error);
-                }
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->post('/languages', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error, $audit): ResponseInterface {
+                    $words = $translations();
+                    $body = JsonBody::read($request, $words->config()->bodyLimit);
+                    if ($body instanceof Refusal) {
+                        return self::refuse($response, $body, $error);
+                    }
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                $result = $words->createLanguage(JsonBody::map($body));
-                if ($result instanceof Refusal) {
-                    return self::refuse($response, $result, $error);
-                }
-                $language = $result['language'];
-                if ($audit !== null) {
-                    $audit($request, 'language.created', 'language', $language['code'], [
-                        'name' => $language['name'],
-                        'native_name' => $language['native_name'],
-                        'enabled' => $language['enabled'],
-                    ]);
-                }
+                    $result = $words->createLanguage(JsonBody::map($body));
+                    if ($result instanceof Refusal) {
+                        return self::refuse($response, $result, $error);
+                    }
+                    $language = $result['language'];
+                    if ($audit !== null) {
+                        $audit($request, 'language.created', 'language', $language['code'], [
+                            'name' => $language['name'],
+                            'native_name' => $language['native_name'],
+                            'enabled' => $language['enabled'],
+                        ]);
+                    }
 
-                return JsonResponse::write($response, 201, ['language' => $language]);
-            }));
+                    return JsonResponse::write($response, 201, ['language' => $language]);
+                }),
+            );
 
-            self::plain($group->put('/languages/{code}', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error, $audit): ResponseInterface {
-                $code = (string) $request->getAttribute('code');
-                if (!LanguageCode::ok($code)) {
-                    return self::refuse($response, Translations::notFound(), $error);
-                }
-                $words = $translations();
-                $body = JsonBody::read($request, $words->config()->bodyLimit);
-                if ($body instanceof Refusal) {
-                    return self::refuse($response, $body, $error);
-                }
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->put('/languages/{code}', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error, $audit): ResponseInterface {
+                    $code = (string) $request->getAttribute('code');
+                    if (!LanguageCode::ok($code)) {
+                        return self::refuse($response, Translations::notFound(), $error);
+                    }
+                    $words = $translations();
+                    $body = JsonBody::read($request, $words->config()->bodyLimit);
+                    if ($body instanceof Refusal) {
+                        return self::refuse($response, $body, $error);
+                    }
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                $result = $words->updateLanguage($code, JsonBody::map($body));
-                if ($result instanceof Refusal) {
-                    return self::refuse($response, $result, $error);
-                }
-                if ($audit !== null && $result['changed'] !== []) {
-                    $audit($request, 'language.updated', 'language', $code, $result['changed']);
-                }
+                    $result = $words->updateLanguage($code, JsonBody::map($body));
+                    if ($result instanceof Refusal) {
+                        return self::refuse($response, $result, $error);
+                    }
+                    if ($audit !== null && $result['changed'] !== []) {
+                        $audit($request, 'language.updated', 'language', $code, $result['changed']);
+                    }
 
-                return JsonResponse::write($response, 200, ['language' => $result['language']]);
-            }));
+                    return JsonResponse::write($response, 200, ['language' => $result['language']]);
+                }),
+            );
 
-            self::plain($group->delete('/languages/{code}', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error, $audit): ResponseInterface {
-                $code = (string) $request->getAttribute('code');
-                if (!LanguageCode::ok($code)) {
-                    return self::refuse($response, Translations::notFound(), $error);
-                }
-                $words = $translations();
-                if (!$words->ready()) {
-                    return self::refuse($response, Translations::unavailable(), $error);
-                }
+            self::plain(
+                $group->delete('/languages/{code}', function (ServerRequestInterface $request, ResponseInterface $response) use ($translations, $error, $audit): ResponseInterface {
+                    $code = (string) $request->getAttribute('code');
+                    if (!LanguageCode::ok($code)) {
+                        return self::refuse($response, Translations::notFound(), $error);
+                    }
+                    $words = $translations();
+                    if (!$words->ready()) {
+                        return self::refuse($response, Translations::unavailable(), $error);
+                    }
 
-                $result = $words->deleteLanguage($code);
-                if ($result instanceof Refusal) {
-                    return self::refuse($response, $result, $error);
-                }
-                if ($audit !== null) {
-                    $audit($request, 'language.deleted', 'language', $code, ['name' => $result['language']['name'], 'strings' => $result['strings']] + $result['extras']);
-                }
+                    $result = $words->deleteLanguage($code);
+                    if ($result instanceof Refusal) {
+                        return self::refuse($response, $result, $error);
+                    }
+                    if ($audit !== null) {
+                        $audit($request, 'language.deleted', 'language', $code, ['name' => $result['language']['name'], 'strings' => $result['strings']] + $result['extras']);
+                    }
 
-                return JsonResponse::write($response, 200, ['strings' => $result['strings']] + $result['extras']);
-            }));
+                    return JsonResponse::write($response, 200, ['strings' => $result['strings']] + $result['extras']);
+                }),
+            );
         });
     }
 

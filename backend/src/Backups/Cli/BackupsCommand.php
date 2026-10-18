@@ -86,15 +86,18 @@ final class BackupsCommand
             return 0;
         }
         foreach ($backups as $backup) {
-            fwrite($this->out, sprintf(
-                "%s  %-16s %10s  %s%s%s\n",
-                $backup['id'],
-                $backup['kind'],
-                self::size((int) $backup['size']),
-                ($backup['encrypted'] ?? false) ? 'encrypted' : 'plain',
-                $backup['description'] !== null ? '  ' . $backup['description'] : '',
-                ($backup['stale'] ?? false) ? '  (old: delete it?)' : '',
-            ));
+            fwrite(
+                $this->out,
+                sprintf(
+                    "%s  %-16s %10s  %s%s%s\n",
+                    $backup['id'],
+                    $backup['kind'],
+                    self::size((int) $backup['size']),
+                    $backup['encrypted'] ?? false ? 'encrypted' : 'plain',
+                    $backup['description'] !== null ? '  ' . $backup['description'] : '',
+                    $backup['stale'] ?? false ? '  (old: delete it?)' : '',
+                ),
+            );
         }
 
         return 0;
@@ -117,7 +120,17 @@ final class BackupsCommand
     {
         // The manifest alone, in memory: not a row of the database is decrypted, nothing is written anywhere.
         $manifest = $this->backups->manifest($id);
-        fwrite($this->out, sprintf("%s  %s, made %s by %s%s\n", $manifest['id'], $manifest['kind'], $manifest['created_at'], $manifest['created_by'] ?? 'nobody', $manifest['description'] !== null ? ' - ' . $manifest['description'] : ''));
+        fwrite(
+            $this->out,
+            sprintf(
+                "%s  %s, made %s by %s%s\n",
+                $manifest['id'],
+                $manifest['kind'],
+                $manifest['created_at'],
+                $manifest['created_by'] ?? 'nobody',
+                $manifest['description'] !== null ? ' - ' . $manifest['description'] : '',
+            ),
+        );
         fwrite($this->out, 'Migrations applied: ' . count($manifest['schema']['migrations']) . "\n");
         foreach ($manifest['tables'] as $table) {
             fwrite($this->out, sprintf("  %-40s %10d rows %10s\n", $table['name'], $table['rows'], self::size((int) $table['bytes'])));

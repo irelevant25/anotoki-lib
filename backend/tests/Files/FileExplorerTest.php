@@ -62,8 +62,16 @@ final class FileExplorerTest extends FilesTestCase
         self::assertIsArray($result);
         self::assertSame([1, 6], [$result['uploaded'], $result['refused']]);
         self::assertSame(
-            [['uploaded', '5-0 - Epitome.png'], ['refused', 'name_runs_on_server'], ['refused', 'content_mismatch'], ['refused', 'name_invalid'], ['refused', 'too_large'], ['refused', 'too_large'], ['refused', 'exists']],
-            array_map(static fn (array $file): array => [$file['status'], $file['status'] === 'refused' ? $file['code'] : $file['stored_as']], $result['files'])
+            [
+                ['uploaded', '5-0 - Epitome.png'],
+                ['refused', 'name_runs_on_server'],
+                ['refused', 'content_mismatch'],
+                ['refused', 'name_invalid'],
+                ['refused', 'too_large'],
+                ['refused', 'too_large'],
+                ['refused', 'exists'],
+            ],
+            array_map(static fn(array $file): array => [$file['status'], $file['status'] === 'refused' ? $file['code'] : $file['stored_as']], $result['files']),
         );
         self::assertFileExists($this->assets . '/characters/raiden/5-0 - Epitome.png');
         self::assertFileDoesNotExist($this->assets . '/characters/raiden/shell.php.png');
@@ -194,7 +202,11 @@ final class FileExplorerTest extends FilesTestCase
         self::assertNull($this->signedRaw($explorer, 'assets', 'characters/raiden/Raiden Shogun.png', $expired));
 
         $svg = $link($explorer->previewUrl('assets', 'characters/by-ftp.svg'));
-        self::assertSame(['application/octet-stream', false], array_values(array_intersect_key((array) $explorer->raw($svg['root'], $svg['path'], $svg['exp'], $svg['sig']), ['type' => 1, 'inline' => 1])), 'an SVG only as a download');
+        self::assertSame(
+            ['application/octet-stream', false],
+            array_values(array_intersect_key((array) $explorer->raw($svg['root'], $svg['path'], $svg['exp'], $svg['sig']), ['type' => 1, 'inline' => 1])),
+            'an SVG only as a download',
+        );
         $text = $link($explorer->previewUrl('assets', 'characters/readme.txt'));
         self::assertSame('text/plain; charset=utf-8', $explorer->raw($text['root'], $text['path'], $text['exp'], $text['sig'])['type'] ?? null);
         $long = $link($explorer->previewUrl('assets', 'characters/long.txt'));
@@ -205,10 +217,13 @@ final class FileExplorerTest extends FilesTestCase
 
     public function testARootIsTheSitesDataNeverItsCodeItsSecretsOrTheLibrarysStorage(): void
     {
-        foreach ([
-            'the site itself, with its config/*.local.php' => $this->base,
-            'the config folder' => $this->base . '/config',
-        ] as $why => $path) {
+        foreach (
+            [
+                'the site itself, with its config/*.local.php' => $this->base,
+                'the config folder' => $this->base . '/config',
+            ]
+            as $why => $path
+        ) {
             try {
                 new FileRoot('site', $path);
                 self::fail("$why taken as a root");
@@ -295,7 +310,8 @@ final class FileExplorerTest extends FilesTestCase
         self::assertSame(404, $this->send($app, 'GET', '/api/admin/files/assets?path=%2e%2e%2Fassets-old')->getStatusCode(), '%2e%2e arrives as ..');
         self::assertSame(['characters'], array_column($this->json($this->send($app, 'GET', '/api/admin/files/assets'))['folders'], 'name'));
 
-        $request = (new ServerRequestFactory())->createServerRequest('POST', 'https://site.example/api/admin/files/assets/upload')
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', 'https://site.example/api/admin/files/assets/upload')
             ->withParsedBody(['path' => 'characters', 'replace' => '0'])
             ->withUploadedFiles(['files' => [$this->upload('New.png', (string) base64_decode(self::PNG)), $this->upload('x.php.png', 'x')]])
             ->withHeader('X-Test-Admin', 'yes');
@@ -304,7 +320,10 @@ final class FileExplorerTest extends FilesTestCase
         self::assertSame([['file.uploaded', 'file', 'assets:characters/New.png']], $this->audited);
 
         self::assertSame(201, $this->send($app, 'POST', '/api/admin/files/assets/folder', '{"path":"weapons"}')->getStatusCode());
-        self::assertSame('file.renamed', $this->json($this->send($app, 'POST', '/api/admin/files/assets/move', '{"from":"characters/New.png","to":"characters/Newer.png"}'))['op'] === 'rename' ? $this->audited[2][0] : null);
+        self::assertSame(
+            'file.renamed',
+            $this->json($this->send($app, 'POST', '/api/admin/files/assets/move', '{"from":"characters/New.png","to":"characters/Newer.png"}'))['op'] === 'rename' ? $this->audited[2][0] : null,
+        );
         $deleted = $this->json($this->send($app, 'DELETE', '/api/admin/files/assets?path=characters%2FNewer.png'));
         self::assertNotNull($deleted['trashed']);
         self::assertCount(1, $this->json($this->send($app, 'GET', '/api/admin/files/assets/trash'))['items']);
@@ -317,15 +336,23 @@ final class FileExplorerTest extends FilesTestCase
         $preview = $this->send($app, 'GET', $url, admin: false);
         self::assertSame(200, $preview->getStatusCode());
         self::assertSame((string) base64_decode(self::PNG), (string) $preview->getBody());
-        self::assertSame([
-            'image/png', "sandbox; default-src 'none'", 'nosniff', 'same-origin', 'private, no-store', 'bytes',
-        ], [
-            $preview->getHeaderLine('Content-Type'), $preview->getHeaderLine('Content-Security-Policy'), $preview->getHeaderLine('X-Content-Type-Options'),
-            $preview->getHeaderLine('Cross-Origin-Resource-Policy'), $preview->getHeaderLine('Cache-Control'), $preview->getHeaderLine('Accept-Ranges'),
-        ]);
+        self::assertSame(
+            ['image/png', "sandbox; default-src 'none'", 'nosniff', 'same-origin', 'private, no-store', 'bytes'],
+            [
+                $preview->getHeaderLine('Content-Type'),
+                $preview->getHeaderLine('Content-Security-Policy'),
+                $preview->getHeaderLine('X-Content-Type-Options'),
+                $preview->getHeaderLine('Cross-Origin-Resource-Policy'),
+                $preview->getHeaderLine('Cache-Control'),
+                $preview->getHeaderLine('Accept-Ranges'),
+            ],
+        );
         self::assertStringStartsWith('inline; filename="Raiden Shogun.png"', $preview->getHeaderLine('Content-Disposition'));
         $range = $this->send($app, 'GET', $url, admin: false, headers: ['Range' => 'bytes=0-7']);
-        self::assertSame([206, 'bytes 0-7/' . strlen((string) base64_decode(self::PNG)), "\x89PNG\r\n\x1a\n"], [$range->getStatusCode(), $range->getHeaderLine('Content-Range'), (string) $range->getBody()]);
+        self::assertSame(
+            [206, 'bytes 0-7/' . strlen((string) base64_decode(self::PNG)), "\x89PNG\r\n\x1a\n"],
+            [$range->getStatusCode(), $range->getHeaderLine('Content-Range'), (string) $range->getBody()],
+        );
         $altered = str_replace('raiden%2FRaiden', 'raiden%2FRaiden%20', $url);
         self::assertSame(404, $this->send($app, 'GET', $altered, admin: false)->getStatusCode());
         self::assertSame("sandbox; default-src 'none'", $this->send($app, 'GET', $altered, admin: false)->getHeaderLine('Content-Security-Policy'));
@@ -340,8 +367,8 @@ final class FileExplorerTest extends FilesTestCase
     private function context(): AdminContext
     {
         return new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? ($request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : 9) : null,
-            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+            static fn(ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? ($request->getHeaderLine('X-Test-Admin') === 'yes' ? 7 : 9) : null,
+            isAdmin: static fn(ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
         );
     }
 
@@ -351,12 +378,18 @@ final class FileExplorerTest extends FilesTestCase
         $context = $this->context();
         $app = AppFactory::create();
         $audit = new class ($this) implements \Anotoki\Lib\Audit\AuditRecorder {
-            public function __construct(private readonly FileExplorerTest $test)
-            {
-            }
+            public function __construct(private readonly FileExplorerTest $test) {}
 
-            public function record(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType = null, int|string|null $targetId = null, array $details = [], ?array $scope = null, ?string $session = null): void
-            {
+            public function record(
+                ?ServerRequestInterface $request,
+                int|string|null $actorId,
+                string $action,
+                ?string $targetType = null,
+                int|string|null $targetId = null,
+                array $details = [],
+                ?array $scope = null,
+                ?string $session = null,
+            ): void {
                 $this->test->audit($action, $targetType, $targetId === null ? null : (string) $targetId);
             }
         };

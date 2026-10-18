@@ -89,7 +89,7 @@ final class Scrubber
         private readonly int $lock = self::LOCK,
     ) {
         foreach ($hooks as $hook) {
-            if (!$hook instanceof Closure) {
+            if (!($hook instanceof Closure)) {
                 throw new InvalidArgumentException('Scrubber: every hook is a Closure(PDO $pdo, int $sub, ?array $former): void.');
             }
         }
@@ -146,15 +146,23 @@ final class Scrubber
         if (!PeopleTable::libraryReady($pdo)) {
             return null;
         }
-        $row = $pdo->query(
-            'SELECT ' . PeopleTable::epochOf('since') . ', ' . PeopleTable::epochOf('checked_at') . ', ' . PeopleTable::epochOf('ok_at') . ', error, scrubbed
-               FROM anotoki_people_sync WHERE id = 1'
-        )->fetch(PDO::FETCH_NUM);
+        $row = $pdo
+            ->query(
+                'SELECT ' .
+                    PeopleTable::epochOf('since') .
+                    ', ' .
+                    PeopleTable::epochOf('checked_at') .
+                    ', ' .
+                    PeopleTable::epochOf('ok_at') .
+                    ', error, scrubbed
+               FROM anotoki_people_sync WHERE id = 1',
+            )
+            ->fetch(PDO::FETCH_NUM);
         if ($row === false) {
             return ['since' => null, 'checked_at' => null, 'ok_at' => null, 'error' => null, 'scrubbed' => 0];
         }
         [$since, $checked, $ok, $error, $scrubbed] = $row;
-        $iso = static fn (mixed $epoch): ?string => $epoch === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $epoch);
+        $iso = static fn(mixed $epoch): ?string => $epoch === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $epoch);
 
         return ['since' => $iso($since), 'checked_at' => $iso($checked), 'ok_at' => $iso($ok), 'error' => $error === null ? null : (string) $error, 'scrubbed' => (int) $scrubbed];
     }
@@ -218,9 +226,9 @@ final class Scrubber
      */
     private function since(): array
     {
-        $row = $this->pdo->query(
-            'SELECT ' . PeopleTable::epochOf('since') . ", to_char(since AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') FROM anotoki_people_sync WHERE id = 1"
-        )->fetch(PDO::FETCH_NUM);
+        $row = $this->pdo
+            ->query('SELECT ' . PeopleTable::epochOf('since') . ", to_char(since AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') FROM anotoki_people_sync WHERE id = 1")
+            ->fetch(PDO::FETCH_NUM);
         if ($row === false) {
             return [null, null];
         }
@@ -242,23 +250,23 @@ final class Scrubber
             $read = $this->pdo->prepare("SELECT $name, " . PeopleTable::epochOf($anonymized) . " FROM $table WHERE $id = CAST(? AS bigint) AND $id > 0 FOR UPDATE");
             $read->execute([$sub]);
             $row = $read->fetch(PDO::FETCH_NUM);
-            $former = $row === false ? null : [
-                'name' => $row[0] === null ? null : (string) $row[0],
-                'anonymized_at' => $row[1] === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $row[1]),
-            ];
+            $former =
+                $row === false
+                    ? null
+                    : [
+                        'name' => $row[0] === null ? null : (string) $row[0],
+                        'anonymized_at' => $row[1] === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $row[1]),
+                    ];
 
-            $this->pdo->prepare('INSERT INTO anotoki_people_anonymized (sub, anonymized_at, had_row) VALUES (CAST(? AS bigint), CAST(? AS timestamptz), ?) ON CONFLICT (sub) DO NOTHING')
+            $this->pdo
+                ->prepare('INSERT INTO anotoki_people_anonymized (sub, anonymized_at, had_row) VALUES (CAST(? AS bigint), CAST(? AS timestamptz), ?) ON CONFLICT (sub) DO NOTHING')
                 ->execute([$sub, $anonymizedAt, $former === null ? 'false' : 'true']);
 
             $set = ["$name = ?", "$anonymized = CAST(? AS timestamptz)"];
             if ($t->updatedAt !== null && isset($t->columns($this->pdo)[$t->updatedAt])) {
                 $set[] = PeopleTable::quote($t->updatedAt) . ' = ' . $t->nowFor($this->pdo, $t->updatedAt);
             }
-            $scrubbed = $this->rename(
-                "UPDATE $table SET " . implode(', ', $set) . " WHERE $id = CAST(? AS bigint) AND $id > 0 AND $anonymized IS NULL",
-                $sub,
-                $anonymizedAt,
-            );
+            $scrubbed = $this->rename("UPDATE $table SET " . implode(', ', $set) . " WHERE $id = CAST(? AS bigint) AND $id > 0 AND $anonymized IS NULL", $sub, $anonymizedAt);
 
             foreach ($this->hooks as $hook) {
                 $hook($this->pdo, $sub, $former);

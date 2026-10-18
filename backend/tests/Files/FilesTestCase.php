@@ -53,16 +53,19 @@ abstract class FilesTestCase extends TestCase
     /** @param array<string, mixed> $options */
     protected function explorer(array $options = [], ?array $roots = null): FileExplorer
     {
-        return new FileExplorer($roots ?? [
-            new FileRoot('assets', $this->assets, label: 'Assets', write: true, extensions: ['png', 'jpg', 'gif', 'ogg', 'mp3', 'txt', 'pdf'], maxBytes: 1024 * 1024),
-            new FileRoot('public', $this->base . '/assets-old', label: 'Old'),
-        ], $options + [
-            'storage' => $this->storage,
-            'key' => str_repeat('k', 32),
-            'afterWrite' => function (string $root, string $op, string $path, ?string $from): void {
-                $this->written[] = [$root, $op, $path, $from];
-            },
-        ]);
+        return new FileExplorer(
+            $roots ?? [
+                new FileRoot('assets', $this->assets, label: 'Assets', write: true, extensions: ['png', 'jpg', 'gif', 'ogg', 'mp3', 'txt', 'pdf'], maxBytes: 1024 * 1024),
+                new FileRoot('public', $this->base . '/assets-old', label: 'Old'),
+            ],
+            $options + [
+                'storage' => $this->storage,
+                'key' => str_repeat('k', 32),
+                'afterWrite' => function (string $root, string $op, string $path, ?string $from): void {
+                    $this->written[] = [$root, $op, $path, $from];
+                },
+            ],
+        );
     }
 
     /** An upload as PHP hands it over: a temporary file and the name the browser sent. */

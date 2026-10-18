@@ -95,9 +95,7 @@ final class Migrator
             throw new InvalidArgumentException('The Migrator works on PostgreSQL: give it a pgsql: connection.');
         }
         if ($pdo->getAttribute(PDO::ATTR_ERRMODE) !== PDO::ERRMODE_EXCEPTION) {
-            throw new InvalidArgumentException(
-                'The Migrator needs PDO::ERRMODE_EXCEPTION on its connection: without it a failed statement would pass unnoticed.'
-            );
+            throw new InvalidArgumentException('The Migrator needs PDO::ERRMODE_EXCEPTION on its connection: without it a failed statement would pass unnoticed.');
         }
 
         if ($sets === [] || !array_is_list($sets)) {
@@ -105,7 +103,7 @@ final class Migrator
         }
         $names = [];
         foreach ($sets as $set) {
-            if (!$set instanceof MigrationSet) {
+            if (!($set instanceof MigrationSet)) {
                 throw new InvalidArgumentException('Every set must be a MigrationSet.');
             }
             if ($set->name === '') {
@@ -117,7 +115,7 @@ final class Migrator
             $names[$set->name] = true;
         }
         $this->sets = $sets;
-        $own = array_values(array_filter($sets, static fn (MigrationSet $set): bool => !$set->library));
+        $own = array_values(array_filter($sets, static fn(MigrationSet $set): bool => !$set->library));
         $this->siteSets = count($own);
         $this->firstSiteSet = $own[0] ?? null;
 
@@ -220,7 +218,7 @@ final class Migrator
         }
 
         return [
-            'sets' => array_map(static fn (MigrationSet $set): string => $set->name, $this->sets),
+            'sets' => array_map(static fn(MigrationSet $set): string => $set->name, $this->sets),
             'applied' => $applied,
             'pending' => $pending,
             'missing' => $missing,
@@ -360,9 +358,7 @@ final class Migrator
         }
 
         if ($this->shapeOf($columns) === null) {
-            throw new LogicException(
-                "The table {$this->table} has neither a filename nor a name column: adopt its shape in the prepare hook first."
-            );
+            throw new LogicException("The table {$this->table} has neither a filename nor a name column: adopt its shape in the prepare hook first.");
         }
     }
 
@@ -386,7 +382,7 @@ final class Migrator
      */
     private static function names(array $files): array
     {
-        return array_map(static fn (array $file): array => ['set' => $file['set']->name, 'name' => $file['name']], $files);
+        return array_map(static fn(array $file): array => ['set' => $file['set']->name, 'name' => $file['name']], $files);
     }
 
     /** @return array<string, list<string>> each set's files, by its name */
@@ -475,7 +471,7 @@ final class Migrator
                FROM pg_catalog.pg_class c
                JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-              WHERE n.nspname = current_schema() AND c.relname = ? AND c.relkind IN ('r', 'p')"
+              WHERE n.nspname = current_schema() AND c.relname = ? AND c.relkind IN ('r', 'p')",
         );
         $statement->execute([$this->table]);
         $rows = $statement->fetchAll(PDO::FETCH_NUM);
@@ -525,8 +521,9 @@ final class Migrator
         $folder = isset($columns['folder']);
         if (!$folder && $this->siteSets > 1) {
             throw new LogicException(
-                "The table {$this->table} has no folder column, so it cannot keep the site's " . $this->siteSets
-                . ' migration sets apart: configure one set of its own, or adopt the table in the prepare hook.'
+                "The table {$this->table} has no folder column, so it cannot keep the site's " .
+                    $this->siteSets .
+                    ' migration sets apart: configure one set of its own, or adopt the table in the prepare hook.',
             );
         }
 
@@ -548,18 +545,14 @@ final class Migrator
         $file = self::quote($shape['file']);
         $folder = $shape['folder'] ? '"folder"' : 'NULL';
         // EXTRACT reads a TIMESTAMP as UTC and a TIMESTAMPTZ as its instant: UTC either way, whatever the session's zone.
-        $appliedAt = self::isTimestamp($shape['appliedAt'])
-            ? 'CASE WHEN isfinite("applied_at") THEN floor(extract(epoch FROM "applied_at"))::bigint END'
-            : 'NULL';
+        $appliedAt = self::isTimestamp($shape['appliedAt']) ? 'CASE WHEN isfinite("applied_at") THEN floor(extract(epoch FROM "applied_at"))::bigint END' : 'NULL';
         $order = match (true) {
             $shape['id'] => '"id"',
             $shape['appliedAt'] !== null => '"applied_at", ' . $file,
             default => $file,
         };
 
-        $rows = $this->pdo
-            ->query("SELECT $folder, $file, $appliedAt FROM {$this->quotedTable()} ORDER BY $order")
-            ->fetchAll(PDO::FETCH_NUM);
+        $rows = $this->pdo->query("SELECT $folder, $file, $appliedAt FROM {$this->quotedTable()} ORDER BY $order")->fetchAll(PDO::FETCH_NUM);
 
         $records = [];
         foreach ($rows as [$set, $name, $epoch]) {
@@ -638,14 +631,10 @@ final class Migrator
         $type = $shape['appliedAt'];
         if ($type !== null && str_starts_with($type, 'timestamp')) {
             $columns[] = '"applied_at"';
-            $values[] = str_ends_with($type, ' with time zone')
-                ? 'now()'
-                : "(now() AT TIME ZONE 'UTC')";
+            $values[] = str_ends_with($type, ' with time zone') ? 'now()' : "(now() AT TIME ZONE 'UTC')";
         }
 
-        $this->pdo
-            ->prepare("INSERT INTO {$this->quotedTable()} (" . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')')
-            ->execute($parameters);
+        $this->pdo->prepare("INSERT INTO {$this->quotedTable()} (" . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ')')->execute($parameters);
     }
 
     /** Runs a file's SQL: statement by statement (naming the one that fails), or whole. */
@@ -668,11 +657,7 @@ final class Migrator
                 $this->pdo->exec($statement);
             } catch (PDOException $e) {
                 $lines = array_slice(preg_split('/\r\n|\r|\n/', $statement) ?: [$statement], 0, 6);
-                throw new RuntimeException(
-                    'statement ' . ($index + 1) . ' of ' . $count . ': ' . $e->getMessage() . "\n\n  " . implode("\n  ", $lines),
-                    0,
-                    $e
-                );
+                throw new RuntimeException('statement ' . ($index + 1) . ' of ' . $count . ': ' . $e->getMessage() . "\n\n  " . implode("\n  ", $lines), 0, $e);
             }
         }
     }

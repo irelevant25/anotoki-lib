@@ -53,18 +53,20 @@
 // Run by `bun run build` (and so by CI and the release); exits 1 when a limit, a boundary, a floor or a first load is
 // broken.
 
-import { readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { basename, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { gzipSync } from "node:zlib";
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { basename, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 
-const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "lib");
-const manifest = JSON.parse(readFileSync(join(dist, "package.json"), "utf8"));
+const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'lib');
+const manifest = JSON.parse(readFileSync(join(dist, 'package.json'), 'utf8'));
 
 /** The ui core: @anotoki/lib/ui re-exports these, each an entry point - a file - of its own. */
-const CORE = "@anotoki/lib/ui";
-const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", "card", "empty-state", "error-state", "page-header", "avatar", "segmented", "autofocus"].map((piece) => `${CORE}/${piece}`);
+const CORE = '@anotoki/lib/ui';
+const PIECES = ['config', 'dom', 'icon', 'spinner', 'button', 'badge', 'alert', 'card', 'empty-state', 'error-state', 'page-header', 'avatar', 'segmented', 'autofocus'].map(
+  (piece) => `${CORE}/${piece}`,
+);
 
 /**
  * Gzipped kB each eager entry point may weigh - its code, without the comments, which never reach a site's bundle -
@@ -109,19 +111,19 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * form) comes with the press (its first load is "the footer" below).
  */
 const LIMITS = {
-    [CORE]: 15,
-    "@anotoki/lib/ui/menu": 6,
-    "@anotoki/lib/shell": 14,
-    "@anotoki/lib/migrations": 7,
-    "@anotoki/lib/translations": 8,
-    "@anotoki/lib/auth": 12,
-    "@anotoki/lib/auth/core": 3.5,
-    "@anotoki/lib/people": 0.5,
-    "@anotoki/lib/admin": 1.5,
-    "@anotoki/lib/feedback": 1.5,
-    "@anotoki/lib/error-report": 3,
-    "@anotoki/lib/legal": 3,
-    "@anotoki/lib/footer": 3,
+  [CORE]: 15,
+  '@anotoki/lib/ui/menu': 6,
+  '@anotoki/lib/shell': 14,
+  '@anotoki/lib/migrations': 7,
+  '@anotoki/lib/translations': 8,
+  '@anotoki/lib/auth': 12,
+  '@anotoki/lib/auth/core': 3.5,
+  '@anotoki/lib/people': 0.5,
+  '@anotoki/lib/admin': 1.5,
+  '@anotoki/lib/feedback': 1.5,
+  '@anotoki/lib/error-report': 3,
+  '@anotoki/lib/legal': 3,
+  '@anotoki/lib/footer': 3,
 };
 const UI_AND_SHELL = 28.5;
 
@@ -131,133 +133,143 @@ const UI_AND_SHELL = 28.5;
  * growing unseen. A limit crossed is a reason to look at what grew, not to raise the limit.
  */
 const LAZY_LIMITS = {
-    // 9.4 at 0.6.0: the field and its calendar - two components, their templates and styles (each twice in the FESM,
-    // once more in the class metadata a site's production build drops) and the dates' reading and writing.
-    "@anotoki/lib/ui/date-field": 10,
-    "@anotoki/lib/ui/slider": 4,
-    "@anotoki/lib/ui/color-field": 4.5,
-    "@anotoki/lib/ui/file-picker": 5.5,
-    "@anotoki/lib/ui/combobox": 7,
-    // 5.4 at 0.6.0: the toolbar, its item, the contenteditable's driver and the copies of twelve icons.
-    "@anotoki/lib/ui/rich-text": 6,
+  // 9.4 at 0.6.0: the field and its calendar - two components, their templates and styles (each twice in the FESM,
+  // once more in the class metadata a site's production build drops) and the dates' reading and writing.
+  '@anotoki/lib/ui/date-field': 10,
+  '@anotoki/lib/ui/slider': 4,
+  '@anotoki/lib/ui/color-field': 4.5,
+  '@anotoki/lib/ui/file-picker': 5.5,
+  '@anotoki/lib/ui/combobox': 7,
+  // 5.4 at 0.6.0: the toolbar, its item, the contenteditable's driver and the copies of twelve icons.
+  '@anotoki/lib/ui/rich-text': 6,
 };
 
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
-const ADMIN_PAGE = ["@anotoki/lib/admin", "@anotoki/lib/admin/parts", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination", "@anotoki/lib/ui/copy", "@anotoki/lib/ui/tabs", "@anotoki/lib/ui/labelled-group"];
+const ADMIN_PAGE = [
+  '@anotoki/lib/admin',
+  '@anotoki/lib/admin/parts',
+  ...PIECES,
+  '@anotoki/lib/ui/dialog',
+  '@anotoki/lib/ui/forms',
+  '@anotoki/lib/ui/pagination',
+  '@anotoki/lib/ui/copy',
+  '@anotoki/lib/ui/tabs',
+  '@anotoki/lib/ui/labelled-group',
+];
 
 /** What each entry point may import of the package's own (the rest: @angular/*, rxjs, tslib). */
 const MAY_IMPORT = {
-    "@anotoki/lib": [],
-    [CORE]: PIECES,
-    "@anotoki/lib/ui/config": [],
-    "@anotoki/lib/ui/dom": [],
-    "@anotoki/lib/ui/icon": ["@anotoki/lib/ui/config"],
-    "@anotoki/lib/ui/spinner": ["@anotoki/lib/ui/config"],
-    "@anotoki/lib/ui/button": ["@anotoki/lib/ui/spinner"],
-    "@anotoki/lib/ui/badge": [],
-    "@anotoki/lib/ui/alert": ["@anotoki/lib/ui/icon"],
-    "@anotoki/lib/ui/card": [],
-    "@anotoki/lib/ui/empty-state": ["@anotoki/lib/ui/icon"],
-    "@anotoki/lib/ui/error-state": ["@anotoki/lib/ui/alert", "@anotoki/lib/ui/button", "@anotoki/lib/ui/config", "@anotoki/lib/ui/icon"],
-    "@anotoki/lib/ui/page-header": [],
-    "@anotoki/lib/ui/avatar": [],
-    "@anotoki/lib/ui/segmented": ["@anotoki/lib/ui/icon"],
-    "@anotoki/lib/ui/autofocus": [],
-    // The family's icon set is a site's alone: no entry point imports it. A lazy page carries its own copies of the
-    // icons it draws - a site that loads ui/icons up front would otherwise carry them in its first load (one file is
-    // one chunk), as 0.4.0's admin pages put ~0.7 kB there (ui/icons/own-copies.spec.ts keeps the copies the family's).
-    "@anotoki/lib/ui/icons": [],
-    "@anotoki/lib/ui/menu": PIECES,
-    "@anotoki/lib/ui/dialog": PIECES,
-    "@anotoki/lib/ui/toast": PIECES,
-    // The fields; since 0.6.0 the field base and the select are entry points of their own, which it names (a first load
-    // can take the select alone, without every field).
-    "@anotoki/lib/ui/forms": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/select"],
-    "@anotoki/lib/ui/field": ["@anotoki/lib/ui/config", "@anotoki/lib/ui/dom"],
-    "@anotoki/lib/ui/select": [...PIECES, "@anotoki/lib/ui/field"],
-    // The tabs and, 0.6.0, the link tabs: their arrows' words (read by the tabs themselves, READ_BY_THEIR_PAGES below)
-    // and which link is the page's (ui/current-link).
-    "@anotoki/lib/ui/tabs": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/tabs", "@anotoki/lib/ui/current-link"],
-    "@anotoki/lib/ui/pagination": PIECES,
-    "@anotoki/lib/ui/drawer": PIECES,
-    "@anotoki/lib/ui/tooltip": PIECES,
-    "@anotoki/lib/ui/copy": [...PIECES, "@anotoki/lib/ui/toast"],
-    "@anotoki/lib/ui/qr": PIECES,
-    // 0.6.0's pieces, each an entry point of its own: how a piece reads its own words (the site's string first), and
-    // the pieces - those that say words import their namespace and read it through ui/piece-words, never registered
-    // (READ_BY_THEIR_PAGES below).
-    "@anotoki/lib/ui/piece-words": ["@anotoki/lib/ui/config"],
-    "@anotoki/lib/ui/chips": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/chips"],
-    "@anotoki/lib/ui/link-card": [],
-    "@anotoki/lib/ui/stat-tiles": ["@anotoki/lib/ui/config"],
-    "@anotoki/lib/ui/progress": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/progress"],
-    "@anotoki/lib/ui/disclosure": PIECES,
-    "@anotoki/lib/ui/stepper": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/stepper"],
-    "@anotoki/lib/ui/labelled-group": PIECES,
-    // Which of a navigation's links is the page's: the router alone. The side navigation: the kit's drawer on a phone,
-    // its words the kit's own (the top bar's "{count} new", ui/config).
-    "@anotoki/lib/ui/current-link": [],
-    "@anotoki/lib/ui/side-nav": [...PIECES, "@anotoki/lib/ui/drawer", "@anotoki/lib/ui/current-link"],
-    // The input pieces of 0.6.0: fields of the kit's (ui/field); the date field's calendar is a box under its button
-    // (ui/menu's AnchoredPanel, already in the bar's first load); each reads its own words (READ_BY_THEIR_PAGES).
-    "@anotoki/lib/ui/date-field": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/menu", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/date-field"],
-    "@anotoki/lib/ui/slider": [...PIECES, "@anotoki/lib/ui/field"],
-    "@anotoki/lib/ui/color-field": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/color-field"],
-    "@anotoki/lib/ui/file-picker": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/file-picker"],
-    // The combobox: its list box is a box under the field (AnchoredPanel), several chosen are the kit's removable chips.
-    "@anotoki/lib/ui/combobox": [...PIECES, "@anotoki/lib/ui/field", "@anotoki/lib/ui/menu", "@anotoki/lib/ui/chips", "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/combobox"],
-    // The rich-text toolbar: no field and no box - its buttons and its words.
-    "@anotoki/lib/ui/rich-text": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/rich-text"],
-    "@anotoki/lib/shell": [...PIECES, "@anotoki/lib/ui/menu"],
-    "@anotoki/lib/migrations": [...PIECES, "@anotoki/lib/words/site-status"],
-    "@anotoki/lib/migrations/page": ["@anotoki/lib/migrations", ...PIECES, "@anotoki/lib/ui/dialog"],
-    "@anotoki/lib/translations": PIECES,
-    "@anotoki/lib/translations/admin": ["@anotoki/lib/translations", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms"],
-    "@anotoki/lib/translations/testing": ["@anotoki/lib/translations"],
-    // The error report's marker alone (a token), never the reporter.
-    "@anotoki/lib/auth": [...PIECES, "@anotoki/lib/migrations", "@anotoki/lib/error-report/marker", "@anotoki/lib/auth/core", "@anotoki/lib/auth/session", "@anotoki/lib/auth/screens"],
-    // The auth module's shared part, and its parts loaded later: never the module itself (it names them, by import()
-    // the session part - a site's build puts that in a chunk of its own).
-    "@anotoki/lib/auth/core": ["@anotoki/lib/ui/config", "@anotoki/lib/words/sign-in"],
-    "@anotoki/lib/auth/session": ["@anotoki/lib/auth/core"],
-    "@anotoki/lib/auth/screens": ["@anotoki/lib/auth/core", ...PIECES],
-    "@anotoki/lib/auth/testing": ["@anotoki/lib/auth"],
-    // The People page's configuration needs nothing of the package; the page takes the kit (never the auth module: who
-    // reads it is the site's to say, `me`) and is never pulled back into it.
-    "@anotoki/lib/people": [],
-    "@anotoki/lib/people/page": ["@anotoki/lib/people", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/forms", "@anotoki/lib/ui/pagination"],
-    // The admin tools: their configuration (and the unread feedback count, beside a site's admin navigation) imports
-    // nothing of the package; their shared parts and their five pages, each on a lazy route, the kit's pieces.
-    "@anotoki/lib/admin": [],
-    "@anotoki/lib/admin/parts": ["@anotoki/lib/admin", ...PIECES, "@anotoki/lib/ui/dialog"],
-    "@anotoki/lib/admin/errors": ADMIN_PAGE,
-    "@anotoki/lib/admin/audit": ADMIN_PAGE,
-    "@anotoki/lib/admin/feedback": ADMIN_PAGE,
-    "@anotoki/lib/admin/backups": ADMIN_PAGE,
-    "@anotoki/lib/admin/files": [...ADMIN_PAGE, "@anotoki/lib/ui/menu"],
-    // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
-    "@anotoki/lib/feedback": ["@anotoki/lib/ui/config", "@anotoki/lib/words/feedback"],
-    "@anotoki/lib/feedback/form": ["@anotoki/lib/feedback", ...PIECES, "@anotoki/lib/ui/forms"],
-    // The browser's errors, reported: Angular's own (its ErrorHandler and HttpClient) and the report's mark, an entry
-    // point of its own that imports nothing.
-    "@anotoki/lib/error-report": ["@anotoki/lib/error-report/marker"],
-    "@anotoki/lib/error-report/marker": [],
-    // The legal pages: their configuration and the footer's links register the links' words; the pages, each on a
-    // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form by import() as it is opened.
-    "@anotoki/lib/legal": ["@anotoki/lib/ui/config", "@anotoki/lib/words/legal-links"],
-    "@anotoki/lib/legal/pages": ["@anotoki/lib/legal", "@anotoki/lib/words/legal", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/copy", "@anotoki/lib/feedback/form"],
-    // The family's footer (0.6.3): the kit's buttons, the legal links, its own words (read by itself, READ_BY_THEIR_PAGES)
-    // through ui/piece-words, and its feedback dialog by import() as it is opened - which holds the kit's dialog and the
-    // feedback form, so that the footer's first load carries neither.
-    "@anotoki/lib/footer": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/footer", "@anotoki/lib/legal", "@anotoki/lib/footer/feedback"],
-    "@anotoki/lib/footer/feedback": ["@anotoki/lib/ui/dialog", "@anotoki/lib/feedback/form"],
-    // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
+  '@anotoki/lib': [],
+  [CORE]: PIECES,
+  '@anotoki/lib/ui/config': [],
+  '@anotoki/lib/ui/dom': [],
+  '@anotoki/lib/ui/icon': ['@anotoki/lib/ui/config'],
+  '@anotoki/lib/ui/spinner': ['@anotoki/lib/ui/config'],
+  '@anotoki/lib/ui/button': ['@anotoki/lib/ui/spinner'],
+  '@anotoki/lib/ui/badge': [],
+  '@anotoki/lib/ui/alert': ['@anotoki/lib/ui/icon'],
+  '@anotoki/lib/ui/card': [],
+  '@anotoki/lib/ui/empty-state': ['@anotoki/lib/ui/icon'],
+  '@anotoki/lib/ui/error-state': ['@anotoki/lib/ui/alert', '@anotoki/lib/ui/button', '@anotoki/lib/ui/config', '@anotoki/lib/ui/icon'],
+  '@anotoki/lib/ui/page-header': [],
+  '@anotoki/lib/ui/avatar': [],
+  '@anotoki/lib/ui/segmented': ['@anotoki/lib/ui/icon'],
+  '@anotoki/lib/ui/autofocus': [],
+  // The family's icon set is a site's alone: no entry point imports it. A lazy page carries its own copies of the
+  // icons it draws - a site that loads ui/icons up front would otherwise carry them in its first load (one file is
+  // one chunk), as 0.4.0's admin pages put ~0.7 kB there (ui/icons/own-copies.spec.ts keeps the copies the family's).
+  '@anotoki/lib/ui/icons': [],
+  '@anotoki/lib/ui/menu': PIECES,
+  '@anotoki/lib/ui/dialog': PIECES,
+  '@anotoki/lib/ui/toast': PIECES,
+  // The fields; since 0.6.0 the field base and the select are entry points of their own, which it names (a first load
+  // can take the select alone, without every field).
+  '@anotoki/lib/ui/forms': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/select'],
+  '@anotoki/lib/ui/field': ['@anotoki/lib/ui/config', '@anotoki/lib/ui/dom'],
+  '@anotoki/lib/ui/select': [...PIECES, '@anotoki/lib/ui/field'],
+  // The tabs and, 0.6.0, the link tabs: their arrows' words (read by the tabs themselves, READ_BY_THEIR_PAGES below)
+  // and which link is the page's (ui/current-link).
+  '@anotoki/lib/ui/tabs': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/tabs', '@anotoki/lib/ui/current-link'],
+  '@anotoki/lib/ui/pagination': PIECES,
+  '@anotoki/lib/ui/drawer': PIECES,
+  '@anotoki/lib/ui/tooltip': PIECES,
+  '@anotoki/lib/ui/copy': [...PIECES, '@anotoki/lib/ui/toast'],
+  '@anotoki/lib/ui/qr': PIECES,
+  // 0.6.0's pieces, each an entry point of its own: how a piece reads its own words (the site's string first), and
+  // the pieces - those that say words import their namespace and read it through ui/piece-words, never registered
+  // (READ_BY_THEIR_PAGES below).
+  '@anotoki/lib/ui/piece-words': ['@anotoki/lib/ui/config'],
+  '@anotoki/lib/ui/chips': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/chips'],
+  '@anotoki/lib/ui/link-card': [],
+  '@anotoki/lib/ui/stat-tiles': ['@anotoki/lib/ui/config'],
+  '@anotoki/lib/ui/progress': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/progress'],
+  '@anotoki/lib/ui/disclosure': PIECES,
+  '@anotoki/lib/ui/stepper': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/stepper'],
+  '@anotoki/lib/ui/labelled-group': PIECES,
+  // Which of a navigation's links is the page's: the router alone. The side navigation: the kit's drawer on a phone,
+  // its words the kit's own (the top bar's "{count} new", ui/config).
+  '@anotoki/lib/ui/current-link': [],
+  '@anotoki/lib/ui/side-nav': [...PIECES, '@anotoki/lib/ui/drawer', '@anotoki/lib/ui/current-link'],
+  // The input pieces of 0.6.0: fields of the kit's (ui/field); the date field's calendar is a box under its button
+  // (ui/menu's AnchoredPanel, already in the bar's first load); each reads its own words (READ_BY_THEIR_PAGES).
+  '@anotoki/lib/ui/date-field': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/menu', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/date-field'],
+  '@anotoki/lib/ui/slider': [...PIECES, '@anotoki/lib/ui/field'],
+  '@anotoki/lib/ui/color-field': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/color-field'],
+  '@anotoki/lib/ui/file-picker': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/file-picker'],
+  // The combobox: its list box is a box under the field (AnchoredPanel), several chosen are the kit's removable chips.
+  '@anotoki/lib/ui/combobox': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/menu', '@anotoki/lib/ui/chips', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/combobox'],
+  // The rich-text toolbar: no field and no box - its buttons and its words.
+  '@anotoki/lib/ui/rich-text': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/rich-text'],
+  '@anotoki/lib/shell': [...PIECES, '@anotoki/lib/ui/menu'],
+  '@anotoki/lib/migrations': [...PIECES, '@anotoki/lib/words/site-status'],
+  '@anotoki/lib/migrations/page': ['@anotoki/lib/migrations', ...PIECES, '@anotoki/lib/ui/dialog'],
+  '@anotoki/lib/translations': PIECES,
+  '@anotoki/lib/translations/admin': ['@anotoki/lib/translations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/forms'],
+  '@anotoki/lib/translations/testing': ['@anotoki/lib/translations'],
+  // The error report's marker alone (a token), never the reporter.
+  '@anotoki/lib/auth': [...PIECES, '@anotoki/lib/migrations', '@anotoki/lib/error-report/marker', '@anotoki/lib/auth/core', '@anotoki/lib/auth/session', '@anotoki/lib/auth/screens'],
+  // The auth module's shared part, and its parts loaded later: never the module itself (it names them, by import()
+  // the session part - a site's build puts that in a chunk of its own).
+  '@anotoki/lib/auth/core': ['@anotoki/lib/ui/config', '@anotoki/lib/words/sign-in'],
+  '@anotoki/lib/auth/session': ['@anotoki/lib/auth/core'],
+  '@anotoki/lib/auth/screens': ['@anotoki/lib/auth/core', ...PIECES],
+  '@anotoki/lib/auth/testing': ['@anotoki/lib/auth'],
+  // The People page's configuration needs nothing of the package; the page takes the kit (never the auth module: who
+  // reads it is the site's to say, `me`) and is never pulled back into it.
+  '@anotoki/lib/people': [],
+  '@anotoki/lib/people/page': ['@anotoki/lib/people', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/forms', '@anotoki/lib/ui/pagination'],
+  // The admin tools: their configuration (and the unread feedback count, beside a site's admin navigation) imports
+  // nothing of the package; their shared parts and their five pages, each on a lazy route, the kit's pieces.
+  '@anotoki/lib/admin': [],
+  '@anotoki/lib/admin/parts': ['@anotoki/lib/admin', ...PIECES, '@anotoki/lib/ui/dialog'],
+  '@anotoki/lib/admin/errors': ADMIN_PAGE,
+  '@anotoki/lib/admin/audit': ADMIN_PAGE,
+  '@anotoki/lib/admin/feedback': ADMIN_PAGE,
+  '@anotoki/lib/admin/backups': ADMIN_PAGE,
+  '@anotoki/lib/admin/files': [...ADMIN_PAGE, '@anotoki/lib/ui/menu'],
+  // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
+  '@anotoki/lib/feedback': ['@anotoki/lib/ui/config', '@anotoki/lib/words/feedback'],
+  '@anotoki/lib/feedback/form': ['@anotoki/lib/feedback', ...PIECES, '@anotoki/lib/ui/forms'],
+  // The browser's errors, reported: Angular's own (its ErrorHandler and HttpClient) and the report's mark, an entry
+  // point of its own that imports nothing.
+  '@anotoki/lib/error-report': ['@anotoki/lib/error-report/marker'],
+  '@anotoki/lib/error-report/marker': [],
+  // The legal pages: their configuration and the footer's links register the links' words; the pages, each on a
+  // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form by import() as it is opened.
+  '@anotoki/lib/legal': ['@anotoki/lib/ui/config', '@anotoki/lib/words/legal-links'],
+  '@anotoki/lib/legal/pages': ['@anotoki/lib/legal', '@anotoki/lib/words/legal', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/copy', '@anotoki/lib/feedback/form'],
+  // The family's footer (0.6.3): the kit's buttons, the legal links, its own words (read by itself, READ_BY_THEIR_PAGES)
+  // through ui/piece-words, and its feedback dialog by import() as it is opened - which holds the kit's dialog and the
+  // feedback form, so that the footer's first load carries neither.
+  '@anotoki/lib/footer': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/footer', '@anotoki/lib/legal', '@anotoki/lib/footer/feedback'],
+  '@anotoki/lib/footer/feedback': ['@anotoki/lib/ui/dialog', '@anotoki/lib/feedback/form'],
+  // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
 
 /** The library's words: the kit's namespaces (ui/config's), and where every other module's are. */
-const WORDS = "@anotoki/lib/words";
-const KIT_WORDS = ["language", "ui", "topbar", "theme"];
+const WORDS = '@anotoki/lib/words';
+const KIT_WORDS = ['language', 'ui', 'topbar', 'theme'];
 
 /**
  * The words entry points their readers read themselves, never registering them: a module's lazy pages (pages of text,
@@ -267,18 +279,18 @@ const KIT_WORDS = ["language", "ui", "topbar", "theme"];
  * namespace (each FIRST_LOADS row names the namespaces it may carry).
  */
 const READ_BY_THEIR_PAGES = {
-    "@anotoki/lib/words/legal": ["@anotoki/lib/legal/pages"],
-    "@anotoki/lib/words/chips": ["@anotoki/lib/ui/chips"],
-    "@anotoki/lib/words/progress": ["@anotoki/lib/ui/progress"],
-    "@anotoki/lib/words/stepper": ["@anotoki/lib/ui/stepper"],
-    "@anotoki/lib/words/tabs": ["@anotoki/lib/ui/tabs"],
-    "@anotoki/lib/words/date-field": ["@anotoki/lib/ui/date-field"],
-    "@anotoki/lib/words/color-field": ["@anotoki/lib/ui/color-field"],
-    "@anotoki/lib/words/file-picker": ["@anotoki/lib/ui/file-picker"],
-    "@anotoki/lib/words/combobox": ["@anotoki/lib/ui/combobox"],
-    "@anotoki/lib/words/rich-text": ["@anotoki/lib/ui/rich-text"],
-    // The footer's (0.6.3): it is in a first load itself, which carries them (its row below) - no other does.
-    "@anotoki/lib/words/footer": ["@anotoki/lib/footer"],
+  '@anotoki/lib/words/legal': ['@anotoki/lib/legal/pages'],
+  '@anotoki/lib/words/chips': ['@anotoki/lib/ui/chips'],
+  '@anotoki/lib/words/progress': ['@anotoki/lib/ui/progress'],
+  '@anotoki/lib/words/stepper': ['@anotoki/lib/ui/stepper'],
+  '@anotoki/lib/words/tabs': ['@anotoki/lib/ui/tabs'],
+  '@anotoki/lib/words/date-field': ['@anotoki/lib/ui/date-field'],
+  '@anotoki/lib/words/color-field': ['@anotoki/lib/ui/color-field'],
+  '@anotoki/lib/words/file-picker': ['@anotoki/lib/ui/file-picker'],
+  '@anotoki/lib/words/combobox': ['@anotoki/lib/ui/combobox'],
+  '@anotoki/lib/words/rich-text': ['@anotoki/lib/ui/rich-text'],
+  // The footer's (0.6.3): it is in a first load itself, which carries them (its row below) - no other does.
+  '@anotoki/lib/words/footer': ['@anotoki/lib/footer'],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
@@ -307,49 +319,63 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * of the legal pages' words.
  */
 const FIRST_LOADS = [
-    { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
-    { title: "the bar", imports: { "@anotoki/lib/shell": ["TopBarComponent", "ThemeService", "provideAnotokiShell"], "@anotoki/lib/ui/config": ["provideAnotokiUi"] }, limit: 21.5, words: KIT_WORDS },
-    { title: "the words", imports: { "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"] }, limit: 7.5, words: KIT_WORDS },
-    { title: "a button", imports: { "@anotoki/lib/ui/button": ["ButtonComponent"] }, limit: 5.5, words: KIT_WORDS },
-    { title: "a select", imports: { "@anotoki/lib/ui/select": ["SelectComponent"] }, limit: 7.5, words: KIT_WORDS },
-    {
-        title: "the sign-in",
-        imports: {
-            "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"],
-            "@anotoki/lib/auth": ["AnotokiAuth", "anotokiAuthInterceptor", "provideAnotokiAuth", "personOrVisitorGuard", "staffGuard", "AccountPreferences", "AuthCallbackComponent", "SignInFailureComponent"],
-        },
-        limit: 19.5,
-        words: [...KIT_WORDS, "siteStatus", "signIn"],
+  {
+    title: 'the gate',
+    imports: { '@anotoki/lib/migrations': ['SiteGateComponent', 'SitePagesDirective', 'SiteStatus', 'siteStatusInterceptor', 'provideAnotokiMigrations'] },
+    limit: 9,
+    words: [...KIT_WORDS, 'siteStatus'],
+  },
+  { title: 'the bar', imports: { '@anotoki/lib/shell': ['TopBarComponent', 'ThemeService', 'provideAnotokiShell'], '@anotoki/lib/ui/config': ['provideAnotokiUi'] }, limit: 21.5, words: KIT_WORDS },
+  { title: 'the words', imports: { '@anotoki/lib/translations': ['TranslationService', 'TranslatePipe', 'provideAnotokiTranslations'] }, limit: 7.5, words: KIT_WORDS },
+  { title: 'a button', imports: { '@anotoki/lib/ui/button': ['ButtonComponent'] }, limit: 5.5, words: KIT_WORDS },
+  { title: 'a select', imports: { '@anotoki/lib/ui/select': ['SelectComponent'] }, limit: 7.5, words: KIT_WORDS },
+  {
+    title: 'the sign-in',
+    imports: {
+      '@anotoki/lib/migrations': ['SiteGateComponent', 'SitePagesDirective', 'SiteStatus', 'siteStatusInterceptor', 'provideAnotokiMigrations'],
+      '@anotoki/lib/auth': [
+        'AnotokiAuth',
+        'anotokiAuthInterceptor',
+        'provideAnotokiAuth',
+        'personOrVisitorGuard',
+        'staffGuard',
+        'AccountPreferences',
+        'AuthCallbackComponent',
+        'SignInFailureComponent',
+      ],
     },
-    { title: "the badge", imports: { "@anotoki/lib/admin": ["provideAnotokiAdmin", "FeedbackUnread"] }, limit: 1, words: [] },
-    {
-        title: "the words + feedback",
-        imports: {
-            "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"],
-            "@anotoki/lib/feedback": ["provideAnotokiFeedback"],
-        },
-        limit: 9,
-        words: [...KIT_WORDS, "feedback"],
+    limit: 19.5,
+    words: [...KIT_WORDS, 'siteStatus', 'signIn'],
+  },
+  { title: 'the badge', imports: { '@anotoki/lib/admin': ['provideAnotokiAdmin', 'FeedbackUnread'] }, limit: 1, words: [] },
+  {
+    title: 'the words + feedback',
+    imports: {
+      '@anotoki/lib/translations': ['TranslationService', 'TranslatePipe', 'provideAnotokiTranslations'],
+      '@anotoki/lib/feedback': ['provideAnotokiFeedback'],
     },
-    { title: "the error report", imports: { "@anotoki/lib/error-report": ["provideAnotokiErrorReport"] }, limit: 2.5, words: [] },
-    {
-        title: "the words + legal links",
-        imports: {
-            "@anotoki/lib/translations": ["TranslationService", "TranslatePipe", "provideAnotokiTranslations"],
-            "@anotoki/lib/legal": ["provideAnotokiLegal", "LegalLinksComponent"],
-        },
-        limit: 9,
-        words: [...KIT_WORDS, "legalLinks"],
+    limit: 9,
+    words: [...KIT_WORDS, 'feedback'],
+  },
+  { title: 'the error report', imports: { '@anotoki/lib/error-report': ['provideAnotokiErrorReport'] }, limit: 2.5, words: [] },
+  {
+    title: 'the words + legal links',
+    imports: {
+      '@anotoki/lib/translations': ['TranslationService', 'TranslatePipe', 'provideAnotokiTranslations'],
+      '@anotoki/lib/legal': ['provideAnotokiLegal', 'LegalLinksComponent'],
     },
-    {
-        title: "the footer",
-        imports: {
-            "@anotoki/lib/legal": ["provideAnotokiLegal"],
-            "@anotoki/lib/footer": ["SiteFooterComponent"],
-        },
-        limit: 9,
-        words: [...KIT_WORDS, "legalLinks", "footer"],
+    limit: 9,
+    words: [...KIT_WORDS, 'legalLinks'],
+  },
+  {
+    title: 'the footer',
+    imports: {
+      '@anotoki/lib/legal': ['provideAnotokiLegal'],
+      '@anotoki/lib/footer': ['SiteFooterComponent'],
     },
+    limit: 9,
+    words: [...KIT_WORDS, 'legalLinks', 'footer'],
+  },
 ];
 
 /**
@@ -361,17 +387,17 @@ const SHARED_SLACK = 1;
 
 /** Each entry point's name and its FESM, from the package's exports. */
 const entries = Object.entries(manifest.exports)
-    .filter(([key, value]) => key.startsWith(".") && typeof value === "object" && value?.default?.endsWith(".mjs"))
-    .map(([key, value]) => ({ name: "@anotoki/lib" + key.slice(1), file: join(dist, value.default) }));
+  .filter(([key, value]) => key.startsWith('.') && typeof value === 'object' && value?.default?.endsWith('.mjs'))
+  .map(([key, value]) => ({ name: '@anotoki/lib' + key.slice(1), file: join(dist, value.default) }));
 const fileOf = new Map(entries.map((entry) => [entry.name, entry.file]));
 
 // A module's own words import nothing; @anotoki/lib/words gathers the kit's (ui/config) and every module's. Known from
 // the package itself, so a namespace the words script adds needs nothing here - only its module's MAY_IMPORT names it.
 const WORD_ENTRIES = entries.map(({ name }) => name).filter((name) => name.startsWith(`${WORDS}/`));
 for (const name of WORD_ENTRIES) {
-    MAY_IMPORT[name] ??= [];
+  MAY_IMPORT[name] ??= [];
 }
-MAY_IMPORT[WORDS] = ["@anotoki/lib/ui/config", ...WORD_ENTRIES];
+MAY_IMPORT[WORDS] = ['@anotoki/lib/ui/config', ...WORD_ENTRIES];
 
 const problems = [];
 const rows = [];
@@ -382,131 +408,141 @@ const kb = (bytes) => (bytes / 1024).toFixed(1);
 const gz = (code) => gzipSync(code, { level: 9 }).length;
 
 for (const { name, file } of entries) {
-    const source = readFileSync(file, "utf8");
-    // The code alone: the comments (JSDoc, the license's) stay out of a site's bundle.
-    const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    codeOf[name] = code;
-    weights[name] = gz(code) / 1024;
-    const limit = name === CORE ? undefined : (LIMITS[name] ?? LAZY_LIMITS[name]);
-    rows.push([name, kb(Buffer.byteLength(source)), weights[name].toFixed(1), limit ? `${limit}` : ""]);
+  const source = readFileSync(file, 'utf8');
+  // The code alone: the comments (JSDoc, the license's) stay out of a site's bundle.
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  codeOf[name] = code;
+  weights[name] = gz(code) / 1024;
+  const limit = name === CORE ? undefined : (LIMITS[name] ?? LAZY_LIMITS[name]);
+  rows.push([name, kb(Buffer.byteLength(source)), weights[name].toFixed(1), limit ? `${limit}` : '']);
 
-    if (!(name in MAY_IMPORT)) {
-        problems.push(`${name}: an entry point check-package.mjs does not know - add it to MAY_IMPORT (and LIMITS if it is eager).`);
-        continue;
+  if (!(name in MAY_IMPORT)) {
+    problems.push(`${name}: an entry point check-package.mjs does not know - add it to MAY_IMPORT (and LIMITS if it is eager).`);
+    continue;
+  }
+  // A module's name holds no white space: so the words 'from' and 'to' in a page's own code (the audit log's date
+  // filters) are never read as an import of what follows them.
+  const imported = new Set([...code.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*['"]([^'"\s]+)['"]/g)].map((match) => match[1]));
+  for (const specifier of imported) {
+    if (OTHERS.test(specifier)) {
+      continue;
     }
-    // A module's name holds no white space: so the words 'from' and 'to' in a page's own code (the audit log's date
-    // filters) are never read as an import of what follows them.
-    const imported = new Set([...code.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*['"]([^'"\s]+)['"]/g)].map((match) => match[1]));
-    for (const specifier of imported) {
-        if (OTHERS.test(specifier)) {
-            continue;
-        }
-        if (!MAY_IMPORT[name].includes(specifier)) {
-            problems.push(`${name} imports ${specifier}, which it may not.`);
-        }
+    if (!MAY_IMPORT[name].includes(specifier)) {
+      problems.push(`${name} imports ${specifier}, which it may not.`);
     }
-    if (limit && weights[name] > limit) {
-        problems.push(`${name} is ${weights[name].toFixed(1)} kB gzipped, over its ${limit} kB.`);
-    }
+  }
+  if (limit && weights[name] > limit) {
+    problems.push(`${name} is ${weights[name].toFixed(1)} kB gzipped, over its ${limit} kB.`);
+  }
 }
 for (const name of Object.keys(LAZY_LIMITS).filter((name) => !fileOf.has(name))) {
-    problems.push(`${name}: LAZY_LIMITS names an entry point the package does not have.`);
+  problems.push(`${name}: LAZY_LIMITS names an entry point the package does not have.`);
 }
 
 // The core's barrel holds re-exports alone: code of its own would be one more file every first page reaching it takes.
-if (codeOf[CORE].replace(/export\s*\{[^}]*\}\s*from\s*['"][^'"]+['"];?/g, "").trim() !== "") {
-    problems.push(`${CORE} holds code of its own: it re-exports the pieces (${CORE}/...), and a piece is an entry point of its own.`);
+if (codeOf[CORE].replace(/export\s*\{[^}]*\}\s*from\s*['"][^'"]+['"];?/g, '').trim() !== '') {
+  problems.push(`${CORE} holds code of its own: it re-exports the pieces (${CORE}/...), and a piece is an entry point of its own.`);
 }
 
 // The library's words stay with their readers: the kit's file holds the kit's namespaces alone, and each words entry
 // point one namespace - which its module imports, and the kit never does (MAY_IMPORT above).
-const notTheKits = [...namespacesIn(codeOf["@anotoki/lib/ui/config"] ?? "")].filter((namespace) => !KIT_WORDS.includes(namespace));
+const notTheKits = [...namespacesIn(codeOf['@anotoki/lib/ui/config'] ?? '')].filter((namespace) => !KIT_WORDS.includes(namespace));
 if (notTheKits.length) {
-    problems.push(`@anotoki/lib/ui/config holds the words of ${notTheKits.map((namespace) => `anotoki.${namespace}.*`).join(", ")}: the kit's file holds the kit's namespaces alone - a module's words are ${WORDS}/<namespace>'s (bun run words).`);
+  problems.push(
+    `@anotoki/lib/ui/config holds the words of ${notTheKits.map((namespace) => `anotoki.${namespace}.*`).join(', ')}: the kit's file holds the kit's namespaces alone - a module's words are ${WORDS}/<namespace>'s (bun run words).`,
+  );
 }
 for (const name of WORD_ENTRIES) {
-    const held = [...namespacesIn(codeOf[name] ?? "")];
-    if (held.length !== 1) {
-        problems.push(`${name} holds the words of ${held.length ? held.join(", ") : "no namespace"}: a words entry point holds one namespace (bun run words).`);
-    }
+  const held = [...namespacesIn(codeOf[name] ?? '')];
+  if (held.length !== 1) {
+    problems.push(`${name} holds the words of ${held.length ? held.join(', ') : 'no namespace'}: a words entry point holds one namespace (bun run words).`);
+  }
 }
 
 // A module's words reach the translations module only through its registration: the translations module imports no
 // words entry point, nor does any module @anotoki/lib/words (every namespace's), and a module that imports its own
 // namespace's registers them - provideLibraryWords(<them>) among the providers of its provide*() function.
 for (const [name, code] of Object.entries(codeOf)) {
-    if (name === WORDS || name.startsWith(`${WORDS}/`)) {
-        continue;
+  if (name === WORDS || name.startsWith(`${WORDS}/`)) {
+    continue;
+  }
+  for (const [, bindings, from] of code.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](@anotoki\/lib\/words(?:\/[^'"]+)?)['"]/g)) {
+    if (name.startsWith('@anotoki/lib/translations')) {
+      problems.push(`${name} imports ${from}: a module's words reach the translations module only through the module's registration (provideLibraryWords), never by an import.`);
+      continue;
     }
-    for (const [, bindings, from] of code.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"](@anotoki\/lib\/words(?:\/[^'"]+)?)['"]/g)) {
-        if (name.startsWith("@anotoki/lib/translations")) {
-            problems.push(`${name} imports ${from}: a module's words reach the translations module only through the module's registration (provideLibraryWords), never by an import.`);
-            continue;
-        }
-        if (from === WORDS) {
-            problems.push(`${name} imports ${WORDS}, every module's words: a module imports its own namespace's alone.`);
-            continue;
-        }
-        // Words their lazy pages read themselves: those pages import them unregistered, and nothing else imports them.
-        if (from in READ_BY_THEIR_PAGES) {
-            if (!READ_BY_THEIR_PAGES[from].includes(name)) {
-                problems.push(`${name} imports ${from}, which only ${READ_BY_THEIR_PAGES[from].join(", ")} may: its pages read those words themselves, and no first load may carry them.`);
-            }
-            continue;
-        }
-        for (const binding of bindings.split(",").map((part) => part.trim().split(/\s+as\s+/).pop()).filter(Boolean)) {
-            if (!new RegExp(`\\bprovideLibraryWords\\(\\s*${binding}\\s*\\)`).test(code)) {
-                problems.push(`${name} takes ${binding} from ${from} without registering it (provideLibraryWords(${binding})): a module's words reach the translations module only through its registration.`);
-            }
-        }
+    if (from === WORDS) {
+      problems.push(`${name} imports ${WORDS}, every module's words: a module imports its own namespace's alone.`);
+      continue;
     }
+    // Words their lazy pages read themselves: those pages import them unregistered, and nothing else imports them.
+    if (from in READ_BY_THEIR_PAGES) {
+      if (!READ_BY_THEIR_PAGES[from].includes(name)) {
+        problems.push(`${name} imports ${from}, which only ${READ_BY_THEIR_PAGES[from].join(', ')} may: its pages read those words themselves, and no first load may carry them.`);
+      }
+      continue;
+    }
+    for (const binding of bindings
+      .split(',')
+      .map((part) =>
+        part
+          .trim()
+          .split(/\s+as\s+/)
+          .pop(),
+      )
+      .filter(Boolean)) {
+      if (!new RegExp(`\\bprovideLibraryWords\\(\\s*${binding}\\s*\\)`).test(code)) {
+        problems.push(`${name} takes ${binding} from ${from} without registering it (provideLibraryWords(${binding})): a module's words reach the translations module only through its registration.`);
+      }
+    }
+  }
 }
 
 // The core whole: its pieces' code in one, as a site that uses every piece takes them.
-const core = gz(PIECES.map((piece) => codeOf[piece] ?? "").join("\n")) / 1024;
+const core = gz(PIECES.map((piece) => codeOf[piece] ?? '').join('\n')) / 1024;
 if (core > LIMITS[CORE]) {
-    problems.push(`${CORE} with its pieces is ${core.toFixed(1)} kB gzipped, over its ${LIMITS[CORE]} kB.`);
+  problems.push(`${CORE} with its pieces is ${core.toFixed(1)} kB gzipped, over its ${LIMITS[CORE]} kB.`);
 }
-rows.push([`${CORE} + pieces`, "", core.toFixed(1), `${LIMITS[CORE]}`]);
+rows.push([`${CORE} + pieces`, '', core.toFixed(1), `${LIMITS[CORE]}`]);
 
 // The Migrations page stays out of the gate's entry point: it is in every site's first load.
-if (codeOf["@anotoki/lib/migrations"].includes("anotoki-migrations-page")) {
-    problems.push("@anotoki/lib/migrations holds the Migrations page again: it belongs to @anotoki/lib/migrations/page alone.");
+if (codeOf['@anotoki/lib/migrations'].includes('anotoki-migrations-page')) {
+  problems.push('@anotoki/lib/migrations holds the Migrations page again: it belongs to @anotoki/lib/migrations/page alone.');
 }
 
 // The same for the translations: the service and the pipes are in every site's first load, the admin pages never.
-if (/anotoki-(translations|languages)-page/.test(codeOf["@anotoki/lib/translations"])) {
-    problems.push("@anotoki/lib/translations holds an admin page: they belong to @anotoki/lib/translations/admin alone.");
+if (/anotoki-(translations|languages)-page/.test(codeOf['@anotoki/lib/translations'])) {
+  problems.push('@anotoki/lib/translations holds an admin page: they belong to @anotoki/lib/translations/admin alone.');
 }
 
-const together = core + (weights["@anotoki/lib/shell"] ?? 0);
+const together = core + (weights['@anotoki/lib/shell'] ?? 0);
 if (together > UI_AND_SHELL) {
-    problems.push(`ui and shell together are ${together.toFixed(1)} kB gzipped, over ${UI_AND_SHELL} kB.`);
+  problems.push(`ui and shell together are ${together.toFixed(1)} kB gzipped, over ${UI_AND_SHELL} kB.`);
 }
 
-const exported = Object.keys(manifest.exports).filter((key) => key !== "./package.json" && !key.endsWith("*") && key !== "./styles");
+const exported = Object.keys(manifest.exports).filter((key) => key !== './package.json' && !key.endsWith('*') && key !== './styles');
 if (exported.length !== entries.length) {
-    problems.push(`package.json exports ${exported.length} entry points with code, ${entries.length} of them name an FESM.`);
+  problems.push(`package.json exports ${exported.length} entry points with code, ${entries.length} of them name an FESM.`);
 }
-if (manifest.exports["./styles"]?.sass !== "./styles/_index.scss") {
-    problems.push("package.json does not export ./styles to Sass.");
+if (manifest.exports['./styles']?.sass !== './styles/_index.scss') {
+  problems.push('package.json does not export ./styles to Sass.');
 }
 
-rows.sort((a, b) => a[0].localeCompare(b[0], "en"));
+rows.sort((a, b) => a[0].localeCompare(b[0], 'en'));
 const widths = [36, 10, 10, 8];
-const line = (cells) => cells.map((cell, index) => String(cell)[index ? "padStart" : "padEnd"](widths[index])).join(" ");
-console.log("\n" + line(["entry point", "raw kB", "code gz kB", "limit"]));
+const line = (cells) => cells.map((cell, index) => String(cell)[index ? 'padStart' : 'padEnd'](widths[index])).join(' ');
+console.log('\n' + line(['entry point', 'raw kB', 'code gz kB', 'limit']));
 for (const row of rows) {
-    console.log(line(row));
+  console.log(line(row));
 }
-console.log(line(["ui + shell", "", together.toFixed(1), String(UI_AND_SHELL)]));
+console.log(line(['ui + shell', '', together.toFixed(1), String(UI_AND_SHELL)]));
 
 // The CLI's own tools: its Sass and its esbuild, and the transformer its esbuild plugin runs on a package's files (a
 // private export of @angular/build - an Angular update that moves it fails here, and this check follows it).
 const require = createRequire(import.meta.url);
-const angularBuild = createRequire(require.resolve("@angular/build/package.json"));
-const sass = angularBuild("sass");
-const esbuild = angularBuild("esbuild");
+const angularBuild = createRequire(require.resolve('@angular/build/package.json'));
+const sass = angularBuild('sass');
+const esbuild = angularBuild('esbuild');
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Valid CSS: where Sass inspects a one-item list it writes `(…,)`, which no property takes - a shadow or a filter
@@ -516,7 +552,7 @@ const esbuild = angularBuild("esbuild");
 
 const TRAILING_COMMA = /,\s*\)/;
 const tokens = sass.compileString(
-    `@use "sass:map";
+  `@use "sass:map";
     @use "styles" as anotoki;
     @include anotoki.root;
     @include anotoki.root((light: (shadow-sm: (0 1px 2px red,)), dark: (mark-shadow: (drop-shadow(0 0 1px white),)), font-sans: ("A Site Font",)));
@@ -524,19 +560,19 @@ const tokens = sass.compileString(
     @include anotoki.utilities;
     @include anotoki.tables;
     @each $name, $value in map.merge(anotoki.$light, anotoki.$shared) { .token-#{$name} { value: anotoki.token($name); } }`,
-    { loadPaths: [dist] },
+  { loadPaths: [dist] },
 ).css;
 const invalid = new Set();
 for (const declaration of tokens.split(/[;{}]/).filter((part) => TRAILING_COMMA.test(part))) {
-    invalid.add(`@anotoki/lib/styles writes a one-item list as Sass reads it, not as CSS: ${declaration.trim().slice(0, 140)}`);
+  invalid.add(`@anotoki/lib/styles writes a one-item list as Sass reads it, not as CSS: ${declaration.trim().slice(0, 140)}`);
 }
 for (const { name, file } of entries) {
-    const source = readFileSync(file, "utf8");
-    for (const styles of source.matchAll(/styles:\s*\[\s*("(?:[^"\\]|\\.)*"(?:\s*,\s*"(?:[^"\\]|\\.)*")*)\s*\]/g)) {
-        for (const broken of styles[1].match(/[^;{}"]*,\s*\)[^;{}"]*/g) ?? []) {
-            invalid.add(`${name}: a component's styles hold a one-item list as Sass reads it, not as CSS: ${broken.trim().slice(0, 140)}`);
-        }
+  const source = readFileSync(file, 'utf8');
+  for (const styles of source.matchAll(/styles:\s*\[\s*("(?:[^"\\]|\\.)*"(?:\s*,\s*"(?:[^"\\]|\\.)*")*)\s*\]/g)) {
+    for (const broken of styles[1].match(/[^;{}"]*,\s*\)[^;{}"]*/g) ?? []) {
+      invalid.add(`${name}: a component's styles hold a one-item list as Sass reads it, not as CSS: ${broken.trim().slice(0, 140)}`);
     }
+  }
 }
 problems.push(...invalid);
 
@@ -549,24 +585,26 @@ problems.push(...invalid);
 // bypasses (the 0.6.0 review: for the five sites with no deploy check of their own, this is the only gate).
 
 const HTML_SINK = /innerHTML|outerHTML|setHTMLUnsafe|parseHTMLUnsafe|insertAdjacentHTML|bypassSecurityTrust|srcdoc|document\.write|DOMParser|parseFromString|createContextualFragment/i;
-const bundles = join(dist, "fesm2022");
-for (const bundleName of readdirSync(bundles).filter((file) => file.endsWith(".mjs"))) {
-    readFileSync(join(bundles, bundleName), "utf8")
-        .split(/\r?\n/)
-        .forEach((text, index) => {
-            const found = HTML_SINK.exec(text);
-            if (found) {
-                problems.push(`fesm2022/${bundleName}:${index + 1} names ${found[0]}: the library puts no string into a page as HTML and never switches Angular's sanitizer off (the IAM's deploy check refuses such a release).`);
-            }
-        });
+const bundles = join(dist, 'fesm2022');
+for (const bundleName of readdirSync(bundles).filter((file) => file.endsWith('.mjs'))) {
+  readFileSync(join(bundles, bundleName), 'utf8')
+    .split(/\r?\n/)
+    .forEach((text, index) => {
+      const found = HTML_SINK.exec(text);
+      if (found) {
+        problems.push(
+          `fesm2022/${bundleName}:${index + 1} names ${found[0]}: the library puts no string into a page as HTML and never switches Angular's sanitizer off (the IAM's deploy check refuses such a release).`,
+        );
+      }
+    });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Floors and first loads: the package as a site's production build takes it.
-const { JavaScriptTransformer } = require("@angular/build/private");
-if (typeof JavaScriptTransformer !== "function") {
-    console.error("\ncheck-package: @angular/build/private has no JavaScriptTransformer any more - find what the CLI's esbuild plugin runs on a package's files now, and run that here.");
-    process.exit(1);
+const { JavaScriptTransformer } = require('@angular/build/private');
+if (typeof JavaScriptTransformer !== 'function') {
+  console.error("\ncheck-package: @angular/build/private has no JavaScriptTransformer any more - find what the CLI's esbuild plugin runs on a package's files now, and run that here.");
+  process.exit(1);
 }
 
 // As the CLI's esbuild plugin does for a package's file: linked, its top-level code marked pure where Angular's own
@@ -575,147 +613,151 @@ if (typeof JavaScriptTransformer !== "function") {
 const transformer = new JavaScriptTransformer({ sourcemap: false, advancedOptimizations: true, jit: false }, 2);
 const transformed = new Map();
 async function transform(file) {
-    if (!transformed.has(file)) {
-        transformed.set(file, Buffer.from(await transformer.transformFile(file, false, false)).toString("utf8"));
-    }
-    return transformed.get(file);
+  if (!transformed.has(file)) {
+    transformed.set(file, Buffer.from(await transformer.transformFile(file, false, false)).toString('utf8'));
+  }
+  return transformed.get(file);
 }
 
 /** Bundles `modules` (name -> code) as the CLI does for production, Angular and rxjs left outside. */
 async function bundle(modules, { forced = null, later = true } = {}) {
-    return esbuild.build({
-        entryPoints: Object.keys(modules).map((name) => "page:" + name),
-        bundle: true,
-        format: "esm",
-        splitting: true,
-        write: false,
-        outdir: "out",
-        metafile: true,
-        minify: true,
-        target: "es2022",
-        pure: ["forwardRef"],
-        conditions: ["module", "production"],
-        define: { ngDevMode: "false", ngJitMode: "false", ngServerMode: "false", ngHmrMode: "false" },
-        logLevel: "silent",
-        plugins: [
-            {
-                name: "check-package",
-                setup(build) {
-                    build.onResolve({ filter: /^page:/ }, (args) => ({ path: args.path.slice(5), namespace: "page" }));
-                    build.onLoad({ filter: /.*/, namespace: "page" }, (args) => ({ contents: modules[args.path], loader: "js", resolveDir: dist }));
-                    build.onResolve({ filter: /^@anotoki\/lib(\/.*)?$/ }, (args) =>
-                        // `later` false: a part an entry point loads by import() stays out (a floor counts what is kept up front).
-                        !later && args.kind === "dynamic-import"
-                            ? { path: args.path, external: true }
-                            : fileOf.has(args.path)
-                              ? { path: fileOf.get(args.path), sideEffects: args.path === forced }
-                              : { errors: [{ text: `no entry point ${args.path}` }] },
-                    );
-                    build.onResolve({ filter: /^(@angular\/|rxjs|tslib)/ }, (args) => ({ path: args.path, external: true }));
-                    build.onLoad({ filter: /\.mjs$/ }, async (args) => ({ contents: await transform(args.path), loader: "js" }));
-                },
-            },
-        ],
-    });
+  return esbuild.build({
+    entryPoints: Object.keys(modules).map((name) => 'page:' + name),
+    bundle: true,
+    format: 'esm',
+    splitting: true,
+    write: false,
+    outdir: 'out',
+    metafile: true,
+    minify: true,
+    target: 'es2022',
+    pure: ['forwardRef'],
+    conditions: ['module', 'production'],
+    define: { ngDevMode: 'false', ngJitMode: 'false', ngServerMode: 'false', ngHmrMode: 'false' },
+    logLevel: 'silent',
+    plugins: [
+      {
+        name: 'check-package',
+        setup(build) {
+          build.onResolve({ filter: /^page:/ }, (args) => ({ path: args.path.slice(5), namespace: 'page' }));
+          build.onLoad({ filter: /.*/, namespace: 'page' }, (args) => ({ contents: modules[args.path], loader: 'js', resolveDir: dist }));
+          build.onResolve({ filter: /^@anotoki\/lib(\/.*)?$/ }, (args) =>
+            // `later` false: a part an entry point loads by import() stays out (a floor counts what is kept up front).
+            !later && args.kind === 'dynamic-import'
+              ? { path: args.path, external: true }
+              : fileOf.has(args.path)
+                ? { path: fileOf.get(args.path), sideEffects: args.path === forced }
+                : { errors: [{ text: `no entry point ${args.path}` }] },
+          );
+          build.onResolve({ filter: /^(@angular\/|rxjs|tslib)/ }, (args) => ({ path: args.path, external: true }));
+          build.onLoad({ filter: /\.mjs$/ }, async (args) => ({ contents: await transform(args.path), loader: 'js' }));
+        },
+      },
+    ],
+  });
 }
 
 /** The code of an output, without its import statements (Angular's, which stay outside here, and the chunks'). */
-const withoutImports = (text) => text.replace(/import\s*(?:[^;"']*?\s*from\s*)?["'][^"']+["'];?/g, "").trim();
+const withoutImports = (text) => text.replace(/import\s*(?:[^;"']*?\s*from\s*)?["'][^"']+["'];?/g, '').trim();
 
 /** What a page loads before it runs: its own output and every chunk it imports, transitively; the package's files in it. */
 function firstLoad(result, page) {
-    const outputs = result.metafile.outputs;
-    const start = Object.keys(outputs).find((name) => outputs[name].entryPoint === "page:" + page);
-    const loaded = new Set();
-    const visit = (name) => {
-        if (loaded.has(name)) {
-            return;
-        }
-        loaded.add(name);
-        outputs[name].imports.filter((record) => record.kind === "import-statement" && !record.external).forEach((record) => visit(record.path));
-    };
-    visit(start);
-    const files = new Map();
-    let code = "";
-    for (const name of loaded) {
-        code += withoutImports(result.outputFiles.find((output) => output.path.replace(/\\/g, "/").endsWith("/" + name)).text);
-        for (const [input, { bytesInOutput }] of Object.entries(outputs[name].inputs)) {
-            if (input.replace(/\\/g, "/").includes("/fesm2022/")) {
-                files.set(basename(input), (files.get(basename(input)) ?? 0) + bytesInOutput);
-            }
-        }
+  const outputs = result.metafile.outputs;
+  const start = Object.keys(outputs).find((name) => outputs[name].entryPoint === 'page:' + page);
+  const loaded = new Set();
+  const visit = (name) => {
+    if (loaded.has(name)) {
+      return;
     }
-    return { files, code, gz: gz(code) / 1024 };
+    loaded.add(name);
+    outputs[name].imports.filter((record) => record.kind === 'import-statement' && !record.external).forEach((record) => visit(record.path));
+  };
+  visit(start);
+  const files = new Map();
+  let code = '';
+  for (const name of loaded) {
+    code += withoutImports(result.outputFiles.find((output) => output.path.replace(/\\/g, '/').endsWith('/' + name)).text);
+    for (const [input, { bytesInOutput }] of Object.entries(outputs[name].inputs)) {
+      if (input.replace(/\\/g, '/').includes('/fesm2022/')) {
+        files.set(basename(input), (files.get(basename(input)) ?? 0) + bytesInOutput);
+      }
+    }
+  }
+  return { files, code, gz: gz(code) / 1024 };
 }
 
 /** The namespaces of the library's words in a first load, the kit's as one: "kit, siteStatus". */
 function wordsOf(code) {
-    const namespaces = [...namespacesIn(code)];
-    const others = namespaces.filter((namespace) => !KIT_WORDS.includes(namespace)).sort();
-    return [...(namespaces.length > others.length ? ["kit"] : []), ...others].join(", ") || "-";
+  const namespaces = [...namespacesIn(code)];
+  const others = namespaces.filter((namespace) => !KIT_WORDS.includes(namespace)).sort();
+  return [...(namespaces.length > others.length ? ['kit'] : []), ...others].join(', ') || '-';
 }
 
 const firstLoadRows = [];
 try {
-    // Floors: an entry point taken for nothing - its module kept, nothing of it used - leaves no code.
-    for (const { name } of entries) {
-        const result = await bundle({ floor: `import "${name}";` }, { forced: name, later: false });
-        const left = withoutImports(result.outputFiles.map((output) => output.text).join(""));
-        if (left !== "") {
-            problems.push(`${name} leaves ${Buffer.byteLength(left)} bytes in a bundle that uses nothing of it - top-level code a site's build keeps: ${left.slice(0, 160)}`);
-        }
+  // Floors: an entry point taken for nothing - its module kept, nothing of it used - leaves no code.
+  for (const { name } of entries) {
+    const result = await bundle({ floor: `import "${name}";` }, { forced: name, later: false });
+    const left = withoutImports(result.outputFiles.map((output) => output.text).join(''));
+    if (left !== '') {
+      problems.push(`${name} leaves ${Buffer.byteLength(left)} bytes in a bundle that uses nothing of it - top-level code a site's build keeps: ${left.slice(0, 160)}`);
     }
+  }
 
-    // First loads, beside lazy pages that use every other entry point whole (a testing helper is never in a page).
-    for (const { title, imports, limit, words } of FIRST_LOADS) {
-        const names = Object.values(imports).flat();
-        const page = Object.entries(imports)
-            .map(([entry, used]) => `import { ${used.join(", ")} } from "${entry}";`)
-            .concat(`export default [${names.join(", ")}];`)
-            .join("\n");
-        const others = entries.filter(({ name }) => !(name in imports) && !name.endsWith("/testing") && name !== "@anotoki/lib");
-        const lazy = others
-            .map(({ name }, index) => `import * as m${index} from "${name}";`)
-            .concat(`export default [${others.map((_, index) => "m" + index).join(", ")}];`)
-            .join("\n");
-        const alone = firstLoad(await bundle({ first: page }), "first");
-        const beside = firstLoad(await bundle({ first: page, lazy }), "first");
-        const extra = [...beside.files.keys()].filter((file) => !alone.files.has(file));
-        if (extra.length) {
-            problems.push(`${title}: the first load takes ${extra.join(", ")} when lazy pages use them, files it does not use itself - an import of the first page reaches them (through ${CORE}?).`);
-        }
-        if (beside.gz - alone.gz > SHARED_SLACK) {
-            const grown = [...beside.files]
-                .map(([file, bytes]) => [file, bytes - (alone.files.get(file) ?? 0)])
-                .filter(([, more]) => more > 0)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 4)
-                .map(([file, more]) => `${file} +${kb(more)} kB`);
-            problems.push(`${title}: the first load gains ${(beside.gz - alone.gz).toFixed(1)} kB gzipped when lazy pages use the rest of the package, over ${SHARED_SLACK} kB - what they use shares a file with what it uses (${grown.join(", ")}).`);
-        }
-        if (beside.gz > limit) {
-            problems.push(`${title}: the first load takes ${beside.gz.toFixed(1)} kB gzipped of the package, over its ${limit} kB.`);
-        }
-        // Its words: the namespaces its page says, and no module's that it does not - beside lazy pages that say them all.
-        const strange = words === null ? [] : [...namespacesIn(beside.code)].filter((namespace) => !words.includes(namespace));
-        if (strange.length) {
-            problems.push(`${title}: the first load carries the words of ${strange.map((namespace) => `anotoki.${namespace}.*`).join(", ")}, which its page does not say - a module's words are ${WORDS}/<namespace>'s, imported by that module alone.`);
-        }
-        firstLoadRows.push([title, alone.gz.toFixed(1), beside.gz.toFixed(1), String(limit), wordsOf(beside.code)]);
+  // First loads, beside lazy pages that use every other entry point whole (a testing helper is never in a page).
+  for (const { title, imports, limit, words } of FIRST_LOADS) {
+    const names = Object.values(imports).flat();
+    const page = Object.entries(imports)
+      .map(([entry, used]) => `import { ${used.join(', ')} } from "${entry}";`)
+      .concat(`export default [${names.join(', ')}];`)
+      .join('\n');
+    const others = entries.filter(({ name }) => !(name in imports) && !name.endsWith('/testing') && name !== '@anotoki/lib');
+    const lazy = others
+      .map(({ name }, index) => `import * as m${index} from "${name}";`)
+      .concat(`export default [${others.map((_, index) => 'm' + index).join(', ')}];`)
+      .join('\n');
+    const alone = firstLoad(await bundle({ first: page }), 'first');
+    const beside = firstLoad(await bundle({ first: page, lazy }), 'first');
+    const extra = [...beside.files.keys()].filter((file) => !alone.files.has(file));
+    if (extra.length) {
+      problems.push(`${title}: the first load takes ${extra.join(', ')} when lazy pages use them, files it does not use itself - an import of the first page reaches them (through ${CORE}?).`);
     }
+    if (beside.gz - alone.gz > SHARED_SLACK) {
+      const grown = [...beside.files]
+        .map(([file, bytes]) => [file, bytes - (alone.files.get(file) ?? 0)])
+        .filter(([, more]) => more > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([file, more]) => `${file} +${kb(more)} kB`);
+      problems.push(
+        `${title}: the first load gains ${(beside.gz - alone.gz).toFixed(1)} kB gzipped when lazy pages use the rest of the package, over ${SHARED_SLACK} kB - what they use shares a file with what it uses (${grown.join(', ')}).`,
+      );
+    }
+    if (beside.gz > limit) {
+      problems.push(`${title}: the first load takes ${beside.gz.toFixed(1)} kB gzipped of the package, over its ${limit} kB.`);
+    }
+    // Its words: the namespaces its page says, and no module's that it does not - beside lazy pages that say them all.
+    const strange = words === null ? [] : [...namespacesIn(beside.code)].filter((namespace) => !words.includes(namespace));
+    if (strange.length) {
+      problems.push(
+        `${title}: the first load carries the words of ${strange.map((namespace) => `anotoki.${namespace}.*`).join(', ')}, which its page does not say - a module's words are ${WORDS}/<namespace>'s, imported by that module alone.`,
+      );
+    }
+    firstLoadRows.push([title, alone.gz.toFixed(1), beside.gz.toFixed(1), String(limit), wordsOf(beside.code)]);
+  }
 } finally {
-    await transformer.close();
+  await transformer.close();
 }
 
 const loadWidths = [36, 10, 10, 8, 0];
-const loadLine = (cells) => cells.map((cell, index) => (index === 4 ? "  " + cell : String(cell)[index ? "padStart" : "padEnd"](loadWidths[index]))).join(" ");
-console.log("\n" + loadLine(["first load (code gz kB)", "alone", "+ lazy", "limit", "words"]));
+const loadLine = (cells) => cells.map((cell, index) => (index === 4 ? '  ' + cell : String(cell)[index ? 'padStart' : 'padEnd'](loadWidths[index]))).join(' ');
+console.log('\n' + loadLine(['first load (code gz kB)', 'alone', '+ lazy', 'limit', 'words']));
 for (const row of firstLoadRows) {
-    console.log(loadLine(row));
+  console.log(loadLine(row));
 }
 
 if (problems.length) {
-    console.error("\n" + problems.map((problem) => "check-package: " + problem).join("\n"));
-    process.exit(1);
+  console.error('\n' + problems.map((problem) => 'check-package: ' + problem).join('\n'));
+  process.exit(1);
 }
-console.log("\ncheck-package: every entry point within its limits and boundaries, its CSS valid, its strings text, nothing kept that is not used, every first load within its own.");
+console.log('\ncheck-package: every entry point within its limits and boundaries, its CSS valid, its strings text, nothing kept that is not used, every first load within its own.');

@@ -49,10 +49,10 @@ final class RequiredPlaceholders implements KeyRules
             return null;
         }
 
-        return Refusal::invalid(
-            'placeholder_missing',
-            "The $languageName string of \"$key\" must keep {{$missing[0]}}: the page sets what stands there apart from the rest of the sentence.",
-            ['key' => $key, 'language' => $code, 'placeholder' => $missing[0]]
-        );
+        return Refusal::invalid('placeholder_missing', "The $languageName string of \"$key\" must keep {{$missing[0]}}: the page sets what stands there apart from the rest of the sentence.", [
+            'key' => $key,
+            'language' => $code,
+            'placeholder' => $missing[0],
+        ]);
     }
 }

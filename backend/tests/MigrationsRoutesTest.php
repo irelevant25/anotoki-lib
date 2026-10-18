@@ -56,11 +56,11 @@ final class MigrationsRoutesTest extends DatabaseTestCase
 
     public function testTheStatusPassesTheGateWhileTheSiteIsNotSetUp(): void
     {
-        $state = new SiteState(fn (): ?string => 'No settings.', fn (): bool => true, fn (): Migrator => $this->sitesMigrator());
+        $state = new SiteState(fn(): ?string => 'No settings.', fn(): bool => true, fn(): Migrator => $this->sitesMigrator());
         $app = AppFactory::create();
         $app->add(new SiteGate($state, new ResponseFactory()));
         MigrationsRoutes::status($app, $state);
-        MigrationsRoutes::admin($app, self::BASE, fn (): Migrator => $this->sitesMigrator());
+        MigrationsRoutes::admin($app, self::BASE, fn(): Migrator => $this->sitesMigrator());
 
         self::assertSame(['state' => 'not_set_up', 'installed' => true], $this->json($this->request($app, 'GET', '/api/site-status')));
         self::assertSame(503, $this->request($app, 'GET', self::BASE)->getStatusCode());
@@ -77,7 +77,7 @@ final class MigrationsRoutesTest extends DatabaseTestCase
         self::assertSame('no-store', $response->getHeaderLine('Cache-Control'));
         $list = $this->json($response);
         self::assertSame(['users', 'genshin_impact'], $list['sets']);
-        self::assertSame(['users/001_people.sql', 'genshin_impact/001_characters.sql'], array_map(fn (array $file): string => $file['set'] . '/' . $file['name'], $list['applied']));
+        self::assertSame(['users/001_people.sql', 'genshin_impact/001_characters.sql'], array_map(fn(array $file): string => $file['set'] . '/' . $file['name'], $list['applied']));
         self::assertMatchesRegularExpression('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $list['applied'][0]['applied_at']);
         self::assertSame([['set' => 'genshin_impact', 'name' => '002_weapons.sql', 'ready' => true, 'blocked' => false]], $list['pending']);
         self::assertSame([], $list['missing']);
@@ -89,20 +89,20 @@ final class MigrationsRoutesTest extends DatabaseTestCase
 
         $response = $this->request($app, 'GET', self::BASE . '/file?set=genshin_impact&name=001_characters.sql');
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame(
-            ['set' => 'genshin_impact', 'name' => '001_characters.sql', 'sql' => "-- the characters\nCREATE TABLE characters (id int);"],
-            $this->json($response)
-        );
+        self::assertSame(['set' => 'genshin_impact', 'name' => '001_characters.sql', 'sql' => "-- the characters\nCREATE TABLE characters (id int);"], $this->json($response));
 
-        foreach ([
-            '/file?set=users&name=001_characters.sql',
-            '/file?set=nobody&name=001_people.sql',
-            '/file?set=users&name=..%2Fgenshin_impact%2F001_characters.sql',
-            '/file?set=users',
-            '/file?name=001_people.sql',
-            '/file?set[]=users&name=001_people.sql',
-            '/file',
-        ] as $path) {
+        foreach (
+            [
+                '/file?set=users&name=001_characters.sql',
+                '/file?set=nobody&name=001_people.sql',
+                '/file?set=users&name=..%2Fgenshin_impact%2F001_characters.sql',
+                '/file?set=users',
+                '/file?name=001_people.sql',
+                '/file?set[]=users&name=001_people.sql',
+                '/file',
+            ]
+            as $path
+        ) {
             $response = $this->request($app, 'GET', self::BASE . $path);
             self::assertSame(404, $response->getStatusCode(), $path);
             self::assertSame(['code' => 'not_found', 'message' => 'No such migration file.'], $this->json($response));
@@ -114,12 +114,15 @@ final class MigrationsRoutesTest extends DatabaseTestCase
         $response = $this->request($this->app(), 'POST', self::BASE . '/apply', ['X-Request-Id' => 'r1']);
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame([
-            'applied' => [['set' => 'users', 'name' => '001_people.sql'], ['set' => 'genshin_impact', 'name' => '001_characters.sql']],
-            'failed' => null,
-            'error' => null,
-            'note' => null,
-        ], $this->json($response));
+        self::assertSame(
+            [
+                'applied' => [['set' => 'users', 'name' => '001_people.sql'], ['set' => 'genshin_impact', 'name' => '001_characters.sql']],
+                'failed' => null,
+                'error' => null,
+                'note' => null,
+            ],
+            $this->json($response),
+        );
         self::assertTrue($this->tableExists('characters'));
 
         self::assertCount(1, $this->after);
@@ -153,10 +156,7 @@ final class MigrationsRoutesTest extends DatabaseTestCase
         $response = $this->request($this->app(), 'POST', self::BASE . '/apply');
 
         self::assertSame(409, $response->getStatusCode());
-        self::assertSame(
-            ['code' => 'busy', 'message' => 'Another database update is running. Nothing was applied. Wait a moment, then look again.'],
-            $this->json($response)
-        );
+        self::assertSame(['code' => 'busy', 'message' => 'Another database update is running. Nothing was applied. Wait a moment, then look again.'], $this->json($response));
         self::assertSame('no-store', $response->getHeaderLine('Cache-Control'));
         self::assertSame([], $this->after, 'nothing happened to tell');
         self::assertFalse($this->tableExists('people'));
@@ -175,7 +175,7 @@ final class MigrationsRoutesTest extends DatabaseTestCase
 
     public function testTheRoutesWorkWithTheSitesOwnStrategyAndContainer(): void
     {
-        $container = new class () implements ContainerInterface {
+        $container = new class implements ContainerInterface {
             public function get(string $id): mixed
             {
                 throw new RuntimeException("No $id here.");
@@ -188,9 +188,9 @@ final class MigrationsRoutesTest extends DatabaseTestCase
         };
         $app = AppFactory::create(null, $container);
         $app->getRouteCollector()->setDefaultInvocationStrategy(new RequestResponseArgs());
-        $state = new SiteState(fn (): ?string => null, fn (): bool => false, fn (): Migrator => $this->sitesMigrator());
+        $state = new SiteState(fn(): ?string => null, fn(): bool => false, fn(): Migrator => $this->sitesMigrator());
         MigrationsRoutes::status($app, $state);
-        MigrationsRoutes::admin($app, self::BASE, fn (): Migrator => $this->sitesMigrator());
+        MigrationsRoutes::admin($app, self::BASE, fn(): Migrator => $this->sitesMigrator());
 
         self::assertSame('update_pending', $this->json($this->request($app, 'GET', '/api/site-status'))['state']);
         self::assertSame(['users', 'genshin_impact'], $this->json($this->request($app, 'GET', self::BASE))['sets']);
@@ -201,9 +201,9 @@ final class MigrationsRoutesTest extends DatabaseTestCase
     private function app(): App
     {
         $app = AppFactory::create();
-        $state = new SiteState(fn (): ?string => null, fn (): bool => false, fn (): Migrator => $this->sitesMigrator());
+        $state = new SiteState(fn(): ?string => null, fn(): bool => false, fn(): Migrator => $this->sitesMigrator());
         MigrationsRoutes::status($app, $state);
-        MigrationsRoutes::admin($app, self::BASE, fn (): Migrator => $this->sitesMigrator(), function (ServerRequestInterface $request, array $result): void {
+        MigrationsRoutes::admin($app, self::BASE, fn(): Migrator => $this->sitesMigrator(), function (ServerRequestInterface $request, array $result): void {
             $this->after[] = [$request, $result];
         })->add(function (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface {
             if ($request->getHeaderLine('X-Test-Admin') !== 'yes') {

@@ -23,7 +23,11 @@ final class AdminSchemaTest extends DatabaseTestCase
             self::assertSame('-- end of ' . substr($name, 0, 3), end($lines), "$name ends with its own last line (Japanese Academy's draft rule)");
 
             // It names no site table: every table it creates, changes or writes is the library's.
-            preg_match_all('/\b(?:CREATE TABLE(?: IF NOT EXISTS)?|ALTER TABLE|INSERT INTO|UPDATE|DELETE FROM|TRUNCATE|DROP TABLE(?: IF EXISTS)?|ON)\s+([a-z_][a-z0-9_]*)/i', (string) preg_replace('/--.*$/m', '', $sql), $matches);
+            preg_match_all(
+                '/\b(?:CREATE TABLE(?: IF NOT EXISTS)?|ALTER TABLE|INSERT INTO|UPDATE|DELETE FROM|TRUNCATE|DROP TABLE(?: IF EXISTS)?|ON)\s+([a-z_][a-z0-9_]*)/i',
+                (string) preg_replace('/--.*$/m', '', $sql),
+                $matches,
+            );
             foreach ($matches[1] as $table) {
                 self::assertStringStartsWith('anotoki_', $table, "$name touches only anotoki_ tables");
             }
@@ -38,7 +42,7 @@ final class AdminSchemaTest extends DatabaseTestCase
         self::assertNull($result['error']);
         self::assertSame(
             [['set' => 'anotoki_admin', 'name' => '001_audit_log.sql'], ['set' => 'anotoki_admin', 'name' => '002_feedback.sql'], ['set' => 'survey', 'name' => '001_init.sql']],
-            $result['applied']
+            $result['applied'],
         );
         self::assertTrue(Schema::has($this->pdo, 'anotoki_audit_log'));
         self::assertTrue(Schema::has($this->pdo, 'anotoki_feedback'));
@@ -46,7 +50,7 @@ final class AdminSchemaTest extends DatabaseTestCase
         self::assertSame(
             ['anotoki_admin/001_audit_log.sql', 'anotoki_admin/002_feedback.sql', '001_init.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(\PDO::FETCH_COLUMN),
-            'a one-set site records the library\'s files as <set>/<file>'
+            'a one-set site records the library\'s files as <set>/<file>',
         );
 
         $audit = $this->shapeOf('anotoki_audit_log');
@@ -55,7 +59,11 @@ final class AdminSchemaTest extends DatabaseTestCase
         self::assertContains("anotoki_audit_log_action_check CHECK (((action)::text ~ '^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$'::text))", $audit['constraints']);
         $feedback = $this->shapeOf('anotoki_feedback');
         self::assertContains("status character varying(16) NOT NULL DEFAULT 'new'::character varying", $feedback['columns']);
-        self::assertSame([], array_values(array_filter($feedback['columns'], static fn (string $column): bool => str_starts_with($column, 'client_hash'))), 'nothing of where a message came from: no address, no hash of one (the owner\'s decision)');
+        self::assertSame(
+            [],
+            array_values(array_filter($feedback['columns'], static fn(string $column): bool => str_starts_with($column, 'client_hash'))),
+            'nothing of where a message came from: no address, no hash of one (the owner\'s decision)',
+        );
         foreach (glob(Schema::directory() . '/*.sql') ?: [] as $file) {
             self::assertStringContainsString('Released with anotoki-lib 0.4.0,', (string) file_get_contents($file), basename($file));
         }
@@ -63,7 +71,9 @@ final class AdminSchemaTest extends DatabaseTestCase
 
     public function testAGenshinShapedTableRecordsTheSetUnderItsFolder(): void
     {
-        $this->pdo->exec('CREATE TABLE migrations (id SERIAL PRIMARY KEY, folder VARCHAR(64) NOT NULL, filename VARCHAR(255) NOT NULL, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (folder, filename))');
+        $this->pdo->exec(
+            'CREATE TABLE migrations (id SERIAL PRIMARY KEY, folder VARCHAR(64) NOT NULL, filename VARCHAR(255) NOT NULL, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE (folder, filename))',
+        );
         $users = $this->set('users', ['001_users.sql' => 'CREATE TABLE users (id SERIAL PRIMARY KEY);']);
         $genshin = $this->set('genshin_impact', ['001_characters.sql' => 'CREATE TABLE characters (id SERIAL PRIMARY KEY);']);
 
@@ -71,7 +81,7 @@ final class AdminSchemaTest extends DatabaseTestCase
 
         self::assertSame(
             ['anotoki_admin|001_audit_log.sql', 'anotoki_admin|002_feedback.sql', 'users|001_users.sql', 'genshin_impact|001_characters.sql'],
-            $this->pdo->query("SELECT folder || '|' || filename FROM migrations ORDER BY id")->fetchAll(\PDO::FETCH_COLUMN)
+            $this->pdo->query("SELECT folder || '|' || filename FROM migrations ORDER BY id")->fetchAll(\PDO::FETCH_COLUMN),
         );
     }
 
@@ -111,10 +121,12 @@ final class AdminSchemaTest extends DatabaseTestCase
     /** @return array<string, mixed> every table but the library's and the bookkeeping, as the catalog has it, with its rows */
     private function siteTables(): array
     {
-        $tables = $this->pdo->query(
-            "SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'
-                AND relname NOT LIKE 'anotoki\\_%' AND relname <> 'migrations' ORDER BY relname"
-        )->fetchAll(\PDO::FETCH_COLUMN);
+        $tables = $this->pdo
+            ->query(
+                "SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'
+                AND relname NOT LIKE 'anotoki\\_%' AND relname <> 'migrations' ORDER BY relname",
+            )
+            ->fetchAll(\PDO::FETCH_COLUMN);
         $out = [];
         foreach ($tables as $table) {
             $out[$table] = $this->shapeOf($table) + [

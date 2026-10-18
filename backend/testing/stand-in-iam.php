@@ -88,12 +88,22 @@ function stand_in_state(string $dir): array
 
     return (is_array($state) ? $state : []) + [
         'user' => ['id' => 1, 'username' => 'owner', 'roles' => ['MEMBER', 'ADMIN']],
-        'session' => true, 'interaction' => false,
-        'ttl' => 600, 'down' => false, 'refuse' => false, 'deny' => false, 'deny_description' => 'No access to this application',
-        'login_required' => true, 'application_missing' => false, 'application_name' => 'Test site',
-        'anonymized' => [], 'anonymized_page' => 500,
+        'session' => true,
+        'interaction' => false,
+        'ttl' => 600,
+        'down' => false,
+        'refuse' => false,
+        'deny' => false,
+        'deny_description' => 'No access to this application',
+        'login_required' => true,
+        'application_missing' => false,
+        'application_name' => 'Test site',
+        'anonymized' => [],
+        'anonymized_page' => 500,
         'hint_cookie' => 'anotoki_signed_in',
-        'codes' => [], 'refresh' => [], 'log' => [],
+        'codes' => [],
+        'refresh' => [],
+        'log' => [],
     ];
 }
 
@@ -147,7 +157,7 @@ function stand_in_sign(array $claims, array $key, string $typ): string
 function stand_in_hint_sent(array $state): ?string
 {
     $name = $state['hint_cookie'];
-    $value = is_string($name) ? ($_COOKIE[$name] ?? null) : null;
+    $value = is_string($name) ? $_COOKIE[$name] ?? null : null;
 
     return is_string($value) && preg_match(STAND_IN_HINT_SHAPE, $value) === 1 ? $value : null;
 }
@@ -199,11 +209,20 @@ function stand_in_with_preferences(array $user, array $changes): array
 function stand_in_tokens(array &$state, array $user, array $key, string $issuer, string $clientId, ?string $nonce, string $sid, int $authTime): array
 {
     $now = time();
-    $common = [
-        'iss' => $issuer, 'sub' => (string) $user['id'], 'aud' => $clientId, 'iat' => $now, 'sid' => $sid, 'auth_time' => $authTime,
-        'preferred_username' => $user['username'], 'email' => $user['username'] . '@example.test',
-        'email_verified' => true, 'locale' => is_string($user['locale'] ?? null) ? $user['locale'] : 'en', 'roles' => $user['roles'],
-    ] + (is_array($user['preferences'] ?? null) ? ['preferences' => $user['preferences']] : []);
+    $common =
+        [
+            'iss' => $issuer,
+            'sub' => (string) $user['id'],
+            'aud' => $clientId,
+            'iat' => $now,
+            'sid' => $sid,
+            'auth_time' => $authTime,
+            'preferred_username' => $user['username'],
+            'email' => $user['username'] . '@example.test',
+            'email_verified' => true,
+            'locale' => is_string($user['locale'] ?? null) ? $user['locale'] : 'en',
+            'roles' => $user['roles'],
+        ] + (is_array($user['preferences'] ?? null) ? ['preferences' => $user['preferences']] : []);
     $access = stand_in_sign($common + ['client_id' => $clientId, 'exp' => $now + (int) $state['ttl'], 'jti' => bin2hex(random_bytes(8)), 'scope' => 'openid profile email'], $key, 'at+jwt');
     $id = stand_in_sign($common + ['azp' => $clientId, 'exp' => $now + 3600] + ($nonce !== null && $nonce !== '' ? ['nonce' => $nonce] : []), $key, 'JWT');
     $refresh = 'iam_rt_' . bin2hex(random_bytes(16));
@@ -215,8 +234,7 @@ function stand_in_tokens(array &$state, array $user, array $key, string $issuer,
 /** A `since` as the IAM reads it - ISO 8601 from 1970 on, or a date alone (midnight UTC) - as a Unix time; null when it is none. */
 function stand_in_since(string $since): ?int
 {
-    if (preg_match('/^(\d{4})-(\d\d)-(\d\d)(?:T(\d\d):(\d\d):(\d\d)(?:\.\d+)?(Z|[+-]\d\d:\d\d))?$/D', $since, $m) !== 1
-        || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+    if (preg_match('/^(\d{4})-(\d\d)-(\d\d)(?:T(\d\d):(\d\d):(\d\d)(?:\.\d+)?(Z|[+-]\d\d:\d\d))?$/D', $since, $m) !== 1 || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
         return null;
     }
     $time = strtotime(isset($m[4]) && $m[4] !== '' ? $since : $since . 'T00:00:00Z');
@@ -268,7 +286,7 @@ if ($state['down'] && $path !== '/.well-known/jwks.json') {
 }
 
 // Any answer at all, for a path a test names: {"answers": {"/path": {"status": 200, "body": "<html>a proxy's page</html>"}}}.
-$answer = is_array($state['answers'] ?? null) ? ($state['answers'][$path] ?? null) : null;
+$answer = is_array($state['answers'] ?? null) ? $state['answers'][$path] ?? null : null;
 if (is_array($answer)) {
     stand_in_save($dir, $state);
     http_response_code((int) ($answer['status'] ?? 200));
@@ -294,19 +312,23 @@ switch ($path) {
     case '/.well-known/openid-configuration':
         stand_in_save($dir, $state);
 
-        return stand_in_json(200, [
-            'issuer' => $issuer,
-            'authorization_endpoint' => "$issuer/api/oidc/authorize",
-            'token_endpoint' => "$issuer/api/oidc/token",
-            'userinfo_endpoint' => "$issuer/api/oidc/userinfo",
-            'jwks_uri' => "$issuer/.well-known/jwks.json",
-            'end_session_endpoint' => "$issuer/api/oidc/logout",
-            'revocation_endpoint' => "$issuer/api/oidc/revoke",
-            'response_types_supported' => ['code'],
-            'code_challenge_methods_supported' => ['S256'],
-            'prompt_values_supported' => ['none', 'login', 'create'],
-            'ui_locales_supported' => STAND_IN_PREFERENCES['language'],
-        ], $origin !== '' ? $origin : '*');
+        return stand_in_json(
+            200,
+            [
+                'issuer' => $issuer,
+                'authorization_endpoint' => "$issuer/api/oidc/authorize",
+                'token_endpoint' => "$issuer/api/oidc/token",
+                'userinfo_endpoint' => "$issuer/api/oidc/userinfo",
+                'jwks_uri' => "$issuer/.well-known/jwks.json",
+                'end_session_endpoint' => "$issuer/api/oidc/logout",
+                'revocation_endpoint' => "$issuer/api/oidc/revoke",
+                'response_types_supported' => ['code'],
+                'code_challenge_methods_supported' => ['S256'],
+                'prompt_values_supported' => ['none', 'login', 'create'],
+                'ui_locales_supported' => STAND_IN_PREFERENCES['language'],
+            ],
+            $origin !== '' ? $origin : '*',
+        );
 
     case '/.well-known/jwks.json':
         stand_in_save($dir, $state);
@@ -321,20 +343,30 @@ switch ($path) {
             return stand_in_json(400, ['error' => 'invalid_request', 'error_description' => 'since or after is not what the IAM takes']);
         }
         $accounts = array_values(array_filter(is_array($state['anonymized']) ? $state['anonymized'] : [], 'is_array'));
-        usort($accounts, static fn (array $a, array $b): int => [strtotime((string) $a['anonymized_at']), (int) $a['sub']] <=> [strtotime((string) $b['anonymized_at']), (int) $b['sub']]);
-        $accounts = array_values(array_filter($accounts, static function (array $account) use ($since, $after): bool {
-            $at = (int) strtotime((string) $account['anonymized_at']);
-            if ($since === null) {
-                return true;
-            }
+        usort($accounts, static fn(array $a, array $b): int => [strtotime((string) $a['anonymized_at']), (int) $a['sub']] <=> [strtotime((string) $b['anonymized_at']), (int) $b['sub']]);
+        $accounts = array_values(
+            array_filter($accounts, static function (array $account) use ($since, $after): bool {
+                $at = (int) strtotime((string) $account['anonymized_at']);
+                if ($since === null) {
+                    return true;
+                }
 
-            return $after === null ? $at >= $since : ($at > $since || ($at === $since && (int) $account['sub'] > (int) $after));
-        }));
+                return $after === null ? $at >= $since : $at > $since || ($at === $since && (int) $account['sub'] > (int) $after);
+            }),
+        );
         $size = max(1, (int) $state['anonymized_page']);
-        $page = array_map(static fn (array $account): array => ['sub' => (string) $account['sub'], 'anonymized_at' => gmdate('Y-m-d\TH:i:s\Z', (int) strtotime((string) $account['anonymized_at']))], array_slice($accounts, 0, $size));
+        $page = array_map(
+            static fn(array $account): array => ['sub' => (string) $account['sub'], 'anonymized_at' => gmdate('Y-m-d\TH:i:s\Z', (int) strtotime((string) $account['anonymized_at']))],
+            array_slice($accounts, 0, $size),
+        );
         $last = $page === [] ? null : $page[count($page) - 1];
 
-        return stand_in_json(200, ['accounts' => $page, 'next' => count($accounts) > $size && $last !== null ? ['since' => $last['anonymized_at'], 'after' => $last['sub']] : null], '', 'public, max-age=60');
+        return stand_in_json(
+            200,
+            ['accounts' => $page, 'next' => count($accounts) > $size && $last !== null ? ['since' => $last['anonymized_at'], 'after' => $last['sub']] : null],
+            '',
+            'public, max-age=60',
+        );
 
     case '/api/oidc/authorize':
         $redirect = (string) ($_GET['redirect_uri'] ?? '');
@@ -382,8 +414,12 @@ switch ($path) {
         }
         $code = bin2hex(random_bytes(16));
         $state['codes'][$code] = [
-            'client' => (string) ($_GET['client_id'] ?? ''), 'redirect' => $redirect, 'nonce' => (string) ($_GET['nonce'] ?? ''),
-            'challenge' => (string) $_GET['code_challenge'], 'at' => time(), 'auth_time' => (int) ($state['auth_time'] ?? time()),
+            'client' => (string) ($_GET['client_id'] ?? ''),
+            'redirect' => $redirect,
+            'nonce' => (string) ($_GET['nonce'] ?? ''),
+            'challenge' => (string) $_GET['code_challenge'],
+            'at' => time(),
+            'auth_time' => (int) ($state['auth_time'] ?? time()),
         ];
         stand_in_save($dir, $state);
 
@@ -410,8 +446,13 @@ switch ($path) {
             $code = $state['codes'][$presented] ?? null;
             unset($state['codes'][$presented]);
             $verifier = (string) ($_POST['code_verifier'] ?? '');
-            if ($code === null || $code['client'] !== $clientId || $code['redirect'] !== (string) ($_POST['redirect_uri'] ?? '')
-                || $code['at'] < time() - 60 || !hash_equals($code['challenge'], stand_in_b64(hash('sha256', $verifier, true)))) {
+            if (
+                $code === null ||
+                $code['client'] !== $clientId ||
+                $code['redirect'] !== (string) ($_POST['redirect_uri'] ?? '') ||
+                $code['at'] < time() - 60 ||
+                !hash_equals($code['challenge'], stand_in_b64(hash('sha256', $verifier, true)))
+            ) {
                 stand_in_save($dir, $state);
 
                 return stand_in_json(400, ['error' => 'invalid_grant', 'error_description' => 'bad code'], $origin);
@@ -459,7 +500,7 @@ switch ($path) {
             return true;
         }
         $sub = stand_in_bearer_sub();
-        $holders = array_filter($state['refresh'], static fn (array $entry): bool => (string) $entry['user']['id'] === $sub);
+        $holders = array_filter($state['refresh'], static fn(array $entry): bool => (string) $entry['user']['id'] === $sub);
         $account = (string) $state['user']['id'] === $sub ? $state['user'] : (reset($holders) ?: ['user' => null])['user'];
         if ($method !== 'POST' || $account === null) {
             return stand_in_json(401, ['error' => 'invalid_token'], $origin);

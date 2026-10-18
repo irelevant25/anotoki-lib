@@ -88,7 +88,7 @@ final class Redactor
         if (strlen($text) < strlen($whole)) {
             $text = self::withoutTheCutRun($text);
         }
-        $names = self::SECRET_NAMES . implode('', array_map(static fn (string $name): string => '|' . preg_quote($name, '/'), self::$siteNames));
+        $names = self::SECRET_NAMES . implode('', array_map(static fn(string $name): string => '|' . preg_quote($name, '/'), self::$siteNames));
 
         $rules = [
             // PostgreSQL's detail lines, from the first to the end: they quote rows and values.
@@ -120,21 +120,16 @@ final class Redactor
             static function (array $match): string {
                 $address = explode('%', $match[0], 2)[0];
 
-                return preg_match('/[0-9A-Fa-f]/', $address) === 1 && filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false
-                    ? '{ip}'
-                    : $match[0];
+                return preg_match('/[0-9A-Fa-f]/', $address) === 1 && filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false ? '{ip}' : $match[0];
             },
-            $text
+            $text,
         );
         if ($text === null) {
             return self::UNREADABLE;
         }
 
-        return preg_replace_callback(
-            '/(?<![A-Za-z0-9_+=-])[A-Za-z0-9_+=-]{24,}(?![A-Za-z0-9_+=-])/u',
-            static fn (array $match): string => self::isToken($match[0]) ? '{token}' : $match[0],
-            $text
-        ) ?? self::UNREADABLE;
+        return preg_replace_callback('/(?<![A-Za-z0-9_+=-])[A-Za-z0-9_+=-]{24,}(?![A-Za-z0-9_+=-])/u', static fn(array $match): string => self::isToken($match[0]) ? '{token}' : $match[0], $text) ??
+            self::UNREADABLE;
     }
 
     /**

@@ -37,9 +37,7 @@ final class Jwks
      * @param ?Closure(string $url, float $timeout): array{status: int, body: ?string} $fetch  how the key set
      *        is fetched (HttpGet::fetch() by default)
      */
-    public function __construct(private readonly IamClient $iam, private readonly ?Closure $fetch = null)
-    {
-    }
+    public function __construct(private readonly IamClient $iam, private readonly ?Closure $fetch = null) {}
 
     /**
      * The key for a kid, fetching the set again once when it is not there.
@@ -84,9 +82,7 @@ final class Jwks
             return $kept['keys'];
         }
 
-        $answer = $this->fetch !== null
-            ? ($this->fetch)($url, (float) $this->iam->httpTimeout)
-            : HttpGet::fetch($url, (float) $this->iam->httpTimeout);
+        $answer = $this->fetch !== null ? ($this->fetch)($url, (float) $this->iam->httpTimeout) : HttpGet::fetch($url, (float) $this->iam->httpTimeout);
         $document = $answer['status'] === 200 && is_string($answer['body']) ? json_decode($answer['body'], true) : null;
 
         if (!is_array($document) || !isset($document['keys']) || !is_array($document['keys'])) {
@@ -172,7 +168,7 @@ final class Jwks
         if (!is_array($record)) {
             return null;
         }
-        $stamp = static fn (mixed $at): int => is_int($at) && $at <= $now ? $at : 0;
+        $stamp = static fn(mixed $at): int => is_int($at) && $at <= $now ? $at : 0;
 
         return [
             'fetched_at' => $stamp($record['fetched_at'] ?? null),
@@ -212,7 +208,7 @@ final class Jwks
         if ($bytes === '') {
             $bytes = "\x00";
         }
-        if (ord($bytes[0]) > 0x7F) {
+        if (ord($bytes[0]) > 0x7f) {
             $bytes = "\x00" . $bytes;
         }
 

@@ -120,9 +120,11 @@ final class AuditLog implements AuditRecorder
         $this->ready = $options['ready'] ?? null;
         $this->personTargetType = (string) ($options['personTargetType'] ?? 'user');
         $this->actorIds = $options['actorIds'] ?? null;
-        $this->onError = $options['onError'] ?? static function (string $message): void {
-            Log::say($message);
-        };
+        $this->onError =
+            $options['onError'] ??
+            static function (string $message): void {
+                Log::say($message);
+            };
     }
 
     // ─── Writing ─────────────────────────────────────────────────────────────
@@ -200,11 +202,20 @@ final class AuditLog implements AuditRecorder
         }
         $entry = $this->entry($request, $actorId, $action, $targetType, $targetId, $details, null, null);
         $pdo->prepare(
-            'INSERT INTO ' . Schema::AUDIT_TABLE . ' (created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details, ip)
-             VALUES (now(), ?, ?, ?, ?, ?, ?, ?, COALESCE(CAST(? AS jsonb), CAST(\'{}\' AS jsonb)) || jsonb_build_object(\'_txid\', CAST(txid_current() AS text)), ?)'
+            'INSERT INTO ' .
+                Schema::AUDIT_TABLE .
+                ' (created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details, ip)
+             VALUES (now(), ?, ?, ?, ?, ?, ?, ?, COALESCE(CAST(? AS jsonb), CAST(\'{}\' AS jsonb)) || jsonb_build_object(\'_txid\', CAST(txid_current() AS text)), ?)',
         )->execute([
-            $entry['actor_id'], $entry['actor_session'], $entry['action'], $entry['target_type'], $entry['target_id'],
-            $entry['scope_type'], $entry['scope_id'], $entry['details'], $entry['ip'],
+            $entry['actor_id'],
+            $entry['actor_session'],
+            $entry['action'],
+            $entry['target_type'],
+            $entry['target_id'],
+            $entry['scope_type'],
+            $entry['scope_id'],
+            $entry['details'],
+            $entry['ip'],
         ]);
     }
 
@@ -344,14 +355,13 @@ final class AuditLog implements AuditRecorder
         try {
             foreach ($entries as $entry) {
                 $known = $pdo->prepare(
-                    'SELECT 1 FROM ' . Schema::AUDIT_TABLE . ' WHERE created_at = CAST(? AS timestamptz) AND action = ?
+                    'SELECT 1 FROM ' .
+                        Schema::AUDIT_TABLE .
+                        ' WHERE created_at = CAST(? AS timestamptz) AND action = ?
                         AND actor_id IS NOT DISTINCT FROM CAST(? AS bigint) AND target_type IS NOT DISTINCT FROM CAST(? AS varchar)
-                        AND target_id IS NOT DISTINCT FROM CAST(? AS varchar) LIMIT 1'
+                        AND target_id IS NOT DISTINCT FROM CAST(? AS varchar) LIMIT 1',
                 );
-                $known->execute([
-                    $entry['created_at'], $entry['action'], isset($entry['actor_id']) ? (int) $entry['actor_id'] : null,
-                    $entry['target_type'] ?? null, $entry['target_id'] ?? null,
-                ]);
+                $known->execute([$entry['created_at'], $entry['action'], isset($entry['actor_id']) ? (int) $entry['actor_id'] : null, $entry['target_type'] ?? null, $entry['target_id'] ?? null]);
                 if ($known->fetchColumn() === false) {
                     $this->insert($pdo, $entry, false);
                     $inserted++;
@@ -404,8 +414,16 @@ final class AuditLog implements AuditRecorder
         $total = (int) $count->fetchColumn();
 
         $rows = $pdo->prepare(
-            'SELECT id, ' . self::isoColumn('created_at') . ' AS created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details::text AS details, ip
-               FROM ' . Schema::AUDIT_TABLE . $where . ' ORDER BY created_at DESC, id DESC LIMIT ' . $size . ' OFFSET ' . (($page - 1) * $size)
+            'SELECT id, ' .
+                self::isoColumn('created_at') .
+                ' AS created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details::text AS details, ip
+               FROM ' .
+                Schema::AUDIT_TABLE .
+                $where .
+                ' ORDER BY created_at DESC, id DESC LIMIT ' .
+                $size .
+                ' OFFSET ' .
+                ($page - 1) * $size,
         );
         $rows->execute($parameters);
 
@@ -421,9 +439,9 @@ final class AuditLog implements AuditRecorder
     {
         $pdo = ($this->pdo)();
         // In the bytes' order, whatever the database's collation (a Slovak one sorts "ch" after "h").
-        $list = static fn (string $column, string $order = ' COLLATE "C"'): array => array_map(
+        $list = static fn(string $column, string $order = ' COLLATE "C"'): array => array_map(
             'strval',
-            $pdo->query('SELECT DISTINCT ' . $column . $order . ' FROM ' . Schema::AUDIT_TABLE . ' WHERE ' . $column . ' IS NOT NULL ORDER BY 1 LIMIT 500')->fetchAll(PDO::FETCH_COLUMN)
+            $pdo->query('SELECT DISTINCT ' . $column . $order . ' FROM ' . Schema::AUDIT_TABLE . ' WHERE ' . $column . ' IS NOT NULL ORDER BY 1 LIMIT 500')->fetchAll(PDO::FETCH_COLUMN),
         );
 
         return [
@@ -470,28 +488,34 @@ final class AuditLog implements AuditRecorder
      */
     public function scrubPeople(array $ids, array $personKeys = ['from', 'to', 'username', 'email', 'name', 'address']): int
     {
-        $ids = array_values(array_unique(array_map('strval', array_filter($ids, static fn (mixed $id): bool => (is_int($id) && $id >= 0) || (is_string($id) && ctype_digit($id) && strlen($id) <= 18)))));
+        $ids = array_values(
+            array_unique(array_map('strval', array_filter($ids, static fn(mixed $id): bool => (is_int($id) && $id >= 0) || (is_string($id) && ctype_digit($id) && strlen($id) <= 18)))),
+        );
         if ($ids === []) {
             return 0;
         }
         $idArray = '{' . implode(',', $ids) . '}';
-        $keys = '{' . implode(',', array_map(static fn (string $key): string => '"' . addcslashes($key, '"\\') . '"', $personKeys)) . '}';
+        $keys = '{' . implode(',', array_map(static fn(string $key): string => '"' . addcslashes($key, '"\\') . '"', $personKeys)) . '}';
         $pdo = ($this->pdo)();
 
         $addresses = $pdo->prepare(
-            'UPDATE ' . Schema::AUDIT_TABLE . ' SET ip = NULL
+            'UPDATE ' .
+                Schema::AUDIT_TABLE .
+                ' SET ip = NULL
               WHERE ip IS NOT NULL
                 AND (actor_id = ANY (CAST(? AS bigint[]))
-                     OR (actor_id IS NULL AND target_type = ? AND target_id = ANY (CAST(? AS text[]))))'
+                     OR (actor_id IS NULL AND target_type = ? AND target_id = ANY (CAST(? AS text[]))))',
         );
         $addresses->execute([$idArray, $this->personTargetType, $idArray]);
         $changed = $addresses->rowCount();
 
         if ($personKeys !== []) {
             $details = $pdo->prepare(
-                'UPDATE ' . Schema::AUDIT_TABLE . ' SET details = details - CAST(? AS text[])
+                'UPDATE ' .
+                    Schema::AUDIT_TABLE .
+                    ' SET details = details - CAST(? AS text[])
                   WHERE target_type = ? AND target_id = ANY (CAST(? AS text[]))
-                    AND jsonb_typeof(details) = \'object\' AND jsonb_exists_any(details, CAST(? AS text[]))'
+                    AND jsonb_typeof(details) = \'object\' AND jsonb_exists_any(details, CAST(? AS text[]))',
             );
             $details->execute([$keys, $this->personTargetType, $idArray, $keys]);
             $changed += $details->rowCount();
@@ -510,8 +534,16 @@ final class AuditLog implements AuditRecorder
      * @param ?array{0: string, 1: int|string} $scope
      * @return array<string, mixed>
      */
-    private function entry(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType, int|string|null $targetId, array $details, ?array $scope, ?string $session): array
-    {
+    private function entry(
+        ?ServerRequestInterface $request,
+        int|string|null $actorId,
+        string $action,
+        ?string $targetType,
+        int|string|null $targetId,
+        array $details,
+        ?array $scope,
+        ?string $session,
+    ): array {
         $context = $this->contextOf($request);
         $scope ??= $this->currentScope();
 
@@ -538,8 +570,10 @@ final class AuditLog implements AuditRecorder
         }
         try {
             $statement = $pdo->prepare(
-                'INSERT INTO ' . Schema::AUDIT_TABLE . ' (created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details, ip)
-                 VALUES (COALESCE(CAST(? AS timestamptz), now()), ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), ?)'
+                'INSERT INTO ' .
+                    Schema::AUDIT_TABLE .
+                    ' (created_at, actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details, ip)
+                 VALUES (COALESCE(CAST(? AS timestamptz), now()), ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), ?)',
             );
             $statement->execute([
                 is_string($entry['created_at'] ?? null) ? $entry['created_at'] : null,
@@ -587,7 +621,7 @@ final class AuditLog implements AuditRecorder
     /** What failed, as a code a log line may carry: the SQLSTATE of a database's refusal, else the failure's class. */
     private static function failureCode(Throwable $e): string
     {
-        $state = $e instanceof \PDOException ? ($e->errorInfo[0] ?? $e->getCode()) : null;
+        $state = $e instanceof \PDOException ? $e->errorInfo[0] ?? $e->getCode() : null;
         if (is_string($state) && preg_match('/^[0-9A-Z]{5}$/D', $state) === 1) {
             return 'SQLSTATE ' . $state;
         }
@@ -778,7 +812,7 @@ final class AuditLog implements AuditRecorder
             return $value;
         }
         if (array_is_list($value)) {
-            $kept = array_map(static fn (mixed $inner): mixed => self::shrink($inner, $text, $items), array_slice($value, 0, $items));
+            $kept = array_map(static fn(mixed $inner): mixed => self::shrink($inner, $text, $items), array_slice($value, 0, $items));
             if (count($value) > $items) {
                 $kept[] = '…[' . (count($value) - $items) . ' more]';
             }
@@ -786,7 +820,7 @@ final class AuditLog implements AuditRecorder
             return $kept;
         }
 
-        return array_map(static fn (mixed $inner): mixed => self::shrink($inner, $text, $items), $value);
+        return array_map(static fn(mixed $inner): mixed => self::shrink($inner, $text, $items), $value);
     }
 
     /** What a value held, as its keys: a map's keys with theirs, a list's length, no value. */
@@ -799,10 +833,10 @@ final class AuditLog implements AuditRecorder
             return '[' . count($value) . ' items]';
         }
         if ($depth <= 1) {
-            return array_map(static fn (): mixed => null, $value);
+            return array_map(static fn(): mixed => null, $value);
         }
 
-        return array_map(static fn (mixed $inner): mixed => self::keysOf($inner, $depth - 1), $value);
+        return array_map(static fn(mixed $inner): mixed => self::keysOf($inner, $depth - 1), $value);
     }
 
     private static function actor(int|string|null $actorId): ?int

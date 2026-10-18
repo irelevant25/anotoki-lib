@@ -158,9 +158,26 @@ final class Backups
     public const DESCRIPTION_LIMIT = 200;
 
     private const OPTIONS = [
-        'site', 'migrator', 'bookkeeping', 'keep', 'encryption', 'restore', 'beforeCommit', 'afterRestore', 'keepDaily',
-        'keepBeforeMigration', 'keepBeforeRestore', 'staleManualDays', 'schema', 'defer', 'audit', 'lock', 'ready',
-        'storage', 'onError', 'ticketSeconds',
+        'site',
+        'migrator',
+        'bookkeeping',
+        'keep',
+        'encryption',
+        'restore',
+        'beforeCommit',
+        'afterRestore',
+        'keepDaily',
+        'keepBeforeMigration',
+        'keepBeforeRestore',
+        'staleManualDays',
+        'schema',
+        'defer',
+        'audit',
+        'lock',
+        'ready',
+        'storage',
+        'onError',
+        'ticketSeconds',
     ];
 
     /** The savepoint a restore's beforeCommit runs behind: gone after it, its transaction was ended inside. */
@@ -255,7 +272,7 @@ final class Backups
         if ($unknown !== []) {
             throw new InvalidArgumentException('Unknown Backups option: ' . implode(', ', $unknown) . '.');
         }
-        if (!($options['migrator'] ?? null) instanceof Closure) {
+        if (!(($options['migrator'] ?? null) instanceof Closure)) {
             throw new InvalidArgumentException('Backups need the site\'s migrator: fn (PDO $pdo): Migrator.');
         }
         $this->directory = rtrim($directory, '/\\');
@@ -284,16 +301,18 @@ final class Backups
         $this->schema = (string) ($options['schema'] ?? 'public');
         $this->defer = $options['defer'] ?? null;
         $audit = $options['audit'] ?? null;
-        if ($audit !== null && !$audit instanceof AuditRecorder) {
+        if ($audit !== null && !($audit instanceof AuditRecorder)) {
             throw new InvalidArgumentException('The option audit must be an AuditRecorder (the AuditLog).');
         }
         $this->audit = $audit;
         $this->lock = (int) ($options['lock'] ?? Migrator::DEFAULT_LOCK);
         $this->ready = $options['ready'] ?? null;
         $this->storage = rtrim((string) ($options['storage'] ?? dirname($this->directory)), '/\\');
-        $this->onError = $options['onError'] ?? static function (Throwable $e): void {
-            Log::say('[backups] ' . get_class($e) . ': ' . Redactor::text($e->getMessage()));
-        };
+        $this->onError =
+            $options['onError'] ??
+            static function (Throwable $e): void {
+                Log::say('[backups] ' . get_class($e) . ': ' . Redactor::text($e->getMessage()));
+            };
         $this->ticketSeconds = max(5, (int) ($options['ticketSeconds'] ?? 60));
         $this->tickets = new Tickets($this->storage . '/cache/backup-tickets', $this->ticketSeconds);
     }
@@ -373,7 +392,7 @@ final class Backups
         if (!$this->dailyDue(json_decode((string) @file_get_contents($stamp), true))) {
             return false;
         }
-        $this->later(fn () => $this->runDaily());
+        $this->later(fn() => $this->runDaily());
 
         return true;
     }
@@ -437,7 +456,7 @@ final class Backups
             }
         }
         // Newest first: by the time each was made (to the millisecond), then by name.
-        usort($out, static fn (array $a, array $b): int => [(string) ($b['created_at'] ?? ''), (string) $b['id']] <=> [(string) ($a['created_at'] ?? ''), (string) $a['id']]);
+        usort($out, static fn(array $a, array $b): int => [(string) ($b['created_at'] ?? ''), (string) $b['id']] <=> [(string) ($a['created_at'] ?? ''), (string) $a['id']]);
 
         return $out;
     }
@@ -559,7 +578,7 @@ final class Backups
             $lost += max(0, $delta);
             $differences[] = ['name' => $name, 'live' => $count, 'backup' => $rows, 'delta' => $delta];
         }
-        usort($differences, static fn (array $a, array $b): int => $b['delta'] <=> $a['delta']);
+        usort($differences, static fn(array $a, array $b): int => $b['delta'] <=> $a['delta']);
 
         return [
             'id' => $id,
@@ -851,7 +870,7 @@ final class Backups
         $createdAt = $now->format('Y-m-d\TH:i:s.v\Z');
         $id = $now->format('Ymd-His') . 'Z-' . $kind . '-' . bin2hex(random_bytes(16));
         $work = $this->directory . '/.tmp-' . $id;
-        if (!self::workingFolder($work) || !@mkdir($work . '/data', 0700) && !is_dir($work . '/data')) {
+        if (!self::workingFolder($work) || (!@mkdir($work . '/data', 0700) && !is_dir($work . '/data'))) {
             throw new RuntimeException('The backup\'s working folder cannot be made.');
         }
         $spools = [];
@@ -865,9 +884,9 @@ final class Backups
                 // transactions it sees (txid_current_snapshot(): taken by this, the transaction's first statement,
                 // and every COPY reads under it) - and its time by the database's clock, which writes every audit
                 // entry (now(): the transaction's start, before its snapshot).
-                [$snapshotAt, $txidSnapshot] = $pdo->query(
-                    "SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), CAST(txid_current_snapshot() AS text)"
-                )->fetch(PDO::FETCH_NUM);
+                [$snapshotAt, $txidSnapshot] = $pdo
+                    ->query("SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), CAST(txid_current_snapshot() AS text)")
+                    ->fetch(PDO::FETCH_NUM);
                 $shape = DatabaseShape::read($pdo, $this->schema);
                 $migrator = ($this->migrator)($pdo);
                 $records = self::records($migrator);
@@ -965,7 +984,7 @@ final class Backups
                 'sha256' => $written['sha256'],
                 'created_by' => $actorId,
                 'description' => $description,
-                'tables' => array_map(static fn (array $table): array => ['name' => $table['name'], 'rows' => $table['rows'], 'bytes' => $table['bytes']], $tables),
+                'tables' => array_map(static fn(array $table): array => ['name' => $table['name'], 'rows' => $table['rows'], 'bytes' => $table['bytes']], $tables),
                 'table_count' => count($tables),
                 'rows' => array_sum(array_column($tables, 'rows')),
                 'sequences' => count($sequences),
@@ -980,7 +999,15 @@ final class Backups
                 if ($seal !== null) {
                     $info['seal'] = $seal;
                 } else {
-                    ($this->onError)(new RuntimeException('The backup ' . $id . ' was made without its seal: the installation\'s key (storage/' . Keys::INSTALLATION_FILE . ') can be neither read nor made, so it is restored offline only.'));
+                    ($this->onError)(
+                        new RuntimeException(
+                            'The backup ' .
+                                $id .
+                                ' was made without its seal: the installation\'s key (storage/' .
+                                Keys::INSTALLATION_FILE .
+                                ') can be neither read nor made, so it is restored offline only.',
+                        ),
+                    );
                 }
             }
             AtomicFile::write($target . '.json', json_encode($info, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), mode: 0600);
@@ -1017,7 +1044,7 @@ final class Backups
             // Once a day at least, made or not: what a killed run left behind goes (an hour old).
             $this->sweep();
             $pdo = ($this->connect)();
-            $ready = $this->ready !== null ? (bool) ($this->ready)($pdo) : (($this->migrator)($pdo)->applicable() === []);
+            $ready = $this->ready !== null ? (bool) ($this->ready)($pdo) : ($this->migrator)($pdo)->applicable() === [];
             if (!$ready) {
                 return;
             }
@@ -1027,9 +1054,7 @@ final class Backups
             }
             $today = gmdate('Y-m-d');
             // No backup's name: a host that ignores .htaccess would serve this file of a known name.
-            $note = $result instanceof Refusal
-                ? ['date' => $today, 'status' => 'failed', 'at' => time(), 'code' => $result->code]
-                : ['date' => $today, 'status' => 'done', 'at' => time()];
+            $note = $result instanceof Refusal ? ['date' => $today, 'status' => 'failed', 'at' => time(), 'code' => $result->code] : ['date' => $today, 'status' => 'done', 'at' => time()];
             ftruncate($handle, 0);
             rewind($handle);
             fwrite($handle, (string) json_encode($note));
@@ -1075,7 +1100,7 @@ final class Backups
 
         // The note names neither the files nor the backup (a host that ignores .htaccess would serve this file
         // of a known name): a hash of the pending list, and when its backup was made - found again in the list.
-        $pending = hash('sha256', implode("\n", array_map(static fn (array $file): string => $file['set'] . '/' . $file['name'], $files)));
+        $pending = hash('sha256', implode("\n", array_map(static fn(array $file): string => $file['set'] . '/' . $file['name'], $files)));
         $noteFile = $this->directory . '/.before-migration.json';
         $last = json_decode((string) @file_get_contents($noteFile), true);
         if (is_array($last) && ($last['pending'] ?? null) === $pending && is_string($last['made'] ?? null)) {
@@ -1169,39 +1194,44 @@ final class Backups
         $read = null;
         $sealed = $this->encryption !== null;
         try {
-            $header = Archive::extract($file, $this->encryption, function (string $name, int $size) use ($work, $readManifest, &$seen, &$spools, $spooled, $sealed): string {
-                if (isset($seen[$name])) {
-                    throw new RuntimeException('It holds a part twice.');
-                }
-                $seen[$name] = true;
-                if ($name === 'manifest.json') {
-                    if (count($seen) !== 1 || $size > 64 * 1048576) {
-                        throw new RuntimeException('Its manifest is out of place.');
+            $header = Archive::extract(
+                $file,
+                $this->encryption,
+                function (string $name, int $size) use ($work, $readManifest, &$seen, &$spools, $spooled, $sealed): string {
+                    if (isset($seen[$name])) {
+                        throw new RuntimeException('It holds a part twice.');
                     }
-
-                    return $work . '/manifest.json';
-                }
-                $manifest = $readManifest();
-                foreach ($manifest['tables'] ?? [] as $table) {
-                    if (($table['file'] ?? null) === $name) {
-                        if ((int) ($table['bytes'] ?? -1) !== $size) {
-                            throw new RuntimeException("Its part $name is not the size its manifest says.");
+                    $seen[$name] = true;
+                    if ($name === 'manifest.json') {
+                        if (count($seen) !== 1 || $size > 64 * 1048576) {
+                            throw new RuntimeException('Its manifest is out of place.');
                         }
-                        if (!$spooled) {
+
+                        return $work . '/manifest.json';
+                    }
+                    $manifest = $readManifest();
+                    foreach ($manifest['tables'] ?? [] as $table) {
+                        if (($table['file'] ?? null) === $name) {
+                            if ((int) ($table['bytes'] ?? -1) !== $size) {
+                                throw new RuntimeException("Its part $name is not the size its manifest says.");
+                            }
+                            if (!$spooled) {
+                                return self::placeUnder($work, $name);
+                            }
+                            $spools[$name] = Spool::create(self::placeUnder($work, $name), $sealed);
+
+                            return $spools[$name]->url();
+                        }
+                    }
+                    foreach ($manifest['schema_files'] ?? [] as $schemaFile) {
+                        if (($schemaFile['file'] ?? null) === $name) {
                             return self::placeUnder($work, $name);
                         }
-                        $spools[$name] = Spool::create(self::placeUnder($work, $name), $sealed);
-
-                        return $spools[$name]->url();
                     }
-                }
-                foreach ($manifest['schema_files'] ?? [] as $schemaFile) {
-                    if (($schemaFile['file'] ?? null) === $name) {
-                        return self::placeUnder($work, $name);
-                    }
-                }
-                throw new RuntimeException("It holds a part its manifest does not name ($name).");
-            }, $read);
+                    throw new RuntimeException("It holds a part its manifest does not name ($name).");
+                },
+                $read,
+            );
 
             // A plain archive: the bytes just read must be the ones its sidecar names (and, for a restore, seals) -
             // whatever else the sidecar says. Checked here, before a row of them is loaded.
@@ -1251,8 +1281,8 @@ final class Backups
     private function load(PDO $pdo, DatabaseShape $shape, array $manifest, array $spools): array
     {
         $kept = $this->keptTables($shape);
-        $tables = array_values(array_filter($manifest['tables'], static fn (array $table): bool => !in_array($table['name'], $kept, true)));
-        $qualified = array_map(static fn (array $table): string => $shape->qualified($table['name']), $tables);
+        $tables = array_values(array_filter($manifest['tables'], static fn(array $table): bool => !in_array($table['name'], $kept, true)));
+        $qualified = array_map(static fn(array $table): string => $shape->qualified($table['name']), $tables);
         $owners = array_flip($kept);
 
         if ($pdo->inTransaction()) {
@@ -1304,9 +1334,13 @@ final class Backups
                 $increment = (int) $step->fetchColumn();
                 $later = $increment < 0 ? 'LEAST' : 'GREATEST';
                 $pdo->prepare(
-                    'SELECT setval(CAST(? AS regclass), ' . $later . '(CAST(? AS bigint) + CASE WHEN CAST(? AS boolean) THEN CAST(? AS bigint) ELSE 0 END,
+                    'SELECT setval(CAST(? AS regclass), ' .
+                        $later .
+                        '(CAST(? AS bigint) + CASE WHEN CAST(? AS boolean) THEN CAST(? AS bigint) ELSE 0 END,
                                    s.last_value + CASE WHEN s.is_called THEN CAST(? AS bigint) ELSE 0 END), false)
-                       FROM ' . $sequenceName . ' s'
+                       FROM ' .
+                        $sequenceName .
+                        ' s',
                 )->execute([$sequenceName, (string) $sequence['last_value'], $sequence['is_called'] ? 'true' : 'false', (string) $increment, (string) $increment]);
             }
             // The deferred keys checked now, while their tables are whole: ALTER TABLE refuses a table with checks pending.
@@ -1460,7 +1494,7 @@ final class Backups
      */
     private static function schemaDifference(array $backup, array $live): array
     {
-        $names = static fn (array $records): array => array_map(static fn (array $record): string => $record['set'] . '/' . $record['name'], $records);
+        $names = static fn(array $records): array => array_map(static fn(array $record): string => $record['set'] . '/' . $record['name'], $records);
         $theirs = $names(is_array($backup['migrations'] ?? null) ? $backup['migrations'] : []);
         $ours = $names($live['migrations']);
         $columns = ($backup['columns_sha256'] ?? null) === $live['columns_sha256'];
@@ -1501,8 +1535,7 @@ final class Backups
             preg_match('/Z-(' . implode('|', self::KINDS) . ')-/', $id, $kind);
             $info['kind'] = $kind[1] ?? self::MANUAL;
         }
-        $info['stale'] = $info['kind'] === self::MANUAL && is_string($info['created_at'] ?? null)
-            && strtotime($info['created_at']) < time() - $this->staleManualDays * 86400;
+        $info['stale'] = $info['kind'] === self::MANUAL && is_string($info['created_at'] ?? null) && strtotime($info['created_at']) < time() - $this->staleManualDays * 86400;
         // Made here: encrypted under the site's key (its cipher refuses any other), or a plain one whose sidecar
         // this installation sealed (the class). A site without a key made no encrypted backup; a seal that cannot
         // be checked (no installation key) is no seal.
@@ -1678,7 +1711,7 @@ final class Backups
     /** @param list<array{set: string, name: string}> $records */
     private static function migrationsSha256(array $records): string
     {
-        $names = array_map(static fn (array $record): string => $record['set'] . '/' . $record['name'], $records);
+        $names = array_map(static fn(array $record): string => $record['set'] . '/' . $record['name'], $records);
         sort($names, SORT_STRING);
 
         return hash('sha256', implode("\n", $names));
@@ -1737,14 +1770,17 @@ final class Backups
      */
     private static function auditDetails(array $info): array
     {
-        return array_filter([
-            'kind' => $info['kind'] ?? null,
-            'size' => $info['size'] ?? null,
-            'tables' => $info['table_count'] ?? null,
-            'rows' => $info['rows'] ?? null,
-            'encrypted' => $info['encrypted'] ?? null,
-            'description' => $info['description'] ?? null,
-        ], static fn (mixed $value): bool => $value !== null);
+        return array_filter(
+            [
+                'kind' => $info['kind'] ?? null,
+                'size' => $info['size'] ?? null,
+                'tables' => $info['table_count'] ?? null,
+                'rows' => $info['rows'] ?? null,
+                'encrypted' => $info['encrypted'] ?? null,
+                'description' => $info['description'] ?? null,
+            ],
+            static fn(mixed $value): bool => $value !== null,
+        );
     }
 
     private static function libraryVersion(): ?string

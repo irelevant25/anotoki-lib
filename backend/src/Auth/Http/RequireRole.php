@@ -28,11 +28,8 @@ final class RequireRole implements MiddlewareInterface
     public readonly array $roles;
 
     /** @param list<string> $roles */
-    public function __construct(
-        array $roles,
-        public readonly string $code = 'forbidden',
-        public readonly ?string $message = null,
-    ) {
+    public function __construct(array $roles, public readonly string $code = 'forbidden', public readonly ?string $message = null)
+    {
         $clean = [];
         foreach ($roles as $role) {
             if (!is_string($role) || preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/D', $role) !== 1) {

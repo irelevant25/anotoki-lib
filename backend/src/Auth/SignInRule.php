@@ -57,12 +57,7 @@ final class SignInRule
      * @param ?Closure(string $url, float $timeout): array{status: int, body: ?string} $fetch  how the IAM is
      *        asked (HttpGet::fetch() by default)
      */
-    public function __construct(
-        private readonly IamClient $iam,
-        private readonly ?Closure $requiredWhen = null,
-        private readonly ?Closure $fetch = null,
-    ) {
-    }
+    public function __construct(private readonly IamClient $iam, private readonly ?Closure $requiredWhen = null, private readonly ?Closure $fetch = null) {}
 
     /** Whether this site requires signing in: true unless the IAM said otherwise. */
     public function required(): bool
@@ -105,7 +100,7 @@ final class SignInRule
         $record = self::record($kept);
         $last = $record['login_required'];
         $value = $last ?? true;
-        $recent = static fn (int $at, int $window): bool => $at > 0 && $at <= $now && $now - $at < $window;
+        $recent = static fn(int $at, int $window): bool => $at > 0 && $at <= $now && $now - $at < $window;
 
         if ($last !== null && $recent($record['fetched_at'], $ttl)) {
             return ['fetch' => false, 'value' => $last, 'reason' => 'fresh'];
@@ -139,8 +134,7 @@ final class SignInRule
             $answer = json_decode($body, true);
             // Only an answer about this application counts: a proxy's page, an answer for another
             // client or a login_required that is not a JSON boolean is no answer.
-            if (is_array($answer) && ($answer['client_id'] ?? null) === $clientId
-                && array_key_exists('login_required', $answer) && is_bool($answer['login_required'])) {
+            if (is_array($answer) && ($answer['client_id'] ?? null) === $clientId && array_key_exists('login_required', $answer) && is_bool($answer['login_required'])) {
                 $record['login_required'] = $answer['login_required'];
                 $record['known'] = true;
                 $record['fetched_at'] = $now;
@@ -174,7 +168,7 @@ final class SignInRule
     public static function record(mixed $record): array
     {
         $record = is_array($record) ? $record : [];
-        $time = static fn (string $key): int => is_int($record[$key] ?? null) && $record[$key] > 0 ? $record[$key] : 0;
+        $time = static fn(string $key): int => is_int($record[$key] ?? null) && $record[$key] > 0 ? $record[$key] : 0;
         $value = is_bool($record['login_required'] ?? null) ? $record['login_required'] : null;
         $known = is_bool($record['known'] ?? null) ? $record['known'] : ($value === false ? true : null);
 
@@ -208,8 +202,7 @@ final class SignInRule
             $outcome['reason'] = 'site';
         }
         if ($outcome['reason'] === 'stale' || $outcome['reason'] === 'never_read') {
-            Log::say('[anotoki auth] the IAM did not say whether signing in is required here (' . $outcome['reason'] . '): '
-                . ($outcome['value'] ? 'required' : 'not required, as it said last'));
+            Log::say('[anotoki auth] the IAM did not say whether signing in is required here (' . $outcome['reason'] . '): ' . ($outcome['value'] ? 'required' : 'not required, as it said last'));
         }
 
         return $this->memo = $outcome;
@@ -227,9 +220,7 @@ final class SignInRule
         // between two requests.
         if ($this->iam->applicationFile !== null) {
             $body = is_file($this->iam->applicationFile) ? @file_get_contents($this->iam->applicationFile) : false;
-            $answer = $body === false
-                ? self::fromAnswer(0, null, $this->iam->clientId, null, time())
-                : self::fromAnswer(200, $body, $this->iam->clientId, null, time());
+            $answer = $body === false ? self::fromAnswer(0, null, $this->iam->clientId, null, time()) : self::fromAnswer(200, $body, $this->iam->clientId, null, time());
 
             return self::summary($answer);
         }

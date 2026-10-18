@@ -28,12 +28,7 @@ use stdClass;
 final class StandInIam
 {
     /** @param resource $process */
-    private function __construct(
-        public readonly TestIam $iam,
-        public readonly string $issuer,
-        private mixed $process,
-    ) {
-    }
+    private function __construct(public readonly TestIam $iam, public readonly string $issuer, private mixed $process) {}
 
     /** Where the router script is: in a site, vendor/anotoki/lib/backend/testing/stand-in-iam.php. */
     public static function script(): string
@@ -96,11 +91,13 @@ final class StandInIam
      */
     public function client(array $overrides = []): IamClient
     {
-        return IamClient::fromArray($overrides + [
-            'issuer' => $this->issuer,
-            'client_id' => $this->iam->clientId,
-            'cache_dir' => $this->iam->dir . '/cache',
-        ]);
+        return IamClient::fromArray(
+            $overrides + [
+                'issuer' => $this->issuer,
+                'client_id' => $this->iam->clientId,
+                'cache_dir' => $this->iam->dir . '/cache',
+            ],
+        );
     }
 
     /**
@@ -111,13 +108,15 @@ final class StandInIam
      */
     public function state(array $changes = []): array
     {
-        $context = stream_context_create(['http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/json\r\n",
-            'content' => json_encode($changes === [] ? new stdClass() : $changes, JSON_UNESCAPED_SLASHES),
-            'timeout' => 5,
-            'ignore_errors' => true,
-        ]]);
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => json_encode($changes === [] ? new stdClass() : $changes, JSON_UNESCAPED_SLASHES),
+                'timeout' => 5,
+                'ignore_errors' => true,
+            ],
+        ]);
         $body = @file_get_contents($this->issuer . '/_test/state', false, $context);
         $state = is_string($body) ? json_decode($body, true) : null;
         if (!is_array($state)) {

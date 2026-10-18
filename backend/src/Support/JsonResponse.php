@@ -19,9 +19,6 @@ final class JsonResponse
     {
         $response->getBody()->write(json_encode($body, self::FLAGS));
 
-        return $response
-            ->withStatus($status)
-            ->withHeader('Content-Type', 'application/json; charset=utf-8')
-            ->withHeader('Cache-Control', 'no-store');
+        return $response->withStatus($status)->withHeader('Content-Type', 'application/json; charset=utf-8')->withHeader('Cache-Control', 'no-store');
     }
 }

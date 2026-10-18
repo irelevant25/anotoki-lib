@@ -40,11 +40,13 @@ final class Schema
      */
     public static function ready(PDO $pdo): bool
     {
-        $ready = $pdo->query(
-            "SELECT to_regclass('languages') IS NOT NULL
+        $ready = $pdo
+            ->query(
+                "SELECT to_regclass('languages') IS NOT NULL
                 AND to_regclass('translation_keys') IS NOT NULL
-                AND to_regclass('translations') IS NOT NULL"
-        )->fetchColumn();
+                AND to_regclass('translations') IS NOT NULL",
+            )
+            ->fetchColumn();
 
         return $ready === true || $ready === 't' || $ready === 1 || $ready === '1';
     }

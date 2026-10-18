@@ -36,7 +36,7 @@ final class SiteGateTest extends DatabaseTestCase
             self::assertSame(503, $response->getStatusCode(), $path);
             self::assertSame(
                 '{"code":"not_set_up","installed":false,"message":"This site is not set up yet. Its setup page connects it to its database.","setup":"/setup.php"}',
-                (string) $response->getBody()
+                (string) $response->getBody(),
             );
             self::assertSame('application/json; charset=utf-8', $response->getHeaderLine('Content-Type'));
             self::assertSame('no-store', $response->getHeaderLine('Cache-Control'));
@@ -52,10 +52,7 @@ final class SiteGateTest extends DatabaseTestCase
         $response = $this->through($this->gate($this->state(SiteState::NOT_SET_UP, installed: true)), '/api/anything');
 
         self::assertSame(503, $response->getStatusCode());
-        self::assertSame(
-            ['code' => 'not_set_up', 'installed' => true, 'message' => 'The site is not available right now. Try again in a few minutes.'],
-            $this->body($response)
-        );
+        self::assertSame(['code' => 'not_set_up', 'installed' => true, 'message' => 'The site is not available right now. Try again in a few minutes.'], $this->body($response));
     }
 
     public function testTheStatusPathAlwaysPassesWithoutAskingTheState(): void
@@ -147,7 +144,7 @@ final class SiteGateTest extends DatabaseTestCase
             return $this->migrator([$set]);
         };
 
-        return new SiteState($problem, fn (): bool => $installed, $migrator, $block);
+        return new SiteState($problem, fn(): bool => $installed, $migrator, $block);
     }
 
     private function gate(SiteState $state): SiteGate
@@ -159,15 +156,18 @@ final class SiteGateTest extends DatabaseTestCase
     {
         $request = (new ServerRequestFactory())->createServerRequest($method, 'https://site.example' . $path);
 
-        return $gate->process($request, new class () implements RequestHandlerInterface {
-            public function handle(ServerRequestInterface $request): ResponseInterface
-            {
-                $response = (new ResponseFactory())->createResponse(200);
-                $response->getBody()->write('passed');
+        return $gate->process(
+            $request,
+            new class implements RequestHandlerInterface {
+                public function handle(ServerRequestInterface $request): ResponseInterface
+                {
+                    $response = (new ResponseFactory())->createResponse(200);
+                    $response->getBody()->write('passed');
 
-                return $response;
-            }
-        });
+                    return $response;
+                }
+            },
+        );
     }
 
     /** @return array<string, mixed> */

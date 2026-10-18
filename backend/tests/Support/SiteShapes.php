@@ -35,8 +35,8 @@ final class SiteShapes
         return match ($site) {
             'survey' => new PeopleTable(name: 'preferred_username', firstSeen: 'first_seen_at', lastSeen: 'last_seen_at'),
             'piano', 'japanese' => new PeopleTable(name: 'preferred_username', firstSeen: 'created_at', lastSeen: 'last_seen_at'),
-            'build' => new PeopleTable(name: 'name', firstSeen: 'created_at', lastSeen: null, updatedAt: 'updated_at', nameFallback: static fn (int $sub): string => "user $sub"),
-            'genshin' => new PeopleTable(name: 'username', firstSeen: 'created_at', lastSeen: null, nameFallback: static fn (int $sub): string => "user$sub"),
+            'build' => new PeopleTable(name: 'name', firstSeen: 'created_at', lastSeen: null, updatedAt: 'updated_at', nameFallback: static fn(int $sub): string => "user $sub"),
+            'genshin' => new PeopleTable(name: 'username', firstSeen: 'created_at', lastSeen: null, nameFallback: static fn(int $sub): string => "user$sub"),
         };
     }
 

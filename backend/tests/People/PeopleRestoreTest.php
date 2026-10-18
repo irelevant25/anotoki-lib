@@ -65,8 +65,8 @@ final class PeopleRestoreTest extends DatabaseTestCase
         $this->iam->anonymized([]);
         SiteShapes::create($this->pdo, 'piano');
         self::assertNull($this->siteMigrator($this->pdo)->apply()['error']);
-        $this->people = new People(SiteShapes::table('piano'), fn (): PDO => $this->pdo, $this->iam->client());
-        $this->audit = new AuditLog(fn (): PDO => $this->pdo);
+        $this->people = new People(SiteShapes::table('piano'), fn(): PDO => $this->pdo, $this->iam->client());
+        $this->audit = new AuditLog(fn(): PDO => $this->pdo);
         $this->connection = $this->backupsConnection();
 
         foreach ([7 => 'alice', 8 => 'bob'] as $sub => $name) {
@@ -213,10 +213,7 @@ final class PeopleRestoreTest extends DatabaseTestCase
         self::assertSame([500, 'restore_failed'], [$result->status, $result->code]);
         // The answer in the library's words; the hook's own words go to the error log alone.
         self::assertSame('The restore failed, and nothing of it stayed. The error log says why.', $result->message);
-        self::assertSame(
-            'What was deleted of person 7 since this backup was made could not be deleted again (the copy of their data could not be written).',
-            end($this->failures),
-        );
+        self::assertSame('What was deleted of person 7 since this backup was made could not be deleted again (the copy of their data could not be written).', end($this->failures));
         self::assertSame($before, $this->state(), 'nothing of the restore stayed: carol is there, alice\'s progress still gone');
         self::assertSame(1, (int) $this->value("SELECT count(*) FROM anotoki_audit_log WHERE action = 'backup.restore_failed'"));
         self::assertSame([], $this->later, 'no work after a restore that did not happen');
@@ -234,7 +231,7 @@ final class PeopleRestoreTest extends DatabaseTestCase
 
         self::assertInstanceOf(Refusal::class, $result);
         self::assertSame('restore_failed', $result->code);
-        $beforeRestore = array_values(array_filter($backups->list(), static fn (array $made): bool => $made['kind'] === Backups::BEFORE_RESTORE))[0]['id'];
+        $beforeRestore = array_values(array_filter($backups->list(), static fn(array $made): bool => $made['kind'] === Backups::BEFORE_RESTORE))[0]['id'];
         self::assertSame("The restore did not finish, and what it had loaded may have stayed ($beforeRestore holds the data as it was). The error log says why.", $result->message);
         self::assertStringContainsString('the delete hook ended the library\'s transaction', (string) end($this->failures));
         self::assertFalse($this->connection->inTransaction());
@@ -292,7 +289,7 @@ final class PeopleRestoreTest extends DatabaseTestCase
     {
         // The People page writes its entry inside the delete's transaction (AuditLog::recordInside()), so the
         // entry's time is when that transaction began - not when it committed.
-        $entry = fn (string $sub): Closure => function (PDO $pdo, array $deleted) use ($sub): void {
+        $entry = fn(string $sub): Closure => function (PDO $pdo, array $deleted) use ($sub): void {
             $this->audit->recordInside($pdo, null, 1, 'person.data_deleted', 'user', $sub, ['deleted' => $deleted['deleted']]);
         };
         $backups = $this->backups();
@@ -321,7 +318,7 @@ final class PeopleRestoreTest extends DatabaseTestCase
         // The Feedback page's delete writes its entry inside its transaction too (Feedback::deleteWithEntry()): one
         // begun before the backup and committed after its snapshot is done again, though its time is before it.
         $message = $this->message(8, 'bob@example.test');
-        $feedback = new Feedback(fn (): PDO => $this->pdo, ['storage' => $this->path('feedback-storage')]);
+        $feedback = new Feedback(fn(): PDO => $this->pdo, ['storage' => $this->path('feedback-storage')]);
         $backups = $this->backups();
         $this->pdo->beginTransaction();
         $deleted = $feedback->deleteWithEntry($message, function (PDO $pdo, array $deleted) use ($message): void {
@@ -348,7 +345,7 @@ final class PeopleRestoreTest extends DatabaseTestCase
         // race it is for: a delete begun before the snapshot, committed after it.
         $entry = $this->pdo->prepare(
             "INSERT INTO anotoki_audit_log (created_at, actor_id, action, target_type, target_id, details)
-             VALUES (CAST(? AS timestamptz), 1, 'person.data_deleted', 'user', ?, CAST(? AS jsonb))"
+             VALUES (CAST(? AS timestamptz), 1, 'person.data_deleted', 'user', ?, CAST(? AS jsonb))",
         );
         // Hours before the backup, under an id its snapshot does not see: alice came back since, and keeps what she has.
         $entry->execute(['2026-10-11T07:00:00Z', '7', '{"deleted": {"Progress": 1}, "_txid": "5000000"}']);
@@ -367,10 +364,13 @@ final class PeopleRestoreTest extends DatabaseTestCase
 
     public function testWhatAfterRestoreThrowsKeepsItsFirstFailure(): void
     {
-        $this->pdo->exec(<<<'SQL'
-CREATE FUNCTION refuse_sync() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the scrub''s table is read-only today'; END $$;
-CREATE TRIGGER refuse_sync BEFORE INSERT OR UPDATE ON anotoki_people_sync FOR EACH ROW EXECUTE FUNCTION refuse_sync();
-SQL);
+        $this->pdo->exec(
+            <<<'SQL'
+            CREATE FUNCTION refuse_sync() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the scrub''s table is read-only today'; END $$;
+            CREATE TRIGGER refuse_sync BEFORE INSERT OR UPDATE ON anotoki_people_sync FOR EACH ROW EXECUTE FUNCTION refuse_sync();
+            SQL
+            ,
+        );
         $own = new RuntimeException('Not every progress took a new generation.');
         $after = $this->people->afterRestore($this->defer(), static function () use ($own): void {
             throw $own;
@@ -416,10 +416,10 @@ SQL);
         // The hour's stamp goes after the answer - not before: this request's own upkeep would claim it again at once.
         self::assertFileExists($stamp);
         self::assertCount(1, $this->later);
-        ($this->later[0])();
+        $this->later[0]();
         self::assertFileDoesNotExist($stamp);
         $this->iam->anonymized([]);
-        $upkeep = new PeopleUpkeep($this->people, static fn (): bool => true, static function (callable $work): void {
+        $upkeep = new PeopleUpkeep($this->people, static fn(): bool => true, static function (callable $work): void {
             $work();
         });
         self::assertTrue($upkeep->soon(), 'the next request runs the scrub again');
@@ -429,20 +429,25 @@ SQL);
     public function testTheSitesOwnWorkRunsWhateverTheScrubDid(): void
     {
         // The scrub's own table refuses it today: a failure of the scrub itself, not an answer of the IAM's.
-        $this->pdo->exec(<<<'SQL'
-CREATE FUNCTION refuse_sync() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the scrub''s table is read-only today'; END $$;
-CREATE TRIGGER refuse_sync BEFORE INSERT OR UPDATE ON anotoki_people_sync FOR EACH ROW EXECUTE FUNCTION refuse_sync();
-SQL);
+        $this->pdo->exec(
+            <<<'SQL'
+            CREATE FUNCTION refuse_sync() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the scrub''s table is read-only today'; END $$;
+            CREATE TRIGGER refuse_sync BEFORE INSERT OR UPDATE ON anotoki_people_sync FOR EACH ROW EXECUTE FUNCTION refuse_sync();
+            SQL
+            ,
+        );
         $ran = false;
-        $backups = $this->backups($this->people->restoreHooks(
-            delete: $this->hook(),
-            defer: $this->defer(),
-            then: static function (array $manifest, PDO $pdo) use (&$ran): void {
-                $ran = true;
+        $backups = $this->backups(
+            $this->people->restoreHooks(
+                delete: $this->hook(),
+                defer: $this->defer(),
+                then: static function (array $manifest, PDO $pdo) use (&$ran): void {
+                    $ran = true;
 
-                throw new RuntimeException('Not every progress took a new generation.');
-            },
-        ));
+                    throw new RuntimeException('Not every progress took a new generation.');
+                },
+            ),
+        );
         $backup = $backups->create(Backups::MANUAL, null, 1);
         self::assertIsArray($backup);
         $stamp = $this->iam->client()->cacheDirectory() . '/' . PeopleUpkeep::STAMP;
@@ -460,7 +465,7 @@ SQL);
         self::assertStringContainsString('the scrub\'s table is read-only today', $error);
         self::assertStringEndsWith('on the People page. Not every progress took a new generation.', $error, 'the scrub\'s, then the site\'s own');
         self::assertCount(1, $this->later, 'the hour\'s stamp goes after the answer on a failure too');
-        ($this->later[0])();
+        $this->later[0]();
         self::assertFileDoesNotExist($stamp);
     }
 
@@ -502,7 +507,7 @@ SQL);
         // With nothing to do again - no delete hook, no feedback - there is nothing to fail.
         $this->pdo->exec('DROP TABLE anotoki_feedback');
         $this->connection->beginTransaction();
-        ($this->people->replay())([], $this->connection);
+        $this->people->replay()([], $this->connection);
         $this->connection->rollBack();
     }
 
@@ -567,7 +572,11 @@ SQL);
         $within = $this->pdo->prepare('SELECT CAST(? AS timestamptz) BETWEEN CAST(? AS timestamptz) AND CAST(? AS timestamptz)');
         $within->execute([$snapshotAt, $before, $after]);
         self::assertTrue((bool) $within->fetchColumn(), 'the database\'s clock, while the backup was made');
-        self::assertMatchesRegularExpression('/^[0-9]+:[0-9]+:(?:[0-9]+(?:,[0-9]+)*)?$/D', (string) ($backups->manifest($backup['id'])['txid_snapshot'] ?? ''), 'and the snapshot itself: the transactions it sees');
+        self::assertMatchesRegularExpression(
+            '/^[0-9]+:[0-9]+:(?:[0-9]+(?:,[0-9]+)*)?$/D',
+            (string) ($backups->manifest($backup['id'])['txid_snapshot'] ?? ''),
+            'and the snapshot itself: the transactions it sees',
+        );
 
         // A replay goes by it, not by PHP's created_at: an entry between the two is done again.
         $this->audit->record(null, 1, 'person.data_deleted', 'user', '7', ['deleted' => ['Progress' => 1]]);
@@ -609,7 +618,7 @@ SQL);
     private function failing(): Closure
     {
         return function (PDO $pdo, int $sub, ?ServerRequestInterface $request = null): ?array {
-            ($this->hook())($pdo, $sub, $request);
+            $this->hook()($pdo, $sub, $request);
 
             throw new RuntimeException('the copy of their data could not be written');
         };
@@ -638,14 +647,14 @@ SQL);
     {
         $connection = $this->connection;
 
-        return new Backups(static fn (): PDO => $connection, $this->path('storage') . '/backups', [
+        return new Backups(static fn(): PDO => $connection, $this->path('storage') . '/backups', [
             'site' => 'piano',
-            'migrator' => fn (PDO $pdo): Migrator => $this->siteMigrator($pdo),
-            'audit' => new AuditLog(static fn (): PDO => $connection),
+            'migrator' => fn(PDO $pdo): Migrator => $this->siteMigrator($pdo),
+            'audit' => new AuditLog(static fn(): PDO => $connection),
             'onError' => function (\Throwable $e): void {
                 $this->failures[] = $e->getMessage();
             },
-            ...($hooks ?? $this->people->restoreHooks(delete: $this->hook(), defer: $this->defer())),
+            ...$hooks ?? $this->people->restoreHooks(delete: $this->hook(), defer: $this->defer()),
         ]);
     }
 
@@ -665,9 +674,7 @@ SQL);
     /** A message from $sub, with the address they gave and their browser; its id. */
     private function message(int $sub, string $address): int
     {
-        $statement = $this->pdo->prepare(
-            "INSERT INTO anotoki_feedback (kind, message, contact_email, user_id, user_agent) VALUES ('bug', 'The quiz is great', ?, ?, 'Firefox') RETURNING id"
-        );
+        $statement = $this->pdo->prepare("INSERT INTO anotoki_feedback (kind, message, contact_email, user_id, user_agent) VALUES ('bug', 'The quiz is great', ?, ?, 'Firefox') RETURNING id");
         $statement->execute([$address, $sub]);
 
         return (int) $statement->fetchColumn();

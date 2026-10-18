@@ -89,7 +89,7 @@ final class TranslationsTest extends DatabaseTestCase
         // As the IAM's route writes it, byte for byte.
         self::assertStringStartsWith(
             '{"language":"sk","languages":[{"code":"en","name":"English","native_name":"English"},{"code":"sk","name":"Slovak","native_name":"Slovenčina"}],"values":{"anotoki.chips.remove":"Odstrániť: {name}","anotoki.colorField.invalid":"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.",',
-            json_encode($bundle, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            json_encode($bundle, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         );
     }
 
@@ -102,7 +102,7 @@ final class TranslationsTest extends DatabaseTestCase
         self::assertSame(
             json_encode($this->words()->bundle('sk'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             json_encode($this->words()->bundle('sk-sk'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            'the very same answer'
+            'the very same answer',
         );
         self::assertSame('en', $this->words()->bundle('de')['language']);
         $this->pdo->exec("UPDATE languages SET enabled = FALSE WHERE code = 'sk'");
@@ -136,10 +136,31 @@ final class TranslationsTest extends DatabaseTestCase
         $this->pdo->exec('CREATE TABLE people (id INT PRIMARY KEY, language VARCHAR(10) NOT NULL DEFAULT \'en\' REFERENCES languages (code) ON UPDATE CASCADE ON DELETE SET DEFAULT)');
         $this->pdo->exec("INSERT INTO people (id, language) VALUES (1, 'sk'), (2, 'sk'), (3, 'en')");
 
-        self::assertSame([
-            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'enabled' => true, 'sort_order' => 1, 'seeded' => true, 'strings' => 4 + count(LibraryWords::keys()), 'accounts' => 1],
-            ['code' => 'sk', 'name' => 'Slovak', 'native_name' => 'Slovenčina', 'enabled' => true, 'sort_order' => 2, 'seeded' => true, 'strings' => 3 + count(LibraryWords::keys()), 'accounts' => 2],
-        ], $this->words($this->accounts())->languages());
+        self::assertSame(
+            [
+                [
+                    'code' => 'en',
+                    'name' => 'English',
+                    'native_name' => 'English',
+                    'enabled' => true,
+                    'sort_order' => 1,
+                    'seeded' => true,
+                    'strings' => 4 + count(LibraryWords::keys()),
+                    'accounts' => 1,
+                ],
+                [
+                    'code' => 'sk',
+                    'name' => 'Slovak',
+                    'native_name' => 'Slovenčina',
+                    'enabled' => true,
+                    'sort_order' => 2,
+                    'seeded' => true,
+                    'strings' => 3 + count(LibraryWords::keys()),
+                    'accounts' => 2,
+                ],
+            ],
+            $this->words($this->accounts())->languages(),
+        );
         self::assertSame(['en', 'sk'], $this->words()->offeredCodes());
     }
 
@@ -153,14 +174,19 @@ final class TranslationsTest extends DatabaseTestCase
         self::assertSame([false, 4], [$czech['language']['enabled'], $czech['language']['sort_order']]);
         self::assertSame(['en', 'sk', 'de'], $words->offeredCodes());
 
-        foreach ([
-            [null, 'invalid_language'], [['a', 'b'], 'invalid_language'], [[], 'invalid_language'],
-            [['code' => 'DE', 'name' => 'x', 'native_name' => 'x'], 'invalid_language'],
-            [['code' => 'fr', 'name' => '', 'native_name' => 'x'], 'invalid_language'],
-            [['code' => 'fr', 'name' => 'French', 'native_name' => "Fran\nçais"], 'invalid_language'],
-            [['code' => 'fr', 'name' => 'French', 'native_name' => 'Français', 'enabled' => 'false'], 'invalid_language'],
-            [['code' => 'de', 'name' => 'German', 'native_name' => 'Deutsch'], 'language_exists'],
-        ] as [$body, $code]) {
+        foreach (
+            [
+                [null, 'invalid_language'],
+                [['a', 'b'], 'invalid_language'],
+                [[], 'invalid_language'],
+                [['code' => 'DE', 'name' => 'x', 'native_name' => 'x'], 'invalid_language'],
+                [['code' => 'fr', 'name' => '', 'native_name' => 'x'], 'invalid_language'],
+                [['code' => 'fr', 'name' => 'French', 'native_name' => "Fran\nçais"], 'invalid_language'],
+                [['code' => 'fr', 'name' => 'French', 'native_name' => 'Français', 'enabled' => 'false'], 'invalid_language'],
+                [['code' => 'de', 'name' => 'German', 'native_name' => 'Deutsch'], 'language_exists'],
+            ]
+            as [$body, $code]
+        ) {
             $refusal = $words->createLanguage($body);
             self::assertInstanceOf(Refusal::class, $refusal, json_encode($body));
             self::assertSame($code, $refusal->code, json_encode($body));
@@ -211,13 +237,21 @@ final class TranslationsTest extends DatabaseTestCase
         self::assertSame([], $words->updateLanguage('de', ['enabled' => false])['changed'], 'as it is: nothing changed');
         self::assertSame([], $words->updateLanguage('de', [])['changed']);
 
-        foreach ([
-            ['xx', ['name' => 'X'], 'not_found'], ['DE', ['name' => 'X'], 'not_found'],
-            ['de', ['a'], 'invalid_language'], ['de', null, 'invalid_language'],
-            ['de', ['sort_order' => 1001], 'invalid_language'], ['de', ['sort_order' => '5'], 'invalid_language'], ['de', ['sort_order' => -1], 'invalid_language'],
-            ['de', ['enabled' => 1], 'invalid_language'], ['de', ['name' => str_repeat('a', 51)], 'invalid_language'],
-            ['en', ['enabled' => false], 'fallback_language'],
-        ] as [$code, $body, $says]) {
+        foreach (
+            [
+                ['xx', ['name' => 'X'], 'not_found'],
+                ['DE', ['name' => 'X'], 'not_found'],
+                ['de', ['a'], 'invalid_language'],
+                ['de', null, 'invalid_language'],
+                ['de', ['sort_order' => 1001], 'invalid_language'],
+                ['de', ['sort_order' => '5'], 'invalid_language'],
+                ['de', ['sort_order' => -1], 'invalid_language'],
+                ['de', ['enabled' => 1], 'invalid_language'],
+                ['de', ['name' => str_repeat('a', 51)], 'invalid_language'],
+                ['en', ['enabled' => false], 'fallback_language'],
+            ]
+            as [$code, $body, $says]
+        ) {
             $refusal = $words->updateLanguage($code, $body);
             self::assertInstanceOf(Refusal::class, $refusal, "$code " . json_encode($body));
             self::assertSame($says, $refusal->code, "$code " . json_encode($body));
@@ -364,12 +398,16 @@ final class TranslationsTest extends DatabaseTestCase
     public function testBeforeWriteRunsInsideTheSavesTransactionWithTheWriter(): void
     {
         $seen = [];
-        $words = $this->words(new TranslationsConfig(beforeWrite: function (PDO $pdo, ?int $userId) use (&$seen): void {
-            $seen[] = [$userId, $pdo->inTransaction()];
-            if ($userId === 13) {
-                throw new RuntimeException('That person is gone.');
-            }
-        }));
+        $words = $this->words(
+            new TranslationsConfig(
+                beforeWrite: function (PDO $pdo, ?int $userId) use (&$seen): void {
+                    $seen[] = [$userId, $pdo->inTransaction()];
+                    if ($userId === 13) {
+                        throw new RuntimeException('That person is gone.');
+                    }
+                },
+            ),
+        );
 
         $words->save(['common.close' => ['sk' => 'Zavrieť']], 12);
         try {
@@ -455,10 +493,18 @@ final class TranslationsTest extends DatabaseTestCase
         $this->pdo->exec("UPDATE translations SET value = 'Language: {name}' WHERE key_name = 'anotoki.language.button' AND language_code = 'en'");
         $this->pdo->exec("UPDATE translations SET value = 'Ahoj, {meno}' WHERE key_name = 'test.hello' AND language_code = 'sk'");
 
-        self::assertSame([
-            ['key' => 'anotoki.language.button', 'language' => 'en', 'code' => 'placeholder_changed', 'message' => 'The English string of "anotoki.language.button" must keep {code}: the page puts a value there.'],
-            ['key' => 'test.hello', 'language' => 'sk', 'code' => 'unknown_placeholder', 'message' => 'The Slovak string of "test.hello" uses {meno}, which its English string does not have.'],
-        ], $this->words()->storedRefusals());
+        self::assertSame(
+            [
+                [
+                    'key' => 'anotoki.language.button',
+                    'language' => 'en',
+                    'code' => 'placeholder_changed',
+                    'message' => 'The English string of "anotoki.language.button" must keep {code}: the page puts a value there.',
+                ],
+                ['key' => 'test.hello', 'language' => 'sk', 'code' => 'unknown_placeholder', 'message' => 'The Slovak string of "test.hello" uses {meno}, which its English string does not have.'],
+            ],
+            $this->words()->storedRefusals(),
+        );
         self::assertSame(['common.close'], $this->words()->keysWithout('sk'), 'the one key Slovak has no string for');
         self::assertContains('common.save', $this->words()->keyNames());
     }
@@ -487,7 +533,7 @@ final class TranslationsTest extends DatabaseTestCase
     /** The IAM's accounts, the survey's language_in_use and Japanese Academy's copy before a delete, in one. */
     private function accounts(): LanguageUsage
     {
-        return new class () implements LanguageUsage {
+        return new class implements LanguageUsage {
             /** @var list<array{string, array<string, string>, bool}> */
             public array $copies = [];
             public bool $failCopy = false;

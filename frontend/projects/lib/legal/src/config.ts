@@ -124,7 +124,8 @@ export type LegalStorageItem =
 export type LegalProcessorPreset = 'hosting' | 'cloudflare' | 'google' | 'mail';
 
 export type LegalProcessor =
-  { preset: LegalProcessorPreset; name?: string | null; role?: string | null; url?: string | null } | { preset?: undefined; name: string; role: string; url?: string | null };
+  | { preset: LegalProcessorPreset; name?: string | null; role?: string | null; url?: string | null }
+  | { preset?: undefined; name: string; role: string; url?: string | null };
 
 /** The family's Umami, on the owner's own server: no cookie, no personal data, the query and the fragment left out. */
 export const LEGAL_ANALYTICS_HOST = 'umami.anotoki.eu';

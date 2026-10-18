@@ -45,9 +45,21 @@ final class StandInIamTest extends TestCase
         self::assertSame('s1', $back['state']);
         self::assertArrayHasKey('code', $back);
 
-        $wrong = $this->post('/api/oidc/token', ['grant_type' => 'authorization_code', 'client_id' => 'build-analyzer', 'code' => $back['code'], 'redirect_uri' => self::REDIRECT, 'code_verifier' => 'not-the-verifier']);
+        $wrong = $this->post('/api/oidc/token', [
+            'grant_type' => 'authorization_code',
+            'client_id' => 'build-analyzer',
+            'code' => $back['code'],
+            'redirect_uri' => self::REDIRECT,
+            'code_verifier' => 'not-the-verifier',
+        ]);
         self::assertSame(400, $wrong['status'], 'the wrong verifier spends the code');
-        $again = $this->post('/api/oidc/token', ['grant_type' => 'authorization_code', 'client_id' => 'build-analyzer', 'code' => $back['code'], 'redirect_uri' => self::REDIRECT, 'code_verifier' => $verifier]);
+        $again = $this->post('/api/oidc/token', [
+            'grant_type' => 'authorization_code',
+            'client_id' => 'build-analyzer',
+            'code' => $back['code'],
+            'redirect_uri' => self::REDIRECT,
+            'code_verifier' => $verifier,
+        ]);
         self::assertSame(400, $again['status'], 'a code is good once');
 
         $tokens = $this->signIn($verifier = Base64Url::encode(random_bytes(32)), $verifier);
@@ -70,7 +82,7 @@ final class StandInIamTest extends TestCase
     {
         $verifier = Base64Url::encode(random_bytes(32));
         $before = $this->signIn($verifier, $verifier);
-        $bearer = static fn (string $token): array => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'];
+        $bearer = static fn(string $token): array => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'];
 
         self::assertSame(503, $this->http('POST', '/api/oidc/preferences', '{"theme":"dark"}', [], $bearer($before['access_token']))['status'], 'an IAM before its migration 015');
 
@@ -135,12 +147,15 @@ final class StandInIamTest extends TestCase
 
     public function testThePagedListOfDeletedAccounts(): void
     {
-        $this->standIn->state(['anonymized_page' => 2, 'anonymized' => [
-            ['sub' => '30', 'anonymized_at' => '2026-11-06T10:00:00Z'],
-            ['sub' => '12', 'anonymized_at' => '2026-11-06T10:00:00Z'],
-            ['sub' => '7', 'anonymized_at' => '2026-11-05T09:00:00Z'],
-            ['sub' => '40', 'anonymized_at' => '2026-11-07T00:00:00Z'],
-        ]]);
+        $this->standIn->state([
+            'anonymized_page' => 2,
+            'anonymized' => [
+                ['sub' => '30', 'anonymized_at' => '2026-11-06T10:00:00Z'],
+                ['sub' => '12', 'anonymized_at' => '2026-11-06T10:00:00Z'],
+                ['sub' => '7', 'anonymized_at' => '2026-11-05T09:00:00Z'],
+                ['sub' => '40', 'anonymized_at' => '2026-11-07T00:00:00Z'],
+            ],
+        ]);
 
         $first = $this->get('/api/public/anonymized-accounts')['json'];
         self::assertSame([['sub' => '7', 'anonymized_at' => '2026-11-05T09:00:00Z'], ['sub' => '12', 'anonymized_at' => '2026-11-06T10:00:00Z']], $first['accounts']);
@@ -166,8 +181,13 @@ final class StandInIamTest extends TestCase
         $name = (string) stream_socket_get_name($probe, false);
         fclose($probe);
         $port = (int) substr($name, (int) strrpos($name, ':') + 1);
-        $process = proc_open([PHP_BINARY, '-S', "127.0.0.1:$port", StandInIam::script()], [0 => ['pipe', 'r'], 1 => ['file', $this->folder() . '/out.log', 'a'], 2 => ['file', $this->folder() . '/err.log', 'a']], $pipes, $this->folder(),
-            ['STAND_IN_JWKS' => $this->folder() . '/jwks.json', 'STAND_IN_ISSUER' => "http://127.0.0.1:$port"] + $environment);
+        $process = proc_open(
+            [PHP_BINARY, '-S', "127.0.0.1:$port", StandInIam::script()],
+            [0 => ['pipe', 'r'], 1 => ['file', $this->folder() . '/out.log', 'a'], 2 => ['file', $this->folder() . '/err.log', 'a']],
+            $pipes,
+            $this->folder(),
+            ['STAND_IN_JWKS' => $this->folder() . '/jwks.json', 'STAND_IN_ISSUER' => "http://127.0.0.1:$port"] + $environment,
+        );
         try {
             for ($i = 0; $i < 100 && @fsockopen('127.0.0.1', $port, $errno, $error, 0.2) === false; $i++) {
                 usleep(50_000);
@@ -189,7 +209,13 @@ final class StandInIamTest extends TestCase
     private function signIn(string $verifier, string $check): array
     {
         $back = $this->landing($this->get('/api/oidc/authorize?' . $this->authorizeQuery($verifier)));
-        $tokens = $this->post('/api/oidc/token', ['grant_type' => 'authorization_code', 'client_id' => 'build-analyzer', 'code' => $back['code'], 'redirect_uri' => self::REDIRECT, 'code_verifier' => $check]);
+        $tokens = $this->post('/api/oidc/token', [
+            'grant_type' => 'authorization_code',
+            'client_id' => 'build-analyzer',
+            'code' => $back['code'],
+            'redirect_uri' => self::REDIRECT,
+            'code_verifier' => $check,
+        ]);
         self::assertSame(200, $tokens['status'], json_encode($tokens['json']));
 
         return $tokens['json'];
@@ -198,16 +224,18 @@ final class StandInIamTest extends TestCase
     /** @param array<string, string> $more */
     private function authorizeQuery(string $verifier, array $more = []): string
     {
-        return http_build_query($more + [
-            'response_type' => 'code',
-            'client_id' => 'build-analyzer',
-            'redirect_uri' => self::REDIRECT,
-            'scope' => 'openid profile email',
-            'state' => 's1',
-            'nonce' => 'n1',
-            'code_challenge' => Base64Url::encode(hash('sha256', $verifier, true)),
-            'code_challenge_method' => 'S256',
-        ]);
+        return http_build_query(
+            $more + [
+                'response_type' => 'code',
+                'client_id' => 'build-analyzer',
+                'redirect_uri' => self::REDIRECT,
+                'scope' => 'openid profile email',
+                'state' => 's1',
+                'nonce' => 'n1',
+                'code_challenge' => Base64Url::encode(hash('sha256', $verifier, true)),
+                'code_challenge_method' => 'S256',
+            ],
+        );
     }
 
     /**
@@ -287,7 +315,7 @@ final class StandInIamTest extends TestCase
             curl_setopt($handle, CURLOPT_POSTFIELDS, $form);
         }
         if ($cookies !== []) {
-            curl_setopt($handle, CURLOPT_COOKIE, implode('; ', array_map(static fn (string $name, string $value): string => "$name=$value", array_keys($cookies), $cookies)));
+            curl_setopt($handle, CURLOPT_COOKIE, implode('; ', array_map(static fn(string $name, string $value): string => "$name=$value", array_keys($cookies), $cookies)));
         }
         $body = curl_exec($handle);
 

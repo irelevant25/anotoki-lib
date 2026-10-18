@@ -30,9 +30,10 @@ final class PeopleSchemaTest extends DatabaseTestCase
             self::assertSame($before, $this->siteTables(), "$site: every table of the site's as it was, its rows too");
             self::assertSame(['anotoki_people_anonymized', 'anotoki_people_sync'], $this->libraryTables(), $site);
             self::assertSame([['id' => 1, 'since' => null, 'checked_at' => null, 'ok_at' => null, 'error' => null, 'scrubbed' => 0]], $this->rows('SELECT * FROM anotoki_people_sync'), $site);
-            $recorded = $site === 'genshin'
-                ? $this->rows("SELECT folder, filename FROM migrations WHERE folder LIKE 'anotoki%'")
-                : $this->rows("SELECT filename FROM migrations WHERE filename LIKE 'anotoki%'");
+            $recorded =
+                $site === 'genshin'
+                    ? $this->rows("SELECT folder, filename FROM migrations WHERE folder LIKE 'anotoki%'")
+                    : $this->rows("SELECT filename FROM migrations WHERE filename LIKE 'anotoki%'");
             self::assertSame($site === 'genshin' ? [['folder' => 'anotoki_people', 'filename' => '001_people.sql']] : [['filename' => 'anotoki_people/001_people.sql']], $recorded, $site);
         }
     }
@@ -41,7 +42,7 @@ final class PeopleSchemaTest extends DatabaseTestCase
     {
         $sql = (string) file_get_contents(Schema::directory() . '/001_people.sql');
         $this->pdo->exec($sql);
-        $this->pdo->exec("UPDATE anotoki_people_sync SET scrubbed = 3");
+        $this->pdo->exec('UPDATE anotoki_people_sync SET scrubbed = 3');
         $this->pdo->exec($sql);
 
         self::assertSame(3, (int) $this->value('SELECT scrubbed FROM anotoki_people_sync'));
@@ -69,7 +70,9 @@ final class PeopleSchemaTest extends DatabaseTestCase
      */
     private function siteTables(): array
     {
-        $tables = $this->pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'anotoki\\_%' AND tablename <> 'migrations' ORDER BY tablename")->fetchAll(PDO::FETCH_COLUMN);
+        $tables = $this->pdo
+            ->query("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'anotoki\\_%' AND tablename <> 'migrations' ORDER BY tablename")
+            ->fetchAll(PDO::FETCH_COLUMN);
         $state = [];
         foreach ($tables as $table) {
             $state[$table] = $this->shapeOf($table) + [

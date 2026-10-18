@@ -63,15 +63,10 @@ final class People
      * @param list<Closure(PDO, int, ?array<string, mixed>): void> $hooks
      * @param ?Closure(string $url, float $timeout): array{status: int, body: ?string} $fetch  how the IAM is asked
      */
-    public function __construct(
-        public readonly PeopleTable $table,
-        private readonly Closure $pdo,
-        public readonly IamClient $iam,
-        array $hooks = [],
-        private readonly ?Closure $fetch = null,
-    ) {
+    public function __construct(public readonly PeopleTable $table, private readonly Closure $pdo, public readonly IamClient $iam, array $hooks = [], private readonly ?Closure $fetch = null)
+    {
         foreach ($hooks as $hook) {
-            if (!$hook instanceof Closure) {
+            if (!($hook instanceof Closure)) {
                 throw new InvalidArgumentException('People: every hook is a Closure(PDO $pdo, int $sub, ?array $former): void.');
             }
         }
@@ -221,7 +216,9 @@ final class People
             $locked = $pdo->prepare('SELECT CASE WHEN pg_try_advisory_xact_lock(CAST(? AS bigint)) THEN 1 ELSE 0 END');
             $locked->execute([Scrubber::LOCK]);
             if ((int) $locked->fetchColumn() !== 1) {
-                throw new RuntimeException('A check of the accounts the IAM deleted was running, and it would have kept its place in the IAM\'s list over the restored one: restore again in a minute.');
+                throw new RuntimeException(
+                    'A check of the accounts the IAM deleted was running, and it would have kept its place in the IAM\'s list over the restored one: restore again in a minute.',
+                );
             }
 
             $feedback = AdminSchema::has($pdo, AdminSchema::FEEDBACK_TABLE);
@@ -298,8 +295,9 @@ final class People
                     $first ??= $e;
                     $why .= '; nor could the next request be told to: ' . self::said($e);
                 }
-                $failed[] = "The accounts the IAM deleted were not checked again ($why). Whoever it deleted since this backup was made may be named here "
-                    . 'until they are: the check runs again with the next request, and at once with Check now on the People page.';
+                $failed[] =
+                    "The accounts the IAM deleted were not checked again ($why). Whoever it deleted since this backup was made may be named here " .
+                    'until they are: the check runs again with the next request, and at once with Check now on the People page.';
             }
             if ($then !== null) {
                 try {
@@ -415,16 +413,17 @@ final class People
     {
         [$after, $parameters] = self::sinceTheBackup($since, $snapshot);
         $statement = $pdo->prepare(
-            'SELECT target_id FROM ' . AdminSchema::AUDIT_TABLE . '
-              WHERE action = \'person.data_deleted\' AND target_type = \'user\' AND target_id IS NOT NULL AND ' . $after . '
-              GROUP BY target_id ORDER BY min(created_at), min(id)'
+            'SELECT target_id FROM ' .
+                AdminSchema::AUDIT_TABLE .
+                '
+              WHERE action = \'person.data_deleted\' AND target_type = \'user\' AND target_id IS NOT NULL AND ' .
+                $after .
+                '
+              GROUP BY target_id ORDER BY min(created_at), min(id)',
         );
         $statement->execute($parameters);
 
-        return array_values(array_filter(
-            array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)),
-            static fn (string $id): bool => preg_match('/^[1-9][0-9]{0,17}$/D', $id) === 1,
-        ));
+        return array_values(array_filter(array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)), static fn(string $id): bool => preg_match('/^[1-9][0-9]{0,17}$/D', $id) === 1));
     }
 
     /**
@@ -438,9 +437,13 @@ final class People
     {
         [$after, $parameters] = self::sinceTheBackup($since, $snapshot);
         $statement = $pdo->prepare(
-            'SELECT target_id, details->>\'created_at\' FROM ' . AdminSchema::AUDIT_TABLE . '
-              WHERE action = \'feedback.deleted\' AND target_type = \'feedback\' AND target_id IS NOT NULL AND ' . $after . '
-              ORDER BY created_at, id'
+            'SELECT target_id, details->>\'created_at\' FROM ' .
+                AdminSchema::AUDIT_TABLE .
+                '
+              WHERE action = \'feedback.deleted\' AND target_type = \'feedback\' AND target_id IS NOT NULL AND ' .
+                $after .
+                '
+              ORDER BY created_at, id',
         );
         $statement->execute($parameters);
         $out = [];

@@ -97,12 +97,12 @@ final class EnglishDictionary
             throw new RuntimeException("$path could not be read: " . preg_last_error_msg() . '.');
         }
         if ($const !== null) {
-            $objects = array_values(array_filter($objects, static fn (array $object): bool => $object[1] === $const));
+            $objects = array_values(array_filter($objects, static fn(array $object): bool => $object[1] === $const));
         }
         if (count($objects) !== 1) {
-            throw new RuntimeException($objects === []
-                ? "$path declares no object of strings" . ($const === null ? '' : " named $const") . '.'
-                : "$path declares more than one object: name the one that holds the English.");
+            throw new RuntimeException(
+                $objects === [] ? "$path declares no object of strings" . ($const === null ? '' : " named $const") . '.' : "$path declares more than one object: name the one that holds the English.",
+            );
         }
         $body = $objects[0][2];
 
@@ -130,10 +130,11 @@ final class EnglishDictionary
         if ($rest === null) {
             throw new RuntimeException("$path could not be read: " . preg_last_error_msg() . '.');
         }
-        $left = array_values(array_filter(array_map('trim', explode("\n", $rest)), static fn (string $line): bool => $line !== ''));
+        $left = array_values(array_filter(array_map('trim', explode("\n", $rest)), static fn(string $line): bool => $line !== ''));
         if ($left !== []) {
-            throw new RuntimeException("$path: could not read \"{$left[0]}\" - it is written in a way this reader does not know ("
-                . count($left) . (count($left) === 1 ? ' such line).' : ' such lines).'));
+            throw new RuntimeException(
+                "$path: could not read \"{$left[0]}\" - it is written in a way this reader does not know (" . count($left) . (count($left) === 1 ? ' such line).' : ' such lines).'),
+            );
         }
         if ($entries === []) {
             throw new RuntimeException("$path has no entries.");
@@ -160,16 +161,16 @@ final class EnglishDictionary
                     default => $escape, // \' \" \\ and anything else stand for themselves
                 };
             },
-            substr($literal, 1, -1)
+            substr($literal, 1, -1),
         );
     }
 
     /** A code point as UTF-8, without the mbstring extension. */
     private static function character(int $codePoint): string
     {
-        $json = json_decode('"' . ($codePoint > 0xFFFF
-            ? sprintf('\\u%04x\\u%04x', 0xD800 + (($codePoint - 0x10000) >> 10), 0xDC00 + (($codePoint - 0x10000) & 0x3FF))
-            : sprintf('\\u%04x', $codePoint)) . '"');
+        $json = json_decode(
+            '"' . ($codePoint > 0xffff ? sprintf('\\u%04x\\u%04x', 0xd800 + (($codePoint - 0x10000) >> 10), 0xdc00 + (($codePoint - 0x10000) & 0x3ff)) : sprintf('\\u%04x', $codePoint)) . '"',
+        );
 
         return is_string($json) ? $json : '';
     }

@@ -82,7 +82,7 @@ final class FileExplorer
         }
         $byName = [];
         foreach ($roots as $root) {
-            if (!$root instanceof FileRoot) {
+            if (!($root instanceof FileRoot)) {
                 throw new InvalidArgumentException('Every root must be a FileRoot.');
             }
             if (isset($byName[$root->name])) {
@@ -216,19 +216,23 @@ final class FileExplorer
         }
         $walk = $this->walk($real, '', PHP_INT_MAX);
 
-        return $this->withSnapshot($root->name, static function (?array $before) use ($walk): array {
-            $previous = $before['files'] ?? null;
-            $new = is_array($previous) ? array_map('strval', array_values(array_diff(array_map('strval', array_keys($walk['files'])), array_map('strval', array_keys($previous))))) : [];
-            sort($new, SORT_NATURAL | SORT_FLAG_CASE);
+        return $this->withSnapshot(
+            $root->name,
+            static function (?array $before) use ($walk): array {
+                $previous = $before['files'] ?? null;
+                $new = is_array($previous) ? array_map('strval', array_values(array_diff(array_map('strval', array_keys($walk['files'])), array_map('strval', array_keys($previous))))) : [];
+                sort($new, SORT_NATURAL | SORT_FLAG_CASE);
 
-            return [
-                'scanned_at' => gmdate('Y-m-d\TH:i:s\Z'),
-                'previous_scanned_at' => $before['scanned_at'] ?? null,
-                'files' => $walk['files'],
-                'folders' => $walk['folders'],
-                'new' => $new,
-            ];
-        }, true) ?? self::status(null);
+                return [
+                    'scanned_at' => gmdate('Y-m-d\TH:i:s\Z'),
+                    'previous_scanned_at' => $before['scanned_at'] ?? null,
+                    'files' => $walk['files'],
+                    'folders' => $walk['folders'],
+                    'new' => $new,
+                ];
+            },
+            true,
+        ) ?? self::status(null);
     }
 
     // ─── Writing ─────────────────────────────────────────────────────────────
@@ -371,7 +375,7 @@ final class FileExplorer
         if (!@rename($sourcePath, $targetPath)) {
             return new Refusal(500, 'write_failed', 'It could not be moved.');
         }
-        $this->updateSnapshot($root->name, static fn (array $snapshot): array => self::moveInSnapshot($snapshot, $source, $target));
+        $this->updateSnapshot($root->name, static fn(array $snapshot): array => self::moveInSnapshot($snapshot, $source, $target));
         $op = PathGuard::split($source)[0] === $targetParent ? 'rename' : 'move';
         $this->notify($root->name, $op, $target, $source);
 
@@ -468,7 +472,7 @@ final class FileExplorer
                 ];
             }
         }
-        usort($items, static fn (array $a, array $b): int => [$b['deleted_at'], $b['trashed']] <=> [$a['deleted_at'], $a['trashed']]);
+        usort($items, static fn(array $a, array $b): int => [$b['deleted_at'], $b['trashed']] <=> [$a['deleted_at'], $a['trashed']]);
 
         return $items;
     }
@@ -582,12 +586,19 @@ final class FileExplorer
     {
         $expires = time() + $this->previewSeconds;
 
-        return $this->rawPath . '?' . http_build_query([
-            'root' => $rootName,
-            'path' => $relative,
-            'exp' => $expires,
-            'sig' => $this->signature($rootName, $relative, $expires),
-        ], '', '&', PHP_QUERY_RFC3986);
+        return $this->rawPath .
+            '?' .
+            http_build_query(
+                [
+                    'root' => $rootName,
+                    'path' => $relative,
+                    'exp' => $expires,
+                    'sig' => $this->signature($rootName, $relative, $expires),
+                ],
+                '',
+                '&',
+                PHP_QUERY_RFC3986,
+            );
     }
 
     /**
@@ -617,8 +628,7 @@ final class FileExplorer
         $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
         $size = (int) @filesize($file);
         $family = UploadPolicy::FAMILIES[$extension] ?? null;
-        $inline = in_array($extension, self::INLINE_IMAGES, true) || $family === 'audio' || $family === 'video'
-            || ($family === 'text' && $size <= self::TEXT_PREVIEW_BYTES);
+        $inline = in_array($extension, self::INLINE_IMAGES, true) || $family === 'audio' || $family === 'video' || ($family === 'text' && $size <= self::TEXT_PREVIEW_BYTES);
         $type = match (true) {
             !$inline => 'application/octet-stream',
             $family === 'text' => 'text/plain; charset=utf-8',
@@ -657,12 +667,14 @@ final class FileExplorer
     private function uploadOne(FileRoot $root, string $real, string $folder, UploadedFileInterface $file, bool $replace): array
     {
         $clientName = (string) $file->getClientFilename();
-        $refused = static fn (Refusal $refusal): array => ['name' => $clientName, 'stored_as' => null, 'path' => null, 'status' => 'refused', 'code' => $refusal->code, 'message' => $refusal->message];
+        $refused = static fn(Refusal $refusal): array => ['name' => $clientName, 'stored_as' => null, 'path' => null, 'status' => 'refused', 'code' => $refusal->code, 'message' => $refusal->message];
 
         if ($file->getError() !== UPLOAD_ERR_OK) {
-            return $refused(in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
-                ? new Refusal(413, 'too_large', 'The file is larger than the server takes.')
-                : new Refusal(400, 'upload_failed', 'The file did not arrive whole.'));
+            return $refused(
+                in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+                    ? new Refusal(413, 'too_large', 'The file is larger than the server takes.')
+                    : new Refusal(400, 'upload_failed', 'The file did not arrive whole.'),
+            );
         }
         $stored = UploadPolicy::storedName($clientName, $root);
         if ($stored instanceof Refusal) {
@@ -909,8 +921,8 @@ final class FileExplorer
      */
     private function page(FileRoot $root, string $path, string $search, string $mode, array $folders, array $files, int $page, ?array $snapshot): array
     {
-        usort($folders, static fn (array $a, array $b): int => strnatcasecmp($a['name'], $b['name']));
-        usort($files, static fn (array $a, array $b): int => $mode === 'folder' ? strnatcasecmp($a['name'], $b['name']) : strnatcasecmp($a['path'], $b['path']));
+        usort($folders, static fn(array $a, array $b): int => strnatcasecmp($a['name'], $b['name']));
+        usort($files, static fn(array $a, array $b): int => $mode === 'folder' ? strnatcasecmp($a['name'], $b['name']) : strnatcasecmp($a['path'], $b['path']));
 
         return [
             'root' => $root->name,
@@ -980,7 +992,7 @@ final class FileExplorer
     /** The snapshot changed by $change, when there is one (a root never scanned has none to keep in step). */
     private function updateSnapshot(string $root, Closure $change): void
     {
-        $this->withSnapshot($root, static fn (?array $snapshot): ?array => $snapshot === null ? null : $change($snapshot), false);
+        $this->withSnapshot($root, static fn(?array $snapshot): ?array => $snapshot === null ? null : $change($snapshot), false);
     }
 
     /**
@@ -1037,7 +1049,7 @@ final class FileExplorer
             }
             $snapshot[$key] = $moved;
         }
-        $snapshot['new'] = array_map(static fn (mixed $path): string => $rename((string) $path), $snapshot['new'] ?? []);
+        $snapshot['new'] = array_map(static fn(mixed $path): string => $rename((string) $path), $snapshot['new'] ?? []);
 
         return $snapshot;
     }

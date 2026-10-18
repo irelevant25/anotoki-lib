@@ -65,12 +65,15 @@ final class BackupsRoutesTest extends BackupsTestCase
         $backup = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup'];
         $id = $backup['id'];
 
-        foreach ([
-            ['POST', '/api/admin/backups', ''],
-            ['DELETE', "/api/admin/backups/$id", ''],
-            ['POST', "/api/admin/backups/$id/ticket", ''],
-            ['POST', "/api/admin/backups/$id/restore", '{"confirm":"' . substr($id, -6) . '"}'],
-        ] as [$method, $path, $body]) {
+        foreach (
+            [
+                ['POST', '/api/admin/backups', ''],
+                ['DELETE', "/api/admin/backups/$id", ''],
+                ['POST', "/api/admin/backups/$id/ticket", ''],
+                ['POST', "/api/admin/backups/$id/restore", '{"confirm":"' . substr($id, -6) . '"}'],
+            ]
+            as [$method, $path, $body]
+        ) {
             $refused = $this->send($app, $method, $path, $body, authTime: time() - 3600);
             self::assertSame([403, 'reauth_required'], [$refused->getStatusCode(), $this->json($refused)['code']], "$method $path");
         }
@@ -80,14 +83,16 @@ final class BackupsRoutesTest extends BackupsTestCase
 
     public function testTheIamsProofIsItsPassword(): void
     {
-        $app = $this->app(new AdminContext(
-            static fn (): int => 1,
-            static fn (ServerRequestInterface $request, array $body): ?array => ($body['password'] ?? null) === 'correct horse'
-                ? null
-                : ['status' => 422, 'code' => 'wrong_password', 'error' => 'The current password is not right'],
-            AdminContext::PROOF_PASSWORD,
-            isAdmin: static fn (): bool => true,
-        ));
+        $app = $this->app(
+            new AdminContext(
+                static fn(): int => 1,
+                static fn(ServerRequestInterface $request, array $body): ?array => ($body['password'] ?? null) === 'correct horse'
+                    ? null
+                    : ['status' => 422, 'code' => 'wrong_password', 'error' => 'The current password is not right'],
+                AdminContext::PROOF_PASSWORD,
+                isAdmin: static fn(): bool => true,
+            ),
+        );
         self::assertSame(['kind' => 'password'], $this->json($this->send($app, 'GET', '/api/admin/backups/proof')));
 
         $wrong = $this->send($app, 'POST', '/api/admin/backups', '{"password":"wrong"}');
@@ -114,7 +119,10 @@ final class BackupsRoutesTest extends BackupsTestCase
         self::assertSame(200, $download->getStatusCode(), 'a navigation sends no Bearer header: the ticket is the check');
         self::assertSame('application/octet-stream', $download->getHeaderLine('Content-Type'));
         self::assertSame('attachment; filename="shop-' . $first . '.anotoki-backup"', $download->getHeaderLine('Content-Disposition'));
-        self::assertSame(['no-store', 'nosniff', 'no-referrer'], [$download->getHeaderLine('Cache-Control'), $download->getHeaderLine('X-Content-Type-Options'), $download->getHeaderLine('Referrer-Policy')]);
+        self::assertSame(
+            ['no-store', 'nosniff', 'no-referrer'],
+            [$download->getHeaderLine('Cache-Control'), $download->getHeaderLine('X-Content-Type-Options'), $download->getHeaderLine('Referrer-Policy')],
+        );
         $bytes = (string) file_get_contents($this->backups . "/$first.anotoki-backup");
         self::assertSame((string) strlen($bytes), $download->getHeaderLine('Content-Length'));
         self::assertSame($bytes, (string) $download->getBody());
@@ -160,7 +168,7 @@ final class BackupsRoutesTest extends BackupsTestCase
 
     public function testABackupNamesItsMakerWhereTheSiteNamesPeopleAndAFileDroppedInIsNeverRestorable(): void
     {
-        $app = $this->app($this->context(static fn (array $ids): array => array_intersect_key([7 => 'Ana Admin'], array_flip($ids))));
+        $app = $this->app($this->context(static fn(array $ids): array => array_intersect_key([7 => 'Ana Admin'], array_flip($ids))));
         $made = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup'];
         self::assertSame([7, 'Ana Admin'], [$made['created_by'], $made['created_by_name']]);
         $listed = $this->json($this->send($app, 'GET', '/api/admin/backups'))['backups'][0];
@@ -179,11 +187,19 @@ final class BackupsRoutesTest extends BackupsTestCase
         $app = $this->app();
         $id = $this->json($this->send($app, 'POST', '/api/admin/backups'))['backup']['id'];
 
-        foreach ([
-            ['GET', '/api/admin/backups'], ['GET', '/api/admin/backups/proof'], ['POST', '/api/admin/backups'],
-            ['GET', "/api/admin/backups/$id"], ['DELETE', "/api/admin/backups/$id"], ['POST', "/api/admin/backups/$id/ticket"],
-            ['GET', "/api/admin/backups/$id/preview"], ['POST', "/api/admin/backups/$id/restore"],
-        ] as [$method, $path]) {
+        foreach (
+            [
+                ['GET', '/api/admin/backups'],
+                ['GET', '/api/admin/backups/proof'],
+                ['POST', '/api/admin/backups'],
+                ['GET', "/api/admin/backups/$id"],
+                ['DELETE', "/api/admin/backups/$id"],
+                ['POST', "/api/admin/backups/$id/ticket"],
+                ['GET', "/api/admin/backups/$id/preview"],
+                ['POST', "/api/admin/backups/$id/restore"],
+            ]
+            as [$method, $path]
+        ) {
             $bare = $this->send($app, $method, $path, admin: false);
             self::assertSame([401, 'sign_in_required'], [$bare->getStatusCode(), $this->json($bare)['code']], "a bare $method $path");
             $other = $this->send($app, $method, $path, admin: false, actor: 9);
@@ -245,7 +261,10 @@ final class BackupsRoutesTest extends BackupsTestCase
 
         $deleted = $this->send($app, 'DELETE', "/api/admin/backups/$id");
         self::assertSame(['deleted' => true], $this->json($deleted));
-        self::assertSame(['backup.created', 'backup.created', 'backup.restored', 'backup.deleted'], $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(
+            ['backup.created', 'backup.created', 'backup.restored', 'backup.deleted'],
+            $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN),
+        );
 
         $iam = $this->app(null, ['restore' => false]);
         $off = $this->send($iam, 'POST', "/api/admin/backups/$id/restore", '{"confirm":"' . substr($id, -6) . '"}', authTime: time() - 3600);
@@ -256,17 +275,40 @@ final class BackupsRoutesTest extends BackupsTestCase
     {
         $open = array_merge(BackupsRoutes::openPaths(), ErrorLogRoutes::openPaths());
         $id = '20261008-101530Z-manual-' . str_repeat('a', 32);
-        foreach (['/api/admin/backups', '/api/admin/backups/proof', "/api/admin/backups/$id", "/api/admin/backups/$id/ticket", "/api/admin/backups/$id/file", "/api/admin/backups/$id/preview", '/api/admin/errors', '/api/admin/errors/0123456789ab'] as $path) {
+        foreach (
+            [
+                '/api/admin/backups',
+                '/api/admin/backups/proof',
+                "/api/admin/backups/$id",
+                "/api/admin/backups/$id/ticket",
+                "/api/admin/backups/$id/file",
+                "/api/admin/backups/$id/preview",
+                '/api/admin/errors',
+                '/api/admin/errors/0123456789ab',
+            ]
+            as $path
+        ) {
             self::assertTrue(self::opens($open, $path), "$path is open");
         }
-        foreach (["/api/admin/backups/$id/restore", '/api/admin/backups/x', '/api/admin/backupsX', "/api/admin/backups/$id/file/x", '/api/admin/errors/0123456789abc', '/api/admin/errors/x', "/api/admin/backups/$id\n"] as $path) {
+        foreach (
+            [
+                "/api/admin/backups/$id/restore",
+                '/api/admin/backups/x',
+                '/api/admin/backupsX',
+                "/api/admin/backups/$id/file/x",
+                '/api/admin/errors/0123456789abc',
+                '/api/admin/errors/x',
+                "/api/admin/backups/$id\n",
+            ]
+            as $path
+        ) {
             self::assertFalse(self::opens($open, $path), "$path is closed");
         }
 
         // On a site that blocks: the gate in front, an update waiting.
         $this->siteSet = $this->set('shop', ['002_waiting.sql' => 'CREATE TABLE waiting (id INT);']);
         $app = $this->app();
-        $state = new SiteState(static fn (): ?string => null, static fn (): bool => true, fn (): Migrator => $this->siteMigrator($this->pdo));
+        $state = new SiteState(static fn(): ?string => null, static fn(): bool => true, fn(): Migrator => $this->siteMigrator($this->pdo));
         $app->add(new SiteGate($state, new ResponseFactory(), $open));
         $made = $this->send($app, 'POST', '/api/admin/backups', '{"description":"just before Apply"}');
         self::assertSame(201, $made->getStatusCode(), 'a backup just before Apply is the point');
@@ -284,9 +326,11 @@ final class BackupsRoutesTest extends BackupsTestCase
     private function context(?\Closure $names = null): AdminContext
     {
         return new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Actor')) ? (int) $request->getHeaderLine('X-Test-Actor') : null,
-            AdminContext::recentSignIn(static fn (ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Auth-Time')) ? (int) $request->getHeaderLine('X-Test-Auth-Time') : null),
-            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+            static fn(ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Actor')) ? (int) $request->getHeaderLine('X-Test-Actor') : null,
+            AdminContext::recentSignIn(
+                static fn(ServerRequestInterface $request): ?int => ctype_digit($request->getHeaderLine('X-Test-Auth-Time')) ? (int) $request->getHeaderLine('X-Test-Auth-Time') : null,
+            ),
+            isAdmin: static fn(ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
             names: $names,
         );
     }
@@ -308,9 +352,7 @@ final class BackupsRoutesTest extends BackupsTestCase
     {
         $request = (new ServerRequestFactory())->createServerRequest($method, 'https://site.example' . $target);
         parse_str((string) parse_url($target, PHP_URL_QUERY), $query);
-        $request = $request->withQueryParams($query)
-            ->withBody((new StreamFactory())->createStream($body))
-            ->withHeader('X-Test-Auth-Time', (string) ($authTime ?? time() - 60));
+        $request = $request->withQueryParams($query)->withBody((new StreamFactory())->createStream($body))->withHeader('X-Test-Auth-Time', (string) ($authTime ?? time() - 60));
         if ($body !== '') {
             $request = $request->withHeader('Content-Type', 'application/json');
         }

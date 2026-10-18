@@ -45,7 +45,9 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
     expect(words(host().querySelector('[data-kept="visitors"] h3'))).toBe('Using the site without an account');
     expect(words(host().querySelector('[data-kept="feedback"]'))).toContain('a reply address only if the sender leaves one');
     expect(words(host().querySelector('[data-kept="error-log"]'))).toContain('In place of the IP address it keeps a code made from it with a secret key, never the address itself.');
-    expect(words(host().querySelector('[data-kept="backups"]'))).toContain("The copies are kept on the site's server, out of public reach; an administrator may also keep a downloaded copy elsewhere.");
+    expect(words(host().querySelector('[data-kept="backups"]'))).toContain(
+      "The copies are kept on the site's server, out of public reach; an administrator may also keep a downloaded copy elsewhere.",
+    );
   });
 
   it("leaves out feedback where the site takes none, says the backups are encrypted where they are, and takes the site's own words for a module", async () => {
@@ -53,7 +55,9 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
       facts: { feedback: undefined, visitors: null, backups: { encrypted: true }, auditLog: { what: 'What administrators change, and your own security changes, with the address they came from.' } },
     });
     expect(kept()).toEqual(['data-0', 'data-1', 'error-log', 'audit-log', 'backups']);
-    expect(words(host().querySelector('[data-kept="backups"]'))).toContain('out of public reach, and are encrypted; an administrator may also keep a downloaded copy, encrypted the same way, elsewhere.');
+    expect(words(host().querySelector('[data-kept="backups"]'))).toContain(
+      'out of public reach, and are encrypted; an administrator may also keep a downloaded copy, encrypted the same way, elsewhere.',
+    );
     expect(words(host().querySelector('[data-kept="audit-log"]'))).toContain('your own security changes, with the address they came from.');
 
     drawn.facts.update((facts) => ({ ...facts, errorLog: false, auditLog: false, backups: false }));
@@ -86,7 +90,9 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
     drawn = await drawPage(PrivacyPageComponent);
     expect(words(section('account'))).toContain("The account itself - your e-mail address, your password, how you sign in - is kept by the anotoki account's own site, not by Piano Academy");
     expect(section('account')?.querySelector('[data-account-privacy]')?.getAttribute('href')).toBe('https://iam.example.test/privacy');
-    expect(words(section('account'))).toContain("Piano Academy never sees your password, and it keeps your account's e-mail address only as the reply address of a feedback message you send, if you leave it in the form (on a site that takes feedback).");
+    expect(words(section('account'))).toContain(
+      "Piano Academy never sees your password, and it keeps your account's e-mail address only as the reply address of a feedback message you send, if you leave it in the form (on a site that takes feedback).",
+    );
     expect(words(section('account'))).toContain('takes your name and any reply address out of what it keeps');
 
     drawn.facts.update((facts) => ({ ...facts, account: { isIam: true, deleteUrl: '/account/security' } }));

@@ -100,7 +100,7 @@ final class PeopleRoutes
     ): RouteGroupInterface {
         $keys = [];
         foreach ($columns as $column) {
-            if (!$column instanceof PeopleColumn) {
+            if (!($column instanceof PeopleColumn)) {
                 throw new InvalidArgumentException('PeopleRoutes: every column is a PeopleColumn.');
             }
             if (isset($keys[$column->key])) {
@@ -109,73 +109,86 @@ final class PeopleRoutes
             $keys[$column->key] = true;
         }
 
-        $actor = static fn (ServerRequestInterface $request): int|string|null => $context !== null ? $context->actorId($request) : Identify::person($request)?->sub;
+        $actor = static fn(ServerRequestInterface $request): int|string|null => $context !== null ? $context->actorId($request) : Identify::person($request)?->sub;
         $record = static function (ServerRequestInterface $request, string $action, ?string $targetType, ?string $targetId, array $details) use ($audit, $actor): void {
             $audit?->record($request, $actor($request), $action, $targetType, $targetId, $details);
         };
 
         $group = $app->group($base, function (RouteCollectorProxyInterface $group) use ($people, $columns, $visitors, $delete, $error, $record, $audit, $actor): void {
-            self::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $columns, $visitors, $error): ResponseInterface {
-                $query = $request->getQueryParams();
-                $search = is_string($query['q'] ?? null) ? trim($query['q']) : '';
-                $page = is_string($query['page'] ?? null) && ctype_digit($query['page']) && (int) $query['page'] >= 1 && strlen($query['page']) < 7 ? (int) $query['page'] : 1;
-                // PostgreSQL refuses a string that is not UTF-8, or holds a NUL, with an error: said here instead, as what it is.
-                if (!mb_check_encoding($search, 'UTF-8') || str_contains($search, "\0")) {
-                    return self::refuse($response, Refusal::invalid('invalid_query', 'That search is not text a name could hold.'), $error);
-                }
-                if (mb_strlen($search, 'UTF-8') > self::QUERY_MAX) {
-                    return self::refuse($response, Refusal::invalid('invalid_query', 'That search is longer than any name.'), $error);
-                }
+            self::plain(
+                $group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $columns, $visitors, $error): ResponseInterface {
+                    $query = $request->getQueryParams();
+                    $search = is_string($query['q'] ?? null) ? trim($query['q']) : '';
+                    $page = is_string($query['page'] ?? null) && ctype_digit($query['page']) && (int) $query['page'] >= 1 && strlen($query['page']) < 7 ? (int) $query['page'] : 1;
+                    // PostgreSQL refuses a string that is not UTF-8, or holds a NUL, with an error: said here instead, as what it is.
+                    if (!mb_check_encoding($search, 'UTF-8') || str_contains($search, "\0")) {
+                        return self::refuse($response, Refusal::invalid('invalid_query', 'That search is not text a name could hold.'), $error);
+                    }
+                    if (mb_strlen($search, 'UTF-8') > self::QUERY_MAX) {
+                        return self::refuse($response, Refusal::invalid('invalid_query', 'That search is longer than any name.'), $error);
+                    }
 
-                $pdo = $people->pdo();
-                if ($people->table->columns($pdo) === null) {
-                    return self::refuse($response, new Refusal(503, 'people_unavailable', "There is no table {$people->table->table} yet."), $error)->withHeader('Retry-After', '60');
-                }
+                    $pdo = $people->pdo();
+                    if ($people->table->columns($pdo) === null) {
+                        return self::refuse($response, new Refusal(503, 'people_unavailable', "There is no table {$people->table->table} yet."), $error)->withHeader('Retry-After', '60');
+                    }
 
-                return JsonResponse::write($response, 200, self::list($pdo, $people, $columns, $visitors, $search, $page));
-            }));
+                    return JsonResponse::write($response, 200, self::list($pdo, $people, $columns, $visitors, $search, $page));
+                }),
+            );
 
             if ($delete !== null) {
-                self::plain($group->delete('/{sub}', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $delete, $error, $record, $audit, $actor): ResponseInterface {
-                    $sub = (string) $request->getAttribute('sub');
-                    if (preg_match('/^[1-9][0-9]{0,17}$/D', $sub) !== 1) {
-                        return self::refuse($response, new Refusal(404, 'not_found', 'There is nobody with that id here.'), $error);
-                    }
-                    // The library's audit log writes the entry inside the delete's transaction, which a restore does
-                    // the delete again by (People::replay()): no delete without its entry - none while the table waits.
-                    $entry = null;
-                    if ($audit instanceof AuditLog) {
-                        if (!$audit->ready()) {
-                            return self::refuse($response, new Refusal(503, 'feature_unavailable', 'The audit log is not there yet: a database update waits, and nothing is deleted without its entry. Try again once the update is applied.'), $error)
-                                ->withHeader('Retry-After', '60');
+                self::plain(
+                    $group->delete('/{sub}', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $delete, $error, $record, $audit, $actor): ResponseInterface {
+                        $sub = (string) $request->getAttribute('sub');
+                        if (preg_match('/^[1-9][0-9]{0,17}$/D', $sub) !== 1) {
+                            return self::refuse($response, new Refusal(404, 'not_found', 'There is nobody with that id here.'), $error);
                         }
-                        $by = $actor($request);
-                        $entry = static function (PDO $pdo, array $deleted) use ($audit, $request, $by, $sub): void {
-                            $audit->recordInside($pdo, $request, $by, 'person.data_deleted', 'user', $sub, ['deleted' => self::answer($deleted)['deleted']]);
-                        };
-                    }
-                    // People::delete(): the hook, the person's feedback forgotten and the entry, in one transaction.
-                    $deleted = $people->delete($people->pdo(), (int) $sub, $delete, $request, $entry);
-                    if ($deleted === null) {
-                        return self::refuse($response, new Refusal(404, 'not_found', 'There is nobody with that id here.'), $error);
-                    }
-                    $answer = self::answer($deleted);
-                    if ($entry === null) {
-                        // Another recorder (AuditRecorder) writes after the delete, as it can.
-                        $record($request, 'person.data_deleted', 'user', $sub, ['deleted' => $answer['deleted']]);
-                    }
+                        // The library's audit log writes the entry inside the delete's transaction, which a restore does
+                        // the delete again by (People::replay()): no delete without its entry - none while the table waits.
+                        $entry = null;
+                        if ($audit instanceof AuditLog) {
+                            if (!$audit->ready()) {
+                                return self::refuse(
+                                    $response,
+                                    new Refusal(
+                                        503,
+                                        'feature_unavailable',
+                                        'The audit log is not there yet: a database update waits, and nothing is deleted without its entry. Try again once the update is applied.',
+                                    ),
+                                    $error,
+                                )->withHeader('Retry-After', '60');
+                            }
+                            $by = $actor($request);
+                            $entry = static function (PDO $pdo, array $deleted) use ($audit, $request, $by, $sub): void {
+                                $audit->recordInside($pdo, $request, $by, 'person.data_deleted', 'user', $sub, ['deleted' => self::answer($deleted)['deleted']]);
+                            };
+                        }
+                        // People::delete(): the hook, the person's feedback forgotten and the entry, in one transaction.
+                        $deleted = $people->delete($people->pdo(), (int) $sub, $delete, $request, $entry);
+                        if ($deleted === null) {
+                            return self::refuse($response, new Refusal(404, 'not_found', 'There is nobody with that id here.'), $error);
+                        }
+                        $answer = self::answer($deleted);
+                        if ($entry === null) {
+                            // Another recorder (AuditRecorder) writes after the delete, as it can.
+                            $record($request, 'person.data_deleted', 'user', $sub, ['deleted' => $answer['deleted']]);
+                        }
 
-                    return JsonResponse::write($response, 200, $answer);
-                }));
+                        return JsonResponse::write($response, 200, $answer);
+                    }),
+                );
             }
 
-            self::plain($group->post('/sync', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $record): ResponseInterface {
-                $pdo = $people->pdo();
-                $run = $people->scrubber($pdo)->run();
-                $record($request, 'people.synced', null, null, ['state' => $run['state'], 'handled' => $run['handled'], 'scrubbed' => $run['scrubbed']]);
+            self::plain(
+                $group->post('/sync', function (ServerRequestInterface $request, ResponseInterface $response) use ($people, $record): ResponseInterface {
+                    $pdo = $people->pdo();
+                    $run = $people->scrubber($pdo)->run();
+                    $record($request, 'people.synced', null, null, ['state' => $run['state'], 'handled' => $run['handled'], 'scrubbed' => $run['scrubbed']]);
 
-                return JsonResponse::write($response, 200, ['run' => $run, 'sync' => Scrubber::status($pdo)]);
-            }));
+                    return JsonResponse::write($response, 200, ['run' => $run, 'sync' => Scrubber::status($pdo)]);
+                }),
+            );
         });
 
         // Added last of the library's, so it runs inside whatever the site adds to the group: the site's
@@ -197,7 +210,7 @@ final class PeopleRoutes
         $table = PeopleTable::quote($t->table);
         $id = PeopleTable::quote($t->id);
         $name = PeopleTable::quote($t->name);
-        $time = static fn (?string $column): string => $column !== null && isset($have[$column]) ? PeopleTable::epochOf(PeopleTable::quote($column)) : 'NULL';
+        $time = static fn(?string $column): string => $column !== null && isset($have[$column]) ? PeopleTable::epochOf(PeopleTable::quote($column)) : 'NULL';
 
         $where = "$id > 0";
         $parameters = [];
@@ -223,11 +236,16 @@ final class PeopleRoutes
 
         $rows = $pdo->prepare(
             "SELECT $id, $name, {$time($t->firstSeen)}, {$time($t->lastSeen)}, {$time($t->anonymizedAt)}
-               FROM $table WHERE $where ORDER BY " . implode(', ', $order) . ' LIMIT ' . self::PAGE_SIZE . ' OFFSET ' . (($page - 1) * self::PAGE_SIZE)
+               FROM $table WHERE $where ORDER BY " .
+                implode(', ', $order) .
+                ' LIMIT ' .
+                self::PAGE_SIZE .
+                ' OFFSET ' .
+                ($page - 1) * self::PAGE_SIZE,
         );
         $rows->execute($parameters);
 
-        $iso = static fn (mixed $epoch): ?string => $epoch === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $epoch);
+        $iso = static fn(mixed $epoch): ?string => $epoch === null ? null : gmdate('Y-m-d\TH:i:s\Z', (int) $epoch);
         $list = [];
         $subs = [];
         foreach ($rows->fetchAll(PDO::FETCH_NUM) as [$sub, $personName, $first, $last, $anonymized]) {
@@ -244,13 +262,13 @@ final class PeopleRoutes
         foreach ($columns as $column) {
             $values = $subs === [] ? [] : ($column->values)($pdo, $subs);
             foreach ($list as $index => $row) {
-                $list[$index][$column->key] = $column->answer($values[(int) $row['sub']] ?? $values[$row['sub']] ?? null);
+                $list[$index][$column->key] = $column->answer($values[(int) $row['sub']] ?? ($values[$row['sub']] ?? null));
             }
         }
 
         return [
             'people' => $list,
-            'columns' => array_map(static fn (PeopleColumn $column): array => $column->describe(), $columns),
+            'columns' => array_map(static fn(PeopleColumn $column): array => $column->describe(), $columns),
             'total' => $total,
             'page' => $page,
             'page_size' => self::PAGE_SIZE,

@@ -30,8 +30,7 @@ final class DatabaseShape
         public readonly array $references,
         public readonly array $keys,
         public readonly string $columnsSha256,
-    ) {
-    }
+    ) {}
 
     /**
      * Reads the shape of $schema. Refuses a cycle of foreign keys that cannot
@@ -48,15 +47,13 @@ final class DatabaseShape
             throw new RuntimeException("The database has no schema \"$schema\".");
         }
 
-        $generated = (int) $pdo->query("SELECT current_setting('server_version_num')")->fetchColumn() >= 120000
-            ? 'a.attgenerated <> \'\''
-            : 'FALSE';
+        $generated = (int) $pdo->query("SELECT current_setting('server_version_num')")->fetchColumn() >= 120000 ? 'a.attgenerated <> \'\'' : 'FALSE';
         $statement = $pdo->prepare(
             "SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod), a.attnotnull, $generated
                FROM pg_class c
                JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
               WHERE c.relnamespace = CAST(? AS oid) AND c.relkind IN ('r', 'p') AND NOT c.relispartition
-              ORDER BY c.relname, a.attnum"
+              ORDER BY c.relname, a.attnum",
         );
         $statement->execute([$schemaOid]);
         $columns = [];
@@ -68,7 +65,7 @@ final class DatabaseShape
                 // A generated column is computed again as a row arrives: never copied.
                 $columns[(string) $table][] = (string) $column;
             }
-            $fingerprint[] = $table . "\t" . $column . "\t" . $type . "\t" . (($notNull === true || $notNull === 't') ? 'not null' : 'null') . ($isGenerated ? "\tgenerated" : '');
+            $fingerprint[] = $table . "\t" . $column . "\t" . $type . "\t" . ($notNull === true || $notNull === 't' ? 'not null' : 'null') . ($isGenerated ? "\tgenerated" : '');
         }
         // A table without a column is a table still.
         $empty = $pdo->prepare("SELECT relname FROM pg_class WHERE relnamespace = CAST(? AS oid) AND relkind IN ('r', 'p') AND NOT relispartition");
@@ -82,7 +79,7 @@ final class DatabaseShape
                FROM pg_constraint k
                JOIN pg_class c ON c.oid = k.conrelid
                JOIN pg_class p ON p.oid = k.confrelid
-              WHERE k.contype = 'f' AND c.relnamespace = CAST(? AS oid) AND p.relnamespace = CAST(? AS oid)"
+              WHERE k.contype = 'f' AND c.relnamespace = CAST(? AS oid) AND p.relnamespace = CAST(? AS oid)",
         );
         $keys->execute([$schemaOid, $schemaOid]);
         $references = [];
@@ -105,7 +102,7 @@ final class DatabaseShape
                LEFT JOIN pg_depend d ON d.objid = s.oid AND d.classid = 'pg_class'::regclass AND d.refclassid = 'pg_class'::regclass AND d.deptype IN ('a', 'i')
                LEFT JOIN pg_class t ON t.oid = d.refobjid
               WHERE s.relkind = 'S' AND s.relnamespace = CAST(? AS oid)
-              ORDER BY s.relname"
+              ORDER BY s.relname",
         );
         $sequences->execute([$schemaOid]);
         $sequenceList = [];
@@ -114,7 +111,7 @@ final class DatabaseShape
         }
 
         $order = self::parentsFirst(array_keys($columns), $references);
-        $tables = array_map(static fn (string $table): array => ['name' => $table, 'columns' => $columns[$table]], $order);
+        $tables = array_map(static fn(string $table): array => ['name' => $table, 'columns' => $columns[$table]], $order);
 
         return new self($schema, $tables, $sequenceList, $references, $allKeys, hash('sha256', implode("\n", $fingerprint)));
     }
@@ -133,7 +130,7 @@ final class DatabaseShape
     {
         $statement = $pdo->prepare(
             "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-              WHERE n.nspname = ? AND c.relkind IN ('r', 'p', 'S') AND NOT pg_has_role(c.relowner, 'USAGE')"
+              WHERE n.nspname = ? AND c.relkind IN ('r', 'p', 'S') AND NOT pg_has_role(c.relowner, 'USAGE')",
         );
         $statement->execute([$schema]);
 
@@ -172,10 +169,9 @@ final class DatabaseShape
                 }
             }
             if (!$progress) {
-                $left = array_values(array_filter($tables, static fn (string $table): bool => !isset($placed[$table])));
+                $left = array_values(array_filter($tables, static fn(string $table): bool => !isset($placed[$table])));
                 throw new RuntimeException(
-                    'These tables refer to each other in a circle with keys that cannot be deferred, so no order loads them: '
-                    . implode(', ', $left) . '. Make one of the keys DEFERRABLE.'
+                    'These tables refer to each other in a circle with keys that cannot be deferred, so no order loads them: ' . implode(', ', $left) . '. Make one of the keys DEFERRABLE.',
                 );
             }
         }

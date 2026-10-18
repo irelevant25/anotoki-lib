@@ -15,15 +15,11 @@ final class SiteStateTest extends DatabaseTestCase
     public function testNotSetUpWhileTheSettingsHaveAProblemWithoutAskingTheDatabase(): void
     {
         $asked = false;
-        $state = new SiteState(
-            fn (): ?string => 'config/database.local.php is missing.',
-            fn (): bool => false,
-            function () use (&$asked): Migrator {
-                $asked = true;
+        $state = new SiteState(fn(): ?string => 'config/database.local.php is missing.', fn(): bool => false, function () use (&$asked): Migrator {
+            $asked = true;
 
-                return $this->migrator([$this->set('site')]);
-            },
-        );
+            return $this->migrator([$this->set('site')]);
+        });
 
         self::assertSame(SiteState::NOT_SET_UP, $state->state());
         self::assertFalse($asked, 'the Migrator is only made once the settings are complete');
@@ -39,7 +35,7 @@ final class SiteStateTest extends DatabaseTestCase
     public function testADraftAloneDoesNotStopTheSite(): void
     {
         $set = $this->set('site', ['001_a.sql' => 'CREATE TABLE a (id int);']);
-        $ready = fn (MigrationSet $set, string $name, string $sql): bool => str_contains($sql, '-- end of');
+        $ready = fn(MigrationSet $set, string $name, string $sql): bool => str_contains($sql, '-- end of');
 
         self::assertSame(SiteState::READY, $this->stateOf($set, ['ready' => $ready])->state());
     }
@@ -51,11 +47,7 @@ final class SiteStateTest extends DatabaseTestCase
 
     public function testUnavailableWhenTheDatabaseCannotBeReached(): void
     {
-        $state = new SiteState(
-            fn (): ?string => null,
-            fn (): bool => true,
-            fn (): Migrator => new Migrator(TestDatabase::connect($this->database . '_gone'), [$this->set('site')]),
-        );
+        $state = new SiteState(fn(): ?string => null, fn(): bool => true, fn(): Migrator => new Migrator(TestDatabase::connect($this->database . '_gone'), [$this->set('site')]));
 
         self::assertSame(SiteState::UNAVAILABLE, $state->state());
     }
@@ -74,20 +66,25 @@ final class SiteStateTest extends DatabaseTestCase
     public function testInstalledAndBlockingAreTheSites(): void
     {
         $installed = false;
-        $state = new SiteState(fn (): ?string => null, function () use (&$installed): bool {
-            return $installed;
-        }, fn (): Migrator => $this->migrator([$this->set('site')]), false);
+        $state = new SiteState(
+            fn(): ?string => null,
+            function () use (&$installed): bool {
+                return $installed;
+            },
+            fn(): Migrator => $this->migrator([$this->set('site')]),
+            false,
+        );
 
         self::assertFalse($state->installed());
         $installed = true;
         self::assertTrue($state->installed());
         self::assertFalse($state->blockWhilePending);
-        self::assertTrue((new SiteState(fn () => null, fn () => true, fn () => null))->blockWhilePending, 'blocking is the default');
+        self::assertTrue((new SiteState(fn() => null, fn() => true, fn() => null))->blockWhilePending, 'blocking is the default');
     }
 
     /** @param array<string, mixed> $options */
     private function stateOf(MigrationSet $set, array $options = []): SiteState
     {
-        return new SiteState(fn (): ?string => null, fn (): bool => false, fn (): Migrator => $this->migrator([$set], $options));
+        return new SiteState(fn(): ?string => null, fn(): bool => false, fn(): Migrator => $this->migrator([$set], $options));
     }
 }

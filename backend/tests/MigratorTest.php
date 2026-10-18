@@ -51,20 +51,20 @@ final class MigratorTest extends DatabaseTestCase
             }
         };
 
-        $refused(fn () => new Migrator($this->pdo, []), 'no set');
-        $refused(fn () => new Migrator($this->pdo, ['a' => $set]), 'not a list');
-        $refused(fn () => new Migrator($this->pdo, [$set, new MigrationSet('site', $this->path('other'))]), 'two sets of one name');
-        $refused(fn () => new Migrator($this->pdo, [new MigrationSet('', $this->path('x'))]), 'a set without a name');
-        $refused(fn () => new Migrator($this->pdo, ['not a set']), 'not a MigrationSet');
-        $refused(fn () => new Migrator($this->pdo, [$set], ['tabel' => 'migrations']), 'an unknown option');
-        $refused(fn () => new Migrator($this->pdo, [$set], ['table' => 'migrations; DROP TABLE x']), 'a table name that is no name');
-        $refused(fn () => new Migrator($this->pdo, [$set], ['lock' => '42']), 'a lock that is no integer');
-        $refused(fn () => new Migrator($this->pdo, [$set], ['split' => 'no']), 'split that is no bool');
-        $refused(fn () => new Migrator($this->pdo, [$set], ['ready' => 'no such function']), 'a hook that cannot be called');
+        $refused(fn() => new Migrator($this->pdo, []), 'no set');
+        $refused(fn() => new Migrator($this->pdo, ['a' => $set]), 'not a list');
+        $refused(fn() => new Migrator($this->pdo, [$set, new MigrationSet('site', $this->path('other'))]), 'two sets of one name');
+        $refused(fn() => new Migrator($this->pdo, [new MigrationSet('', $this->path('x'))]), 'a set without a name');
+        $refused(fn() => new Migrator($this->pdo, ['not a set']), 'not a MigrationSet');
+        $refused(fn() => new Migrator($this->pdo, [$set], ['tabel' => 'migrations']), 'an unknown option');
+        $refused(fn() => new Migrator($this->pdo, [$set], ['table' => 'migrations; DROP TABLE x']), 'a table name that is no name');
+        $refused(fn() => new Migrator($this->pdo, [$set], ['lock' => '42']), 'a lock that is no integer');
+        $refused(fn() => new Migrator($this->pdo, [$set], ['split' => 'no']), 'split that is no bool');
+        $refused(fn() => new Migrator($this->pdo, [$set], ['ready' => 'no such function']), 'a hook that cannot be called');
 
         $silent = $this->connect();
         $silent->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
-        $refused(fn () => new Migrator($silent, [$set]), 'a connection that does not throw');
+        $refused(fn() => new Migrator($silent, [$set]), 'a connection that does not throw');
     }
 
     public function testFilesAreTheSqlFilesDirectlyInTheFolderInNaturalOrder(): void
@@ -99,19 +99,19 @@ final class MigratorTest extends DatabaseTestCase
         ]);
         $migrator = $this->migrator([$set]);
 
-        self::assertSame(
-            [['set' => 'iam', 'name' => '1_first.sql'], ['set' => 'iam', 'name' => '2_second.sql'], ['set' => 'iam', 'name' => '10_third.sql']],
-            $migrator->applicable()
-        );
+        self::assertSame([['set' => 'iam', 'name' => '1_first.sql'], ['set' => 'iam', 'name' => '2_second.sql'], ['set' => 'iam', 'name' => '10_third.sql']], $migrator->applicable());
         self::assertFalse($this->tableExists('migrations'), 'reading made nothing');
 
-        self::assertSame([
-            'applied' => [['set' => 'iam', 'name' => '1_first.sql'], ['set' => 'iam', 'name' => '2_second.sql'], ['set' => 'iam', 'name' => '10_third.sql']],
-            'failed' => null,
-            'error' => null,
-            'busy' => false,
-            'note' => null,
-        ], $migrator->apply());
+        self::assertSame(
+            [
+                'applied' => [['set' => 'iam', 'name' => '1_first.sql'], ['set' => 'iam', 'name' => '2_second.sql'], ['set' => 'iam', 'name' => '10_third.sql']],
+                'failed' => null,
+                'error' => null,
+                'busy' => false,
+                'note' => null,
+            ],
+            $migrator->apply(),
+        );
 
         // The shape the sites' own code made: theirs is what a new table must look like.
         self::assertSame($this->referenceShape(self::FILENAME_TABLE), $this->shapeOf('migrations'));
@@ -134,16 +134,19 @@ final class MigratorTest extends DatabaseTestCase
 
         $result = $this->migrator([$users, $genshin])->apply();
 
-        self::assertSame([
-            ['set' => 'users', 'name' => '001_initial_schema.sql'],
-            ['set' => 'genshin_impact', 'name' => '001_initial_schema.sql'],
-            ['set' => 'genshin_impact', 'name' => '002_more.sql'],
-        ], $result['applied']);
+        self::assertSame(
+            [['set' => 'users', 'name' => '001_initial_schema.sql'], ['set' => 'genshin_impact', 'name' => '001_initial_schema.sql'], ['set' => 'genshin_impact', 'name' => '002_more.sql']],
+            $result['applied'],
+        );
         self::assertSame($this->referenceShape(self::FOLDER_TABLE), $this->shapeOf('migrations'));
         self::assertSame(['migrations_folder_filename_key UNIQUE (folder, filename)', 'migrations_pkey PRIMARY KEY (id)'], $this->shapeOf('migrations')['constraints']);
         self::assertSame(
-            [['folder' => 'users', 'filename' => '001_initial_schema.sql'], ['folder' => 'genshin_impact', 'filename' => '001_initial_schema.sql'], ['folder' => 'genshin_impact', 'filename' => '002_more.sql']],
-            $this->rows('SELECT folder, filename FROM migrations ORDER BY id')
+            [
+                ['folder' => 'users', 'filename' => '001_initial_schema.sql'],
+                ['folder' => 'genshin_impact', 'filename' => '001_initial_schema.sql'],
+                ['folder' => 'genshin_impact', 'filename' => '002_more.sql'],
+            ],
+            $this->rows('SELECT folder, filename FROM migrations ORDER BY id'),
         );
     }
 
@@ -186,14 +189,8 @@ final class MigratorTest extends DatabaseTestCase
         $genshin = $this->set('genshin_impact', ['001_initial_schema.sql' => 'SELECT 1/0;', '002_characters.sql' => 'CREATE TABLE characters (id int);']);
         $migrator = $this->migrator([$users, $genshin]);
 
-        self::assertSame(
-            [['set' => 'users', 'name' => '002_people.sql'], ['set' => 'genshin_impact', 'name' => '002_characters.sql']],
-            $migrator->applicable()
-        );
-        self::assertSame(
-            [['set' => 'users', 'name' => '002_people.sql'], ['set' => 'genshin_impact', 'name' => '002_characters.sql']],
-            $migrator->apply()['applied']
-        );
+        self::assertSame([['set' => 'users', 'name' => '002_people.sql'], ['set' => 'genshin_impact', 'name' => '002_characters.sql']], $migrator->applicable());
+        self::assertSame([['set' => 'users', 'name' => '002_people.sql'], ['set' => 'genshin_impact', 'name' => '002_characters.sql']], $migrator->apply()['applied']);
         self::assertSame($before, $this->shapeOf('migrations'));
         self::assertSame(
             [
@@ -202,7 +199,7 @@ final class MigratorTest extends DatabaseTestCase
                 ['folder' => 'users', 'filename' => '002_people.sql'],
                 ['folder' => 'genshin_impact', 'filename' => '002_characters.sql'],
             ],
-            $this->rows('SELECT folder, filename FROM migrations ORDER BY id')
+            $this->rows('SELECT folder, filename FROM migrations ORDER BY id'),
         );
     }
 
@@ -213,7 +210,7 @@ final class MigratorTest extends DatabaseTestCase
             "INSERT INTO migrations (name, applied_at) VALUES
                 ('002_b.sql', '2026-10-01 08:00:00+00'),
                 ('001_a.sql', '2026-10-01 08:00:00+00'),
-                ('000_init.sql', '2026-09-30 12:00:00+02')"
+                ('000_init.sql', '2026-09-30 12:00:00+02')",
         );
         $before = $this->shapeOf('migrations');
         $set = $this->set('academy', [
@@ -225,11 +222,14 @@ final class MigratorTest extends DatabaseTestCase
         $migrator = $this->migrator([$set], ['split' => false]);
 
         // No id: in the order they ran, then by name.
-        self::assertSame([
-            ['set' => 'academy', 'name' => '000_init.sql', 'applied_at' => '2026-09-30T10:00:00Z'],
-            ['set' => 'academy', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T08:00:00Z'],
-            ['set' => 'academy', 'name' => '002_b.sql', 'applied_at' => '2026-10-01T08:00:00Z'],
-        ], $migrator->status()['applied']);
+        self::assertSame(
+            [
+                ['set' => 'academy', 'name' => '000_init.sql', 'applied_at' => '2026-09-30T10:00:00Z'],
+                ['set' => 'academy', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T08:00:00Z'],
+                ['set' => 'academy', 'name' => '002_b.sql', 'applied_at' => '2026-10-01T08:00:00Z'],
+            ],
+            $migrator->status()['applied'],
+        );
 
         self::assertSame([['set' => 'academy', 'name' => '003_c.sql']], $migrator->apply()['applied']);
         self::assertSame($before, $this->shapeOf('migrations'));
@@ -272,14 +272,17 @@ final class MigratorTest extends DatabaseTestCase
             self::assertStringContainsString('neither a filename nor a name column', $e->getMessage());
         }
 
-        $result = $this->migrator([$set], [
-            'prepare' => function (PDO $pdo): void {
-                $hasFilename = $pdo->query("SELECT count(*) FROM information_schema.columns WHERE table_name = 'migrations' AND column_name = 'filename'")->fetchColumn();
-                if ((int) $hasFilename === 0) {
-                    $pdo->exec('ALTER TABLE migrations RENAME TO laravel_migrations');
-                }
-            },
-        ])->apply();
+        $result = $this->migrator(
+            [$set],
+            [
+                'prepare' => function (PDO $pdo): void {
+                    $hasFilename = $pdo->query("SELECT count(*) FROM information_schema.columns WHERE table_name = 'migrations' AND column_name = 'filename'")->fetchColumn();
+                    if ((int) $hasFilename === 0) {
+                        $pdo->exec('ALTER TABLE migrations RENAME TO laravel_migrations');
+                    }
+                },
+            ],
+        )->apply();
 
         self::assertSame([['set' => 'analyzer', 'name' => '001_adopt.sql']], $result['applied']);
         self::assertSame(1, (int) $this->value('SELECT count(*) FROM laravel_migrations'));
@@ -293,27 +296,29 @@ final class MigratorTest extends DatabaseTestCase
         $this->pdo->exec(self::FILENAME_TABLE);
         $this->pdo->exec(
             "INSERT INTO migrations (filename, applied_at) VALUES
-                ('002_b.sql', '2026-10-02 09:00:00'), ('001_a.sql', '2026-10-01 09:00:00'), ('005_gone.sql', '2026-10-03 09:00:00')"
+                ('002_b.sql', '2026-10-02 09:00:00'), ('001_a.sql', '2026-10-01 09:00:00'), ('005_gone.sql', '2026-10-03 09:00:00')",
         );
         $set = $this->set('site', ['001_a.sql' => '', '002_b.sql' => '', '003_c.sql' => '', '004_d.sql' => '']);
         $prepared = 0;
-        $migrator = $this->migrator([$set], ['prepare' => function () use (&$prepared): void {
-            $prepared++;
-        }]);
+        $migrator = $this->migrator(
+            [$set],
+            [
+                'prepare' => function () use (&$prepared): void {
+                    $prepared++;
+                },
+            ],
+        );
 
-        self::assertSame([
-            'sets' => ['site'],
-            // By id: the order they ran, whatever their names say.
-            'applied' => [
-                ['set' => 'site', 'name' => '002_b.sql', 'applied_at' => '2026-10-02T09:00:00Z'],
-                ['set' => 'site', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T09:00:00Z'],
+        self::assertSame(
+            [
+                'sets' => ['site'],
+                // By id: the order they ran, whatever their names say.
+                'applied' => [['set' => 'site', 'name' => '002_b.sql', 'applied_at' => '2026-10-02T09:00:00Z'], ['set' => 'site', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T09:00:00Z']],
+                'pending' => [['set' => 'site', 'name' => '003_c.sql', 'ready' => true, 'blocked' => false], ['set' => 'site', 'name' => '004_d.sql', 'ready' => true, 'blocked' => false]],
+                'missing' => [['set' => 'site', 'name' => '005_gone.sql', 'applied_at' => '2026-10-03T09:00:00Z']],
             ],
-            'pending' => [
-                ['set' => 'site', 'name' => '003_c.sql', 'ready' => true, 'blocked' => false],
-                ['set' => 'site', 'name' => '004_d.sql', 'ready' => true, 'blocked' => false],
-            ],
-            'missing' => [['set' => 'site', 'name' => '005_gone.sql', 'applied_at' => '2026-10-03T09:00:00Z']],
-        ], $migrator->status());
+            $migrator->status(),
+        );
         self::assertSame([['set' => 'site', 'name' => '003_c.sql'], ['set' => 'site', 'name' => '004_d.sql']], $migrator->applicable());
         self::assertSame(0, $prepared, 'prepare is for writing');
         self::assertSame(3, (int) $this->value('SELECT count(*) FROM migrations'));
@@ -324,15 +329,15 @@ final class MigratorTest extends DatabaseTestCase
         $users = $this->set('users', ['001_a.sql' => '']);
         $genshin = $this->set('genshin_impact', ['001_a.sql' => '']);
 
-        self::assertSame([
-            'sets' => ['users', 'genshin_impact'],
-            'applied' => [],
-            'pending' => [
-                ['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
-                ['set' => 'genshin_impact', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
+        self::assertSame(
+            [
+                'sets' => ['users', 'genshin_impact'],
+                'applied' => [],
+                'pending' => [['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false], ['set' => 'genshin_impact', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false]],
+                'missing' => [],
             ],
-            'missing' => [],
-        ], $this->migrator([$users, $genshin])->status());
+            $this->migrator([$users, $genshin])->status(),
+        );
         self::assertFalse($this->tableExists('migrations'));
     }
 
@@ -359,10 +364,7 @@ final class MigratorTest extends DatabaseTestCase
 
         self::assertSame([['set' => 'users', 'name' => '001_a.sql']], $result['applied']);
         self::assertSame(['set' => 'users', 'name' => '002_b.sql'], $result['failed']);
-        self::assertSame(
-            "statement 2 of 3: $message\n\n  INSERT INTO nowhere (id)\n  VALUES\n    (1),\n    (2),\n    (3),\n    (4),",
-            $result['error']
-        );
+        self::assertSame("statement 2 of 3: $message\n\n  INSERT INTO nowhere (id)\n  VALUES\n    (1),\n    (2),\n    (3),\n    (4),", $result['error']);
         self::assertFalse($result['busy']);
         self::assertTrue($this->tableExists('a'));
         self::assertFalse($this->tableExists('b'), 'the failed file is rolled back whole');
@@ -377,9 +379,14 @@ final class MigratorTest extends DatabaseTestCase
         $other = $this->connect();
         $other->query('SELECT pg_advisory_lock(' . Migrator::DEFAULT_LOCK . ')');
         $prepared = false;
-        $migrator = $this->migrator([$set], ['prepare' => function () use (&$prepared): void {
-            $prepared = true;
-        }]);
+        $migrator = $this->migrator(
+            [$set],
+            [
+                'prepare' => function () use (&$prepared): void {
+                    $prepared = true;
+                },
+            ],
+        );
 
         self::assertSame(['applied' => [], 'failed' => null, 'error' => null, 'busy' => true, 'note' => null], $migrator->apply());
         self::assertFalse($prepared, 'busy does nothing at all');
@@ -407,12 +414,17 @@ final class MigratorTest extends DatabaseTestCase
         ]);
         $other = $this->connect();
 
-        $result = $this->migrator([$set], ['beforeApply' => function () use ($other): ?string {
-            // Another way of applying finishes 002 while this one starts.
-            $other->exec("INSERT INTO migrations (filename) VALUES ('002_b.sql')");
+        $result = $this->migrator(
+            [$set],
+            [
+                'beforeApply' => function () use ($other): ?string {
+                    // Another way of applying finishes 002 while this one starts.
+                    $other->exec("INSERT INTO migrations (filename) VALUES ('002_b.sql')");
 
-            return null;
-        }])->apply();
+                    return null;
+                },
+            ],
+        )->apply();
 
         self::assertSame([['set' => 'site', 'name' => '001_a.sql'], ['set' => 'site', 'name' => '003_c.sql']], $result['applied']);
         self::assertNull($result['failed']);
@@ -439,13 +451,16 @@ final class MigratorTest extends DatabaseTestCase
         };
         $migrator = $this->migrator([$users, $genshin], ['ready' => $ready]);
 
-        self::assertSame([
-            ['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
-            ['set' => 'users', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false],
-            ['set' => 'users', 'name' => '003_c.sql', 'ready' => true, 'blocked' => true],
-            ['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => true],
-            ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true],
-        ], $migrator->status()['pending']);
+        self::assertSame(
+            [
+                ['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
+                ['set' => 'users', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false],
+                ['set' => 'users', 'name' => '003_c.sql', 'ready' => true, 'blocked' => true],
+                ['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => true],
+                ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true],
+            ],
+            $migrator->status()['pending'],
+        );
         self::assertSame(['users/001_a.sql', 'users/002_b.sql', 'users/003_c.sql', 'users/004_d.sql', 'genshin_impact/001_e.sql'], $asked);
 
         self::assertSame([['set' => 'users', 'name' => '001_a.sql']], $migrator->applicable());
@@ -459,14 +474,17 @@ final class MigratorTest extends DatabaseTestCase
         // The draft finished: it runs, and what waited behind it up to the next draft.
         file_put_contents($users->directory . '/002_b.sql', "CREATE TABLE b (id int);\n-- end of 002\n");
         self::assertSame([['set' => 'users', 'name' => '002_b.sql'], ['set' => 'users', 'name' => '003_c.sql']], $migrator->apply()['applied']);
-        self::assertSame([['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => false], ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true]], $migrator->status()['pending']);
+        self::assertSame(
+            [['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => false], ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true]],
+            $migrator->status()['pending'],
+        );
     }
 
     public function testWithoutSplittingTheWholeFileGoesInOneExec(): void
     {
         // PostgreSQL nests block comments; the splitter does not: only the whole file reads right.
         $set = $this->set('academy', [
-            '001_a.sql' => "CREATE TABLE a (id int); /* outer /* inner; */ still a comment; */ CREATE TABLE b (id int);",
+            '001_a.sql' => 'CREATE TABLE a (id int); /* outer /* inner; */ still a comment; */ CREATE TABLE b (id int);',
         ]);
         self::assertSame([['set' => 'academy', 'name' => '001_a.sql']], $this->migrator([$set], ['split' => false])->apply()['applied']);
         self::assertTrue($this->tableExists('a'));
@@ -492,7 +510,7 @@ final class MigratorTest extends DatabaseTestCase
 
     public function testSplittingNamesTheStatementThatFailedInTheSameFile(): void
     {
-        $set = $this->set('site', ['001_a.sql' => "CREATE TABLE a (id int); /* outer /* inner; */ still a comment; */ CREATE TABLE b (id int);"]);
+        $set = $this->set('site', ['001_a.sql' => 'CREATE TABLE a (id int); /* outer /* inner; */ still a comment; */ CREATE TABLE b (id int);']);
 
         $result = $this->migrator([$set])->apply();
 
@@ -511,13 +529,18 @@ final class MigratorTest extends DatabaseTestCase
         $this->pdo->exec("INSERT INTO migrations (name) VALUES ('001_a.sql')");
         $set = $this->set('piano', ['001_a.sql' => 'SELECT 1/0;', '002_b.sql' => 'CREATE TABLE b (id int);']);
         $calls = 0;
-        $migrator = $this->migrator([$set], ['prepare' => function (PDO $pdo) use (&$calls): void {
-            $calls++;
-            $column = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'migrations' AND column_name IN ('name', 'filename')")->fetchColumn();
-            if ($column === 'name') {
-                $pdo->exec('ALTER TABLE migrations RENAME COLUMN name TO filename');
-            }
-        }]);
+        $migrator = $this->migrator(
+            [$set],
+            [
+                'prepare' => function (PDO $pdo) use (&$calls): void {
+                    $calls++;
+                    $column = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'migrations' AND column_name IN ('name', 'filename')")->fetchColumn();
+                    if ($column === 'name') {
+                        $pdo->exec('ALTER TABLE migrations RENAME COLUMN name TO filename');
+                    }
+                },
+            ],
+        );
 
         // Read as it is, before any adoption.
         self::assertSame([['set' => 'piano', 'name' => '002_b.sql']], $migrator->applicable());
@@ -540,10 +563,15 @@ final class MigratorTest extends DatabaseTestCase
         ]);
         $seen = [];
 
-        $result = $this->migrator([$set], ['beforeFile' => function (PDO $pdo, MigrationSet $set, string $name) use (&$seen): void {
-            $seen[] = [$set->name, $name, $pdo->inTransaction()];
-            $pdo->prepare('INSERT INTO log VALUES (?)')->execute(["before $name"]);
-        }])->apply();
+        $result = $this->migrator(
+            [$set],
+            [
+                'beforeFile' => function (PDO $pdo, MigrationSet $set, string $name) use (&$seen): void {
+                    $seen[] = [$set->name, $name, $pdo->inTransaction()];
+                    $pdo->prepare('INSERT INTO log VALUES (?)')->execute(["before $name"]);
+                },
+            ],
+        )->apply();
 
         self::assertSame([['site', '001_a.sql', true], ['site', '002_b.sql', true]], $seen);
         self::assertSame(['set' => 'site', 'name' => '002_b.sql'], $result['failed']);
@@ -556,12 +584,17 @@ final class MigratorTest extends DatabaseTestCase
         $this->pdo->exec('CREATE TABLE log (entry text)');
         $set = $this->set('site', ['001_a.sql' => 'CREATE TABLE a (id int);', '002_b.sql' => 'CREATE TABLE b (id int);']);
 
-        $result = $this->migrator([$set], ['beforeFile' => function (PDO $pdo, MigrationSet $set, string $name): void {
-            $pdo->prepare('INSERT INTO log VALUES (?)')->execute(["before $name"]);
-            if ($name === '002_b.sql') {
-                throw new RuntimeException('Not now.');
-            }
-        }])->apply();
+        $result = $this->migrator(
+            [$set],
+            [
+                'beforeFile' => function (PDO $pdo, MigrationSet $set, string $name): void {
+                    $pdo->prepare('INSERT INTO log VALUES (?)')->execute(["before $name"]);
+                    if ($name === '002_b.sql') {
+                        throw new RuntimeException('Not now.');
+                    }
+                },
+            ],
+        )->apply();
 
         self::assertSame([['set' => 'site', 'name' => '001_a.sql']], $result['applied']);
         self::assertSame(['set' => 'site', 'name' => '002_b.sql'], $result['failed']);
@@ -580,7 +613,7 @@ final class MigratorTest extends DatabaseTestCase
         ]);
         $calls = [];
         $options = [
-            'ready' => fn (MigrationSet $set, string $name, string $sql): bool => str_contains($sql, '-- end of'),
+            'ready' => fn(MigrationSet $set, string $name, string $sql): bool => str_contains($sql, '-- end of'),
             'beforeApply' => function (PDO $pdo, array $files) use (&$calls): string {
                 $calls[] = [$files, $pdo->query("SELECT to_regclass('a') IS NULL")->fetchColumn()];
 
@@ -603,18 +636,25 @@ final class MigratorTest extends DatabaseTestCase
     {
         $set = $this->set('site', ['001_a.sql' => 'CREATE TABLE a (id int);']);
 
-        $result = $this->migrator([$set], ['beforeApply' => function (): ?string {
-            throw new RuntimeException('The backup folder is not writable.');
-        }])->apply();
+        $result = $this->migrator(
+            [$set],
+            [
+                'beforeApply' => function (): ?string {
+                    throw new RuntimeException('The backup folder is not writable.');
+                },
+            ],
+        )->apply();
 
-        self::assertSame(
-            ['applied' => [], 'failed' => null, 'error' => 'The backup folder is not writable.', 'busy' => false, 'note' => null],
-            $result
-        );
+        self::assertSame(['applied' => [], 'failed' => null, 'error' => 'The backup folder is not writable.', 'busy' => false, 'note' => null], $result);
         self::assertFalse($this->tableExists('a'));
         self::assertSame(0, (int) $this->value('SELECT count(*) FROM migrations'));
         // The lock was let go.
-        self::assertSame(1, (int) $this->connect()->query('SELECT CASE WHEN pg_try_advisory_lock(' . Migrator::DEFAULT_LOCK . ') THEN 1 ELSE 0 END')->fetchColumn());
+        self::assertSame(
+            1,
+            (int) $this->connect()
+                ->query('SELECT CASE WHEN pg_try_advisory_lock(' . Migrator::DEFAULT_LOCK . ') THEN 1 ELSE 0 END')
+                ->fetchColumn(),
+        );
     }
 
     // ─── Source ─────────────────────────────────────────────────────────────
@@ -631,18 +671,21 @@ final class MigratorTest extends DatabaseTestCase
         self::assertSame('SELECT 1;', $migrator->source('users', '001_a.sql'));
         self::assertSame('SELECT 2;', $migrator->source('genshin', '002_b.sql'));
 
-        foreach ([
-            ['users', '002_b.sql'],
-            ['nobody', '001_a.sql'],
-            ['users', '../secret.sql'],
-            ['users', '../genshin/002_b.sql'],
-            ['users', '..\\secret.sql'],
-            ['users', 'sub/003_c.sql'],
-            ['users', 'notes.txt'],
-            ['users', ''],
-            ['users', $users->directory . '/001_a.sql'],
-            ['users', "001_a.sql\0"],
-        ] as [$set, $name]) {
+        foreach (
+            [
+                ['users', '002_b.sql'],
+                ['nobody', '001_a.sql'],
+                ['users', '../secret.sql'],
+                ['users', '../genshin/002_b.sql'],
+                ['users', '..\\secret.sql'],
+                ['users', 'sub/003_c.sql'],
+                ['users', 'notes.txt'],
+                ['users', ''],
+                ['users', $users->directory . '/001_a.sql'],
+                ['users', "001_a.sql\0"],
+            ]
+            as [$set, $name]
+        ) {
             self::assertNull($migrator->source($set, $name), "$set, $name");
         }
     }

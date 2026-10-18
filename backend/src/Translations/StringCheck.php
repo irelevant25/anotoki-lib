@@ -74,15 +74,17 @@ final class StringCheck
         foreach ($values as $key => $cells) {
             $key = (string) $key; // PHP made a number of a key like "12"
             if (!isset($known[$key])) {
-                $unknown = array_values(array_filter(array_map('strval', array_keys($values)), static fn (string $name): bool => !isset($known[$name])));
+                $unknown = array_values(array_filter(array_map('strval', array_keys($values)), static fn(string $name): bool => !isset($known[$name])));
 
                 return Refusal::invalid(
                     'unknown_key',
                     count($unknown) === 1
                         ? 'The site has no key ' . self::quote($key) . '. Keys are made by the code, never here.'
-                        : 'The site has no such keys: ' . implode(', ', array_map(self::quote(...), array_slice($unknown, 0, 20)))
-                            . (count($unknown) > 20 ? ' and ' . (count($unknown) - 20) . ' more' : '') . '. Keys are made by the code, never here.',
-                    ['key' => Text::clip($key, 200), 'keys' => array_map(static fn (string $name): string => Text::clip($name, 200), $unknown)]
+                        : 'The site has no such keys: ' .
+                            implode(', ', array_map(self::quote(...), array_slice($unknown, 0, 20))) .
+                            (count($unknown) > 20 ? ' and ' . (count($unknown) - 20) . ' more' : '') .
+                            '. Keys are made by the code, never here.',
+                    ['key' => Text::clip($key, 200), 'keys' => array_map(static fn(string $name): string => Text::clip($name, 200), $unknown)],
                 );
             }
             // By language: a list of strings is languages numbered, which no site has (unknown_language).
@@ -90,7 +92,7 @@ final class StringCheck
                 return Refusal::invalid('invalid_value', 'The strings of ' . self::quote($key) . ' are not given by language: {language: text}.', ['key' => Text::clip($key, 200)]);
             }
 
-            $placeholders = self::placeholdersOf($key, $rules, $english[$key] ?? Text::clean($cells[Translations::FALLBACK] ?? null) ?? '');
+            $placeholders = self::placeholdersOf($key, $rules, $english[$key] ?? (Text::clean($cells[Translations::FALLBACK] ?? null) ?? ''));
 
             foreach ($cells as $code => $value) {
                 $code = (string) $code;
@@ -123,7 +125,7 @@ final class StringCheck
         }
 
         // One order for every save (strcmp: <=> would compare "10" and "9" as numbers).
-        usort($changes, static fn (array $a, array $b): int => strcmp($a['key'], $b['key']) ?: strcmp($a['language'], $b['language']));
+        usort($changes, static fn(array $a, array $b): int => strcmp($a['key'], $b['key']) ?: strcmp($a['language'], $b['language']));
 
         return $changes;
     }
@@ -211,9 +213,10 @@ final class StringCheck
                 'invalid_placeholder',
                 $placeholders === []
                     ? "The $name string of \"$key\" has a { or }, and its English string has no placeholders: a brace belongs only around a placeholder, so take it out."
-                    : "The $name string of \"$key\" has a { or } that is not part of a placeholder. A placeholder is written exactly as the English string has it, like {"
-                        . $placeholders[0] . '}: no spaces, and its name is not translated.',
-                $about
+                    : "The $name string of \"$key\" has a { or } that is not part of a placeholder. A placeholder is written exactly as the English string has it, like {" .
+                        $placeholders[0] .
+                        '}: no spaces, and its name is not translated.',
+                $about,
             );
         }
 
@@ -235,17 +238,13 @@ final class StringCheck
                     in_array($placeholder, $placeholders, true)
                         ? "The English string of \"$key\" must keep {{$placeholder}}: the page puts a value there."
                         : "The English string of \"$key\" cannot use {{$placeholder}}: the page has no value for it.",
-                    $about + ['placeholder' => $placeholder]
+                    $about + ['placeholder' => $placeholder],
                 );
             }
         } else {
             $unknown = array_values(array_diff($used, $placeholders));
             if ($unknown !== []) {
-                return Refusal::invalid(
-                    'unknown_placeholder',
-                    "The $name string of \"$key\" uses {{$unknown[0]}}, which its English string does not have.",
-                    $about + ['placeholder' => $unknown[0]]
-                );
+                return Refusal::invalid('unknown_placeholder', "The $name string of \"$key\" uses {{$unknown[0]}}, which its English string does not have.", $about + ['placeholder' => $unknown[0]]);
             }
         }
 

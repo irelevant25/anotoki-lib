@@ -26,9 +26,7 @@ final class RecordPerson implements MiddlewareInterface
     /**
      * @param ?Closure(ServerRequestInterface): array<string, scalar|null> $extra  the site's own columns
      */
-    public function __construct(private readonly People $people, private readonly ?Closure $extra = null)
-    {
-    }
+    public function __construct(private readonly People $people, private readonly ?Closure $extra = null) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

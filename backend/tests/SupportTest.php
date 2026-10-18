@@ -52,7 +52,7 @@ final class SupportTest extends TestCase
 
     public function testWhatIsRefusedAndInWhichOrder(): void
     {
-        $code = static fn (mixed $result): ?string => $result instanceof Refusal ? $result->status . ' ' . $result->code : null;
+        $code = static fn(mixed $result): ?string => $result instanceof Refusal ? $result->status . ' ' . $result->code : null;
 
         self::assertSame('413 too_large', $code(JsonBody::read($this->request('{}', ['Content-Length' => '1001']), 1000)), 'by what it says of itself, before reading');
         self::assertSame('413 too_large', $code(JsonBody::read($this->request('{}', ['Content-Length' => 'lots']), 1000)));
@@ -82,8 +82,7 @@ final class SupportTest extends TestCase
     /** @param array<string, string> $headers */
     private function request(string $body, array $headers = []): \Psr\Http\Message\ServerRequestInterface
     {
-        $request = (new ServerRequestFactory())->createServerRequest('PUT', 'https://site.example/api/x')
-            ->withBody((new StreamFactory())->createStream($body));
+        $request = (new ServerRequestFactory())->createServerRequest('PUT', 'https://site.example/api/x')->withBody((new StreamFactory())->createStream($body));
         foreach ($headers + ['Content-Type' => 'application/json'] as $name => $value) {
             $request = $value === '' ? $request->withoutHeader($name) : $request->withHeader($name, $value);
         }

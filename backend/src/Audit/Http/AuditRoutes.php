@@ -38,49 +38,48 @@ final class AuditRoutes
      *        users.username; a site: its own copy of the IAM's names) - an id it does not know shows no name;
      *        without one, the context's names
      */
-    public static function admin(
-        RouteCollectorProxyInterface $app,
-        string $base,
-        AuditLog $audit,
-        AdminContext $context,
-        ?Closure $actorNames = null,
-    ): RouteGroupInterface {
-        $actorNames ??= static fn (array $ids): array => $context->names($ids);
+    public static function admin(RouteCollectorProxyInterface $app, string $base, AuditLog $audit, AdminContext $context, ?Closure $actorNames = null): RouteGroupInterface
+    {
+        $actorNames ??= static fn(array $ids): array => $context->names($ids);
 
         return Routes::adminGroup($app, $base, $context, function (RouteCollectorProxyInterface $group) use ($audit, $context, $actorNames): void {
-            Routes::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($audit, $context, $actorNames): ResponseInterface {
-                if (!$audit->ready()) {
-                    return $context->refuse($response, self::unavailable());
-                }
-                $query = $request->getQueryParams();
-                $filter = [];
-                foreach (['actor', 'action', 'target_type', 'target_id', 'scope_type', 'scope_id', 'from', 'to'] as $name) {
-                    $filter[$name] = Routes::text($query[$name] ?? null, 100);
-                }
-                try {
-                    $page = $audit->page($filter, Routes::int($query['page'] ?? null, 1, 1, 1_000_000), self::PAGE_SIZE);
-                } catch (PDOException) {
-                    return $context->refuse($response, self::unavailable());
-                }
-                $names = self::names($actorNames, array_column($page['items'], 'actor_id'));
-                foreach ($page['items'] as $index => $item) {
-                    $page['items'][$index] = ['actor_username' => $item['actor_id'] === null ? null : ($names[$item['actor_id']] ?? null)] + $item;
-                }
+            Routes::plain(
+                $group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($audit, $context, $actorNames): ResponseInterface {
+                    if (!$audit->ready()) {
+                        return $context->refuse($response, self::unavailable());
+                    }
+                    $query = $request->getQueryParams();
+                    $filter = [];
+                    foreach (['actor', 'action', 'target_type', 'target_id', 'scope_type', 'scope_id', 'from', 'to'] as $name) {
+                        $filter[$name] = Routes::text($query[$name] ?? null, 100);
+                    }
+                    try {
+                        $page = $audit->page($filter, Routes::int($query['page'] ?? null, 1, 1, 1_000_000), self::PAGE_SIZE);
+                    } catch (PDOException) {
+                        return $context->refuse($response, self::unavailable());
+                    }
+                    $names = self::names($actorNames, array_column($page['items'], 'actor_id'));
+                    foreach ($page['items'] as $index => $item) {
+                        $page['items'][$index] = ['actor_username' => $item['actor_id'] === null ? null : $names[$item['actor_id']] ?? null] + $item;
+                    }
 
-                return JsonResponse::write($response, 200, $page);
-            }));
+                    return JsonResponse::write($response, 200, $page);
+                }),
+            );
 
-            Routes::plain($group->get('/facets', function (ServerRequestInterface $request, ResponseInterface $response) use ($audit, $context, $actorNames): ResponseInterface {
-                if (!$audit->ready()) {
-                    return $context->refuse($response, self::unavailable());
-                }
-                $facets = $audit->facets();
-                $names = self::names($actorNames, $facets['actor_ids']);
-                $actors = array_map(static fn (int $id): array => ['id' => $id, 'username' => $names[$id] ?? null], $facets['actor_ids']);
-                unset($facets['actor_ids']);
+            Routes::plain(
+                $group->get('/facets', function (ServerRequestInterface $request, ResponseInterface $response) use ($audit, $context, $actorNames): ResponseInterface {
+                    if (!$audit->ready()) {
+                        return $context->refuse($response, self::unavailable());
+                    }
+                    $facets = $audit->facets();
+                    $names = self::names($actorNames, $facets['actor_ids']);
+                    $actors = array_map(static fn(int $id): array => ['id' => $id, 'username' => $names[$id] ?? null], $facets['actor_ids']);
+                    unset($facets['actor_ids']);
 
-                return JsonResponse::write($response, 200, $facets + ['actors' => $actors]);
-            }));
+                    return JsonResponse::write($response, 200, $facets + ['actors' => $actors]);
+                }),
+            );
         });
     }
 

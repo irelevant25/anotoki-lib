@@ -32,7 +32,5 @@ final class RequestRecord
     /** @var array<string, true> */
     public array $seen = [];
 
-    public function __construct(public ServerRequestInterface $request)
-    {
-    }
+    public function __construct(public ServerRequestInterface $request) {}
 }

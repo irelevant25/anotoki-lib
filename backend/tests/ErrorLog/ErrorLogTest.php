@@ -96,7 +96,9 @@ final class ErrorLogTest extends TestCase
     public function testAnExceptionThrownForAnotherKeepsItsCauseScrubbedAndItsOwnFingerprint(): void
     {
         $options = ['root' => dirname(__DIR__, 3), 'key' => str_repeat('k', 32)];
-        $cause = self::scrubFailure("SQLSTATE[P0001]: Raise exception: 7 ERROR:  the scrub's table is read-only for ana@example.com, token=s3cr3t-value\nDETAIL:  Key (email)=(bo@example.com) exists.");
+        $cause = self::scrubFailure(
+            "SQLSTATE[P0001]: Raise exception: 7 ERROR:  the scrub's table is read-only for ana@example.com, token=s3cr3t-value\nDETAIL:  Key (email)=(bo@example.com) exists.",
+        );
 
         (new ErrorLog($this->logs, $options))->record(self::thrownFor($cause));
         (new ErrorLog($this->storage . '/alone', $options))->record(self::thrownFor(null));
@@ -107,19 +109,23 @@ final class ErrorLogTest extends TestCase
         self::assertSame(['RuntimeException', 'The accounts the IAM deleted were not checked again.'], [$line['type'], $line['message']]);
         self::assertLessThanOrEqual(12, count($line['trace']));
         self::assertStringEndsWith('ErrorLogTest::thrownFor()', $line['trace'][0], 'its own frames first');
-        $at = array_search(true, array_map(static fn (string $frame): bool => str_starts_with($frame, 'Caused by '), $line['trace']), true);
+        $at = array_search(true, array_map(static fn(string $frame): bool => str_starts_with($frame, 'Caused by '), $line['trace']), true);
         self::assertIsInt($at, 'the cause is in the line');
         self::assertMatchesRegularExpression(
             '~^Caused by PDOException \(backend/tests/ErrorLog/ErrorLogTest\.php:\d+\): SQLSTATE\[P0001\]: Raise exception: 7 ERROR:  the scrub\'s table is read-only for \{email\}, token=\{…\}$~D',
             $line['trace'][$at],
             'its class, its file relative, its message redacted',
         );
-        self::assertMatchesRegularExpression('~^backend/tests/ErrorLog/ErrorLogTest\.php:\d+ Anotoki\\\\Lib\\\\Tests\\\\ErrorLog\\\\ErrorLogTest::scrubFailure\(\)$~D', $line['trace'][$at + 1], 'and its own frame: the calls it shares with the one it caused are not said twice');
+        self::assertMatchesRegularExpression(
+            '~^backend/tests/ErrorLog/ErrorLogTest\.php:\d+ Anotoki\\\\Lib\\\\Tests\\\\ErrorLog\\\\ErrorLogTest::scrubFailure\(\)$~D',
+            $line['trace'][$at + 1],
+            'and its own frame: the calls it shares with the one it caused are not said twice',
+        );
         self::assertCount($at + 2, $line['trace']);
         foreach (['ana@example.com', 's3cr3t', 'bo@example.com', 'DETAIL'] as $secret) {
             self::assertStringNotContainsString($secret, $this->rawLog());
         }
-        self::assertSame([], array_filter($alone['trace'], static fn (string $frame): bool => str_starts_with($frame, 'Caused by ')), 'none without a cause');
+        self::assertSame([], array_filter($alone['trace'], static fn(string $frame): bool => str_starts_with($frame, 'Caused by ')), 'none without a cause');
     }
 
     public function testALongChainStaysWithinTheLinesCaps(): void
@@ -133,7 +139,7 @@ final class ErrorLogTest extends TestCase
 
         $line = $this->lines()[0];
         self::assertCount(12, $line['trace'], 'the trace\'s 12 lines, whatever the chain');
-        $causes = array_values(array_filter($line['trace'], static fn (string $frame): bool => str_starts_with($frame, 'Caused by ')));
+        $causes = array_values(array_filter($line['trace'], static fn(string $frame): bool => str_starts_with($frame, 'Caused by ')));
         self::assertCount(11, $causes, 'at most 11 causes, each its own line - the exception\'s first frame kept');
         self::assertStringStartsWith('Caused by RuntimeException (backend/tests/ErrorLog/ErrorLogTest.php:', $causes[0]);
         self::assertStringContainsString('): Level 28 failed for {email} word word', $causes[0], 'the nearest cause first');
@@ -154,9 +160,9 @@ final class ErrorLogTest extends TestCase
 
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         });
-        $app->get('/api/forbidden', static fn (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(403));
-        $app->get('/api/broken', static fn (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(400));
-        $app->get('/api/busy', static fn (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(503));
+        $app->get('/api/forbidden', static fn(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(403));
+        $app->get('/api/broken', static fn(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(400));
+        $app->get('/api/busy', static fn(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(503));
 
         $this->send($app, 'GET', '/api/things/12?x=QUERY');
         $this->send($app, 'GET', '/api/forbidden');
@@ -165,17 +171,18 @@ final class ErrorLogTest extends TestCase
         $this->send($app, 'GET', '/api/nowhere');
 
         $lines = $this->lines();
-        self::assertSame([[404, 'Response', 'not_found', 'No thing for {email}', '/api/things/{id}'], [503, 'Response', null, '', '/api/busy'], [404, 'HttpNotFoundException', 'not_found', 'Not found.', null]], array_map(
-            static fn (array $line): array => [$line['status'], $line['type'], $line['code'], $line['message'], $line['route']],
-            $lines
-        ), 'by default every 5xx and 404, 405, 413, 415, 429 - never 400 or 403');
+        self::assertSame(
+            [[404, 'Response', 'not_found', 'No thing for {email}', '/api/things/{id}'], [503, 'Response', null, '', '/api/busy'], [404, 'HttpNotFoundException', 'not_found', 'Not found.', null]],
+            array_map(static fn(array $line): array => [$line['status'], $line['type'], $line['code'], $line['message'], $line['route']], $lines),
+            'by default every 5xx and 404, 405, 413, 415, 429 - never 400 or 403',
+        );
         self::assertStringNotContainsString('BODY-FIELD-SECRET', $this->rawLog());
         self::assertStringNotContainsString('QUERY', $this->rawLog());
         self::assertSame('warning', $lines[0]['level']);
         self::assertSame('error', $lines[1]['level']);
 
-        [$every] = $this->app(['responses' => static fn (int $status): bool => $status >= 400]);
-        $every->get('/api/forbidden', static fn (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(403));
+        [$every] = $this->app(['responses' => static fn(int $status): bool => $status >= 400]);
+        $every->get('/api/forbidden', static fn(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface => $response->withStatus(403));
         $this->send($every, 'GET', '/api/forbidden');
         self::assertSame(403, $this->lines()[3]['status'], 'genshin keeps every 4xx');
     }
@@ -205,7 +212,7 @@ final class ErrorLogTest extends TestCase
     public function testAnAnonymousClassOrAClosureNamesItsFileRelativeLikeEveryOther(): void
     {
         [$app] = $this->app();
-        $failing = new class () {
+        $failing = new class {
             public function fail(): never
             {
                 throw new RuntimeException('Failed inside an anonymous class');
@@ -215,8 +222,7 @@ final class ErrorLogTest extends TestCase
             $failing->fail();
         });
         $app->get('/api/thrown', static function (): ResponseInterface {
-            throw new class ('An anonymous exception') extends RuntimeException {
-            };
+            throw new class ('An anonymous exception') extends RuntimeException {};
         });
         $app->get('/api/routes-file', require __DIR__ . '/Fixtures/a-routes-file.php');
         $this->send($app, 'GET', '/api/anonymous');
@@ -236,8 +242,16 @@ final class ErrorLogTest extends TestCase
         self::assertMatchesRegularExpression('~^RuntimeException@anonymous\(backend/tests/ErrorLog/ErrorLogTest\.php:\d+\)$~D', $thrown['type']);
         self::assertSame('backend/tests/ErrorLog/Fixtures/a-routes-file.php', $routesFile['file']);
         if (PHP_VERSION_ID >= 80400) {
-            self::assertMatchesRegularExpression('~' . preg_quote('::{closure:' . self::class . '::' . __FUNCTION__ . '():', '~') . '\d+\}\(\)$~D', $anonymous['trace'][1], 'PHP 8.4 names a closure in a method by the method: kept whole');
-            self::assertMatchesRegularExpression('~[ :]\{closure:backend/tests/ErrorLog/Fixtures/a-routes-file\.php:\d+\}\(\)$~D', $routesFile['trace'][0], 'and one at a file\'s own scope by the file: relative');
+            self::assertMatchesRegularExpression(
+                '~' . preg_quote('::{closure:' . self::class . '::' . __FUNCTION__ . '():', '~') . '\d+\}\(\)$~D',
+                $anonymous['trace'][1],
+                'PHP 8.4 names a closure in a method by the method: kept whole',
+            );
+            self::assertMatchesRegularExpression(
+                '~[ :]\{closure:backend/tests/ErrorLog/Fixtures/a-routes-file\.php:\d+\}\(\)$~D',
+                $routesFile['trace'][0],
+                'and one at a file\'s own scope by the file: relative',
+            );
         }
     }
 
@@ -257,7 +271,11 @@ final class ErrorLogTest extends TestCase
             }
         }
 
-        self::assertSame(['unavailable'], array_values(array_unique(array_column($this->lines(), 'code'))), 'an update waiting, a site not set up: states, not failures - a database that does not answer is one');
+        self::assertSame(
+            ['unavailable'],
+            array_values(array_unique(array_column($this->lines(), 'code'))),
+            'an update waiting, a site not set up: states, not failures - a database that does not answer is one',
+        );
 
         [$strict] = $this->app(['expected' => []]);
         $strict->get('/api/state', static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
@@ -273,55 +291,63 @@ final class ErrorLogTest extends TestCase
     {
         // The site's reader of who asks finds what its own middleware set - which the outer middleware never sees.
         $context = new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => is_int($request->getAttribute('site.person')) ? $request->getAttribute('site.person') : null,
-            isAdmin: static fn (): bool => true,
+            static fn(ServerRequestInterface $request): ?int => is_int($request->getAttribute('site.person')) ? $request->getAttribute('site.person') : null,
+            isAdmin: static fn(): bool => true,
         );
         [$app] = $this->app(['context' => $context]);
         Routes::adminGroup($app, '/api/admin/tool', $context, static function ($group): void {
             $group->get('', static function (): ResponseInterface {
                 throw new RuntimeException('The tool failed');
             });
-        })->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle($request->withAttribute('site.person', 42)));
+        })->add(static fn(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle($request->withAttribute('site.person', 42)));
         $this->send($app, 'GET', '/api/admin/tool');
         self::assertSame([42], array_column($this->lines(), 'user_id'));
 
         // A log without a reader of its own names the person the auth module's Identify set.
         $this->logs = $this->temporaryFolder() . '/logs';
-        $site = new AdminContext(static fn (ServerRequestInterface $request): ?int => Identify::person($request)?->sub, isAdmin: static fn (): bool => true);
+        $site = new AdminContext(static fn(ServerRequestInterface $request): ?int => Identify::person($request)?->sub, isAdmin: static fn(): bool => true);
         $plain = AppFactory::create();
         $log = new ErrorLog($this->logs, ['key' => str_repeat('k', 32), 'app' => $plain]);
         $plain->addRoutingMiddleware();
-        $plain->addErrorMiddleware(false, false, false)->setDefaultErrorHandler($log->wrapHandler(static fn (): ResponseInterface => (new ResponseFactory())->createResponse(500)));
+        $plain->addErrorMiddleware(false, false, false)->setDefaultErrorHandler($log->wrapHandler(static fn(): ResponseInterface => (new ResponseFactory())->createResponse(500)));
         $plain->add(ErrorLogMiddleware::outer($log));
         Routes::adminGroup($plain, '/api/admin/tool', $site, static function ($group): void {
             $group->get('', static function (): ResponseInterface {
                 throw new RuntimeException('The tool failed again');
             });
-        })->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle($request->withAttribute(Identify::PERSON, Person::fromClaims(['sub' => '77']))));
+        })->add(
+            static fn(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle(
+                $request->withAttribute(Identify::PERSON, Person::fromClaims(['sub' => '77'])),
+            ),
+        );
         $this->send($plain, 'GET', '/api/admin/tool');
         self::assertSame([77], array_column($this->lines(), 'user_id'));
     }
 
     public function testTheAddressBucketIsTheTrustedProxysHeaderFromThatProxyAloneAndKeptOnlyAsAHash(): void
     {
-        [$app] = $this->app(['context' => new AdminContext(static fn (): ?int => null, trustedProxies: ClientAddress::CLOUDFLARE)]);
+        [$app] = $this->app(['context' => new AdminContext(static fn(): ?int => null, trustedProxies: ClientAddress::CLOUDFLARE)]);
         $app->get('/api/fail', static function (): ResponseInterface {
             throw new RuntimeException('Failed');
         });
-        $hash = static fn (string $bucket): string => substr(hash_hmac('sha256', $bucket, str_repeat('k', 32)), 0, 12);
+        $hash = static fn(string $bucket): string => substr(hash_hmac('sha256', $bucket, str_repeat('k', 32)), 0, 12);
 
         $this->send($app, 'GET', '/api/fail', '', ['CF-Connecting-IP' => '198.51.100.7'], '173.245.48.1');
         $this->send($app, 'GET', '/api/fail', '', ['CF-Connecting-IP' => '198.51.100.7'], '203.0.113.50');
         $this->send($app, 'GET', '/api/fail', '', ['CF-Connecting-IP' => '2001:db8:1:2:3:4:5:6'], '2400:cb00::1');
 
-        self::assertSame([$hash('198.51.100.7'), $hash('203.0.113.50'), $hash('2001:db8:1:2::/64')], array_column($this->lines(), 'client'), 'Cloudflare\'s header from Cloudflare; anybody else\'s is not believed; an IPv6 address as its /64');
+        self::assertSame(
+            [$hash('198.51.100.7'), $hash('203.0.113.50'), $hash('2001:db8:1:2::/64')],
+            array_column($this->lines(), 'client'),
+            'Cloudflare\'s header from Cloudflare; anybody else\'s is not believed; an IPv6 address as its /64',
+        );
         self::assertStringNotContainsString('198.51.100.7', $this->rawLog(), 'never the address itself');
     }
 
     public function testTheLogsOwnRoutesAreNeverWrittenDown(): void
     {
         // A site that keeps every 4xx (genshin's): the log's own refusals would be lines, were they not its own.
-        [$app, $log] = $this->app(['responses' => static fn (int $status): bool => $status >= 400]);
+        [$app, $log] = $this->app(['responses' => static fn(int $status): bool => $status >= 400]);
         ErrorLogRoutes::admin($app, '/api/admin/errors', $log, $this->context())->add($this->adminCheck());
 
         self::assertSame(404, $this->send($app, 'GET', '/api/admin/errors/zzzzzzzzzzzz')->getStatusCode());
@@ -352,7 +378,7 @@ final class ErrorLogTest extends TestCase
 
     public function testMountedInsideAGroupUnderABasePathTheLogsRoutesAreStillItsOwn(): void
     {
-        [$app, $log] = $this->app(['responses' => static fn (int $status): bool => $status >= 400]);
+        [$app, $log] = $this->app(['responses' => static fn(int $status): bool => $status >= 400]);
         $app->setBasePath('/site');
         $app->group('/api', function ($api) use ($log): void {
             ErrorLogRoutes::client($api, '/client-errors', $log, $this->context());
@@ -370,7 +396,11 @@ final class ErrorLogTest extends TestCase
         self::assertSame(404, $this->send($app, 'GET', '/site/api/elsewhere')->getStatusCode());
 
         $lines = $this->lines();
-        self::assertSame([['client', 'A page failed'], ['server', 'Not found.']], array_map(static fn (array $line): array => [$line['source'], $line['message']], $lines), 'the page\'s own error and the site\'s 404 - none of the log\'s routes\' answers');
+        self::assertSame(
+            [['client', 'A page failed'], ['server', 'Not found.']],
+            array_map(static fn(array $line): array => [$line['source'], $line['message']], $lines),
+            'the page\'s own error and the site\'s 404 - none of the log\'s routes\' answers',
+        );
         self::assertSame('/site/api/elsewhere', $lines[1]['path']);
     }
 
@@ -398,7 +428,11 @@ final class ErrorLogTest extends TestCase
         self::assertSame(['key' => gmdate('Y-m-d'), 'errors' => 4, 'warnings' => 1, 'notices' => 0], $report['daily'][2]);
         self::assertSame([['key' => '404', 'errors' => 0, 'warnings' => 1, 'notices' => 0], ['key' => '500', 'errors' => 4, 'warnings' => 0, 'notices' => 0]], $report['statuses']);
         $loudest = $report['groups'][0];
-        self::assertSame([3, 'RuntimeException', 'It failed 3 times', '/api/fail/{n}'], [$loudest['count'], $loudest['type'], $loudest['message'], $loudest['route']], 'one group for the three: the number is no part of its fingerprint');
+        self::assertSame(
+            [3, 'RuntimeException', 'It failed 3 times', '/api/fail/{n}'],
+            [$loudest['count'], $loudest['type'], $loudest['message'], $loudest['route']],
+            'one group for the three: the number is no part of its fingerprint',
+        );
         self::assertSame(['/api/fail/3', '/api/fail/2', '/api/fail/1'], $loudest['paths']);
         self::assertSame('It failed 3 times', $loudest['latest']['message']);
 
@@ -419,12 +453,20 @@ final class ErrorLogTest extends TestCase
     public function testClearingOlderDaysKeepsTheNewestAndIsAudited(): void
     {
         [$app, $log] = $this->app();
-        $audit = new class () implements \Anotoki\Lib\Audit\AuditRecorder {
+        $audit = new class implements \Anotoki\Lib\Audit\AuditRecorder {
             /** @var list<array<mixed>> */
             public array $recorded = [];
 
-            public function record(?ServerRequestInterface $request, int|string|null $actorId, string $action, ?string $targetType = null, int|string|null $targetId = null, array $details = [], ?array $scope = null, ?string $session = null): void
-            {
+            public function record(
+                ?ServerRequestInterface $request,
+                int|string|null $actorId,
+                string $action,
+                ?string $targetType = null,
+                int|string|null $targetId = null,
+                array $details = [],
+                ?array $scope = null,
+                ?string $session = null,
+            ): void {
                 $this->recorded[] = [$actorId, $action, $details];
             }
         };
@@ -464,7 +506,7 @@ final class ErrorLogTest extends TestCase
         file_put_contents($this->logs . '/errors-' . gmdate('Y-m-d', time() - 29 * 86400) . '.jsonl', "{}\n");
 
         for ($i = 0; $i < 12; $i++) {
-            $log->record(new RuntimeException('Distinct failure number ' . str_repeat('x', $i % 26) . chr(65 + $i % 26) . $i), null);
+            $log->record(new RuntimeException('Distinct failure number ' . str_repeat('x', $i % 26) . chr(65 + ($i % 26)) . $i), null);
         }
 
         self::assertFileDoesNotExist($this->logs . "/errors-$old.jsonl", 'a day past 30 is gone');
@@ -493,10 +535,14 @@ final class ErrorLogTest extends TestCase
 
         // Today alone past the size: every day before goes, and only then are today's lines counted, not written.
         for ($i = 0; $i < 60; $i++) {
-            $log->record(new RuntimeException('Distinct failure number ' . str_repeat('x', $i % 26) . chr(65 + $i % 26) . $i), null);
+            $log->record(new RuntimeException('Distinct failure number ' . str_repeat('x', $i % 26) . chr(65 + ($i % 26)) . $i), null);
         }
         $today = gmdate('Y-m-d');
-        self::assertSame([], array_values(array_filter(glob($this->logs . '/errors-*.jsonl') ?: [], static fn (string $file): bool => !str_contains($file, $today))), 'every day before today went first');
+        self::assertSame(
+            [],
+            array_values(array_filter(glob($this->logs . '/errors-*.jsonl') ?: [], static fn(string $file): bool => !str_contains($file, $today))),
+            'every day before today went first',
+        );
         $total = 0;
         foreach (glob($this->logs . '/errors-*.jsonl') ?: [] as $file) {
             $total += filesize($file);
@@ -521,8 +567,8 @@ final class ErrorLogTest extends TestCase
         $this->send($app, 'GET', '/api/another', admin: false);
 
         $lines = $this->lines();
-        self::assertSame(3, count(array_filter($lines, static fn (array $line): bool => $line['type'] === 'RuntimeException')), 'three of one failure');
-        self::assertSame(3, count(array_filter($lines, static fn (array $line): bool => $line['status'] === 404)), 'three of a scanner\'s 404s, however many paths');
+        self::assertSame(3, count(array_filter($lines, static fn(array $line): bool => $line['type'] === 'RuntimeException')), 'three of one failure');
+        self::assertSame(3, count(array_filter($lines, static fn(array $line): bool => $line['status'] === 404)), 'three of a scanner\'s 404s, however many paths');
         self::assertSame([gmdate('Y-m-d') => 5], $log->reader()->dropped(), 'the rest counted');
 
         // Clearing the day clears its count too: the kinds start again.
@@ -536,8 +582,21 @@ final class ErrorLogTest extends TestCase
     {
         mkdir($this->logs, 0777, true);
         $local = date('Y-m-d H:i:s', time() - 60);
-        $legacy = ['at' => $local, 'level' => 'warning', 'status' => 404, 'type' => 'Response', 'message' => '{"error":"Not found"}', 'file' => '', 'line' => 0,
-            'method' => 'GET', 'path' => '/api/x', 'user_id' => null, 'session_id' => 'abc', 'ip' => '203.0.113.1', 'fingerprint' => 'abcdef012345'];
+        $legacy = [
+            'at' => $local,
+            'level' => 'warning',
+            'status' => 404,
+            'type' => 'Response',
+            'message' => '{"error":"Not found"}',
+            'file' => '',
+            'line' => 0,
+            'method' => 'GET',
+            'path' => '/api/x',
+            'user_id' => null,
+            'session_id' => 'abc',
+            'ip' => '203.0.113.1',
+            'fingerprint' => 'abcdef012345',
+        ];
         file_put_contents($this->logs . '/errors-' . date('Y-m-d') . '.jsonl', json_encode($legacy) . "\n");
 
         $report = (new ErrorLog($this->logs, ['key' => str_repeat('k', 32)]))->reader()->report(['days' => 2]);
@@ -555,13 +614,18 @@ final class ErrorLogTest extends TestCase
         [$app, $log] = $this->app(['clientLimits' => ['perHour' => 3, 'perDay' => 5]]);
         ErrorLogRoutes::client($app, '/api/client-errors', $log, $this->context());
 
-        $response = $this->send($app, 'POST', '/api/client-errors', (string) json_encode([
-            'type' => 'TypeError',
-            'message' => 'Cannot read x of ana@example.com token ' . self::JWT,
-            'page' => '/account/security?code=ABC123SECRET',
-            'stack' => "TypeError: Cannot read\n    at https://iam.example.sk/main-AB12CD34EF56GH78.js:1:2345\n    at render (https://iam.example.sk/chunk.js?v=SECRET9:3:4)",
-            'status' => 0,
-        ]));
+        $response = $this->send(
+            $app,
+            'POST',
+            '/api/client-errors',
+            (string) json_encode([
+                'type' => 'TypeError',
+                'message' => 'Cannot read x of ana@example.com token ' . self::JWT,
+                'page' => '/account/security?code=ABC123SECRET',
+                'stack' => "TypeError: Cannot read\n    at https://iam.example.sk/main-AB12CD34EF56GH78.js:1:2345\n    at render (https://iam.example.sk/chunk.js?v=SECRET9:3:4)",
+                'status' => 0,
+            ]),
+        );
         self::assertSame(204, $response->getStatusCode());
         $line = $this->lines()[0];
         self::assertSame(['client', 'error', 'TypeError', '/account/security', 7], [$line['source'], $line['level'], $line['type'], $line['path'], $line['user_id']]);
@@ -571,17 +635,28 @@ final class ErrorLogTest extends TestCase
 
         // Every refusal the browser's reporter may meet, in the library's one shape: {code, message}, the 429 with
         // its wait in the body and in Retry-After - and none of them written into the log.
-        foreach ([
-            [422, 'message_required', '{"type":"Error"}', []],
-            [413, 'too_large', (string) json_encode(['message' => str_repeat('a', 9000)]), []],
-            [415, 'unsupported_media_type', 'message=x', ['Content-Type' => 'application/x-www-form-urlencoded']],
-        ] as [$status, $code, $body, $headers]) {
+        foreach (
+            [
+                [422, 'message_required', '{"type":"Error"}', []],
+                [413, 'too_large', (string) json_encode(['message' => str_repeat('a', 9000)]), []],
+                [415, 'unsupported_media_type', 'message=x', ['Content-Type' => 'application/x-www-form-urlencoded']],
+            ]
+            as [$status, $code, $body, $headers]
+        ) {
             $refused = $this->send($app, 'POST', '/api/client-errors', $body, $headers);
             self::assertSame([$status, $code], [$refused->getStatusCode(), $this->json($refused)['code']], $code);
             self::assertIsString($this->json($refused)['message']);
         }
         // A visitor is counted by their address bucket - an IPv6 address by its /64 - and the visitors' day by itself.
-        $visitor = fn (string $message, string $address): int => $this->send($app, 'POST', '/api/client-errors', (string) json_encode(['message' => $message]), [], $address, admin: false)->getStatusCode();
+        $visitor = fn(string $message, string $address): int => $this->send(
+            $app,
+            'POST',
+            '/api/client-errors',
+            (string) json_encode(['message' => $message]),
+            [],
+            $address,
+            admin: false,
+        )->getStatusCode();
         self::assertSame([204, 204, 204], [$visitor('v1', '198.51.100.1'), $visitor('v2', '198.51.100.1'), $visitor('v3', '198.51.100.1')]);
         self::assertSame(429, $visitor('v4', '198.51.100.1'), 'three an hour from one address');
         self::assertSame([204, 204], [$visitor('v5', '2001:db8:1:1::5'), $visitor('v6', '2001:db8:1:1::6')]);
@@ -608,25 +683,30 @@ final class ErrorLogTest extends TestCase
     private function app(array $options = []): array
     {
         $app = AppFactory::create();
-        $log = new ErrorLog($this->logs, $options + [
-            'root' => dirname(__DIR__, 3),
-            'context' => $this->context(),
-            'key' => str_repeat('k', 32),
-            'app' => $app,
-        ]);
+        $log = new ErrorLog(
+            $this->logs,
+            $options + [
+                'root' => dirname(__DIR__, 3),
+                'context' => $this->context(),
+                'key' => str_repeat('k', 32),
+                'app' => $app,
+            ],
+        );
         $app->addRoutingMiddleware();
         $errors = $app->addErrorMiddleware(false, false, false);
-        $errors->setDefaultErrorHandler($log->wrapHandler(static function (ServerRequestInterface $request, \Throwable $exception) use ($app): ResponseInterface {
-            [$status, $code, $message] = match (true) {
-                $exception instanceof \Slim\Exception\HttpNotFoundException => [404, 'not_found', 'Not found.'],
-                $exception instanceof \Slim\Exception\HttpMethodNotAllowedException => [405, 'method_not_allowed', 'Method not allowed.'],
-                default => [500, 'server_error', 'Something went wrong on our side'],
-            };
-            $response = $app->getResponseFactory()->createResponse($status);
-            $response->getBody()->write((string) json_encode(['code' => $code, 'error' => $message]));
+        $errors->setDefaultErrorHandler(
+            $log->wrapHandler(static function (ServerRequestInterface $request, \Throwable $exception) use ($app): ResponseInterface {
+                [$status, $code, $message] = match (true) {
+                    $exception instanceof \Slim\Exception\HttpNotFoundException => [404, 'not_found', 'Not found.'],
+                    $exception instanceof \Slim\Exception\HttpMethodNotAllowedException => [405, 'method_not_allowed', 'Method not allowed.'],
+                    default => [500, 'server_error', 'Something went wrong on our side'],
+                };
+                $response = $app->getResponseFactory()->createResponse($status);
+                $response->getBody()->write((string) json_encode(['code' => $code, 'error' => $message]));
 
-            return $response->withHeader('Content-Type', 'application/json');
-        }));
+                return $response->withHeader('Content-Type', 'application/json');
+            }),
+        );
         $app->add(ErrorLogMiddleware::outer($log));
 
         return [$app, $log];
@@ -636,8 +716,8 @@ final class ErrorLogTest extends TestCase
     private function context(): AdminContext
     {
         return new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? 7 : null,
-            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+            static fn(ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? 7 : null,
+            isAdmin: static fn(ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
         );
     }
 

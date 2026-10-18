@@ -29,9 +29,11 @@ final class MigrationsRoutes
      */
     public static function status(RouteCollectorProxyInterface $app, SiteState $state, string $path = '/api/site-status'): void
     {
-        self::plain($app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($state): ResponseInterface {
-            return self::json($response, 200, ['state' => $state->state(), 'installed' => $state->installed()]);
-        }));
+        self::plain(
+            $app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($state): ResponseInterface {
+                return self::json($response, 200, ['state' => $state->state(), 'installed' => $state->installed()]);
+            }),
+        );
     }
 
     /**
@@ -50,44 +52,50 @@ final class MigrationsRoutes
     public static function admin(RouteCollectorProxyInterface $app, string $base, Closure $migrator, ?Closure $afterApply = null): RouteGroupInterface
     {
         return $app->group($base, function (RouteCollectorProxyInterface $group) use ($migrator, $afterApply): void {
-            self::plain($group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($migrator): ResponseInterface {
-                return self::json($response, 200, $migrator()->status());
-            }));
+            self::plain(
+                $group->get('', function (ServerRequestInterface $request, ResponseInterface $response) use ($migrator): ResponseInterface {
+                    return self::json($response, 200, $migrator()->status());
+                }),
+            );
 
-            self::plain($group->get('/file', function (ServerRequestInterface $request, ResponseInterface $response) use ($migrator): ResponseInterface {
-                $query = $request->getQueryParams();
-                $set = $query['set'] ?? null;
-                $name = $query['name'] ?? null;
-                $sql = is_string($set) && is_string($name) ? $migrator()->source($set, $name) : null;
+            self::plain(
+                $group->get('/file', function (ServerRequestInterface $request, ResponseInterface $response) use ($migrator): ResponseInterface {
+                    $query = $request->getQueryParams();
+                    $set = $query['set'] ?? null;
+                    $name = $query['name'] ?? null;
+                    $sql = is_string($set) && is_string($name) ? $migrator()->source($set, $name) : null;
 
-                if ($sql === null) {
-                    return self::json($response, 404, ['code' => 'not_found', 'message' => 'No such migration file.']);
-                }
+                    if ($sql === null) {
+                        return self::json($response, 404, ['code' => 'not_found', 'message' => 'No such migration file.']);
+                    }
 
-                return self::json($response, 200, ['set' => $set, 'name' => $name, 'sql' => $sql]);
-            }));
+                    return self::json($response, 200, ['set' => $set, 'name' => $name, 'sql' => $sql]);
+                }),
+            );
 
-            self::plain($group->post('/apply', function (ServerRequestInterface $request, ResponseInterface $response) use ($migrator, $afterApply): ResponseInterface {
-                $result = $migrator()->apply();
+            self::plain(
+                $group->post('/apply', function (ServerRequestInterface $request, ResponseInterface $response) use ($migrator, $afterApply): ResponseInterface {
+                    $result = $migrator()->apply();
 
-                if ($result['busy']) {
-                    return self::json($response, 409, [
-                        'code' => 'busy',
-                        'message' => 'Another database update is running. Nothing was applied. Wait a moment, then look again.',
+                    if ($result['busy']) {
+                        return self::json($response, 409, [
+                            'code' => 'busy',
+                            'message' => 'Another database update is running. Nothing was applied. Wait a moment, then look again.',
+                        ]);
+                    }
+
+                    if ($afterApply !== null) {
+                        $afterApply($request, $result);
+                    }
+
+                    return self::json($response, 200, [
+                        'applied' => $result['applied'],
+                        'failed' => $result['failed'],
+                        'error' => $result['error'],
+                        'note' => $result['note'],
                     ]);
-                }
-
-                if ($afterApply !== null) {
-                    $afterApply($request, $result);
-                }
-
-                return self::json($response, 200, [
-                    'applied' => $result['applied'],
-                    'failed' => $result['failed'],
-                    'error' => $result['error'],
-                    'note' => $result['note'],
-                ]);
-            }));
+                }),
+            );
         });
     }
 

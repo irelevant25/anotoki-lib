@@ -17,44 +17,44 @@ final class PhpErrorsTest extends TestCase
     use TemporaryFolder;
 
     private const SCRIPT = <<<'PHP'
-<?php
-declare(strict_types=1);
-require $argv[1];
-$log = new Anotoki\Lib\ErrorLog\ErrorLog($argv[2], ['key' => str_repeat('k', 32), 'root' => $argv[3]]);
-switch ($argv[4]) {
-    case 'warnings':
-        $log->installPhpHandlers();
-        for ($i = 0; $i < 100; $i++) {
-            $list = [];
-            $missing = $list['missing'];
-        }
-        $quiet = @file_get_contents($argv[3] . '/no/such/file');
-        trigger_error('An old way of doing it', E_USER_DEPRECATED);
-        echo "done\n";
-        break;
-    case 'site-handler':
-        // A site that turns warnings into exceptions (the survey, Piano Academy), its handler set first.
-        set_error_handler(static function (int $type, string $message, string $file, int $line): bool {
-            throw new ErrorException($message, 0, $type, $file, $line);
-        });
-        $log->installPhpHandlers();
-        try {
-            $list = [];
-            $missing = $list['missing'];
-        } catch (ErrorException $e) {
-            echo "caught\n";
-            $log->record($e, null, 500);
-        }
-        break;
-    case 'fatal':
-        $log->installPhpHandlers();
-        ini_set('memory_limit', '16M');
-        $secret = 'FATAL-SECRET-ARGUMENT';
-        $big = str_repeat('x', 64 * 1024 * 1024);
-        echo "never\n";
-        break;
-}
-PHP;
+    <?php
+    declare(strict_types=1);
+    require $argv[1];
+    $log = new Anotoki\Lib\ErrorLog\ErrorLog($argv[2], ['key' => str_repeat('k', 32), 'root' => $argv[3]]);
+    switch ($argv[4]) {
+        case 'warnings':
+            $log->installPhpHandlers();
+            for ($i = 0; $i < 100; $i++) {
+                $list = [];
+                $missing = $list['missing'];
+            }
+            $quiet = @file_get_contents($argv[3] . '/no/such/file');
+            trigger_error('An old way of doing it', E_USER_DEPRECATED);
+            echo "done\n";
+            break;
+        case 'site-handler':
+            // A site that turns warnings into exceptions (the survey, Piano Academy), its handler set first.
+            set_error_handler(static function (int $type, string $message, string $file, int $line): bool {
+                throw new ErrorException($message, 0, $type, $file, $line);
+            });
+            $log->installPhpHandlers();
+            try {
+                $list = [];
+                $missing = $list['missing'];
+            } catch (ErrorException $e) {
+                echo "caught\n";
+                $log->record($e, null, 500);
+            }
+            break;
+        case 'fatal':
+            $log->installPhpHandlers();
+            ini_set('memory_limit', '16M');
+            $secret = 'FATAL-SECRET-ARGUMENT';
+            $big = str_repeat('x', 64 * 1024 * 1024);
+            echo "never\n";
+            break;
+    }
+    PHP;
 
     protected function tearDown(): void
     {
@@ -103,7 +103,7 @@ PHP;
             [PHP_BINARY, '-d', 'display_errors=stderr', $script, dirname(__DIR__, 3) . '/vendor/autoload.php', $logs, $folder, $mode],
             // Files, not pipes: a full pipe the parent does not read would stop the child for good.
             [1 => ['file', $folder . '/out.txt', 'w'], 2 => ['file', $folder . '/err.txt', 'w']],
-            $pipes
+            $pipes,
         );
         self::assertIsResource($process);
         proc_close($process);

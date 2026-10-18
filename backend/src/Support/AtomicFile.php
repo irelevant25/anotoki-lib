@@ -39,7 +39,7 @@ final class AtomicFile
 
             return false;
         }
-        @chmod($temporary, $mode ?? (0666 & ~umask()));
+        @chmod($temporary, $mode ?? 0666 & ~umask());
 
         for ($attempt = 0; $attempt < 8; $attempt++) {
             if ($exclusive && file_exists($path)) {
@@ -72,9 +72,7 @@ final class AtomicFile
         }
         $made = realpath(dirname($temporary));
         $wanted = realpath($directory);
-        $same = is_string($made) && is_string($wanted) && (PHP_OS_FAMILY === 'Windows'
-            ? strcasecmp(rtrim($made, '\\/'), rtrim($wanted, '\\/')) === 0
-            : rtrim($made, '/') === rtrim($wanted, '/'));
+        $same = is_string($made) && is_string($wanted) && (PHP_OS_FAMILY === 'Windows' ? strcasecmp(rtrim($made, '\\/'), rtrim($wanted, '\\/')) === 0 : rtrim($made, '/') === rtrim($wanted, '/'));
         if (!$same) {
             @unlink($temporary);
 

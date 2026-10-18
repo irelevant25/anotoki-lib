@@ -17,10 +17,5 @@ final class AuditContext
     /** @var list<array{string, string}> scopes, innermost last */
     public array $scopes = [];
 
-    public function __construct(
-        public readonly ?ServerRequestInterface $request,
-        public readonly int|string|null $actorId,
-        public readonly ?string $session = null,
-    ) {
-    }
+    public function __construct(public readonly ?ServerRequestInterface $request, public readonly int|string|null $actorId, public readonly ?string $session = null) {}
 }

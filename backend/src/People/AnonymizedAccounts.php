@@ -30,9 +30,7 @@ final class AnonymizedAccounts
      * @param ?Closure(string $url, float $timeout): array{status: int, body: ?string} $fetch  how the IAM is
      *        asked (HttpGet::fetch() by default)
      */
-    public function __construct(private readonly IamClient $iam, private readonly ?Closure $fetch = null)
-    {
-    }
+    public function __construct(private readonly IamClient $iam, private readonly ?Closure $fetch = null) {}
 
     /**
      * One page: the accounts anonymized at or after $since (all of them without
@@ -81,7 +79,7 @@ final class AnonymizedAccounts
         $previous = null;
         foreach ($answer['accounts'] as $account) {
             $sub = is_array($account) ? Person::userId($account['sub'] ?? null) : null;
-            $at = is_array($account) ? ($account['anonymized_at'] ?? null) : null;
+            $at = is_array($account) ? $account['anonymized_at'] ?? null : null;
             if ($sub === null || !is_string($at) || preg_match(self::TIME, $at) !== 1 || strtotime($at) === false) {
                 return null;
             }
@@ -95,8 +93,8 @@ final class AnonymizedAccounts
 
         $next = $answer['next'] ?? null;
         if ($next !== null) {
-            $nextSince = is_array($next) ? ($next['since'] ?? null) : null;
-            $nextAfter = is_array($next) ? ($next['after'] ?? null) : null;
+            $nextSince = is_array($next) ? $next['since'] ?? null : null;
+            $nextAfter = is_array($next) ? $next['after'] ?? null : null;
             if (!is_string($nextSince) || preg_match(self::TIME, $nextSince) !== 1 || Person::userId($nextAfter) === null || $accounts === []) {
                 return null;
             }
@@ -119,20 +117,31 @@ final class AnonymizedAccounts
         if ($accounts === null) {
             return $body;
         }
-        usort($accounts, static fn (array $a, array $b): int => [strtotime((string) ($a['anonymized_at'] ?? '')), (int) ($a['sub'] ?? 0)] <=> [strtotime((string) ($b['anonymized_at'] ?? '')), (int) ($b['sub'] ?? 0)]);
+        usort(
+            $accounts,
+            static fn(array $a, array $b): int => [strtotime((string) ($a['anonymized_at'] ?? '')), (int) ($a['sub'] ?? 0)] <=> [
+                strtotime((string) ($b['anonymized_at'] ?? '')),
+                (int) ($b['sub'] ?? 0),
+            ],
+        );
         $from = $since === null ? null : (int) strtotime($since);
-        $accounts = array_values(array_filter($accounts, static function (array $account) use ($from, $after): bool {
-            $at = (int) strtotime((string) ($account['anonymized_at'] ?? ''));
+        $accounts = array_values(
+            array_filter($accounts, static function (array $account) use ($from, $after): bool {
+                $at = (int) strtotime((string) ($account['anonymized_at'] ?? ''));
 
-            return $from === null || ($after === null ? $at >= $from : ($at > $from || ($at === $from && (int) ($account['sub'] ?? 0) > (int) $after)));
-        }));
+                return $from === null || ($after === null ? $at >= $from : $at > $from || ($at === $from && (int) ($account['sub'] ?? 0) > (int) $after));
+            }),
+        );
         $page = array_slice($accounts, 0, self::PAGE);
         $last = $page === [] ? null : $page[count($page) - 1];
 
-        return (string) json_encode([
-            'accounts' => $page,
-            'next' => count($accounts) > self::PAGE && $last !== null ? ['since' => $last['anonymized_at'], 'after' => (string) $last['sub']] : null,
-        ], JSON_UNESCAPED_SLASHES);
+        return (string) json_encode(
+            [
+                'accounts' => $page,
+                'next' => count($accounts) > self::PAGE && $last !== null ? ['since' => $last['anonymized_at'], 'after' => (string) $last['sub']] : null,
+            ],
+            JSON_UNESCAPED_SLASHES,
+        );
     }
 
     /** @return array{accounts: list<never>, next: null, error: string} */

@@ -66,7 +66,7 @@ final class TranslationsCommand
     ) {
         $this->out = $out ?? STDOUT;
         $this->err = $err ?? STDERR;
-        $this->colours = $colours ?? (function_exists('stream_isatty') && @stream_isatty($this->out));
+        $this->colours = $colours ?? function_exists('stream_isatty') && @stream_isatty($this->out);
     }
 
     /**
@@ -80,11 +80,14 @@ final class TranslationsCommand
         $command = $arguments[0] ?? '--status';
 
         if (in_array($command, ['--help', '-h'], true)) {
-            $this->write(self::USAGE . "\n\n"
-                . "  --status            the keys the frontend uses against the database's; exit 1 when one is missing, has no\n"
-                . "                      English string, or is asked for in a way the scan does not let through\n"
-                . "  --export CODE       a language's own strings as flat JSON, to FILE or to the screen\n"
-                . "  --import CODE FILE  and back in: checked as a save in the admin pages is, all of it or none of it\n");
+            $this->write(
+                self::USAGE .
+                    "\n\n" .
+                    "  --status            the keys the frontend uses against the database's; exit 1 when one is missing, has no\n" .
+                    "                      English string, or is asked for in a way the scan does not let through\n" .
+                    "  --export CODE       a language's own strings as flat JSON, to FILE or to the screen\n" .
+                    "  --import CODE FILE  and back in: checked as a save in the admin pages is, all of it or none of it\n",
+            );
 
             return 0;
         }
@@ -226,8 +229,10 @@ final class TranslationsCommand
         if ($this->audit !== null && $result['count'] > 0) {
             ($this->audit)('translations.imported', 'language', $code, $result + ['via' => 'command line']);
         }
-        $this->say('green', '  ' . count($values) . ' string' . (count($values) === 1 ? '' : 's')
-            . " in $file: {$result['count']} changed in \"$code\", the rest as they were (or empty, and passed over).");
+        $this->say(
+            'green',
+            '  ' . count($values) . ' string' . (count($values) === 1 ? '' : 's') . " in $file: {$result['count']} changed in \"$code\", the rest as they were (or empty, and passed over).",
+        );
 
         return 0;
     }

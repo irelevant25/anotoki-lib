@@ -38,12 +38,7 @@ final class PeopleUpkeep implements MiddlewareInterface
      * @param ?Closure(callable): void $defer  how the work is put off till after the answer: a site's own runner;
      *                                         default AfterResponse::shared()->defer()
      */
-    public function __construct(
-        private readonly People $people,
-        private readonly Closure $ready,
-        private readonly ?Closure $defer = null,
-    ) {
-    }
+    public function __construct(private readonly People $people, private readonly Closure $ready, private readonly ?Closure $defer = null) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

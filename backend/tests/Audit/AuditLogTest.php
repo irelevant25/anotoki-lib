@@ -34,14 +34,15 @@ final class AuditLogTest extends DatabaseTestCase
     public function testAnEntryKeepsWhatTheSiteGivesIt(): void
     {
         $this->applyAdminSet();
-        $audit = $this->audit(['recordAddress' => true, 'address' => static fn (ServerRequestInterface $request): string => $request->getHeaderLine('CF-Connecting-IP')]);
+        $audit = $this->audit(['recordAddress' => true, 'address' => static fn(ServerRequestInterface $request): string => $request->getHeaderLine('CF-Connecting-IP')]);
 
         $audit->record($this->request(), 42, 'user.roles_set', 'user', 7, ['roles' => ['ADMIN'], 'name' => 'Ana'], ['application', 'genshin'], 'session-1');
 
         $row = $this->rows('SELECT actor_id, actor_session, action, target_type, target_id, scope_type, scope_id, details, ip FROM anotoki_audit_log')[0];
-        self::assertSame([42, 'session-1', 'user.roles_set', 'user', '7', 'application', 'genshin', '198.51.100.20'], [
-            $row['actor_id'], $row['actor_session'], $row['action'], $row['target_type'], $row['target_id'], $row['scope_type'], $row['scope_id'], $row['ip'],
-        ]);
+        self::assertSame(
+            [42, 'session-1', 'user.roles_set', 'user', '7', 'application', 'genshin', '198.51.100.20'],
+            [$row['actor_id'], $row['actor_session'], $row['action'], $row['target_type'], $row['target_id'], $row['scope_type'], $row['scope_id'], $row['ip']],
+        );
         self::assertSame(['name' => 'Ana', 'roles' => ['ADMIN']], json_decode($row['details'], true));
 
         $site = $this->audit();
@@ -59,17 +60,17 @@ final class AuditLogTest extends DatabaseTestCase
         $audit->record($this->request(), 1, 'user.signed_in', 'user', 1);
         $audit->record($this->request()->withHeader('X-Anotoki-Origin', $secret), 1, 'user.signed_out', 'user', 1);
 
-        self::assertSame(['user.signed_in' => '10.0.0.1', 'user.signed_out' => '198.51.100.20'], array_column(
-            $this->rows("SELECT action, ip FROM anotoki_audit_log WHERE action LIKE 'user.%'"),
-            'ip',
-            'action',
-        ), 'without the zone\'s secret the proxy\'s own address; with it the visitor\'s');
+        self::assertSame(
+            ['user.signed_in' => '10.0.0.1', 'user.signed_out' => '198.51.100.20'],
+            array_column($this->rows("SELECT action, ip FROM anotoki_audit_log WHERE action LIKE 'user.%'"), 'ip', 'action'),
+            'without the zone\'s secret the proxy\'s own address; with it the visitor\'s',
+        );
     }
 
     public function testWithoutAnOnErrorWhyAnEntryWasNotWrittenIsTheLibrarysLogLine(): void
     {
         LogLines::take();
-        $audit = new AuditLog(fn (): PDO => $this->pdo);
+        $audit = new AuditLog(fn(): PDO => $this->pdo);
 
         $audit->record(null, 1, 'Not An Action', 'thing', 1);
 
@@ -102,7 +103,7 @@ final class AuditLogTest extends DatabaseTestCase
     public function testAnEntryThatMustBeThereIsWrittenInsideItsChangesTransactionOrThrown(): void
     {
         $pending = $this->path('storage/logs/audit-pending.jsonl');
-        $audit = $this->audit(['pendingFile' => $pending, 'recordAddress' => true, 'address' => static fn (ServerRequestInterface $request): string => $request->getHeaderLine('CF-Connecting-IP')]);
+        $audit = $this->audit(['pendingFile' => $pending, 'recordAddress' => true, 'address' => static fn(ServerRequestInterface $request): string => $request->getHeaderLine('CF-Connecting-IP')]);
 
         try {
             $audit->recordInside($this->pdo, null, 1, 'person.data_deleted', 'user', 7);
@@ -180,7 +181,7 @@ final class AuditLogTest extends DatabaseTestCase
         self::assertFalse($audit->ready());
 
         $app = AppFactory::create();
-        MigrationsRoutes::admin($app, '/api/admin/migrations', fn (): Migrator => $this->migrator([Schema::migrationSet()]), static function () use ($audit): void {
+        MigrationsRoutes::admin($app, '/api/admin/migrations', fn(): Migrator => $this->migrator([Schema::migrationSet()]), static function () use ($audit): void {
             $audit->flushPending();
         });
         $apply = $app->handle((new ServerRequestFactory())->createServerRequest('POST', 'https://site.example/api/admin/migrations/apply'));
@@ -209,7 +210,8 @@ final class AuditLogTest extends DatabaseTestCase
         file_put_contents($pending, implode("\n", array_map('json_encode', $lines)) . "\n");
         $audit = $this->audit(['pendingFile' => $pending]);
         foreach ($lines as $line) {
-            $this->pdo->prepare('INSERT INTO anotoki_audit_log (created_at, actor_id, action, target_type, target_id, details) VALUES (CAST(? AS timestamptz), ?, ?, ?, ?, CAST(? AS jsonb))')
+            $this->pdo
+                ->prepare('INSERT INTO anotoki_audit_log (created_at, actor_id, action, target_type, target_id, details) VALUES (CAST(? AS timestamptz), ?, ?, ?, ?, CAST(? AS jsonb))')
                 ->execute([$line['created_at'], $line['actor_id'], $line['action'], $line['target_type'] ?? null, $line['target_id'] ?? null, $line['details']]);
         }
         // Meanwhile a new entry waits after them.
@@ -262,9 +264,12 @@ final class AuditLogTest extends DatabaseTestCase
         $this->applyAdminSet();
         $moved = false;
         $pending = $this->path('audit-pending.jsonl');
-        $audit = $this->audit(['pendingFile' => $pending, 'ready' => static function () use (&$moved): bool {
-            return $moved;
-        }]);
+        $audit = $this->audit([
+            'pendingFile' => $pending,
+            'ready' => static function () use (&$moved): bool {
+                return $moved;
+            },
+        ]);
 
         $audit->record(null, 1, 'account.created');
         self::assertSame(0, (int) $this->value('SELECT count(*) FROM anotoki_audit_log'), 'the IAM\'s 017 has not moved its rows yet');
@@ -283,7 +288,7 @@ final class AuditLogTest extends DatabaseTestCase
             ('2026-10-04T10:00:00Z', 2, 'content.insert', 'characters', '42', 'characters', '42'),
             ('2026-10-05T10:00:00Z', NULL, 'catalogue.reconcile', 'files', 'sweep', NULL, NULL),
             ('2026-10-06T10:00:00Z', 3, 'accountx.created', 'user', '3', NULL, NULL)");
-        $audit = $this->audit(['actorIds' => static fn (string $name): array => $name === 'ana' ? [1] : []]);
+        $audit = $this->audit(['actorIds' => static fn(string $name): array => $name === 'ana' ? [1] : []]);
 
         $all = $audit->page();
         self::assertSame([6, 1, 50], [$all['total'], $all['page'], $all['pageSize']]);
@@ -361,17 +366,29 @@ final class AuditLogTest extends DatabaseTestCase
 
             return $response;
         })
-            ->add(AuditContextMiddleware::fromRequest($audit, static fn (ServerRequestInterface $request): array => ['actor' => $request->getAttribute('user_id'), 'session' => $request->getAttribute('sid')]))
-            ->add(static fn (ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle($request->withAttribute('user_id', 77)->withAttribute('sid', 'sid-77')));
+            ->add(
+                AuditContextMiddleware::fromRequest(
+                    $audit,
+                    static fn(ServerRequestInterface $request): array => ['actor' => $request->getAttribute('user_id'), 'session' => $request->getAttribute('sid')],
+                ),
+            )
+            ->add(
+                static fn(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface => $handler->handle(
+                    $request->withAttribute('user_id', 77)->withAttribute('sid', 'sid-77'),
+                ),
+            );
 
         $app->handle((new ServerRequestFactory())->createServerRequest('POST', 'https://site.example/api/characters/42'));
 
-        self::assertSame([
-            ['content.update', 77, 'sid-77', 'characters', '42'],
-            ['content.insert', 77, 'sid-77', 'talents', '7'],
-            ['content.update', 77, 'sid-77', 'characters', '99'],
-            ['content.delete', 77, 'sid-77', null, null],
-        ], array_map(static fn (array $row): array => array_values($row), $this->rows('SELECT action, actor_id, actor_session, scope_type, scope_id FROM anotoki_audit_log ORDER BY id')));
+        self::assertSame(
+            [
+                ['content.update', 77, 'sid-77', 'characters', '42'],
+                ['content.insert', 77, 'sid-77', 'talents', '7'],
+                ['content.update', 77, 'sid-77', 'characters', '99'],
+                ['content.delete', 77, 'sid-77', null, null],
+            ],
+            array_map(static fn(array $row): array => array_values($row), $this->rows('SELECT action, actor_id, actor_session, scope_type, scope_id FROM anotoki_audit_log ORDER BY id')),
+        );
         self::assertNull($audit->current(), 'held for the request only');
 
         $context = $audit->begin(null, 'cli', null);
@@ -386,10 +403,24 @@ final class AuditLogTest extends DatabaseTestCase
         $audit = $this->audit();
 
         $audit->record(null, 1, 'translations.saved', null, null, ['huge' => str_repeat('ž', 80000), 'small' => 'kept']);
-        $audit->record(null, 1, 'translations.imported', null, null, array_fill_keys(array_map(static fn (int $n): string => "k$n", range(1, 400)), str_repeat('a', 300)));
+        $audit->record(null, 1, 'translations.imported', null, null, array_fill_keys(array_map(static fn(int $n): string => "k$n", range(1, 400)), str_repeat('a', 300)));
         $audit->record(null, 1, 'translations.listed', null, null, ['languages' => ['sk' => ['strings' => range(1, 30000), 'by' => 'ana']], 'note' => 'x']);
-        $audit->record(null, 1, 'translations.dumped', null, null, array_fill_keys(array_map(static fn (int $n): string => "key$n", range(1, 600)), ['old' => str_repeat('o', 40), 'new' => str_repeat('n', 40), 'list' => range(1, 50)]));
-        $audit->record(null, 1, 'translations.flooded', null, null, array_fill_keys(array_map(static fn (int $n): string => "key$n", range(1, 3000)), ['old' => str_repeat('o', 40), 'new' => str_repeat('n', 40), 'list' => range(1, 50)]));
+        $audit->record(
+            null,
+            1,
+            'translations.dumped',
+            null,
+            null,
+            array_fill_keys(array_map(static fn(int $n): string => "key$n", range(1, 600)), ['old' => str_repeat('o', 40), 'new' => str_repeat('n', 40), 'list' => range(1, 50)]),
+        );
+        $audit->record(
+            null,
+            1,
+            'translations.flooded',
+            null,
+            null,
+            array_fill_keys(array_map(static fn(int $n): string => "key$n", range(1, 3000)), ['old' => str_repeat('o', 40), 'new' => str_repeat('n', 40), 'list' => range(1, 50)]),
+        );
 
         $details = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.saved'"), true);
         self::assertSame('kept', $details['small']);
@@ -415,7 +446,7 @@ final class AuditLogTest extends DatabaseTestCase
         // And past even that, its first keys, as many as fit - every one of them here.
         $flooded = json_decode((string) $this->value("SELECT details FROM anotoki_audit_log WHERE action = 'translations.flooded'"), true);
         self::assertTrue($flooded['_cut']);
-        self::assertSame(array_map(static fn (int $n): string => "key$n", range(1, 3000)), $flooded['keys']);
+        self::assertSame(array_map(static fn(int $n): string => "key$n", range(1, 3000)), $flooded['keys']);
         foreach (['translations.imported', 'translations.listed', 'translations.dumped', 'translations.flooded'] as $action) {
             self::assertLessThanOrEqual(AuditLog::DETAILS_LIMIT, strlen((string) $this->value("SELECT details::text FROM anotoki_audit_log WHERE action = '$action'")));
         }
@@ -426,10 +457,16 @@ final class AuditLogTest extends DatabaseTestCase
         $audit = $this->audit();
         $app = AppFactory::create();
         // No middleware of the site's at all: the group's own check keeps everybody but the ADMIN out.
-        AuditRoutes::admin($app, '/api/admin/audit', $audit, new AdminContext(
-            static fn (ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? 1 : null,
-            isAdmin: static fn (ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
-        ), static fn (array $ids): array => array_intersect_key([1 => 'ana', 2 => 'bo'], array_flip($ids)));
+        AuditRoutes::admin(
+            $app,
+            '/api/admin/audit',
+            $audit,
+            new AdminContext(
+                static fn(ServerRequestInterface $request): ?int => $request->hasHeader('X-Test-Admin') ? 1 : null,
+                isAdmin: static fn(ServerRequestInterface $request): bool => $request->getHeaderLine('X-Test-Admin') === 'yes',
+            ),
+            static fn(array $ids): array => array_intersect_key([1 => 'ana', 2 => 'bo'], array_flip($ids)),
+        );
 
         $missing = $this->get($app, '/api/admin/audit');
         self::assertSame([503, 'feature_unavailable', '60'], [$missing->getStatusCode(), $this->json($missing)['code'], $missing->getHeaderLine('Retry-After')]);
@@ -449,7 +486,11 @@ final class AuditLogTest extends DatabaseTestCase
         self::assertSame(2, $page['total']);
         self::assertSame(['user.updated', 'user.created'], array_column($page['items'], 'action'));
         self::assertSame([null, 'ana'], array_column($page['items'], 'actor_username'), 'a name from the site, none for an id it does not know');
-        self::assertSame(['actor_username', 'id', 'created_at', 'actor_id', 'actor_session', 'action', 'target_type', 'target_id', 'scope_type', 'scope_id', 'details', 'ip'], array_keys($page['items'][0]), 'the IAM\'s AuditEntry and the three more');
+        self::assertSame(
+            ['actor_username', 'id', 'created_at', 'actor_id', 'actor_session', 'action', 'target_type', 'target_id', 'scope_type', 'scope_id', 'details', 'ip'],
+            array_keys($page['items'][0]),
+            'the IAM\'s AuditEntry and the three more',
+        );
         $facets = $this->json($this->get($app, '/api/admin/audit/facets'));
         self::assertSame([['id' => 1, 'username' => 'ana'], ['id' => 3, 'username' => null]], $facets['actors']);
     }
@@ -464,15 +505,19 @@ final class AuditLogTest extends DatabaseTestCase
     /** @param array<string, mixed> $options */
     private function audit(array $options = []): AuditLog
     {
-        return new AuditLog(fn (): PDO => $this->pdo, $options + ['onError' => function (string $message): void {
-            $this->errors[] = $message;
-        }]);
+        return new AuditLog(
+            fn(): PDO => $this->pdo,
+            $options + [
+                'onError' => function (string $message): void {
+                    $this->errors[] = $message;
+                },
+            ],
+        );
     }
 
     private function request(): ServerRequestInterface
     {
-        return (new ServerRequestFactory())->createServerRequest('POST', 'https://site.example/api/x', ['REMOTE_ADDR' => '10.0.0.1'])
-            ->withHeader('CF-Connecting-IP', '198.51.100.20');
+        return (new ServerRequestFactory())->createServerRequest('POST', 'https://site.example/api/x', ['REMOTE_ADDR' => '10.0.0.1'])->withHeader('CF-Connecting-IP', '198.51.100.20');
     }
 
     private function get(App $app, string $target, bool $admin = true): ResponseInterface

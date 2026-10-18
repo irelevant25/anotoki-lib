@@ -309,7 +309,7 @@ final class Archive
         } else {
             $tar((string) ($entry['data'] ?? ''));
         }
-        $padding = (self::BLOCK - $size % self::BLOCK) % self::BLOCK;
+        $padding = (self::BLOCK - ($size % self::BLOCK)) % self::BLOCK;
         if ($padding > 0) {
             $tar(str_repeat("\0", $padding));
         }

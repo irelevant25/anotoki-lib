@@ -80,22 +80,25 @@ final class StringCheckTest extends TestCase
     public function testEveryRefusalIsASentenceWithItsFullStop(): void
     {
         $config = new TranslationsConfig(rules: [new RequiredPlaceholders(['test.step' => ['n']])]);
-        foreach ([
-            null,
-            ['common.save' => 'Save'],
-            ['no.such' => ['en' => 'x']],
-            ['no.such' => ['en' => 'x'], 'nor.this' => ['en' => 'y']],
-            ['common.save' => ['hu' => 'Mentés']],
-            ['common.save' => ['sk' => 12]],
-            ['common.save' => ['en' => ' ']],
-            ['common.save' => ['sk' => str_repeat('a', 2001)]],
-            ['common.save' => ['sk' => 'Ulož {']],
-            ['test.step' => ['sk' => 'Krok { n }']],
-            ['test.hello' => ['en' => 'Hello']],
-            ['test.hello' => ['en' => 'Hello, {name} and {who}']],
-            ['test.hello' => ['sk' => 'Ahoj, {meno}']],
-            ['test.step' => ['sk' => 'Krok z {m}']],
-        ] as $values) {
+        foreach (
+            [
+                null,
+                ['common.save' => 'Save'],
+                ['no.such' => ['en' => 'x']],
+                ['no.such' => ['en' => 'x'], 'nor.this' => ['en' => 'y']],
+                ['common.save' => ['hu' => 'Mentés']],
+                ['common.save' => ['sk' => 12]],
+                ['common.save' => ['en' => ' ']],
+                ['common.save' => ['sk' => str_repeat('a', 2001)]],
+                ['common.save' => ['sk' => 'Ulož {']],
+                ['test.step' => ['sk' => 'Krok { n }']],
+                ['test.hello' => ['en' => 'Hello']],
+                ['test.hello' => ['en' => 'Hello, {name} and {who}']],
+                ['test.hello' => ['sk' => 'Ahoj, {meno}']],
+                ['test.step' => ['sk' => 'Krok z {m}']],
+            ]
+            as $values
+        ) {
             $message = $this->message($values, $config);
             self::assertStringEndsWith('.', $message, json_encode($values));
         }
@@ -110,7 +113,7 @@ final class StringCheckTest extends TestCase
     {
         self::assertSame(
             ['unknown_key', ['key' => 'no.such', 'keys' => ['no.such', 'nor.this']]],
-            $this->refused(['common.save' => ['sk' => 'Ulož'], 'no.such' => ['en' => 'x'], 'nor.this' => ['sk' => 'y']])
+            $this->refused(['common.save' => ['sk' => 'Ulož'], 'no.such' => ['en' => 'x'], 'nor.this' => ['sk' => 'y']]),
         );
         $many = [];
         for ($i = 0; $i < 25; $i++) {
@@ -144,11 +147,14 @@ final class StringCheckTest extends TestCase
 
     public function testTrimmedAndCleanedAndSortedByKeyThenLanguage(): void
     {
-        self::assertSame([
-            ['key' => 'common.save', 'language' => 'en', 'value' => 'Keep'],
-            ['key' => 'common.save', 'language' => 'sk', 'value' => 'Ulož'],
-            ['key' => 'test.bye', 'language' => 'sk', 'value' => 'Ahoj'],
-        ], $this->checked(['test.bye' => ['sk' => "\u{3000}Ahoj\x07 "], 'common.save' => ['sk' => 'Ulož', 'en' => ' Keep ']]));
+        self::assertSame(
+            [
+                ['key' => 'common.save', 'language' => 'en', 'value' => 'Keep'],
+                ['key' => 'common.save', 'language' => 'sk', 'value' => 'Ulož'],
+                ['key' => 'test.bye', 'language' => 'sk', 'value' => 'Ahoj'],
+            ],
+            $this->checked(['test.bye' => ['sk' => "\u{3000}Ahoj\x07 "], 'common.save' => ['sk' => 'Ulož', 'en' => ' Keep ']]),
+        );
     }
 
     public function testTooLongIsRefusedAndAMillionSpacesInsideAreTooLongNotEmpty(): void
@@ -168,11 +174,15 @@ final class StringCheckTest extends TestCase
 
     public function testAStrayBraceIsSaidFirstWithTheKeysOwnPlaceholder(): void
     {
-        self::assertSame(['invalid_placeholder', ['key' => 'test.hello', 'language' => 'sk']], $this->refused(['test.hello' => ['sk' => 'Ahoj, {name} {meno} {']]), 'not "unknown": the brace is said first');
+        self::assertSame(
+            ['invalid_placeholder', ['key' => 'test.hello', 'language' => 'sk']],
+            $this->refused(['test.hello' => ['sk' => 'Ahoj, {name} {meno} {']]),
+            'not "unknown": the brace is said first',
+        );
         self::assertSame(['invalid_placeholder', ['key' => 'test.hello', 'language' => 'en']], $this->refused(['test.hello' => ['en' => 'Hi {']]), 'not "changed"');
         self::assertSame(
             'The Slovak string of "test.step" has a { or } that is not part of a placeholder. A placeholder is written exactly as the English string has it, like {n}: no spaces, and its name is not translated.',
-            $this->message(['test.step' => ['sk' => 'Krok { n } z {m}']])
+            $this->message(['test.step' => ['sk' => 'Krok { n } z {m}']]),
         );
         // A key with no placeholders is shown none to copy: a brace has no place in it at all.
         $none = $this->message(['test.bye' => ['sk' => 'Dovidenia {']]);
@@ -190,17 +200,31 @@ final class StringCheckTest extends TestCase
         self::assertCount(1, $this->checked(['test.step' => ['sk' => 'Krok {m}, {n}']]), 'in any order');
         // A key without English yet: the English sent with it says.
         self::assertCount(2, $this->checked(['test.new' => ['en' => 'New {thing}', 'sk' => 'Nové {thing}']], ['test.new']));
-        self::assertSame(['unknown_placeholder', ['key' => 'test.new', 'language' => 'sk', 'placeholder' => 'vec']], $this->refused(['test.new' => ['en' => 'New {thing}', 'sk' => 'Nové {vec}']], ['test.new']));
+        self::assertSame(
+            ['unknown_placeholder', ['key' => 'test.new', 'language' => 'sk', 'placeholder' => 'vec']],
+            $this->refused(['test.new' => ['en' => 'New {thing}', 'sk' => 'Nové {vec}']], ['test.new']),
+        );
     }
 
     public function testARequiredPlaceholderIsKeptInEveryLanguageAfterTheBraceIsJudged(): void
     {
         $config = new TranslationsConfig(rules: [new RequiredPlaceholders(['login.continueTo' => ['app']])]);
 
-        self::assertSame(['placeholder_missing', ['key' => 'login.continueTo', 'language' => 'sk', 'placeholder' => 'app']], $this->refused(['login.continueTo' => ['sk' => 'Prihlás sa a pokračuj']], [], $config));
-        self::assertSame(['invalid_placeholder', ['key' => 'login.continueTo', 'language' => 'sk']], $this->refused(['login.continueTo' => ['sk' => 'Pokračuj do { app }']], [], $config), 'not "missing {app}": it is there, written wrongly');
+        self::assertSame(
+            ['placeholder_missing', ['key' => 'login.continueTo', 'language' => 'sk', 'placeholder' => 'app']],
+            $this->refused(['login.continueTo' => ['sk' => 'Prihlás sa a pokračuj']], [], $config),
+        );
+        self::assertSame(
+            ['invalid_placeholder', ['key' => 'login.continueTo', 'language' => 'sk']],
+            $this->refused(['login.continueTo' => ['sk' => 'Pokračuj do { app }']], [], $config),
+            'not "missing {app}": it is there, written wrongly',
+        );
         self::assertStringContainsString('like {app}:', $this->message(['login.continueTo' => ['sk' => 'Pokračuj do {aplikácie}']], $config));
-        self::assertSame(['placeholder_missing', ['key' => 'login.continueTo', 'language' => 'en', 'placeholder' => 'app']], $this->refused(['login.continueTo' => ['en' => 'Sign in']], [], $config), 'before "changed"');
+        self::assertSame(
+            ['placeholder_missing', ['key' => 'login.continueTo', 'language' => 'en', 'placeholder' => 'app']],
+            $this->refused(['login.continueTo' => ['en' => 'Sign in']], [], $config),
+            'before "changed"',
+        );
         self::assertCount(1, $this->checked(['login.continueTo' => ['sk' => 'Pokračuj do {app}']], [], $config));
 
         $this->expectException(InvalidArgumentException::class);
@@ -220,15 +244,21 @@ final class StringCheckTest extends TestCase
         self::assertNull((new LibraryKeyRules())->placeholders('common.save'));
 
         self::assertCount(1, $this->checked(['anotoki.language.button' => ['sk' => 'Jazyk: {name} ({code})']], $keys, null, $english), 'Slovak may use {code}');
-        self::assertSame(['placeholder_changed', ['key' => 'anotoki.language.button', 'language' => 'en', 'placeholder' => 'code']], $this->refused(['anotoki.language.button' => ['en' => 'Language: {name}']], $keys, null, $english));
+        self::assertSame(
+            ['placeholder_changed', ['key' => 'anotoki.language.button', 'language' => 'en', 'placeholder' => 'code']],
+            $this->refused(['anotoki.language.button' => ['en' => 'Language: {name}']], $keys, null, $english),
+        );
         self::assertCount(1, $this->checked(['anotoki.language.button' => ['en' => 'Language: {name} ({code})']], $keys, null, $english));
-        self::assertSame(['unknown_placeholder', ['key' => 'anotoki.language.label', 'language' => 'sk', 'placeholder' => 'x']], $this->refused(['anotoki.language.label' => ['sk' => 'Jazyk {x}']], $keys, null, ['anotoki.language.label' => 'Language {x}']));
+        self::assertSame(
+            ['unknown_placeholder', ['key' => 'anotoki.language.label', 'language' => 'sk', 'placeholder' => 'x']],
+            $this->refused(['anotoki.language.label' => ['sk' => 'Jazyk {x}']], $keys, null, ['anotoki.language.label' => 'Language {x}']),
+        );
         self::assertSame(LibraryWords::english('anotoki.language.button'), 'Language: {name} ({code})');
     }
 
     public function testTheLibrarysRulesComeBeforeASitesRuleForItsKeys(): void
     {
-        $site = new class () extends \stdClass implements \Anotoki\Lib\Translations\KeyRules {
+        $site = new class extends \stdClass implements \Anotoki\Lib\Translations\KeyRules {
             public function placeholders(string $key): ?array
             {
                 return ['own'];
@@ -246,7 +276,10 @@ final class StringCheckTest extends TestCase
         };
         $config = new TranslationsConfig(rules: [$site]);
 
-        self::assertSame(['unknown_placeholder', ['key' => 'anotoki.language.label', 'language' => 'sk', 'placeholder' => 'own']], $this->refused(['anotoki.language.label' => ['sk' => 'Jazyk {own}']], ['anotoki.language.label'], $config));
+        self::assertSame(
+            ['unknown_placeholder', ['key' => 'anotoki.language.label', 'language' => 'sk', 'placeholder' => 'own']],
+            $this->refused(['anotoki.language.label' => ['sk' => 'Jazyk {own}']], ['anotoki.language.label'], $config),
+        );
         self::assertCount(1, $this->checked(['test.bye' => ['sk' => 'Ahoj {own}']], [], $config), 'the site\'s rule for its own keys');
     }
 
@@ -255,7 +288,11 @@ final class StringCheckTest extends TestCase
     public function testAMailsWordsInTheIamsOrder(): void
     {
         foreach (['en', 'sk'] as $code) {
-            self::assertSame(['invalid_placeholder', ['key' => 'mail.reset.greeting', 'language' => $code]], $this->mail(['mail.reset.greeting' => [$code => 'Hello { username },']]), 'not "missing {username}"');
+            self::assertSame(
+                ['invalid_placeholder', ['key' => 'mail.reset.greeting', 'language' => $code]],
+                $this->mail(['mail.reset.greeting' => [$code => 'Hello { username },']]),
+                'not "missing {username}"',
+            );
             self::assertSame(['invalid_placeholder', ['key' => 'mail.loginCode.subject', 'language' => $code]], $this->mail(['mail.loginCode.subject' => [$code => 'Your code: {{code}}']]));
         }
         self::assertSame('invalid_value', $this->mail(['mail.reset.intro' => ['sk' => str_repeat('ž', 400) . '{']])[0], 'too long is said before the brace');
@@ -289,16 +326,30 @@ final class StringCheckTest extends TestCase
         self::assertStringContainsString('which leaves 100 bytes, and it has 103', $this->mailMessage(['mail.reset.greeting' => ['sk' => str_repeat('あ', 27) . ' {username} {username}']]));
         self::assertCount(1, $this->mailChecked(['mail.deletion.intro' => ['sk' => str_repeat('あ', 294) . '{date}']]), '888 bytes and a {date}: 890 is the room');
         self::assertSame('invalid_value', $this->mail(['mail.deletion.intro' => ['sk' => str_repeat('あ', 295) . '{date}']])[0], '891');
-        self::assertSame(['unknown_placeholder', ['key' => 'mail.reset.intro', 'language' => 'sk', 'placeholder' => 'username']], $this->mail(['mail.reset.intro' => ['sk' => str_repeat('あ', 200) . ' {username} {username}']]), 'no room kept for a placeholder the key cannot use');
+        self::assertSame(
+            ['unknown_placeholder', ['key' => 'mail.reset.intro', 'language' => 'sk', 'placeholder' => 'username']],
+            $this->mail(['mail.reset.intro' => ['sk' => str_repeat('あ', 200) . ' {username} {username}']]),
+            'no room kept for a placeholder the key cannot use',
+        );
 
         foreach (['en', 'sk'] as $code) {
             self::assertSame(['placeholder_missing', ['key' => 'mail.reset.greeting', 'language' => $code, 'placeholder' => 'username']], $this->mail(['mail.reset.greeting' => [$code => 'Hello,']]));
-            self::assertSame(['placeholder_missing', ['key' => 'mail.confirm.validity', 'language' => $code, 'placeholder' => 'hours']], $this->mail(['mail.confirm.validity' => [$code => 'Good for two days.']]));
+            self::assertSame(
+                ['placeholder_missing', ['key' => 'mail.confirm.validity', 'language' => $code, 'placeholder' => 'hours']],
+                $this->mail(['mail.confirm.validity' => [$code => 'Good for two days.']]),
+            );
             self::assertSame(['unknown_placeholder', ['key' => 'mail.reset.subject', 'language' => $code, 'placeholder' => 'code']], $this->mail(['mail.reset.subject' => [$code => 'Reset {code}']]));
         }
-        self::assertSame('unknown_placeholder', $this->mail(['mail.reset.intro' => ['en' => 'Open {link}:']], ['mail.reset.intro' => 'Stored with {link} by hand'])[0], 'the code is the authority, not the stored English');
+        self::assertSame(
+            'unknown_placeholder',
+            $this->mail(['mail.reset.intro' => ['en' => 'Open {link}:']], ['mail.reset.intro' => 'Stored with {link} by hand'])[0],
+            'the code is the authority, not the stored English',
+        );
 
-        foreach (['Open https://evil.test/reset', 'See HTTPS://EVIL.TEST', 'Go to www.evil.test', 'Go to WWW.evil.test', 'Write to help@evil.test', 'ftp://files.evil.test', 'javascript://x'] as $text) {
+        foreach (
+            ['Open https://evil.test/reset', 'See HTTPS://EVIL.TEST', 'Go to www.evil.test', 'Go to WWW.evil.test', 'Write to help@evil.test', 'ftp://files.evil.test', 'javascript://x']
+            as $text
+        ) {
             self::assertSame(['address_in_mail', ['key' => 'mail.reset.intro', 'language' => 'sk']], $this->mail(['mail.reset.intro' => ['sk' => $text]]), $text);
         }
         self::assertCount(1, $this->mailChecked(['mail.reset.intro' => ['sk' => 'Otvor odkaz nižšie (www sa nepíše).']]));
@@ -309,13 +360,19 @@ final class StringCheckTest extends TestCase
     public function testTheExtraCheckIsLastAndSeesWhatItJudges(): void
     {
         $seen = [];
-        $config = new TranslationsConfig(extraCheck: function (string $field, string $text, array $about) use (&$seen): ?Refusal {
-            $seen[] = [$field, $text, $about];
+        $config = new TranslationsConfig(
+            extraCheck: function (string $field, string $text, array $about) use (&$seen): ?Refusal {
+                $seen[] = [$field, $text, $about];
 
-            return str_contains($text, 'Fandom')
-                ? Refusal::invalid('names_another_site', 'It names another site ("fandom").', ($about['key'] ?? null) === null ? ['field' => $field] : ['key' => $about['key'], 'language' => $about['language'], 'found' => ['fandom']])
-                : null;
-        });
+                return str_contains($text, 'Fandom')
+                    ? Refusal::invalid(
+                        'names_another_site',
+                        'It names another site ("fandom").',
+                        ($about['key'] ?? null) === null ? ['field' => $field] : ['key' => $about['key'], 'language' => $about['language'], 'found' => ['fandom']],
+                    )
+                    : null;
+            },
+        );
 
         self::assertSame(['names_another_site', ['key' => 'common.save', 'language' => 'sk', 'found' => ['fandom']]], $this->refused(['common.save' => ['sk' => 'Ulož na Fandom']], [], $config));
         self::assertSame([['value', 'Ulož na Fandom', ['key' => 'common.save', 'language' => 'sk', 'language_name' => 'Slovak']]], $seen);

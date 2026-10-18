@@ -71,8 +71,12 @@ final class TranslationsConfig
             throw new InvalidArgumentException('serverNamespaces is a list of namespaces.');
         }
         foreach ($serverNamespaces as $namespace) {
-            if (!is_string($namespace) || preg_match('/^[a-z][A-Za-z0-9]*$/D', $namespace) !== 1
-                || $namespace === rtrim(LibraryWords::PREFIX, '.') || in_array($namespace, self::SUMMARY_FIELDS, true)) {
+            if (
+                !is_string($namespace) ||
+                preg_match('/^[a-z][A-Za-z0-9]*$/D', $namespace) !== 1 ||
+                $namespace === rtrim(LibraryWords::PREFIX, '.') ||
+                in_array($namespace, self::SUMMARY_FIELDS, true)
+            ) {
                 throw new InvalidArgumentException('A server namespace is a namespace of the site\'s own keys, like "mail".');
             }
         }
@@ -81,20 +85,23 @@ final class TranslationsConfig
             throw new InvalidArgumentException('rules is a list of KeyRules.');
         }
         foreach ($rules as $rule) {
-            if (!$rule instanceof KeyRules) {
+            if (!($rule instanceof KeyRules)) {
                 throw new InvalidArgumentException('Every rule must be a KeyRules.');
             }
         }
 
-        foreach ([
-            'languagesMax' => [$languagesMax, 1, 1000],
-            'languageNameMax' => [$languageNameMax, 1, 1000],
-            'sortOrderMax' => [$sortOrderMax, 0, 2_147_483_647],
-            'valueMax' => [$valueMax, 1, 65_535],
-            'bodyLimit' => [$bodyLimit, 1024, 1024 * 1024 * 1024],
-            'auditKeys' => [$auditKeys, 1, 100_000],
-            'auditTextMax' => [$auditTextMax, 1, 65_535],
-        ] as $name => [$value, $min, $max]) {
+        foreach (
+            [
+                'languagesMax' => [$languagesMax, 1, 1000],
+                'languageNameMax' => [$languageNameMax, 1, 1000],
+                'sortOrderMax' => [$sortOrderMax, 0, 2_147_483_647],
+                'valueMax' => [$valueMax, 1, 65_535],
+                'bodyLimit' => [$bodyLimit, 1024, 1024 * 1024 * 1024],
+                'auditKeys' => [$auditKeys, 1, 100_000],
+                'auditTextMax' => [$auditTextMax, 1, 65_535],
+            ]
+            as $name => [$value, $min, $max]
+        ) {
             if ($value < $min || $value > $max) {
                 throw new InvalidArgumentException("$name must be from $min to $max.");
             }

@@ -27,26 +27,32 @@ final class IamAddressesTest extends TestCase
 
     public function testTheIssuerIsHttpsOrThisComputer(): void
     {
-        foreach (['https://iam.anotoki.eu', 'https://iam.test/', 'HTTPS://IAM.TEST', 'http://localhost:4300', 'http://127.0.0.1:8100', 'http://127.1.2.3', 'http://[::1]:4300', 'HTTP://LOCALHOST:4300'] as $issuer) {
+        foreach (
+            ['https://iam.anotoki.eu', 'https://iam.test/', 'HTTPS://IAM.TEST', 'http://localhost:4300', 'http://127.0.0.1:8100', 'http://127.1.2.3', 'http://[::1]:4300', 'HTTP://LOCALHOST:4300']
+            as $issuer
+        ) {
             self::assertTrue(IamClient::secureAddress($issuer), $issuer);
             self::assertSame(rtrim($issuer, '/'), (new IamClient($issuer, 'app'))->issuer, $issuer);
         }
         self::assertFalse((new IamClient('', 'app'))->configured(), 'no issuer: not set up yet, refused as before - never an error');
 
-        foreach ([
-            'http://iam.anotoki.eu',
-            'http://localhost.evil.test',
-            'http://127.0.0.1.evil.test',
-            'http://evil.localhost',
-            'http://0.0.0.0',
-            'ftp://iam.test',
-            'file:///etc/passwd',
-            'php://filter/resource=/etc/passwd',
-            'javascript:alert(1)',
-            '//iam.test',
-            'iam.test',
-            'https://',
-        ] as $issuer) {
+        foreach (
+            [
+                'http://iam.anotoki.eu',
+                'http://localhost.evil.test',
+                'http://127.0.0.1.evil.test',
+                'http://evil.localhost',
+                'http://0.0.0.0',
+                'ftp://iam.test',
+                'file:///etc/passwd',
+                'php://filter/resource=/etc/passwd',
+                'javascript:alert(1)',
+                '//iam.test',
+                'iam.test',
+                'https://',
+            ]
+            as $issuer
+        ) {
             self::assertFalse(IamClient::secureAddress($issuer), $issuer);
             try {
                 IamClient::fromArray(['issuer' => $issuer, 'client_id' => 'app']);
@@ -66,17 +72,20 @@ final class IamAddressesTest extends TestCase
         file_put_contents($file, '{"keys": []}');
         $byStream = new ReflectionMethod(HttpGet::class, 'byStream');
 
-        foreach ([
-            'file://' . $file,
-            'php://filter/resource=' . $file,
-            'compress.zlib://' . $file,
-            'data:application/json,{"keys":[]}',
-            'ftp://127.0.0.1:9/keys.json',
-            'gopher://127.0.0.1:9/_x',
-            'dict://127.0.0.1:9/x',
-            $file,
-            'https:///keys.json',
-        ] as $url) {
+        foreach (
+            [
+                'file://' . $file,
+                'php://filter/resource=' . $file,
+                'compress.zlib://' . $file,
+                'data:application/json,{"keys":[]}',
+                'ftp://127.0.0.1:9/keys.json',
+                'gopher://127.0.0.1:9/_x',
+                'dict://127.0.0.1:9/x',
+                $file,
+                'https:///keys.json',
+            ]
+            as $url
+        ) {
             self::assertFalse(HttpGet::allowed($url), $url);
             self::assertSame(['status' => 0, 'body' => null], HttpGet::fetch($url, 1.0), $url);
             self::assertSame(['status' => 0, 'body' => null], $byStream->invoke(null, $url, 1.0, []), "$url, PHP's streams on their own");

@@ -32,8 +32,13 @@ final class SignInRuleTest extends TestCase
     public function testWhatAnAnswerMeans(): void
     {
         $now = self::NOW;
-        $kept = static fn (?bool $value, int $fetchedAt = 0, int $failedAt = 0, int $triedAt = 0): array => ['login_required' => $value, 'fetched_at' => $fetchedAt, 'failed_at' => $failedAt, 'tried_at' => $triedAt];
-        $answer = static fn (mixed $value, string $clientId = 'app'): string => json_encode(['client_id' => $clientId, 'name' => 'App', 'login_required' => $value]);
+        $kept = static fn(?bool $value, int $fetchedAt = 0, int $failedAt = 0, int $triedAt = 0): array => [
+            'login_required' => $value,
+            'fetched_at' => $fetchedAt,
+            'failed_at' => $failedAt,
+            'tried_at' => $triedAt,
+        ];
+        $answer = static fn(mixed $value, string $clientId = 'app'): string => json_encode(['client_id' => $clientId, 'name' => 'App', 'login_required' => $value]);
 
         $cases = [
             // name => [status, body, kept record, value, reason, kept login_required, kept known]
@@ -75,7 +80,12 @@ final class SignInRuleTest extends TestCase
     public function testWhetherToAsk(): void
     {
         $now = self::NOW;
-        $kept = static fn (?bool $value, int $fetchedAt = 0, int $failedAt = 0, int $triedAt = 0): array => ['login_required' => $value, 'fetched_at' => $fetchedAt, 'failed_at' => $failedAt, 'tried_at' => $triedAt];
+        $kept = static fn(?bool $value, int $fetchedAt = 0, int $failedAt = 0, int $triedAt = 0): array => [
+            'login_required' => $value,
+            'fetched_at' => $fetchedAt,
+            'failed_at' => $failedAt,
+            'tried_at' => $triedAt,
+        ];
 
         $cases = [
             // name => [kept record, fetch, value, reason]
@@ -100,9 +110,16 @@ final class SignInRuleTest extends TestCase
 
     public function testARecordTheSdkKeptIsReadAndSaysWhetherTheIamKnewTheSite(): void
     {
-        self::assertSame(['login_required' => false, 'known' => true, 'fetched_at' => 5, 'failed_at' => 0, 'tried_at' => 0], SignInRule::record(['login_required' => false, 'fetched_at' => 5]), 'only a 200 keeps false');
+        self::assertSame(
+            ['login_required' => false, 'known' => true, 'fetched_at' => 5, 'failed_at' => 0, 'tried_at' => 0],
+            SignInRule::record(['login_required' => false, 'fetched_at' => 5]),
+            'only a 200 keeps false',
+        );
         self::assertNull(SignInRule::record(['login_required' => true, 'fetched_at' => 5])['known'], 'a kept true may have been a 404');
-        self::assertSame(['login_required' => null, 'known' => null, 'fetched_at' => 0, 'failed_at' => 0, 'tried_at' => 0], SignInRule::record(['login_required' => 'false', 'fetched_at' => -3, 'tried_at' => '9']));
+        self::assertSame(
+            ['login_required' => null, 'known' => null, 'fetched_at' => 0, 'failed_at' => 0, 'tried_at' => 0],
+            SignInRule::record(['login_required' => 'false', 'fetched_at' => -3, 'tried_at' => '9']),
+        );
         self::assertSame(['login_required' => null, 'known' => null, 'fetched_at' => 0, 'failed_at' => 0, 'tried_at' => 0], SignInRule::record('garbage'));
     }
 
@@ -133,7 +150,7 @@ final class SignInRuleTest extends TestCase
         $rule->reset();
         self::assertSame([true, 'never_read', true], [$rule->required(), $rule->reason(), $rule->known()], 'unreachable: required, and not known to refuse the site');
         self::assertSame([], glob($iam->dir . '/cache/*') ?: [], 'nothing kept in cache_dir');
-        self::assertCount(2, array_filter(LogLines::take(), static fn (string $line): bool => str_contains($line, 'never_read')), 'each answer that was none is said: another client\'s, and no answer');
+        self::assertCount(2, array_filter(LogLines::take(), static fn(string $line): bool => str_contains($line, 'never_read')), 'each answer that was none is said: another client\'s, and no answer');
     }
 
     public function testTheSitesOwnReasonToRequireSigningIn(): void
@@ -141,9 +158,12 @@ final class SignInRuleTest extends TestCase
         $iam = TestIam::create($this->folder('iam'), 'http://127.0.0.1:9', 'app');
         $iam->signInRule(false);
         $pending = true;
-        $rule = new SignInRule($iam->client(), requiredWhen: function () use (&$pending): bool {
-            return $pending;
-        });
+        $rule = new SignInRule(
+            $iam->client(),
+            requiredWhen: function () use (&$pending): bool {
+                return $pending;
+            },
+        );
 
         self::assertSame([true, 'site', true], [$rule->required(), $rule->reason(), $rule->known()]);
         $pending = false;
@@ -154,7 +174,7 @@ final class SignInRuleTest extends TestCase
     public function testTheKeptAnswerAndTheMemo(): void
     {
         $client = IamClient::fromArray(['issuer' => 'http://127.0.0.1:9', 'client_id' => 'app', 'cache_dir' => $this->folder('cache')]);
-        $rule = new SignInRule($client, fetch: static fn (): array => ['status' => 0, 'body' => null]);
+        $rule = new SignInRule($client, fetch: static fn(): array => ['status' => 0, 'body' => null]);
         $file = (string) $rule->cacheFile();
         self::assertSame($this->folder('cache') . '/anotoki-iam-application-' . sha1('http://127.0.0.1:9 app') . '.json', $file, 'the SDK\'s file');
 
@@ -166,18 +186,25 @@ final class SignInRuleTest extends TestCase
         self::assertSame([true, 'fresh'], [$rule->required(), $rule->reason()], 'the memo reset: the kept answer read again');
 
         file_put_contents($file, '{"login_required": "false", "fetched_at": ' . time() . '}');
-        self::assertSame(['fetch' => true, 'value' => true, 'reason' => 'fetch'], SignInRule::fromCache(json_decode((string) file_get_contents($file), true), time(), 60, 2), 'a kept non-bool counts as never read');
+        self::assertSame(
+            ['fetch' => true, 'value' => true, 'reason' => 'fetch'],
+            SignInRule::fromCache(json_decode((string) file_get_contents($file), true), time(), 60, 2),
+            'a kept non-bool counts as never read',
+        );
     }
 
     public function testOneRequestAsksAtATime(): void
     {
         $client = IamClient::fromArray(['issuer' => 'http://127.0.0.1:9', 'client_id' => 'app', 'cache_dir' => $this->folder('cache')]);
         $asked = 0;
-        $rule = new SignInRule($client, fetch: function () use (&$asked): array {
-            $asked++;
+        $rule = new SignInRule(
+            $client,
+            fetch: function () use (&$asked): array {
+                $asked++;
 
-            return ['status' => 0, 'body' => null];
-        });
+                return ['status' => 0, 'body' => null];
+            },
+        );
         $file = (string) $rule->cacheFile();
 
         // A stale answer, and another request holding the lock: not asked, the last value.
@@ -208,7 +235,7 @@ final class SignInRuleTest extends TestCase
         $client = $standIn->client(['issuer' => $standIn->issuer . '/']);
         $rule = new SignInRule($client);
         $file = (string) $rule->cacheFile();
-        $hits = static fn (): int => count(array_filter($standIn->log(), static fn (string $line): bool => $line === 'GET /api/public/applications/app'));
+        $hits = static fn(): int => count(array_filter($standIn->log(), static fn(string $line): bool => $line === 'GET /api/public/applications/app'));
         $age = static function (array $changes) use ($file): void {
             file_put_contents($file, json_encode(array_merge(SignInRule::record(json_decode((string) file_get_contents($file), true)), $changes)));
         };
@@ -275,7 +302,7 @@ final class SignInRuleTest extends TestCase
             $unwritable->reset();
             self::assertTrue($unwritable->required());
             self::assertSame($before + 2, $hits());
-            self::assertNotSame([], array_filter(LogLines::take(), static fn (string $line): bool => str_contains($line, 'cache_dir') || str_contains($line, 'cannot write')));
+            self::assertNotSame([], array_filter(LogLines::take(), static fn(string $line): bool => str_contains($line, 'cache_dir') || str_contains($line, 'cannot write')));
         } finally {
             $standIn->stop();
         }

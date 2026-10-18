@@ -29,9 +29,7 @@ final class AuditContextMiddleware implements MiddlewareInterface
     /**
      * @param Closure(ServerRequestInterface): array{actor?: int|string|null, session?: ?string} $actorOf
      */
-    private function __construct(private readonly AuditLog $log, private readonly Closure $actorOf)
-    {
-    }
+    private function __construct(private readonly AuditLog $log, private readonly Closure $actorOf) {}
 
     /**
      * @param Closure(ServerRequestInterface): array{actor?: int|string|null, session?: ?string} $actorOf
@@ -53,11 +51,7 @@ final class AuditContextMiddleware implements MiddlewareInterface
         $actor = $who['actor'] ?? null;
         $session = $who['session'] ?? null;
 
-        $context = $this->log->begin(
-            $request,
-            is_int($actor) || is_string($actor) ? $actor : null,
-            is_string($session) && $session !== '' ? $session : null,
-        );
+        $context = $this->log->begin($request, is_int($actor) || is_string($actor) ? $actor : null, is_string($session) && $session !== '' ? $session : null);
         $request = $request->withAttribute(self::ATTRIBUTE, $context);
         try {
             return $handler->handle($request);

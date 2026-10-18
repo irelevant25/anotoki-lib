@@ -18,13 +18,11 @@ use Anotoki\Lib\Translations\Text;
 final class MailLikeRules implements KeyRules
 {
     /** @param array<string, list<string>> $placeholders  MAIL_KEYS: each mail key's placeholders */
-    public function __construct(private readonly array $placeholders)
-    {
-    }
+    public function __construct(private readonly array $placeholders) {}
 
     public function placeholders(string $key): ?array
     {
-        return str_starts_with($key, 'mail.') ? ($this->placeholders[$key] ?? []) : null;
+        return str_starts_with($key, 'mail.') ? $this->placeholders[$key] ?? [] : null;
     }
 
     public function checkFirst(string $key, string $code, string $text, string $languageName, array $placeholders): ?Refusal
@@ -48,10 +46,10 @@ final class MailLikeRules implements KeyRules
             return Refusal::invalid(
                 'invalid_value',
                 $named > 1
-                    ? "The $languageName string of \"$key\" is too long for one line of a mail: it has {username} $named times, and room for the longest name there can be is kept for each - "
-                        . ($room > 0 ? "which leaves $room bytes, and it has " . strlen($text) : 'which leaves none')
+                    ? "The $languageName string of \"$key\" is too long for one line of a mail: it has {username} $named times, and room for the longest name there can be is kept for each - " .
+                        ($room > 0 ? "which leaves $room bytes, and it has " . strlen($text) : 'which leaves none')
                     : "The $languageName string of \"$key\" is too long for one line of a mail: at most $room bytes, and its letters take more than one each - it has " . strlen($text),
-                $about
+                $about,
             );
         }
 
@@ -72,7 +70,11 @@ final class MailLikeRules implements KeyRules
         }
         $unknown = array_values(array_diff($used, $placeholders));
         if ($unknown !== []) {
-            return Refusal::invalid('unknown_placeholder', "The $languageName string of \"$key\" cannot use {{$unknown[0]}}: the IAM has no value for it there", $about + ['placeholder' => $unknown[0]]);
+            return Refusal::invalid(
+                'unknown_placeholder',
+                "The $languageName string of \"$key\" cannot use {{$unknown[0]}}: the IAM has no value for it there",
+                $about + ['placeholder' => $unknown[0]],
+            );
         }
         if (preg_match('~(://|\bwww\.|@)~i', $text) === 1) {
             return Refusal::invalid('address_in_mail', "The $languageName string of \"$key\" reads as if it had an address in it. A mail's only link is the one the IAM puts in.", $about);

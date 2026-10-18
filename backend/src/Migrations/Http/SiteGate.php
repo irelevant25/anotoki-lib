@@ -69,9 +69,7 @@ final class SiteGate implements MiddlewareInterface
             $body = [
                 'code' => 'not_set_up',
                 'installed' => $installed,
-                'message' => $installed
-                    ? 'The site is not available right now. Try again in a few minutes.'
-                    : 'This site is not set up yet. Its setup page connects it to its database.',
+                'message' => $installed ? 'The site is not available right now. Try again in a few minutes.' : 'This site is not set up yet. Its setup page connects it to its database.',
             ];
             if (!$installed) {
                 $body['setup'] = $this->setupPath;

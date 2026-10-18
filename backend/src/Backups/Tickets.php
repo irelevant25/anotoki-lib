@@ -25,9 +25,7 @@ use RuntimeException;
  */
 final class Tickets
 {
-    public function __construct(private readonly string $directory, private readonly int $seconds = 60)
-    {
-    }
+    public function __construct(private readonly string $directory, private readonly int $seconds = 60) {}
 
     /** A new ticket for the backup $id (the ticket itself: the only time it is anywhere but the browser). */
     public function issue(string $id, int|string|null $actorId): string
@@ -89,17 +87,13 @@ final class Tickets
     {
         if ($by !== null) {
             $asking = $by[0] ?? null;
-            $issuedTo = is_array($data) ? ($data['by'] ?? null) : null;
+            $issuedTo = is_array($data) ? $data['by'] ?? null : null;
             if (!is_scalar($asking) || !is_scalar($issuedTo) || (string) $asking !== (string) $issuedTo) {
                 return false;
             }
         }
 
-        return is_array($data)
-            && is_string($data['backup'] ?? null)
-            && hash_equals($data['backup'], $id)
-            && is_int($data['expires'] ?? null)
-            && $data['expires'] >= time();
+        return is_array($data) && is_string($data['backup'] ?? null) && hash_equals($data['backup'], $id) && is_int($data['expires'] ?? null) && $data['expires'] >= time();
     }
 
     /** Tickets past their time go (they would be refused anyway). */

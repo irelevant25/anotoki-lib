@@ -110,13 +110,13 @@ abstract class DatabaseTestCase extends TestCase
                FROM pg_attribute a
                LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
               WHERE a.attrelid = CAST(? AS regclass) AND a.attnum > 0 AND NOT a.attisdropped
-              ORDER BY a.attnum"
+              ORDER BY a.attnum",
         );
         $columns->execute([$table]);
 
         $constraints = $this->pdo->prepare(
             "SELECT conname || ' ' || pg_get_constraintdef(oid) FROM pg_constraint
-              WHERE conrelid = CAST(? AS regclass) AND contype IN ('p', 'u', 'c', 'f') ORDER BY conname"
+              WHERE conrelid = CAST(? AS regclass) AND contype IN ('p', 'u', 'c', 'f') ORDER BY conname",
         );
         $constraints->execute([$table]);
 

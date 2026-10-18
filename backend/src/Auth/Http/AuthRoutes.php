@@ -38,13 +38,8 @@ final class AuthRoutes
     /**
      * @param ?Closure(): array<string, mixed> $extra
      */
-    public static function config(
-        RouteCollectorProxyInterface $app,
-        SignInRule $rule,
-        IamClient $iam,
-        string $path = self::CONFIG_PATH,
-        ?Closure $extra = null,
-    ): RouteInterface {
+    public static function config(RouteCollectorProxyInterface $app, SignInRule $rule, IamClient $iam, string $path = self::CONFIG_PATH, ?Closure $extra = null): RouteInterface
+    {
         $route = $app->get($path, function (ServerRequestInterface $request, ResponseInterface $response) use ($rule, $iam, $extra): ResponseInterface {
             return JsonResponse::write($response, 200, self::configBody($rule, $iam, $extra));
         });

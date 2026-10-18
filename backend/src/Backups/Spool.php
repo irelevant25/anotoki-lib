@@ -86,7 +86,7 @@ final class Spool
     {
         $prefix = self::SCHEME . '://';
 
-        return str_starts_with($url, $prefix) ? (self::$open[substr($url, strlen($prefix))] ?? null) : null;
+        return str_starts_with($url, $prefix) ? self::$open[substr($url, strlen($prefix))] ?? null : null;
     }
 
     /**

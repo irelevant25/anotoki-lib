@@ -39,8 +39,7 @@ final class Person
         public readonly ?int $authTime,
         public readonly string $scope,
         public readonly array $claims,
-    ) {
-    }
+    ) {}
 
     /**
      * The person of verified claims, or null when they name nobody usable (the

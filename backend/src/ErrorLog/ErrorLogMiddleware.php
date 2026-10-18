@@ -34,9 +34,7 @@ final class ErrorLogMiddleware implements MiddlewareInterface
     private const INNER = 'inner';
     private const OWN = 'own';
 
-    private function __construct(private readonly ErrorLog $log, private readonly string $place)
-    {
-    }
+    private function __construct(private readonly ErrorLog $log, private readonly string $place) {}
 
     public static function outer(ErrorLog $log): self
     {

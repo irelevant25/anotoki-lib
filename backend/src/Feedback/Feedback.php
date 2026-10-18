@@ -67,10 +67,7 @@ final class Feedback
     /** The limits' count, under the site's storage: a day of keyed hashes and times, nothing else. */
     public const LIMITS_FILE = 'cache/anotoki-feedback-limits.json';
 
-    private const OPTIONS = [
-        'kinds', 'sections', 'fields', 'limits', 'honeypot', 'signedInOnly', 'subjectRequiredFor', 'key', 'storage',
-        'keep', 'notify', 'defer',
-    ];
+    private const OPTIONS = ['kinds', 'sections', 'fields', 'limits', 'honeypot', 'signedInOnly', 'subjectRequiredFor', 'key', 'storage', 'keep', 'notify', 'defer'];
 
     /** @var list<string> */
     private readonly array $kinds;
@@ -134,7 +131,7 @@ final class Feedback
             throw new InvalidArgumentException('Feedback needs at least one kind.');
         }
         $this->kinds = $kinds;
-        $this->sections = array_values(array_map(static fn (mixed $section): string => Utf8::prefix((string) $section, 100), $options['sections'] ?? []));
+        $this->sections = array_values(array_map(static fn(mixed $section): string => Utf8::prefix((string) $section, 100), $options['sections'] ?? []));
         $fields = [];
         foreach ($options['fields'] ?? [] as $name => $limit) {
             if (!is_string($name) || preg_match('/^[a-z][a-z0-9_]{0,63}$/D', $name) !== 1 || !is_int($limit) || $limit < 1 || $limit > 10000) {
@@ -222,13 +219,22 @@ final class Feedback
 
         $id = $this->withinLimits($account !== null ? 'account:' . $account : null, $clientKey, function () use ($row): int {
             $statement = ($this->pdo)()->prepare(
-                'INSERT INTO ' . Schema::FEEDBACK_TABLE . ' (kind, section, subject, message, details, contact_email, user_id, page, language, user_agent)
-                 VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?) RETURNING id'
+                'INSERT INTO ' .
+                    Schema::FEEDBACK_TABLE .
+                    ' (kind, section, subject, message, details, contact_email, user_id, page, language, user_agent)
+                 VALUES (?, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?) RETURNING id',
             );
             $statement->execute([
-                $row['kind'], $row['section'], $row['subject'], $row['message'],
+                $row['kind'],
+                $row['section'],
+                $row['subject'],
+                $row['message'],
                 json_encode($row['details'] === [] ? new \stdClass() : $row['details'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                $row['contact_email'], $row['user_id'], $row['page'], $row['language'], $row['user_agent'],
+                $row['contact_email'],
+                $row['user_id'],
+                $row['page'],
+                $row['language'],
+                $row['user_agent'],
             ]);
 
             return (int) $statement->fetchColumn();
@@ -284,8 +290,7 @@ final class Feedback
         $count = $pdo->prepare('SELECT count(*) FROM ' . Schema::FEEDBACK_TABLE . $sql);
         $count->execute($parameters);
         $rows = $pdo->prepare(
-            'SELECT ' . self::columns() . ' FROM ' . Schema::FEEDBACK_TABLE . $sql
-            . ' ORDER BY created_at DESC, id DESC LIMIT ' . self::PAGE_SIZE . ' OFFSET ' . (($page - 1) * self::PAGE_SIZE)
+            'SELECT ' . self::columns() . ' FROM ' . Schema::FEEDBACK_TABLE . $sql . ' ORDER BY created_at DESC, id DESC LIMIT ' . self::PAGE_SIZE . ' OFFSET ' . ($page - 1) * self::PAGE_SIZE,
         );
         $rows->execute($parameters);
 
@@ -310,7 +315,9 @@ final class Feedback
     /** A new message opened: read. Not a decision anybody made, so nobody is named for it. */
     public function markRead(int $id): void
     {
-        ($this->pdo)()->prepare("UPDATE " . Schema::FEEDBACK_TABLE . " SET status = 'read', updated_at = now() WHERE id = ? AND status = 'new'")->execute([$id]);
+        ($this->pdo)()
+            ->prepare('UPDATE ' . Schema::FEEDBACK_TABLE . " SET status = 'read', updated_at = now() WHERE id = ? AND status = 'new'")
+            ->execute([$id]);
     }
 
     /**
@@ -324,9 +331,7 @@ final class Feedback
         if (!in_array($status, self::STATUSES, true)) {
             return Refusal::invalid('status_unknown', 'A message is new, read, resolved or spam.', ['statuses' => self::STATUSES]);
         }
-        $statement = ($this->pdo)()->prepare(
-            'UPDATE ' . Schema::FEEDBACK_TABLE . ' SET status = ?, handled_by = ?, handled_at = now(), updated_at = now() WHERE id = ?'
-        );
+        $statement = ($this->pdo)()->prepare('UPDATE ' . Schema::FEEDBACK_TABLE . ' SET status = ?, handled_by = ?, handled_at = now(), updated_at = now() WHERE id = ?');
         $statement->execute([$status, self::id($actorId), $id]);
 
         return $statement->rowCount() === 0 ? null : $this->get($id);
@@ -442,7 +447,9 @@ final class Feedback
     /** How many messages nobody opened yet - the admin panel's badge. */
     public function unreadCount(): int
     {
-        return (int) ($this->pdo)()->query("SELECT count(*) FROM " . Schema::FEEDBACK_TABLE . " WHERE status = 'new'")->fetchColumn();
+        return (int) ($this->pdo)()
+            ->query('SELECT count(*) FROM ' . Schema::FEEDBACK_TABLE . " WHERE status = 'new'")
+            ->fetchColumn();
     }
 
     /**
@@ -453,12 +460,14 @@ final class Feedback
     public function summary(): array
     {
         $pdo = ($this->pdo)();
-        $row = $pdo->query(
-            "SELECT count(*), count(*) FILTER (WHERE status = 'new'),
+        $row = $pdo
+            ->query(
+                "SELECT count(*), count(*) FILTER (WHERE status = 'new'),
                     count(*) FILTER (WHERE created_at >= now() - interval '7 days'),
                     count(*) FILTER (WHERE created_at >= now() - interval '30 days')
-               FROM " . Schema::FEEDBACK_TABLE
-        )->fetch(PDO::FETCH_NUM);
+               FROM " . Schema::FEEDBACK_TABLE,
+            )
+            ->fetch(PDO::FETCH_NUM);
         $byKind = [];
         foreach ($pdo->query('SELECT kind, count(*) FROM ' . Schema::FEEDBACK_TABLE . ' GROUP BY kind ORDER BY kind COLLATE "C"')->fetchAll(PDO::FETCH_NUM) as [$kind, $count]) {
             $byKind[(string) $kind] = (int) $count;
@@ -487,13 +496,15 @@ final class Feedback
      */
     public static function forgetPeopleOn(PDO $pdo, array $ids): int
     {
-        $ids = array_values(array_filter(array_map('strval', $ids), static fn (string $id): bool => ctype_digit($id) && strlen($id) <= 18));
+        $ids = array_values(array_filter(array_map('strval', $ids), static fn(string $id): bool => ctype_digit($id) && strlen($id) <= 18));
         if ($ids === []) {
             return 0;
         }
         $statement = $pdo->prepare(
-            'UPDATE ' . Schema::FEEDBACK_TABLE . ' SET contact_email = NULL, user_agent = NULL, updated_at = now()
-              WHERE user_id = ANY (CAST(? AS bigint[])) AND (contact_email IS NOT NULL OR user_agent IS NOT NULL)'
+            'UPDATE ' .
+                Schema::FEEDBACK_TABLE .
+                ' SET contact_email = NULL, user_agent = NULL, updated_at = now()
+              WHERE user_id = ANY (CAST(? AS bigint[])) AND (contact_email IS NOT NULL OR user_agent IS NOT NULL)',
         );
         $statement->execute(['{' . implode(',', $ids) . '}']);
 
@@ -510,9 +521,9 @@ final class Feedback
     public function prune(): array
     {
         $pdo = ($this->pdo)();
-        $spam = $pdo->prepare("DELETE FROM " . Schema::FEEDBACK_TABLE . " WHERE status = 'spam' AND COALESCE(handled_at, updated_at) < now() - CAST(? AS interval)");
+        $spam = $pdo->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . " WHERE status = 'spam' AND COALESCE(handled_at, updated_at) < now() - CAST(? AS interval)");
         $spam->execute([$this->keep['spam'] . ' days']);
-        $resolved = $pdo->prepare("DELETE FROM " . Schema::FEEDBACK_TABLE . " WHERE status = 'resolved' AND COALESCE(handled_at, updated_at) < now() - CAST(? AS interval)");
+        $resolved = $pdo->prepare('DELETE FROM ' . Schema::FEEDBACK_TABLE . " WHERE status = 'resolved' AND COALESCE(handled_at, updated_at) < now() - CAST(? AS interval)");
         $resolved->execute([$this->keep['resolved'] . ' days']);
 
         return ['spam' => $spam->rowCount(), 'resolved' => $resolved->rowCount()];
@@ -646,7 +657,7 @@ final class Feedback
 
             $sender = hash_hmac('sha256', $account ?? $clientKey, $this->key());
             $mine = ($account !== null ? $accounts : $visitors)[$sender] ?? [];
-            $lastHour = array_values(array_filter($mine, static fn (int $at): bool => $at > $now - 3600));
+            $lastHour = array_values(array_filter($mine, static fn(int $at): bool => $at > $now - 3600));
             if (count($lastHour) >= $this->limits['perHour']) {
                 return self::tooMany(min($lastHour) + 3600 - $now, 'That is a lot of messages in one hour. Try again later.');
             }
@@ -687,7 +698,7 @@ final class Feedback
     {
         $out = [];
         foreach (is_array($senders) ? $senders : [] as $sender => $times) {
-            $kept = array_values(array_filter(is_array($times) ? $times : [], static fn (mixed $at): bool => is_int($at) && $at > $now - 86400 && $at <= $now));
+            $kept = array_values(array_filter(is_array($times) ? $times : [], static fn(mixed $at): bool => is_int($at) && $at > $now - 86400 && $at <= $now));
             if ($kept !== [] && preg_match('/^[0-9a-f]{64}$/D', (string) $sender) === 1) {
                 $out[(string) $sender] = $kept;
             }
@@ -708,9 +719,7 @@ final class Feedback
      */
     private static function plainAddress(string $email): bool
     {
-        return strlen($email) <= 254
-            && preg_match('/[?&=%#\s\x00-\x1F\x7F]/', $email) !== 1
-            && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        return strlen($email) <= 254 && preg_match('/[?&=%#\s\x00-\x1F\x7F]/', $email) !== 1 && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     private function key(): string
@@ -735,9 +744,14 @@ final class Feedback
 
     private static function columns(): string
     {
-        return 'id, ' . AuditLog::isoColumn('created_at') . ' AS created_at, ' . AuditLog::isoColumn('updated_at') . ' AS updated_at, kind, status, section, subject, message,
-                details::text AS details, contact_email, user_id, page, language, user_agent, handled_by, '
-            . AuditLog::isoColumn('handled_at') . ' AS handled_at';
+        return 'id, ' .
+            AuditLog::isoColumn('created_at') .
+            ' AS created_at, ' .
+            AuditLog::isoColumn('updated_at') .
+            ' AS updated_at, kind, status, section, subject, message,
+                details::text AS details, contact_email, user_id, page, language, user_agent, handled_by, ' .
+            AuditLog::isoColumn('handled_at') .
+            ' AS handled_at';
     }
 
     /**

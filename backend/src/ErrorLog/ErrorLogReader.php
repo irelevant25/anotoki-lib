@@ -22,9 +22,7 @@ final class ErrorLogReader
     /** The most lines one answer reads. */
     public const LIMIT = 2000;
 
-    public function __construct(private readonly string $directory, private readonly int $days = 30)
-    {
-    }
+    public function __construct(private readonly string $directory, private readonly int $days = 30) {}
 
     /**
      * The page's answer for the last $filter['days'] days (1-30):
@@ -132,7 +130,7 @@ final class ErrorLogReader
         if ($before === null) {
             @unlink($dropped);
         } elseif (is_file($dropped)) {
-            $kept = array_filter($this->dropped(), static fn (string $day): bool => $day >= $before, ARRAY_FILTER_USE_KEY);
+            $kept = array_filter($this->dropped(), static fn(string $day): bool => $day >= $before, ARRAY_FILTER_USE_KEY);
             if ($kept === []) {
                 @unlink($dropped);
             } else {
@@ -182,7 +180,7 @@ final class ErrorLogReader
             }
         }
         // Newest day first; within a day, the last part first.
-        usort($files, static fn (array $a, array $b): int => [$b['day'], $b['part']] <=> [$a['day'], $a['part']]);
+        usort($files, static fn(array $a, array $b): int => [$b['day'], $b['part']] <=> [$a['day'], $a['part']]);
 
         $available = array_values(array_unique(array_column($files, 'day')));
         // A legacy day is the server's local date: a day more, so its last hours are not left out.
@@ -263,7 +261,7 @@ final class ErrorLogReader
     private static function traceOf(mixed $trace): ?array
     {
         if (is_string($trace)) {
-            return array_values(array_filter(explode("\n", $trace), static fn (string $line): bool => $line !== ''));
+            return array_values(array_filter(explode("\n", $trace), static fn(string $line): bool => $line !== ''));
         }
         if (is_array($trace)) {
             return array_values(array_map('strval', array_filter($trace, 'is_scalar')));
@@ -279,9 +277,7 @@ final class ErrorLogReader
             return '';
         }
         try {
-            return (new DateTimeImmutable($at, new DateTimeZone(date_default_timezone_get())))
-                ->setTimezone(new DateTimeZone('UTC'))
-                ->format('Y-m-d\TH:i:s.v\Z');
+            return (new DateTimeImmutable($at, new DateTimeZone(date_default_timezone_get())))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z');
         } catch (Throwable) {
             return '';
         }
@@ -297,9 +293,7 @@ final class ErrorLogReader
             return false;
         }
         if ($filter['search'] !== '') {
-            $haystack = strtolower(implode("\n", array_map('strval', [
-                $entry['type'], $entry['code'], $entry['message'], $entry['path'], $entry['route'], $entry['file'],
-            ])));
+            $haystack = strtolower(implode("\n", array_map('strval', [$entry['type'], $entry['code'], $entry['message'], $entry['path'], $entry['route'], $entry['file']])));
             if (!str_contains($haystack, strtolower($filter['search']))) {
                 return false;
             }
@@ -379,7 +373,7 @@ final class ErrorLogReader
         unset($group);
 
         $groups = array_values($groups);
-        usort($groups, static fn (array $a, array $b): int => [$b['count'], $b['last_at']] <=> [$a['count'], $a['last_at']]);
+        usort($groups, static fn(array $a, array $b): int => [$b['count'], $b['last_at']] <=> [$a['count'], $a['last_at']]);
 
         return $groups;
     }
@@ -390,7 +384,7 @@ final class ErrorLogReader
      */
     private static function newestFirst(array $entries): array
     {
-        usort($entries, static fn (array $a, array $b): int => strcmp((string) $b['at'], (string) $a['at']));
+        usort($entries, static fn(array $a, array $b): int => strcmp((string) $b['at'], (string) $a['at']));
 
         return $entries;
     }

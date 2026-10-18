@@ -38,15 +38,13 @@ final class ChunkCipher
     private bool $finished = false;
 
     /** @param \Closure(string): void $sink */
-    private function __construct(private readonly string $key, private readonly string $aad, private readonly \Closure $sink)
-    {
-    }
+    private function __construct(private readonly string $key, private readonly string $aad, private readonly \Closure $sink) {}
 
     /** Whether AES-256-GCM is there to use. */
     public static function available(): bool
     {
-        return (function_exists('openssl_encrypt') && in_array('aes-256-gcm', openssl_get_cipher_methods(), true))
-            || (function_exists('sodium_crypto_aead_aes256gcm_is_available') && sodium_crypto_aead_aes256gcm_is_available());
+        return (function_exists('openssl_encrypt') && in_array('aes-256-gcm', openssl_get_cipher_methods(), true)) ||
+            (function_exists('sodium_crypto_aead_aes256gcm_is_available') && sodium_crypto_aead_aes256gcm_is_available());
     }
 
     /** One backup's key, from the site's backup key and the backup's salt. */

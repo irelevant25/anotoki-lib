@@ -26,18 +26,18 @@ namespace Anotoki\Lib\Support;
 final class GuardedDirectory
 {
     public const HTACCESS = <<<'TXT'
-# Written by anotoki-lib (Anotoki\Lib\Support\GuardedDirectory): what this
-# folder holds - logs, backups, caches, keys - is never served to anybody.
-<IfModule mod_authz_core.c>
-    Require all denied
-</IfModule>
-<IfModule !mod_authz_core.c>
-    Order allow,deny
-    Deny from all
-</IfModule>
-Options -Indexes
+    # Written by anotoki-lib (Anotoki\Lib\Support\GuardedDirectory): what this
+    # folder holds - logs, backups, caches, keys - is never served to anybody.
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+    Options -Indexes
 
-TXT;
+    TXT;
 
     /**
      * Makes $directory (with its parents, mode 0700: the site's own user

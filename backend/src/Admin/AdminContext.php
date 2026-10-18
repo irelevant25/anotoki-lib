@@ -107,7 +107,7 @@ final class AdminContext
      */
     public function names(array $ids): array
     {
-        $ids = array_values(array_unique(array_filter($ids, static fn (mixed $id): bool => is_int($id) || (is_string($id) && $id !== ''))));
+        $ids = array_values(array_unique(array_filter($ids, static fn(mixed $id): bool => is_int($id) || (is_string($id) && $id !== ''))));
         if ($this->names === null || $ids === []) {
             return [];
         }
@@ -246,9 +246,7 @@ final class AdminContext
     /** The refusal as the site answers one. */
     public function refuse(ResponseInterface $response, Refusal $refusal): ResponseInterface
     {
-        $response = $this->error !== null
-            ? ($this->error)($response, $refusal)
-            : JsonResponse::write($response, $refusal->status, $refusal->body());
+        $response = $this->error !== null ? ($this->error)($response, $refusal) : JsonResponse::write($response, $refusal->status, $refusal->body());
         if ($refusal->status === 503 && !$response->hasHeader('Retry-After')) {
             $response = $response->withHeader('Retry-After', '60');
         }

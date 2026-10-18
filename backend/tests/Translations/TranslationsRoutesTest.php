@@ -116,13 +116,16 @@ final class TranslationsRoutesTest extends DatabaseTestCase
 
             return $response->withStatus($refusal->status)->withHeader('Content-Type', 'application/json');
         };
-        TranslationsRoutes::bundle($app, fn (): Translations => new Translations($this->pdo), $iamError);
-        TranslationsRoutes::strings($app, '/api/admin', fn (): Translations => new Translations($this->pdo), static fn (): ?int => 1, $iamError);
+        TranslationsRoutes::bundle($app, fn(): Translations => new Translations($this->pdo), $iamError);
+        TranslationsRoutes::strings($app, '/api/admin', fn(): Translations => new Translations($this->pdo), static fn(): ?int => 1, $iamError);
 
         self::assertSame('{"error":"There is no such language.","code":"not_found"}', (string) $this->request($app, 'GET', '/api/translations/EN')->getBody());
         $refused = $this->request($app, 'PUT', '/api/admin/translations', [], ['values' => ['no.such' => ['en' => 'x']]]);
         self::assertSame(422, $refused->getStatusCode());
-        self::assertSame(['error' => 'The site has no key "no.such". Keys are made by the code, never here.', 'code' => 'unknown_key', 'key' => 'no.such', 'keys' => ['no.such']], $this->json($refused));
+        self::assertSame(
+            ['error' => 'The site has no key "no.such". Keys are made by the code, never here.', 'code' => 'unknown_key', 'key' => 'no.such', 'keys' => ['no.such']],
+            $this->json($refused),
+        );
     }
 
     public function testThereIsNothingElseUnderTheBundlesPath(): void
@@ -145,7 +148,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame('no-store', $languages->getHeaderLine('Cache-Control'));
         self::assertSame(
             ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'enabled' => true, 'sort_order' => 1, 'seeded' => true, 'strings' => 2 + count(LibraryWords::keys()), 'accounts' => 4],
-            $this->json($languages)['languages'][0]
+            $this->json($languages)['languages'][0],
         );
         $grid = $this->json($this->request($app, 'GET', '/api/admin/translations'));
         self::assertSame(['languages', 'keys'], array_keys($grid));
@@ -156,16 +159,34 @@ final class TranslationsRoutesTest extends DatabaseTestCase
     {
         $app = $this->app();
 
-        $response = $this->request($app, 'PUT', '/api/admin/translations', ['X-Request-Id' => 'r1'], ['values' => ['common.save' => ['sk' => 'Ulož'], 'mail.reset.subject' => ['sk' => 'Obnov si heslo']]]);
+        $response = $this->request(
+            $app,
+            'PUT',
+            '/api/admin/translations',
+            ['X-Request-Id' => 'r1'],
+            ['values' => ['common.save' => ['sk' => 'Ulož'], 'mail.reset.subject' => ['sk' => 'Obnov si heslo']]],
+        );
 
         self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
         self::assertSame(['languages', 'keys'], array_keys($this->json($response)));
         self::assertSame('42', $this->value("SELECT updated_by::text FROM translations WHERE key_name = 'common.save' AND language_code = 'sk'"));
-        self::assertSame([[
-            'translations.saved', null, null,
-            ['languages' => ['sk'], 'count' => 2, 'keys' => ['common.save', 'mail.reset.subject'], 'mail' => [['key' => 'mail.reset.subject', 'language' => 'sk', 'old' => null, 'new' => 'Obnov si heslo']]],
-            'r1',
-        ]], $this->audited);
+        self::assertSame(
+            [
+                [
+                    'translations.saved',
+                    null,
+                    null,
+                    [
+                        'languages' => ['sk'],
+                        'count' => 2,
+                        'keys' => ['common.save', 'mail.reset.subject'],
+                        'mail' => [['key' => 'mail.reset.subject', 'language' => 'sk', 'old' => null, 'new' => 'Obnov si heslo']],
+                    ],
+                    'r1',
+                ],
+            ],
+            $this->audited,
+        );
 
         $this->request($app, 'PUT', '/api/admin/translations', [], ['values' => ['common.save' => ['sk' => 'Ulož']]]);
         self::assertCount(1, $this->audited, 'nothing changed: nothing audited');
@@ -174,20 +195,23 @@ final class TranslationsRoutesTest extends DatabaseTestCase
     public function testTheBodyIsReadByTheLibraryJsonOnly(): void
     {
         $app = $this->app();
-        $put = fn (string $body, array $headers = []): ResponseInterface => $this->raw($app, 'PUT', '/api/admin/translations', $body, $headers);
+        $put = fn(string $body, array $headers = []): ResponseInterface => $this->raw($app, 'PUT', '/api/admin/translations', $body, $headers);
 
-        foreach ([
-            [$put('{"values": {}}', ['Content-Type' => 'application/x-www-form-urlencoded']), 415, 'unsupported_media_type'],
-            [$put('{"values": {}}', ['Content-Type' => '']), 415, 'unsupported_media_type'],
-            [$put('{"values": {}}', ['Content-Length' => (string) (2 * 1024 * 1024)]), 413, 'too_large'],
-            [$put('{"values": {"common.save": {"sk": "' . str_repeat('a', 1024 * 1024) . '"}}}', ['Content-Length' => '']), 413, 'too_large'],
-            [$put(''), 422, 'empty_body'],
-            [$put('{"values": '), 400, 'invalid_json'],
-            [$put('{"values": []}'), 422, 'invalid_value'],
-            [$put('[]'), 422, 'invalid_value'],
-            [$put('{"values": {"common.save": []}}'), 422, 'invalid_value'],
-            [$put('{"values": {"common.save": "Save"}}'), 422, 'invalid_value'],
-        ] as $index => [$response, $status, $code]) {
+        foreach (
+            [
+                [$put('{"values": {}}', ['Content-Type' => 'application/x-www-form-urlencoded']), 415, 'unsupported_media_type'],
+                [$put('{"values": {}}', ['Content-Type' => '']), 415, 'unsupported_media_type'],
+                [$put('{"values": {}}', ['Content-Length' => (string) (2 * 1024 * 1024)]), 413, 'too_large'],
+                [$put('{"values": {"common.save": {"sk": "' . str_repeat('a', 1024 * 1024) . '"}}}', ['Content-Length' => '']), 413, 'too_large'],
+                [$put(''), 422, 'empty_body'],
+                [$put('{"values": '), 400, 'invalid_json'],
+                [$put('{"values": []}'), 422, 'invalid_value'],
+                [$put('[]'), 422, 'invalid_value'],
+                [$put('{"values": {"common.save": []}}'), 422, 'invalid_value'],
+                [$put('{"values": {"common.save": "Save"}}'), 422, 'invalid_value'],
+            ]
+            as $index => [$response, $status, $code]
+        ) {
             self::assertSame([$status, $code], [$response->getStatusCode(), $this->json($response)['code'] ?? null], "case $index: " . $response->getBody());
         }
         self::assertSame(200, $put('{"values": {}}')->getStatusCode(), '{} is a map: nothing to save');
@@ -218,7 +242,10 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame(200, $export->getStatusCode());
         self::assertSame('attachment; filename="translations-sk.json"', $export->getHeaderLine('Content-Disposition'));
         self::assertSame('no-store', $export->getHeaderLine('Cache-Control'));
-        self::assertStringStartsWith("{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.colorField.invalid\": \"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.\",\n", (string) $export->getBody());
+        self::assertStringStartsWith(
+            "{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.colorField.invalid\": \"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.\",\n",
+            (string) $export->getBody(),
+        );
         self::assertStringEndsWith("}\n", (string) $export->getBody());
         self::assertSame(404, $this->request($app, 'GET', '/api/admin/translations/de/export')->getStatusCode());
         self::assertSame(404, $this->request($app, 'GET', '/api/admin/translations/DE/export')->getStatusCode());
@@ -233,7 +260,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
     public function testAFileWhoseKeysAreNumbersOrAListIsKeysTheSiteDoesNotHave(): void
     {
         $app = $this->app();
-        $import = fn (string $body): ResponseInterface => $this->raw($app, 'PUT', '/api/admin/translations/sk/import', $body);
+        $import = fn(string $body): ResponseInterface => $this->raw($app, 'PUT', '/api/admin/translations/sk/import', $body);
 
         // Piano Academy's find: PHP makes a list of {"0": …}, which was refused as a body of another shape.
         foreach (['{"0": "Uložiť"}' => ['0'], '{"0": "a", "1": "b"}' => ['0', '1'], '["a", "b"]' => ['0', '1'], '{"common.save": "Ulož", "7": "x"}' => ['7']] as $body => $keys) {
@@ -262,7 +289,10 @@ final class TranslationsRoutesTest extends DatabaseTestCase
 
         $made = $this->request($app, 'POST', '/api/admin/languages', [], ['code' => 'de', 'name' => 'German', 'native_name' => 'Deutsch', 'enabled' => false]);
         self::assertSame(201, $made->getStatusCode(), (string) $made->getBody());
-        self::assertSame(['language' => ['code' => 'de', 'name' => 'German', 'native_name' => 'Deutsch', 'enabled' => false, 'sort_order' => 3, 'seeded' => false, 'strings' => 0, 'accounts' => 0]], $this->json($made));
+        self::assertSame(
+            ['language' => ['code' => 'de', 'name' => 'German', 'native_name' => 'Deutsch', 'enabled' => false, 'sort_order' => 3, 'seeded' => false, 'strings' => 0, 'accounts' => 0]],
+            $this->json($made),
+        );
         self::assertSame(409, $this->request($app, 'POST', '/api/admin/languages', [], ['code' => 'de', 'name' => 'German', 'native_name' => 'Deutsch'])->getStatusCode());
 
         $changed = $this->request($app, 'PUT', '/api/admin/languages/de', [], ['enabled' => true, 'sort_order' => 3]);
@@ -277,23 +307,34 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame(409, $this->request($app, 'DELETE', '/api/admin/languages/sk')->getStatusCode());
         self::assertSame(404, $this->request($app, 'DELETE', '/api/admin/languages/de')->getStatusCode());
 
-        self::assertSame([
-            ['language.created', 'language', 'de', ['name' => 'German', 'native_name' => 'Deutsch', 'enabled' => false], ''],
-            ['language.updated', 'language', 'de', ['enabled' => true], ''],
-            ['translations.saved', null, null, ['languages' => ['de'], 'count' => 1, 'keys' => ['common.save']], ''],
-            ['language.deleted', 'language', 'de', ['name' => 'German', 'strings' => 1, 'accounts' => 0], ''],
-        ], $this->audited);
+        self::assertSame(
+            [
+                ['language.created', 'language', 'de', ['name' => 'German', 'native_name' => 'Deutsch', 'enabled' => false], ''],
+                ['language.updated', 'language', 'de', ['enabled' => true], ''],
+                ['translations.saved', null, null, ['languages' => ['de'], 'count' => 1, 'keys' => ['common.save']], ''],
+                ['language.deleted', 'language', 'de', ['name' => 'German', 'strings' => 1, 'accounts' => 0], ''],
+            ],
+            $this->audited,
+        );
     }
 
     public function testTheSitesChecksStandBeforeEveryRouteOfItsGroup(): void
     {
         $app = $this->app();
 
-        foreach ([
-            ['GET', '/api/admin/languages', 'editor'], ['GET', '/api/admin/translations', 'editor'], ['PUT', '/api/admin/translations', 'editor'],
-            ['GET', '/api/admin/translations/sk/export', 'editor'], ['PUT', '/api/admin/translations/sk/import', 'editor'],
-            ['POST', '/api/admin/languages', 'admin'], ['PUT', '/api/admin/languages/sk', 'admin'], ['DELETE', '/api/admin/languages/de', 'admin'],
-        ] as [$method, $path, $needs]) {
+        foreach (
+            [
+                ['GET', '/api/admin/languages', 'editor'],
+                ['GET', '/api/admin/translations', 'editor'],
+                ['PUT', '/api/admin/translations', 'editor'],
+                ['GET', '/api/admin/translations/sk/export', 'editor'],
+                ['PUT', '/api/admin/translations/sk/import', 'editor'],
+                ['POST', '/api/admin/languages', 'admin'],
+                ['PUT', '/api/admin/languages/sk', 'admin'],
+                ['DELETE', '/api/admin/languages/de', 'admin'],
+            ]
+            as [$method, $path, $needs]
+        ) {
             self::assertSame(403, $this->request($app, $method, $path, ['X-Role' => 'nobody'], ['x' => 1])->getStatusCode(), "$method $path");
             if ($needs === 'admin') {
                 self::assertSame(403, $this->request($app, $method, $path, ['X-Role' => 'editor'], ['x' => 1])->getStatusCode(), "an editor: $method $path");
@@ -308,9 +349,9 @@ final class TranslationsRoutesTest extends DatabaseTestCase
     {
         $app = AppFactory::create();
         $app->getRouteCollector()->setDefaultInvocationStrategy(new RequestResponseArgs());
-        $words = fn (): Translations => new Translations($this->pdo, $this->config());
+        $words = fn(): Translations => new Translations($this->pdo, $this->config());
         $app->group('/api/admin', function ($group) use ($words): void {
-            TranslationsRoutes::strings($group, '', $words, static fn (): ?int => 5);
+            TranslationsRoutes::strings($group, '', $words, static fn(): ?int => 5);
             TranslationsRoutes::languages($group, '', $words);
         });
         TranslationsRoutes::bundle($app, $words);
@@ -329,13 +370,13 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame('~^/words\.d/[^/]+$~D', TranslationsRoutes::openPath('/words.d'));
 
         $this->set('site', ['001_waiting.sql' => 'CREATE TABLE waiting (id int);']);
-        $state = new SiteState(static fn (): ?string => null, static fn (): bool => true, fn (): Migrator => $this->migrator([$this->set('site'), Schema::migrationSet()]));
+        $state = new SiteState(static fn(): ?string => null, static fn(): bool => true, fn(): Migrator => $this->migrator([$this->set('site'), Schema::migrationSet()]));
         self::assertSame(SiteState::UPDATE_PENDING, $state->state());
         $app = AppFactory::create();
         $app->add(new SiteGate($state, new ResponseFactory(), [TranslationsRoutes::openPath()]));
-        TranslationsRoutes::bundle($app, fn (): Translations => new Translations($this->pdo));
-        $app->get('/api/translations/{code}/more', static fn ($request, $response) => $response);
-        $app->get('/api/translationsx/{code}', static fn ($request, $response) => $response);
+        TranslationsRoutes::bundle($app, fn(): Translations => new Translations($this->pdo));
+        $app->get('/api/translations/{code}/more', static fn($request, $response) => $response);
+        $app->get('/api/translationsx/{code}', static fn($request, $response) => $response);
 
         self::assertSame(200, $this->request($app, 'GET', '/api/translations/sk')->getStatusCode());
         foreach (['/api/translations/sk/more', '/api/translationsx/sk', '/api/translations/sk%2Fmore', '/api/translations/', '/x/api/translations/sk'] as $path) {
@@ -349,22 +390,25 @@ final class TranslationsRoutesTest extends DatabaseTestCase
 
     private function config(): TranslationsConfig
     {
-        return new TranslationsConfig(serverNamespaces: ['mail'], usage: new class () implements LanguageUsage {
-            public function extras(PDO $pdo, array $codes): array
-            {
-                return array_intersect_key(['en' => ['accounts' => 4]], array_flip($codes)) + array_fill_keys($codes, ['accounts' => 0]);
-            }
+        return new TranslationsConfig(
+            serverNamespaces: ['mail'],
+            usage: new class implements LanguageUsage {
+                public function extras(PDO $pdo, array $codes): array
+                {
+                    return array_intersect_key(['en' => ['accounts' => 4]], array_flip($codes)) + array_fill_keys($codes, ['accounts' => 0]);
+                }
 
-            public function refuseDelete(PDO $pdo, string $code): ?Refusal
-            {
-                return null;
-            }
+                public function refuseDelete(PDO $pdo, string $code): ?Refusal
+                {
+                    return null;
+                }
 
-            public function beforeDelete(PDO $pdo, string $code, array $strings): array
-            {
-                return [];
-            }
-        });
+                public function beforeDelete(PDO $pdo, string $code, array $strings): array
+                {
+                    return [];
+                }
+            },
+        );
     }
 
     /** The site: the bundle, the strings for an editor, the languages for an admin (a header stands for the token). */
@@ -382,12 +426,12 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         $audit = function (ServerRequestInterface $request, string $action, ?string $type, ?string $id, array $details): void {
             $this->audited[] = [$action, $type, $id, $details, $request->getHeaderLine('X-Request-Id')];
         };
-        $role = static fn (string ...$roles) => static function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($roles): ResponseInterface {
+        $role = static fn(string ...$roles) => static function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($roles): ResponseInterface {
             return in_array($request->getHeaderLine('X-Role') ?: 'admin', $roles, true) ? $handler->handle($request) : (new ResponseFactory())->createResponse(403);
         };
 
         TranslationsRoutes::bundle($app, $words);
-        TranslationsRoutes::strings($app, '/api/admin', $words, static fn (ServerRequestInterface $request): ?int => 42, null, $audit)->add($role('admin', 'editor'));
+        TranslationsRoutes::strings($app, '/api/admin', $words, static fn(ServerRequestInterface $request): ?int => 42, null, $audit)->add($role('admin', 'editor'));
         TranslationsRoutes::languages($app, '/api/admin', $words, null, $audit)->add($role('admin'));
 
         return $app;
@@ -402,8 +446,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
     /** @param array<string, string> $headers */
     private function raw(App $app, string $method, string $target, string $body, array $headers = []): ResponseInterface
     {
-        $request = (new ServerRequestFactory())->createServerRequest($method, 'https://site.example' . $target)
-            ->withBody((new StreamFactory())->createStream($body));
+        $request = (new ServerRequestFactory())->createServerRequest($method, 'https://site.example' . $target)->withBody((new StreamFactory())->createStream($body));
         foreach ($headers + ['Content-Type' => 'application/json', 'Content-Length' => (string) strlen($body)] as $name => $value) {
             $request = $value === '' ? $request->withoutHeader($name) : $request->withHeader($name, $value);
         }

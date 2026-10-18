@@ -49,7 +49,11 @@ final class FoundationsTest extends TestCase
         self::assertStringContainsString('Options -Indexes', $guard);
         self::assertSame('', file_get_contents($base . '/storage/logs/index.html'));
         if (PHP_OS_FAMILY !== 'Windows') {
-            self::assertSame(['700', '700'], [substr(sprintf('%o', fileperms($base . '/storage/logs')), -3), substr(sprintf('%o', fileperms($base . '/storage')), -3)], 'the site\'s own user\'s alone, the folders made on the way too');
+            self::assertSame(
+                ['700', '700'],
+                [substr(sprintf('%o', fileperms($base . '/storage/logs')), -3), substr(sprintf('%o', fileperms($base . '/storage')), -3)],
+                'the site\'s own user\'s alone, the folders made on the way too',
+            );
         }
 
         file_put_contents($base . '/storage/logs/.htaccess', "# the site's own\n");
@@ -186,11 +190,20 @@ final class FoundationsTest extends TestCase
     private function keysOfProcessesAtOnce(string $storage, int $count, array $options = []): array
     {
         $go = $this->temporaryFolder() . '/go';
-        $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) . ';'
-            . ' $until = microtime(true) + 30; while (!is_file(' . var_export($go, true) . ') && microtime(true) < $until) { usleep(500); clearstatcache(); }'
-            . ' $at = (float) @file_get_contents(' . var_export($go, true) . '); while (microtime(true) < $at) { }'
-            . ' try { echo function_exists(\'link\') ? \'link\' : \'nolink\', \' \', bin2hex(Anotoki\Lib\Support\Keys::installation(' . var_export($storage, true) . ')); }'
-            . ' catch (Throwable $e) { echo \'failed \', $e->getMessage(); }';
+        $code =
+            'require ' .
+            var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) .
+            ';' .
+            ' $until = microtime(true) + 30; while (!is_file(' .
+            var_export($go, true) .
+            ') && microtime(true) < $until) { usleep(500); clearstatcache(); }' .
+            ' $at = (float) @file_get_contents(' .
+            var_export($go, true) .
+            '); while (microtime(true) < $at) { }' .
+            ' try { echo function_exists(\'link\') ? \'link\' : \'nolink\', \' \', bin2hex(Anotoki\Lib\Support\Keys::installation(' .
+            var_export($storage, true) .
+            ')); }' .
+            ' catch (Throwable $e) { echo \'failed \', $e->getMessage(); }';
         $running = [];
         for ($index = 0; $index < $count; $index++) {
             $process = proc_open([PHP_BINARY, ...$options, '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -251,7 +264,10 @@ final class FoundationsTest extends TestCase
         yield 'IPv6' => ['from 2001:db8::1 and [fe80::1%eth0] and ::ffff:198.51.100.7', 'from {ip} and [{ip}] and ::ffff:{ip}'];
         yield 'a hex token' => ['reset 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 used', 'reset {token} used'];
         yield 'a base64url token' => ['session Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA_ gone', 'session {token} gone'];
-        yield 'words stay' => ['Slim\\Exception\\HttpMethodNotAllowedException at Foo::bar 10:01:02, version 8.5.10', 'Slim\\Exception\\HttpMethodNotAllowedException at Foo::bar 10:01:02, version 8.5.10'];
+        yield 'words stay' => [
+            'Slim\\Exception\\HttpMethodNotAllowedException at Foo::bar 10:01:02, version 8.5.10',
+            'Slim\\Exception\\HttpMethodNotAllowedException at Foo::bar 10:01:02, version 8.5.10',
+        ];
         yield 'a backup name' => ['20261008-101530Z-daily-9f86d081884c7d659a2feaa0c55ad015 missing', '{token} missing'];
     }
 
@@ -296,8 +312,8 @@ final class FoundationsTest extends TestCase
 
         // PCRE's limits made tiny (and its JIT, which has limits of its own, off) in a process of its own, where no
         // pattern was compiled before: no rule can run.
-        $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) . ';'
-            . ' echo Anotoki\Lib\Support\Redactor::text("Key (email)=(ana@example.com) " . str_repeat("ab ", 50));';
+        $code =
+            'require ' . var_export(dirname(__DIR__, 3) . '/vendor/autoload.php', true) . ';' . ' echo Anotoki\Lib\Support\Redactor::text("Key (email)=(ana@example.com) " . str_repeat("ab ", 50));';
         $process = proc_open([PHP_BINARY, '-d', 'pcre.jit=0', '-d', 'pcre.backtrack_limit=10', '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         self::assertIsResource($process);
         $output = (string) stream_get_contents($pipes[1]);
@@ -392,7 +408,7 @@ final class FoundationsTest extends TestCase
     public function testTheContextAsksTheSiteAndRefusesWithoutAProof(): void
     {
         $request = (new ServerRequestFactory())->createServerRequest('POST', 'https://site.example/x', ['REMOTE_ADDR' => '203.0.113.7']);
-        $none = new AdminContext(static fn (): int => 7);
+        $none = new AdminContext(static fn(): int => 7);
 
         self::assertSame(7, $none->actorId($request));
         self::assertSame('203.0.113.7', $none->clientKey($request), 'the connection\'s address by default');
@@ -400,12 +416,12 @@ final class FoundationsTest extends TestCase
         self::assertSame('proof_unavailable', $none->proof($request, [])?->code, 'no proof given: refused, never waved through');
 
         $iamLike = new AdminContext(
-            static fn (): int => 1,
-            static fn ($r, array $body): array => ($body['password'] ?? null) === 'right'
+            static fn(): int => 1,
+            static fn($r, array $body): array => ($body['password'] ?? null) === 'right'
                 ? ['proof' => 'password']
                 : ['status' => 422, 'code' => 'wrong_password', 'error' => 'The current password is not right'],
             'password',
-            static fn (): string => '198.51.100.0/24',
+            static fn(): string => '198.51.100.0/24',
         );
         self::assertNull($iamLike->proof($request, ['password' => 'right']));
         $wrong = $iamLike->proof($request, ['password' => 'wrong']);
@@ -414,9 +430,12 @@ final class FoundationsTest extends TestCase
         self::assertSame('198.51.100.0/24', $iamLike->clientKey($request));
 
         $authTime = null;
-        $site = new AdminContext(static fn (): string => '42', AdminContext::recentSignIn(static function () use (&$authTime): ?int {
-            return $authTime;
-        }));
+        $site = new AdminContext(
+            static fn(): string => '42',
+            AdminContext::recentSignIn(static function () use (&$authTime): ?int {
+                return $authTime;
+            }),
+        );
         self::assertSame('reauth_required', $site->proof($request, [])?->code, 'no auth_time');
         $authTime = time() - 601;
         self::assertSame('reauth_required', $site->proof($request, [])?->code, 'eleven minutes ago');
@@ -434,15 +453,15 @@ final class FoundationsTest extends TestCase
         self::assertSame(['code' => 'feature_unavailable', 'message' => 'Wait.'], json_decode((string) $response->getBody(), true));
 
         $this->expectException(InvalidArgumentException::class);
-        new AdminContext(static fn (): int => 1, null, 'magic');
+        new AdminContext(static fn(): int => 1, null, 'magic');
     }
 
     public function testAnAddressIsTheTrustedProxysHeaderFromThatProxyAlone(): void
     {
-        $request = static fn (string $remote, array $headers = []): ServerRequestInterface => array_reduce(
+        $request = static fn(string $remote, array $headers = []): ServerRequestInterface => array_reduce(
             array_keys($headers),
-            static fn (ServerRequestInterface $r, string $name): ServerRequestInterface => $r->withHeader($name, $headers[$name]),
-            (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/', ['REMOTE_ADDR' => $remote])
+            static fn(ServerRequestInterface $r, string $name): ServerRequestInterface => $r->withHeader($name, $headers[$name]),
+            (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/', ['REMOTE_ADDR' => $remote]),
         );
 
         foreach (['173.245.48.1', '104.16.0.9', '162.159.255.254', '2400:cb00::1', '2a06:98c0:3600::103'] as $edge) {
@@ -451,9 +470,17 @@ final class FoundationsTest extends TestCase
         }
         foreach (['203.0.113.9', '173.245.64.1', '2400:cb01::1', '10.0.0.1'] as $stranger) {
             self::assertFalse(ClientAddress::trusted($stranger, ClientAddress::CLOUDFLARE), "$stranger is not");
-            self::assertSame($stranger, ClientAddress::of($request($stranger, ['CF-Connecting-IP' => '198.51.100.7', 'X-Forwarded-For' => '198.51.100.8']), ClientAddress::CLOUDFLARE), 'a header from anybody else is never believed');
+            self::assertSame(
+                $stranger,
+                ClientAddress::of($request($stranger, ['CF-Connecting-IP' => '198.51.100.7', 'X-Forwarded-For' => '198.51.100.8']), ClientAddress::CLOUDFLARE),
+                'a header from anybody else is never believed',
+            );
         }
-        self::assertSame('173.245.48.1', ClientAddress::of($request('173.245.48.1', ['CF-Connecting-IP' => 'not an address']), ClientAddress::CLOUDFLARE), 'a header that names no address: the connection\'s');
+        self::assertSame(
+            '173.245.48.1',
+            ClientAddress::of($request('173.245.48.1', ['CF-Connecting-IP' => 'not an address']), ClientAddress::CLOUDFLARE),
+            'a header that names no address: the connection\'s',
+        );
         self::assertSame('173.245.48.1', ClientAddress::of($request('173.245.48.1', ['CF-Connecting-IP' => '198.51.100.7'])), 'no trusted proxies: the connection\'s');
         self::assertSame('198.51.100.7', ClientAddress::of($request('192.0.2.10', ['X-Real-IP' => '198.51.100.7']), ['192.0.2.10'], 'X-Real-IP'), 'a site\'s own proxy and header');
         self::assertNull(ClientAddress::of($request('')));
@@ -471,26 +498,37 @@ final class FoundationsTest extends TestCase
         // the IPv4 address it is: trusted by Cloudflare's IPv4 ranges, and counted whole - never all in ::/64.
         self::assertTrue(ClientAddress::within('::ffff:173.245.48.1', '173.245.48.0/20'));
         self::assertSame('198.51.100.7', ClientAddress::of($request('::ffff:173.245.48.1', ['CF-Connecting-IP' => '198.51.100.7']), ClientAddress::CLOUDFLARE), 'Cloudflare\'s, over IPv6');
-        self::assertSame('203.0.113.9', ClientAddress::of($request('::ffff:203.0.113.9', ['CF-Connecting-IP' => '198.51.100.7']), ClientAddress::CLOUDFLARE), 'a stranger\'s header, over IPv6: not believed');
+        self::assertSame(
+            '203.0.113.9',
+            ClientAddress::of($request('::ffff:203.0.113.9', ['CF-Connecting-IP' => '198.51.100.7']), ClientAddress::CLOUDFLARE),
+            'a stranger\'s header, over IPv6: not believed',
+        );
         self::assertSame('198.51.100.7', ClientAddress::of($request('::ffff:173.245.48.1', ['CF-Connecting-IP' => '::ffff:198.51.100.7']), ClientAddress::CLOUDFLARE));
         self::assertSame(['203.0.113.9', '198.51.100.1'], [ClientAddress::bucket('::ffff:203.0.113.9'), ClientAddress::bucket('::FFFF:198.51.100.1')]);
         self::assertSame('203.0.113.9', ClientAddress::plain('0:0:0:0:0:ffff:cb00:7109'));
         self::assertSame(['::1', '2001:db8::ffff:1.2.3.4'], [ClientAddress::plain('::1'), ClientAddress::plain('2001:db8::ffff:1.2.3.4')], 'only ::ffff:0:0/96 is IPv4');
-        self::assertSame('203.0.113.9', (new AdminContext(static fn (): int => 1))->clientKey($request('::ffff:203.0.113.9')));
+        self::assertSame('203.0.113.9', (new AdminContext(static fn(): int => 1))->clientKey($request('::ffff:203.0.113.9')));
     }
 
     public function testTheContextCountsByTheTrustedProxyRuleAndNamesPeople(): void
     {
         $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/', ['REMOTE_ADDR' => '2400:cb00::1'])->withHeader('CF-Connecting-IP', '2001:db8:aa:bb:1::2');
-        $context = new AdminContext(static fn (): int => 1, trustedProxies: ClientAddress::CLOUDFLARE, names: static fn (array $ids): array => [1 => 'Ana', '2' => 'Bo', 3 => '', 4 => ['not a name']]);
+        $context = new AdminContext(static fn(): int => 1, trustedProxies: ClientAddress::CLOUDFLARE, names: static fn(array $ids): array => [1 => 'Ana', '2' => 'Bo', 3 => '', 4 => ['not a name']]);
 
         self::assertSame('2001:db8:aa:bb::/64', $context->clientKey($request), 'Cloudflare\'s header, the address\'s /64');
-        self::assertSame('2400:cb00::/64', (new AdminContext(static fn (): int => 1))->clientKey($request), 'without trusted proxies, the edge\'s');
+        self::assertSame('2400:cb00::/64', (new AdminContext(static fn(): int => 1))->clientKey($request), 'without trusted proxies, the edge\'s');
         self::assertSame([1 => 'Ana', 2 => 'Bo'], $context->names([1, '2', 3, 4, 1, null, '']), 'names alone, each id once');
-        self::assertSame([], (new AdminContext(static fn (): int => 1))->names([1]), 'a site that gave none: no names');
-        self::assertSame([], (new AdminContext(static fn (): int => 1, names: static function (): array {
-            throw new RuntimeException('no database');
-        }))->names([1]), 'a lookup that fails: no names, never an error');
+        self::assertSame([], (new AdminContext(static fn(): int => 1))->names([1]), 'a site that gave none: no names');
+        self::assertSame(
+            [],
+            (new AdminContext(
+                static fn(): int => 1,
+                names: static function (): array {
+                    throw new RuntimeException('no database');
+                },
+            ))->names([1]),
+            'a lookup that fails: no names, never an error',
+        );
     }
 
     public function testWithAnOriginSecretTheHeaderIsBelievedOnlyThroughTheOwnersZone(): void
@@ -506,7 +544,7 @@ final class FoundationsTest extends TestCase
         };
         $edge = '173.245.48.1';
         $visitor = ['CF-Connecting-IP' => '198.51.100.7'];
-        $of = static fn (ServerRequestInterface $r, ?string $origin): ?string => ClientAddress::of($r, ClientAddress::CLOUDFLARE, ClientAddress::CLOUDFLARE_HEADER, $origin);
+        $of = static fn(ServerRequestInterface $r, ?string $origin): ?string => ClientAddress::of($r, ClientAddress::CLOUDFLARE, ClientAddress::CLOUDFLARE_HEADER, $origin);
 
         // Anybody's Worker: a connection from Cloudflare's ranges, a header of its own choosing - and no secret.
         self::assertSame($edge, $of($request($edge, $visitor), $secret), 'no secret: the edge, never the header');
@@ -521,7 +559,7 @@ final class FoundationsTest extends TestCase
         self::assertSame('198.51.100.7', $of($request($edge, $visitor), ''));
 
         // The admin tools count by the same rule (the feedback's limits, the error log's client).
-        $context = new AdminContext(static fn (): int => 1, trustedProxies: ClientAddress::CLOUDFLARE, originSecret: $secret);
+        $context = new AdminContext(static fn(): int => 1, trustedProxies: ClientAddress::CLOUDFLARE, originSecret: $secret);
         self::assertSame($edge, $context->clientKey($request($edge, $visitor)));
         self::assertSame('198.51.100.7', $context->clientKey($request($edge, $visitor + [ClientAddress::ORIGIN_HEADER => $secret])));
     }
@@ -551,8 +589,8 @@ final class FoundationsTest extends TestCase
     {
         $request = (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/api/admin/x');
         $admins = new AdminContext(
-            static fn (ServerRequestInterface $r): ?int => ctype_digit($r->getHeaderLine('X-Actor')) ? (int) $r->getHeaderLine('X-Actor') : null,
-            isAdmin: static fn (ServerRequestInterface $r): bool => $r->getHeaderLine('X-Actor') === '1',
+            static fn(ServerRequestInterface $r): ?int => ctype_digit($r->getHeaderLine('X-Actor')) ? (int) $r->getHeaderLine('X-Actor') : null,
+            isAdmin: static fn(ServerRequestInterface $r): bool => $r->getHeaderLine('X-Actor') === '1',
         );
         self::assertTrue($admins->knowsAdmins());
         self::assertSame([401, 'sign_in_required'], [$admins->adminRefusal($request)?->status, $admins->adminRefusal($request)?->code], 'nobody');
@@ -560,14 +598,17 @@ final class FoundationsTest extends TestCase
         self::assertNull($admins->adminRefusal($request->withHeader('X-Actor', '1')));
 
         // A check that fails, or answers anything but true, is a no.
-        $throwing = new AdminContext(static fn (): int => 1, isAdmin: static function (): bool {
-            throw new RuntimeException('no token');
-        });
+        $throwing = new AdminContext(
+            static fn(): int => 1,
+            isAdmin: static function (): bool {
+                throw new RuntimeException('no token');
+            },
+        );
         self::assertSame(403, $throwing->adminRefusal($request)?->status);
-        $truthy = new AdminContext(static fn (): int => 1, isAdmin: static fn (): mixed => 'yes');
+        $truthy = new AdminContext(static fn(): int => 1, isAdmin: static fn(): mixed => 'yes');
         self::assertSame(403, $truthy->adminRefusal($request)?->status);
 
-        $unknown = new AdminContext(static fn (): int => 1);
+        $unknown = new AdminContext(static fn(): int => 1);
         self::assertFalse($unknown->knowsAdmins());
         self::assertSame(403, $unknown->adminRefusal($request)?->status, 'a context that cannot tell is never a yes');
     }
@@ -576,8 +617,8 @@ final class FoundationsTest extends TestCase
     {
         $log = new ErrorLog($this->temporaryFolder() . '/logs');
         $context = new AdminContext(
-            static fn (ServerRequestInterface $r): ?int => is_int($r->getAttribute('person')) ? $r->getAttribute('person') : null,
-            isAdmin: static fn (ServerRequestInterface $r): bool => $r->getAttribute('person') === 1,
+            static fn(ServerRequestInterface $r): ?int => is_int($r->getAttribute('person')) ? $r->getAttribute('person') : null,
+            isAdmin: static fn(ServerRequestInterface $r): bool => $r->getAttribute('person') === 1,
         );
         $app = AppFactory::create();
         $ran = [];
@@ -588,8 +629,8 @@ final class FoundationsTest extends TestCase
 
             return $handler->handle(ctype_digit($person) ? $request->withAttribute('person', (int) $person) : $request);
         });
-        $get = static fn (string $session = ''): ResponseInterface => $app->handle(
-            (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/api/admin/errors')->withHeader('X-Session', $session)
+        $get = static fn(string $session = ''): ResponseInterface => $app->handle(
+            (new ServerRequestFactory())->createServerRequest('GET', 'https://site.example/api/admin/errors')->withHeader('X-Session', $session),
         );
 
         self::assertSame(401, $get()->getStatusCode(), 'nobody');
@@ -600,7 +641,7 @@ final class FoundationsTest extends TestCase
         // A context that does not say who the ADMIN is mounts no admin group at all.
         $bare = AppFactory::create();
         try {
-            ErrorLogRoutes::admin($bare, '/api/admin/errors', $log, new AdminContext(static fn (): int => 1));
+            ErrorLogRoutes::admin($bare, '/api/admin/errors', $log, new AdminContext(static fn(): int => 1));
             self::fail('mounted without an ADMIN check');
         } catch (LogicException) {
             self::assertSame([], $bare->getRouteCollector()->getRoutes(), 'no route of it mounted');

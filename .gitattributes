@@ -2,8 +2,8 @@
 # allow-list keeps: the PHP half - its code (backend/src), its migration files (backend/migrations), its
 # resources (backend/resources) and the stand-in IAM a site's tests start (backend/testing, which answers nothing
 # but under PHP's built-in server) - with composer.json, README.md and CHANGELOG.md. Everything else stays
-# out, a folder added later too: the Angular workspace, the library's own tests, the workflows. Every
-# site's build uploads vendor/ whole. CI builds the archive and checks the list
+# out, a folder added later too: the Angular workspace, the library's own tests, the workflows, the
+# formatting setup. Every site's build uploads vendor/ whole. CI builds the archive and checks the list
 # (.github/scripts/check-archive.sh).
 /* export-ignore
 /backend !export-ignore
@@ -11,6 +11,14 @@
 /composer.json !export-ignore
 /README.md !export-ignore
 /CHANGELOG.md !export-ignore
+
+# The family's formatting setup at the root (Prettier for both halves: its package.json, lock file and
+# configuration) is for working on the library, never a site's: named here too, so it stays out.
+/package.json export-ignore
+/bun.lock export-ignore
+/.prettierrc.json export-ignore
+/.prettierignore export-ignore
+/.editorconfig export-ignore
 
 # What a release ships to be read byte for byte has LF line endings in every checkout and archive: a
 # migration's last line is read (Japanese Academy's draft rule), and a test holds the SQL to the words.

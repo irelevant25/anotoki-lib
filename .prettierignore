@@ -1,0 +1,17 @@
+**/node_modules/
+**/vendor/
+**/dist/
+**/.angular/
+coverage/
+bun.lock
+package-lock.json
+composer.lock
+*.md
+*.sql
+**/storage/
+**/config/*.local.php
+
+# Generated from backend/resources/library-words.json by frontend/scripts/library-words.mjs and held to it byte for
+# byte (`bun run words --check`, LibraryWordsTest): left as the script writes them.
+frontend/projects/lib/ui/config/src/library-words.ts
+frontend/projects/lib/words/

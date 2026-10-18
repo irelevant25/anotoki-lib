@@ -3018,6 +3018,10 @@ ANOTOKI_LIB_TEST_DB_CONFIG=../anotoki-iam/backend/config/database.local.php vend
 #   PHPRC=<its folder>, never -c (a child process does not get -c, and its server would have none).
 #   CI runs the tests on PHP 8.2 too: write no newer syntax, and run them on 8.2 before a release.
 
+# Formatting (from the repository root: the anotoki family's Prettier setup, both halves - the PHP through its PHP plugin)
+bun install
+bun run format:check    # bun run format writes; .prettierignore keeps out the generated words, the SQL and the Markdown
+
 # Angular (from frontend/)
 bun install
 bun run build           # ng build lib -> frontend/dist/lib, then scripts/check-package.mjs: each entry point's

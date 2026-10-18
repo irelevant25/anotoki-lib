@@ -12,6 +12,9 @@
 /frontend/coverage/
 *.tgz
 
+# The root's Prettier (package.json: the anotoki family's one formatting setup).
+/node_modules/
+
 # Editors and systems
 .idea/
 .vscode/

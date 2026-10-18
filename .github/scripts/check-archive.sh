@@ -13,7 +13,7 @@ git archive --format=tar "${1:-HEAD}" > "$archive"
 list=$(tar -tf "$archive")
 status=0
 
-# Nothing from the Angular workspace, the tests, the workflows - or a folder added later.
+# Nothing from the Angular workspace, the tests, the workflows, the formatting setup - or a folder added later.
 unexpected=$(printf '%s\n' "$list" | grep -v -E '^(composer\.json|README\.md|CHANGELOG\.md|backend/|backend/(src|migrations|resources|testing)/.*)$' || true)
 if [ -n "$unexpected" ]; then
     printf '::error::The Composer archive holds what no site needs:\n%s\n' "$unexpected"

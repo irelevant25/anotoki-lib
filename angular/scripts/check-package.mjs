@@ -23,7 +23,9 @@
 //   ui/progress, ..., ui/side-nav, ui/current-link), outside the core and its limit, each importing the core's pieces it
 //   draws; the tabs (lazy, no limit) gained the link tabs, the badge, the icon and the scroll hint in their own. Its input
 //   pieces (ui/date-field, ui/slider, ui/color-field, ui/file-picker, ui/combobox, ui/rich-text) too, each held to a
-//   limit of its own (LAZY_LIMITS): big pieces, lazy, kept from growing unseen.
+//   limit of its own (LAZY_LIMITS): big pieces, lazy, kept from growing unseen. The family's footer (0.6.3) imports the
+//   core's pieces, the legal links (@anotoki/lib/legal) and its own words, and its feedback dialog (footer/feedback: the
+//   kit's dialog and the feedback form) by import() alone.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -31,8 +33,8 @@
 //   the showcase. Every first load carries the words of the namespaces its page says, and no others: a module that
 //   brings words weighs neither on the kit's first loads nor on the translations module's. Some namespaces are read
 //   by their readers alone and never registered (READ_BY_THEIR_PAGES: the legal pages', pages of text - a registration
-//   comes with the eager configuration -, and the kit's pieces' of their own entry points, which have no provide*()):
-//   only those readers may import them, and no first load carries them.
+//   comes with the eager configuration -, and the kit's pieces' of their own entry points and the footer's, which have
+//   no provide*()): only those readers may import them, and no first load carries them but their reader's own.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Text, never markup: no bundle names one of the ways to put a string into a page as HTML, or to switch Angular's
@@ -100,6 +102,11 @@ const PIECES = ["config", "dom", "icon", "spinner", "button", "badge", "alert", 
  * a site whose footer is the family's (2.5 at 0.6.0: the links' template and styles stand twice in the FESM, as every
  * component's do - once more in its class metadata, which a site's production build drops; 1.5 minified in a first
  * load). The pages are @anotoki/lib/legal/pages, on lazy routes, with their own words.
+ *
+ * footer (0.6.3): the family's footer under every page of every site - its row and its four words, read by itself (2.6
+ * at 0.6.3, its template and styles twice in the FESM as every component's); the legal links and the kit's pieces it
+ * draws are entry points of their own, and its feedback dialog (footer/feedback: the kit's dialog around the feedback
+ * form) comes with the press (its first load is "the footer" below).
  */
 const LIMITS = {
     [CORE]: 15,
@@ -114,6 +121,7 @@ const LIMITS = {
     "@anotoki/lib/feedback": 1.5,
     "@anotoki/lib/error-report": 3,
     "@anotoki/lib/legal": 3,
+    "@anotoki/lib/footer": 3,
 };
 const UI_AND_SHELL = 28.5;
 
@@ -238,6 +246,11 @@ const MAY_IMPORT = {
     // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form by import() as it is opened.
     "@anotoki/lib/legal": ["@anotoki/lib/ui/config", "@anotoki/lib/words/legal-links"],
     "@anotoki/lib/legal/pages": ["@anotoki/lib/legal", "@anotoki/lib/words/legal", ...PIECES, "@anotoki/lib/ui/dialog", "@anotoki/lib/ui/copy", "@anotoki/lib/feedback/form"],
+    // The family's footer (0.6.3): the kit's buttons, the legal links, its own words (read by itself, READ_BY_THEIR_PAGES)
+    // through ui/piece-words, and its feedback dialog by import() as it is opened - which holds the kit's dialog and the
+    // feedback form, so that the footer's first load carries neither.
+    "@anotoki/lib/footer": [...PIECES, "@anotoki/lib/ui/piece-words", "@anotoki/lib/words/footer", "@anotoki/lib/legal", "@anotoki/lib/footer/feedback"],
+    "@anotoki/lib/footer/feedback": ["@anotoki/lib/ui/dialog", "@anotoki/lib/feedback/form"],
     // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;
@@ -264,6 +277,8 @@ const READ_BY_THEIR_PAGES = {
     "@anotoki/lib/words/file-picker": ["@anotoki/lib/ui/file-picker"],
     "@anotoki/lib/words/combobox": ["@anotoki/lib/ui/combobox"],
     "@anotoki/lib/words/rich-text": ["@anotoki/lib/ui/rich-text"],
+    // The footer's (0.6.3): it is in a first load itself, which carries them (its row below) - no other does.
+    "@anotoki/lib/words/footer": ["@anotoki/lib/footer"],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
@@ -285,7 +300,11 @@ const namespacesIn = (code) => new Set([...code.matchAll(/anotoki\.([A-Za-z0-9][
  * words + legal links": a site's translations with the legal pages' configuration and the footer's three links, which
  * register their four words - never the pages' own (`anotoki.legal.*`), which come with the pages alone; "a select"
  * (0.6.0): the kit's select alone, where a first page draws one (a widget in the bar) - from ui/forms it took every
- * field with it, 11.2 kB beside lazy pages (6.0 alone), measured before ui/select; 7.0 with it (6.0 alone).
+ * field with it, 11.2 kB beside lazy pages (6.0 alone), measured before ui/select; 7.0 with it (6.0 alone); "the
+ * footer" (0.6.3): the family's footer with the legal configuration its links read - the kit's button, the legal links
+ * and its own words; its feedback dialog (the kit's dialog, the feedback form) comes with the press - with the dialog
+ * up front, the first load took 2.0 kB more beside lazy pages, which use the rest of ui/dialog's one file -, and none
+ * of the legal pages' words.
  */
 const FIRST_LOADS = [
     { title: "the gate", imports: { "@anotoki/lib/migrations": ["SiteGateComponent", "SitePagesDirective", "SiteStatus", "siteStatusInterceptor", "provideAnotokiMigrations"] }, limit: 9, words: [...KIT_WORDS, "siteStatus"] },
@@ -321,6 +340,15 @@ const FIRST_LOADS = [
         },
         limit: 9,
         words: [...KIT_WORDS, "legalLinks"],
+    },
+    {
+        title: "the footer",
+        imports: {
+            "@anotoki/lib/legal": ["provideAnotokiLegal"],
+            "@anotoki/lib/footer": ["SiteFooterComponent"],
+        },
+        limit: 9,
+        words: [...KIT_WORDS, "legalLinks", "footer"],
     },
 ];
 

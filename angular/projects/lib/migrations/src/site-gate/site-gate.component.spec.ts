@@ -96,6 +96,22 @@ class MarkedSwitchSiteComponent {
   readonly state = signal<'ready' | 'signed-out'>('signed-out');
 }
 
+/** A site's frame inside its pages, as the rule asks (0.6.3): its bar, its page's landmark and its footer in the marked template. */
+@Component({
+  selector: 'anotoki-test-framed-site',
+  imports: [SiteGateComponent, SitePagesDirective],
+  template: `
+    <anotoki-site-gate>
+      <ng-template anotokiSitePages>
+        <header id="bar">The bar</header>
+        <main id="frame"><p id="page">The site itself</p></main>
+        <footer id="foot">The footer</footer>
+      </ng-template>
+    </anotoki-site-gate>
+  `,
+})
+class FramedSiteComponent {}
+
 /** The 0.1.1 form: an unmarked template. Since 0.2.0 it is not the pages - nothing is drawn, and development says why. */
 @Component({
   selector: 'anotoki-test-unmarked-site',
@@ -288,6 +304,39 @@ describe('<anotoki-site-gate>: the site, or the status page', () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0][0])).toContain('anotokiSitePages');
     warn.mockRestore();
+  });
+
+  it('draws the status page as a page of its own - in a main landmark of its own, with nothing of the site around it', async () => {
+    status.report('update_pending');
+    await draw();
+    const landmark = host.querySelector('anotoki-site-gate > main.anotoki-site-gate__status');
+    expect(landmark?.querySelector('anotoki-site-status')).not.toBeNull();
+    expect(host.querySelectorAll('main')).toHaveLength(1);
+
+    // Open again: the pages, and no landmark of the gate's - the site's frame brings its own.
+    status.markReady();
+    await settle(fixture);
+    expect(page()).not.toBeNull();
+    expect(host.querySelector('main')).toBeNull();
+  });
+
+  it("with the site's frame inside its pages (the rule), the status page shows with no bar and no footer - and the frame comes back with the site", async () => {
+    status.report('unavailable');
+    const framed = TestBed.createComponent(FramedSiteComponent);
+    await settle(framed);
+    const at = (selector: string) => framed.nativeElement.querySelector(selector);
+    expect(at('#bar')).toBeNull();
+    expect(at('#foot')).toBeNull();
+    expect(words(at('main.anotoki-site-gate__status anotoki-site-status'))).toContain('The site is not available right now');
+    expect(framed.nativeElement.querySelectorAll('main')).toHaveLength(1);
+
+    status.markReady();
+    await settle(framed);
+    expect(at('#bar')).not.toBeNull();
+    expect(at('#foot')).not.toBeNull();
+    expect(at('main#frame #page')).not.toBeNull();
+    expect(at('anotoki-site-status')).toBeNull();
+    expect(framed.nativeElement.querySelectorAll('main')).toHaveLength(1);
   });
 
   it('shows the site again the moment it is ready', async () => {

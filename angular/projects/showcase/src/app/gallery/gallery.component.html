@@ -523,6 +523,32 @@
             [phoneMax]="1320"
             [shortBrandMax]="480" />
     </section>
+
+    <section class="section" id="footer" aria-labelledby="footer-title">
+        <h2 class="section-title" id="footer-title">The footer (0.6.3)</h2>
+        <p class="muted small">
+            The family's footer, as every page of every site ends (the one under this page too): a part a site leaves out takes its dot with it. Send feedback opens the feedback form; What's new is
+            the site's own.
+        </p>
+        <div class="footer-samples">
+            <div class="footer-sample" data-footer-sample="all">
+                <span class="footer-sample-label">The build analyzer: everything, and the fan clause</span>
+                <anotoki-site-footer version="0.3" whatsNew (whatsNew)="whatsNew()" feedback fan="hoyoverse" />
+            </div>
+            <div class="footer-sample" data-footer-sample="version">
+                <span class="footer-sample-label">A version and its notes, no feedback (the survey)</span>
+                <anotoki-site-footer version="1.4.2" whatsNew (whatsNew)="whatsNew()" />
+            </div>
+            <div class="footer-sample" data-footer-sample="feedback">
+                <span class="footer-sample-label">No version (a broken upload): Send feedback alone</span>
+                <anotoki-site-footer feedback />
+            </div>
+            <div class="footer-sample" data-footer-sample="links">
+                <span class="footer-sample-label">Nothing in the row: Terms · Privacy · Contact alone</span>
+                <anotoki-site-footer />
+            </div>
+        </div>
+    </section>
 </div>
 
 @if (dialog()) {

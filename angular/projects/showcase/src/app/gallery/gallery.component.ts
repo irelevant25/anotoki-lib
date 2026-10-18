@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { SiteFooterComponent } from '@anotoki/lib/footer';
 import { LanguageSwitcherComponent, ThemeToggleComponent, TopBarComponent } from '@anotoki/lib/shell';
 import {
   AlertComponent,
@@ -158,6 +159,7 @@ function portrait(name: string, colour: string): string {
     SelectComponent,
     SideNavComponent,
     SideNavTriggerDirective,
+    SiteFooterComponent,
     SliderComponent,
     SpinnerComponent,
     StatTileComponent,
@@ -404,6 +406,11 @@ export class GalleryComponent {
     if (address !== null && !editable.link(address)) {
       this.toasts.error('Not an address the editor takes: a web or mail address, or a page of the site.');
     }
+  }
+
+  /** The footers' What's new: a site opens its own (the frame's footer below every page opens the showcase's). */
+  protected whatsNew(): void {
+    this.toasts.info("A site opens its own What's new here: the notes of its releases.");
   }
 
   protected async ask(): Promise<void> {

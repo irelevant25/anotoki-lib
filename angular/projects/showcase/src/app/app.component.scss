@@ -1,5 +1,6 @@
-// The footer under every page: the legal pages' links, on the frame's ground.
-.show-footer {
-  padding: 1.25rem 1rem 1.75rem;
-  border-top: 1px solid var(--anotoki-border);
+// The footer under every page is the family's own (<anotoki-site-footer>): its border, its centring and its ink are
+// the library's. The showcase's What's new is a line in the kit's dialog.
+.show-whats-new {
+  margin: 0;
+  line-height: 1.55;
 }

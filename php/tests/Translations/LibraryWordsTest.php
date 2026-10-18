@@ -131,6 +131,8 @@ final class LibraryWordsTest extends TestCase
             'anotoki.richText.toolbar', 'anotoki.richText.bold', 'anotoki.richText.italic', 'anotoki.richText.underline',
             'anotoki.richText.strike', 'anotoki.richText.bulletList', 'anotoki.richText.orderedList', 'anotoki.richText.indent',
             'anotoki.richText.outdent', 'anotoki.richText.link', 'anotoki.richText.clear', 'anotoki.richText.undo', 'anotoki.richText.redo',
+            // The family's footer (angular/projects/lib/footer: <anotoki-site-footer>, read by the footer itself), from 012.
+            'anotoki.footer.version', 'anotoki.footer.whatsNew', 'anotoki.footer.feedback', 'anotoki.footer.fanHoyoverse',
         ], LibraryWords::keys());
         foreach ($words as $key => $entry) {
             self::assertSame(['description', 'en', 'sk'], array_keys($entry), $key);
@@ -160,6 +162,9 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['count'], LibraryWords::placeholders('anotoki.combobox.more'));
         self::assertSame(['field'], LibraryWords::placeholders('anotoki.combobox.chosen'));
         self::assertSame('Bulleted list', LibraryWords::english('anotoki.richText.bulletList'));
+        self::assertSame(['version'], LibraryWords::placeholders('anotoki.footer.version'));
+        self::assertSame([], LibraryWords::placeholders('anotoki.footer.fanHoyoverse'));
+        self::assertSame('Send feedback', LibraryWords::english('anotoki.footer.feedback'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

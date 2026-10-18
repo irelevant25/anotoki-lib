@@ -1,25 +1,30 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ANOTOKI_LIB_VERSION } from '@anotoki/lib';
 import { FeedbackUnread } from '@anotoki/lib/admin';
-import { LegalLinksComponent } from '@anotoki/lib/legal';
+import { SiteFooterComponent, SiteFooterFan } from '@anotoki/lib/footer';
 import { ShellComponent, TopBarComponent, TopBarLink, TopBarMenuItem } from '@anotoki/lib/shell';
 import { TranslationService } from '@anotoki/lib/translations';
 import { AnotokiWords } from '@anotoki/lib/ui';
-import { ConfirmHostComponent } from '@anotoki/lib/ui/dialog';
+import { ConfirmHostComponent, DialogComponent } from '@anotoki/lib/ui/dialog';
 import { ToastHostComponent } from '@anotoki/lib/ui/toast';
 import { filter } from 'rxjs';
+
+/** The query, as the legal pages' sample facts read it: ?fan=1 the fan clause, ?feedback=0 a site that takes none. */
+const params = new URLSearchParams(location.search);
 
 /**
  * The showcase's frame: the family's bar and frame around the gallery, as a
  * site's app component holds them - a thin wrapper wording the bar - and the
- * footer's links to the legal pages. It tells the translations where the page
- * is after every navigation, as a site's title strategy does (the admin pages
- * are English).
+ * family's footer under every page (0.6.3: the library's version, What's new,
+ * Send feedback, the legal pages' links). It tells the translations where the
+ * page is after every navigation, as a site's title strategy does (the admin
+ * pages are English).
  */
 @Component({
   selector: 'show-root',
-  imports: [RouterOutlet, ShellComponent, TopBarComponent, ConfirmHostComponent, ToastHostComponent, LegalLinksComponent],
+  imports: [RouterOutlet, ShellComponent, TopBarComponent, ConfirmHostComponent, ToastHostComponent, DialogComponent, SiteFooterComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,6 +57,19 @@ export class AppComponent {
   protected readonly frameWidth = new URLSearchParams(location.search).get('frame');
   /** Signing out takes a moment here: the item says "Saving…" meanwhile. */
   protected readonly signOut = () => new Promise<void>((done) => setTimeout(done, 2500));
+
+  /** The footer: the library's version, Send feedback unless ?feedback=0, the fan clause with ?fan=1. */
+  protected readonly version = ANOTOKI_LIB_VERSION;
+  protected readonly feedback = params.get('feedback') !== '0';
+  protected readonly fan: SiteFooterFan | null = params.get('fan') === '1' ? 'hoyoverse' : null;
+  /** The showcase's own What's new, as a site opens its own when the footer says so. */
+  protected readonly whatsNewOpen = signal(false);
+  protected readonly whatsNewTitle = computed(() => (this.words.language() === 'sk' ? 'Čo je nové' : "What's new"));
+  protected readonly whatsNewText = computed(() =>
+    this.words.language() === 'sk'
+      ? 'anotoki-lib 0.6.3: spoločná pätička všetkých stránok anotoki - práve táto.'
+      : "anotoki-lib 0.6.3: the family's footer - this one - under every page of every site.",
+  );
 
   constructor() {
     // The new feedback beside the admin tools' link, as a site's admin navigation reads it once.

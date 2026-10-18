@@ -34,6 +34,7 @@
     "feedback/**/testing.ts",
     "error-report/**/*.spec.ts",
     "legal/**/*.spec.ts",
-    "legal/**/testing.ts"
+    "legal/**/testing.ts",
+    "footer/**/*.spec.ts"
   ]
 }

@@ -23,6 +23,12 @@ import { SitePagesDirective } from './site-pages.directive';
  * a page behind the status page would still run and send its requests (and
  * their failures) while nobody sees it. An unmarked `<ng-template>` is no
  * longer taken for the pages: a control-flow block is a template too.
+ *
+ * The status page is a page of its own, with no header and no footer (the
+ * owner's rule of 2026-10-18): the gate is the outermost of what a site draws,
+ * the site's frame - its bar, its side navigation, its footer - inside its
+ * pages (its layout routes, or the marked template with the outlet), and the
+ * status page in a `<main>` of the gate's (0.6.3).
  */
 @Component({
   selector: 'anotoki-site-gate',
@@ -30,6 +36,7 @@ import { SitePagesDirective } from './site-pages.directive';
   templateUrl: './site-gate.component.html',
   styleUrl: './site-gate.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'anotoki-site-gate' },
 })
 export class SiteGateComponent {
   private readonly status = inject(SiteStatus);

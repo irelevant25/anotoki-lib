@@ -1,0 +1,57 @@
+@use "../../../sass/kit";
+
+// The build analyzer's footer, the family's now: a border on top, everything centred in the muted ink, small.
+:host {
+  display: block;
+}
+
+// A site's own `footer {}` must not show through: everything the footer relies on is set here.
+.anotoki-site-footer__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 1.25rem 1rem 1.5rem;
+  border: 0;
+  border-top: 1px solid kit.token(border);
+  background: transparent;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
+// The version, What's new and Send feedback: one row while it fits, wrapping on a phone.
+.anotoki-site-footer__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.anotoki-site-footer__version {
+  font-variant-numeric: tabular-nums;
+}
+
+// Terms · Privacy · Contact keep their own look (the kit's muted ink, a dot between them), at the footer's size.
+.anotoki-site-footer__legal {
+  font-size: 0.8125rem;
+}
+
+.anotoki-site-footer__fan {
+  max-width: 40rem;
+  margin: 0;
+  color: inherit;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+// A printed page is its content alone, as the bar is.
+@media print {
+  :host {
+    display: none;
+  }
+}

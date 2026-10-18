@@ -12,7 +12,8 @@ the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
-`feedback/form`, `error-report`, `error-report/marker`, `legal`, `legal/pages`, and the generated `words`,
+`feedback/form`, `error-report`, `error-report/marker`, `legal`, `legal/pages`, `footer` (0.6.3, with its
+own lazy `footer/feedback`), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
@@ -47,6 +48,16 @@ bun run words           # the library's words from php/resources/library-words.j
 - **Never change a site's bookkeeping table**: read every shape that exists
   (`filename` or `name`; `folder` or none; TIMESTAMP holding UTC or TIMESTAMPTZ;
   with or without `id`). A site adopts an older shape itself, in `prepare`.
+- **A gate that compares lists compares them as sets, or sorts both sides
+  `COLLATE "C"`** (the build analyzer's live database, 2026-10-18): a host's
+  collation may skip punctuation (glibc's `en_US.utf8`, ICU's
+  `en-US-u-ka-shifted`), so names ordered as TEXT and the same names ordered as
+  the catalog's `name` type (byte order) come out in two orders, and an Apply is
+  refused. So for a migration's `DO $$` check and for the runtime alike: a set
+  (`= ANY`, `EXCEPT`, `array_diff`), or both orders the bytes'. The one such
+  comparison in a released file, `anotoki_translations/001`'s primary keys, is
+  harmless (its names sort alike in every collation) and stays as it is;
+  `SchemaTest` applies the library's sets on `en-US-u-ka-shifted` (PostgreSQL 15+).
 - **Words**: the administrators' words are English; the visitors' words are built
   in for `en` and `sk` (Slovak informal, "ty") and overridable per language. The
   library's words (`anotoki.*`) have one source, `php/resources/library-words.json`:
@@ -74,7 +85,9 @@ bun run words           # the library's words from php/resources/library-words.j
   that are entry points of their own (0.6.0: `anotoki.chips.*`,
   `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*`, `anotoki.dateField.*`, `anotoki.colorField.*`,
   `anotoki.filePicker.*`, `anotoki.combobox.*`, `anotoki.richText.*` - a piece has no provide*(), and provideAnotokiUi is in
-  every first load), each read through `ui/piece-words`' `pieceWords()`, the
+  every first load) and of the family's footer (0.6.3: `anotoki.footer.*`, which has
+  none either - they come in the footer's own first load, and no other), each read
+  through `ui/piece-words`' `pieceWords()`, the
   site's string first. Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
   that must pass on PHP 8.2 - write no newer syntax - and the newest PHP.
@@ -109,11 +122,13 @@ bun run words           # the library's words from php/resources/library-words.j
   every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
   `migrations` and `error-report/marker` (a token, never the reporter); `people/page` the kit and `people`, which imports nothing;
-  `legal/pages` the kit, `legal` and the feedback form by import() alone; a
+  `legal/pages` the kit, `legal` and the feedback form by import() alone; `footer`
+  the core's pieces, `legal`, its words and - by import() alone - `footer/feedback`,
+  which holds the kit's dialog and the feedback form; a
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the
-  words, a button and the sign-in to their limits and to the namespaces of words
+  words, a button, the sign-in and the footer to their limits and to the namespaces of words
   their pages say. No bundle names innerHTML, outerHTML, insertAdjacentHTML or
   bypassSecurityTrust, comments included (the IAM's deploy check refuses such a
   release): the kit draws text.

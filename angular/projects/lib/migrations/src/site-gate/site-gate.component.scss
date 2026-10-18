@@ -2,3 +2,14 @@
 :host {
   display: contents;
 }
+
+// The status page is a page of its own - the site's frame, inside its pages, is not drawn with it (README.md, "Footer"):
+// its landmark, whatever a site's own `main {}` says.
+.anotoki-site-gate__status {
+  display: block;
+  box-sizing: border-box;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}

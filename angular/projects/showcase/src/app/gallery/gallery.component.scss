@@ -17,6 +17,29 @@
   min-width: 0;
 }
 
+// The footer (0.6.3): each sample on the page's own ground, as it ends a page, named above it.
+.footer-samples {
+  display: grid;
+  gap: 1rem;
+}
+
+.footer-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding-top: 0.75rem;
+  border-radius: anotoki.token(radius);
+  background: anotoki.token(bg);
+}
+
+.footer-sample-label {
+  padding: 0 1rem;
+  color: anotoki.token(subtle);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
 .eyebrow {
   color: anotoki.token(primary-soft-text);
   font-size: 0.8125rem;

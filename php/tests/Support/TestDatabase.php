@@ -30,11 +30,14 @@ final class TestDatabase
 
     private static bool $cleanupRegistered = false;
 
-    /** Makes an empty database and answers its name. */
-    public static function create(): string
+    /**
+     * Makes an empty database and answers its name - in the server's own encoding and collation, or as $options say
+     * (`ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE '…' LOCALE 'C'`: a host's collation).
+     */
+    public static function create(string $options = ''): string
     {
         $name = 'anotoki_lib_test_' . bin2hex(random_bytes(6));
-        self::server()->exec('CREATE DATABASE "' . $name . '" TEMPLATE template0');
+        self::server()->exec('CREATE DATABASE "' . $name . '" TEMPLATE template0' . ($options === '' ? '' : ' ' . $options));
         self::$made[$name] = true;
 
         if (!self::$cleanupRegistered) {

@@ -1,0 +1,51 @@
+<footer class="anotoki-site-footer__footer">
+    @if (parts().length) {
+        <div class="anotoki-site-footer__row">
+            @for (part of parts(); track part; let first = $first) {
+                @if (!first) {
+                    <span class="anotoki-site-footer__dot" aria-hidden="true">·</span>
+                }
+                @switch (part) {
+                    @case ("version") {
+                        <span class="anotoki-site-footer__version" data-version [attr.lang]="said().version.lang">{{ said().version.text }}</span>
+                    }
+                    @case ("whatsNew") {
+                        <button
+                            anotokiButton
+                            variant="link"
+                            size="sm"
+                            class="anotoki-site-footer__whats-new"
+                            data-whats-new
+                            aria-haspopup="dialog"
+                            [attr.lang]="said().whatsNew.lang"
+                            (click)="whatsNew.emit()">
+                            {{ said().whatsNew.text }}
+                        </button>
+                    }
+                    @case ("feedback") {
+                        <button
+                            #feedbackButton
+                            anotokiButton
+                            variant="link"
+                            size="sm"
+                            class="anotoki-site-footer__feedback"
+                            data-open-feedback
+                            aria-haspopup="dialog"
+                            [loading]="opening()"
+                            [attr.lang]="said().feedback.lang"
+                            (click)="openFeedback()">
+                            {{ said().feedback.text }}
+                        </button>
+                    }
+                }
+            }
+        </div>
+    }
+    <anotoki-legal-links class="anotoki-site-footer__legal" />
+    @if (fan() === "hoyoverse") {
+        <p class="anotoki-site-footer__fan" data-fan [attr.lang]="said().fan.lang">{{ said().fan.text }}</p>
+    }
+</footer>
+
+<!-- The feedback dialog, made here with the press on Send feedback (its code loaded then), drawn over the page. -->
+<ng-container #feedbackSlot />

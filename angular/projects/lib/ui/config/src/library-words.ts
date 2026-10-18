@@ -331,4 +331,8 @@ export type LibraryKey =
   | 'anotoki.richText.link'
   | 'anotoki.richText.clear'
   | 'anotoki.richText.undo'
-  | 'anotoki.richText.redo';
+  | 'anotoki.richText.redo'
+  | 'anotoki.footer.version'
+  | 'anotoki.footer.whatsNew'
+  | 'anotoki.footer.feedback'
+  | 'anotoki.footer.fanHoyoverse';

@@ -12,7 +12,7 @@
 const EN = {
   'anotoki.footer.version': 'Version {version}',
   'anotoki.footer.whatsNew': 'What\'s new',
-  'anotoki.footer.feedback': 'Send feedback',
+  'anotoki.footer.feedback': 'Feedback',
   'anotoki.footer.fanHoyoverse': 'This site is a fan-made project and is not affiliated with or endorsed by HoYoverse.',
 } as const;
 
@@ -22,7 +22,7 @@ export type FooterLibraryKey = keyof typeof EN;
 const SK: Readonly<Record<FooterLibraryKey, string>> = {
   'anotoki.footer.version': 'Verzia {version}',
   'anotoki.footer.whatsNew': 'Čo je nové',
-  'anotoki.footer.feedback': 'Poslať spätnú väzbu',
+  'anotoki.footer.feedback': 'Spätná väzba',
   'anotoki.footer.fanHoyoverse': 'Táto stránka je fanúšikovský projekt a nie je prepojená so spoločnosťou HoYoverse ani ňou schválená.',
 };
 

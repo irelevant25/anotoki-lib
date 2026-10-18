@@ -13,12 +13,12 @@ the top border."): `@anotoki/lib/footer` (new), `<anotoki-site-footer>`, the bui
 (README.md, "Footer").
 
 - A top border, centred, the muted ink at 0.8125rem; a row - "Version X" (`version`, its figures of one width), "What's
-  new" (`whatsNew`; pressed, `(whatsNew)`: the site opens its own) and "Send feedback" (`feedback`), the kit's small link
+  new" (`whatsNew`; pressed, `(whatsNew)`: the site opens its own) and "Feedback" (`feedback`), the kit's small link
   buttons naming the dialog they open, 44 px where the pointer is a finger, a dot between two parts, drawn and never
   read - a part that is off takes its dot with it, and with none the row is not drawn; Terms · Privacy · Contact always
   (`<anotoki-legal-links>`, the site's `provideAnotokiLegal()`); the fan clause where the site asks for it
   (`fan="hoyoverse"`). A `<footer>` landmark; wraps at 390 px; light and dark; not printed, as the bar is not.
-- Send feedback opens the library's feedback form in the kit's dialog, named by the button's words, with the form's
+- Feedback opens the library's feedback form in the kit's dialog, named by the button's words, with the form's
   Cancel and its Close after the thanks; their code comes with the first press - `@anotoki/lib/footer/feedback` (new,
   the footer's own, 0.9 kB gzipped) - the button busy meanwhile, and the focus is back on the button once the dialog
   goes. With the dialog drawn by the footer itself its first load took 2.0 kB more beside lazy pages, which use the rest
@@ -32,7 +32,7 @@ the top border."): `@anotoki/lib/footer` (new), `<anotoki-site-footer>`, the bui
 - The package check: the footer 2.6 kB gzipped of its 3; its first load ("the footer": with the legal configuration its
   links read) 7.6 kB alone and 8.0 beside lazy pages, of 9, carrying the kit's, the legal links' and its own words and
   no others; every other first load as it was.
-- The showcase: the family's footer under every page (the library's version, What's new, Send feedback; `?fan=1`,
+- The showcase: the family's footer under every page (the library's version, What's new, Feedback; `?fan=1`,
   `?feedback=0`) and its samples in the gallery - looked at beside the build analyzer's at 1280 and 390 px, light and
   dark, English and Slovak: the same paddings, sizes, gaps and heights, the family's colours.
 

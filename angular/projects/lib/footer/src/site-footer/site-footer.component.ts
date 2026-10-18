@@ -33,13 +33,13 @@ type RowPart = 'version' | 'whatsNew' | 'feedback';
  * border. Under every page of a site and of its admin panel (in the family's frame, `<anotoki-shell>`'s
  * `[shellFooter]`), never under the status page (README.md, "Footer"):
  *
- * - a row - "Version X" (its figures of one width), "What's new" and "Send feedback", the kit's small link buttons
+ * - a row - "Version X" (its figures of one width), "What's new" and "Feedback", the kit's small link buttons
  *   (44 px where the pointer is a finger), each naming the dialog it opens (`aria-haspopup`), a dot between two parts
  *   that is drawn and never read. A part the site leaves out takes its dot with it, and with none the row is not drawn;
  * - Terms · Privacy · Contact, always (<anotoki-legal-links>, to the paths of the site's provideAnotokiLegal());
  * - the fan clause, where the site asks for it (`fan`).
  *
- * What's new is the site's own: the footer tells it (`whatsNew`). Send feedback opens the library's feedback form -
+ * What's new is the site's own: the footer tells it (`whatsNew`). Feedback opens the library's feedback form -
  * the site's provideAnotokiFeedback() as it is - in the kit's dialog, named by the button's words. The dialog and the
  * form come with the first press (@anotoki/lib/footer/feedback), as the Contact page's form does, so no first load
  * carries them; the focus is back on the button once the dialog goes (Cancel, Close after the thanks, Escape, the
@@ -64,7 +64,7 @@ export class SiteFooterComponent {
   readonly version = input<string | null | undefined>(null);
   /** "What's new" in the row, after the version: pressed, `(whatsNew)` - the site opens its own. */
   readonly showWhatsNew = input(false, { alias: 'whatsNew', transform: booleanAttribute });
-  /** "Send feedback" in the row, last: pressed, the library's feedback form in the kit's dialog. A site that takes no feedback leaves it out. */
+  /** "Feedback" in the row, last: pressed, the library's feedback form in the kit's dialog. A site that takes no feedback leaves it out. */
   readonly feedback = input(false, { transform: booleanAttribute });
   /** The fan clause under Terms · Privacy · Contact: 'hoyoverse' (the genshin site, the build analyzer); null for none. */
   readonly fan = input<SiteFooterFan | null | undefined>(null);

@@ -66,7 +66,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
   /** Terms · Privacy · Contact as they are drawn: [the words, where each goes]. */
   const legalLinks = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLAnchorElement>('anotoki-legal-links a')).map((link) => [words(link), link.getAttribute('href')]);
 
-  /** Presses Send feedback and waits for the form - its code comes with the first press - and for the page to be drawn. */
+  /** Presses Feedback and waits for the form - its code comes with the first press - and for the page to be drawn. */
   async function openFeedback(host: HTMLElement): Promise<Element> {
     const button = host.querySelector<HTMLButtonElement>('[data-open-feedback]')!;
     button.focus();
@@ -84,12 +84,12 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     document.body.innerHTML = '';
   });
 
-  it("draws the row - Version · What's new · Send feedback - then Terms · Privacy · Contact, in a footer of its own", async () => {
+  it("draws the row - Version · What's new · Feedback - then Terms · Privacy · Contact, in a footer of its own", async () => {
     const { host } = await setUp(FooterPageComponent);
     const footer = host.querySelector('anotoki-site-footer > footer.anotoki-site-footer__footer')!;
     expect(footer).not.toBeNull();
     expect(host.querySelector('anotoki-site-footer')?.classList).toContain('anotoki-site-footer');
-    expect(row(host)).toEqual(['Version 0.3', '·', "What's new", '·', 'Send feedback']);
+    expect(row(host)).toEqual(['Version 0.3', '·', "What's new", '·', 'Feedback']);
     // The version's figures are of one width (tabular, the footer's styles); the dots are drawn, never read.
     expect(host.querySelector('.anotoki-site-footer__row > .anotoki-site-footer__version')).not.toBeNull();
     const dots = Array.from(host.querySelectorAll('.anotoki-site-footer__dot'));
@@ -120,7 +120,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
 
     page.version.set(null);
     await settle(fixture);
-    expect(row(host)).toEqual(["What's new", '·', 'Send feedback']);
+    expect(row(host)).toEqual(["What's new", '·', 'Feedback']);
 
     page.feedback.set(false);
     await settle(fixture);
@@ -133,7 +133,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     page.whatsNew.set(false);
     page.feedback.set(true);
     await settle(fixture);
-    expect(row(host)).toEqual(['Version 1.2.0', '·', 'Send feedback']);
+    expect(row(host)).toEqual(['Version 1.2.0', '·', 'Feedback']);
 
     page.feedback.set(false);
     await settle(fixture);
@@ -158,7 +158,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
 
   it('takes the bare attributes too: whatsNew, feedback, fan="hoyoverse"', async () => {
     const { fixture, host, page } = await setUp(FooterAttributesComponent);
-    expect(row(host)).toEqual(['Version 1.2.0', '·', "What's new", '·', 'Send feedback']);
+    expect(row(host)).toEqual(['Version 1.2.0', '·', "What's new", '·', 'Feedback']);
     expect(words(host.querySelector('[data-fan]'))).toBe('This site is a fan-made project and is not affiliated with or endorsed by HoYoverse.');
     host.querySelector<HTMLButtonElement>('[data-whats-new]')!.click();
     await settle(fixture);
@@ -171,7 +171,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
 
     let dialog = await openFeedback(host);
     // Named by the button's words; the form draws no heading of its own, and has its Cancel.
-    expect(words(dialog.querySelector('.anotoki-dialog__title'))).toBe('Send feedback');
+    expect(words(dialog.querySelector('.anotoki-dialog__title'))).toBe('Feedback');
     expect(dialog.querySelector('dialog')?.hasAttribute('open')).toBe(true);
     expect(dialog.querySelector('anotoki-feedback-form')).not.toBeNull();
     expect(dialog.querySelector('anotoki-feedback-form h2, anotoki-feedback-form h3')).toBeNull();
@@ -222,13 +222,13 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     const { fixture, host, page } = await setUp(FooterPageComponent, { language: 'sk' });
     page.fan.set('hoyoverse');
     await settle(fixture);
-    expect(row(host)).toEqual(['Verzia 0.3', '·', 'Čo je nové', '·', 'Poslať spätnú väzbu']);
+    expect(row(host)).toEqual(['Verzia 0.3', '·', 'Čo je nové', '·', 'Spätná väzba']);
     expect(legalLinks(host).map(([label]) => label)).toEqual(['Podmienky', 'Súkromie', 'Kontakt']);
     expect(words(host.querySelector('[data-fan]'))).toBe('Táto stránka je fanúšikovský projekt a nie je prepojená so spoločnosťou HoYoverse ani ňou schválená.');
     expect(host.querySelector('[lang]')).toBeNull();
 
     const dialog = await openFeedback(host);
-    expect(words(dialog.querySelector('.anotoki-dialog__title'))).toBe('Poslať spätnú väzbu');
+    expect(words(dialog.querySelector('.anotoki-dialog__title'))).toBe('Spätná väzba');
     expect(dialog.querySelector('anotoki-feedback-form')?.getAttribute('lang')).toBe('sk');
   });
 
@@ -246,7 +246,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     const { host, page } = await setUp(FooterPageComponent, { language: 'de' });
     page.fan.set('hoyoverse');
     await settle(fixture);
-    expect(row(host)).toEqual(['Version 0.3', '·', "What's new", '·', 'Send feedback']);
+    expect(row(host)).toEqual(['Version 0.3', '·', "What's new", '·', 'Feedback']);
     for (const part of [host.querySelector('[data-version]'), host.querySelector('[data-whats-new]'), host.querySelector('[data-open-feedback]'), host.querySelector('[data-fan]')]) {
       expect(part?.getAttribute('lang')).toBe('en');
     }

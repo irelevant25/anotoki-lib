@@ -30,8 +30,8 @@ SELECT v.key_name, v.language_code, v.value
     ('anotoki.footer.version', 'sk', 'Verzia {version}'),
     ('anotoki.footer.whatsNew', 'en', 'What''s new'),
     ('anotoki.footer.whatsNew', 'sk', 'Čo je nové'),
-    ('anotoki.footer.feedback', 'en', 'Send feedback'),
-    ('anotoki.footer.feedback', 'sk', 'Poslať spätnú väzbu'),
+    ('anotoki.footer.feedback', 'en', 'Feedback'),
+    ('anotoki.footer.feedback', 'sk', 'Spätná väzba'),
     ('anotoki.footer.fanHoyoverse', 'en', 'This site is a fan-made project and is not affiliated with or endorsed by HoYoverse.'),
     ('anotoki.footer.fanHoyoverse', 'sk', 'Táto stránka je fanúšikovský projekt a nie je prepojená so spoločnosťou HoYoverse ani ňou schválená.')
   ) AS v(key_name, language_code, value)

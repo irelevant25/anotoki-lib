@@ -38,7 +38,7 @@ Version 0.6.2 holds:
   "Legal pages");
 - **the footer** (Angular, with its words in both halves; 0.6.3, not released
   yet) - `<anotoki-site-footer>`, one footer under every page and admin panel of
-  every site: the version, What's new, Send feedback, Terms · Privacy · Contact
+  every site: the version, What's new, Feedback, Terms · Privacy · Contact
   and the fan clause; and the status page, with no header and no footer (the
   section "Footer").
 
@@ -247,8 +247,8 @@ uses is in the first load again.
 | `@anotoki/lib/error-report/marker` (0.6.0) | `ANOTOKI_ERROR_REPORT` alone, the mark on a report's request an interceptor reads (the auth module's) - without the reporter; `@anotoki/lib/error-report` names it too | with the reporter, and the auth module |
 | `@anotoki/lib/legal` (0.6.0) | the legal pages' configuration (`provideAnotokiLegal`: the site's facts, its paths, the operator) and `<anotoki-legal-links>`, Terms · Privacy · Contact for a footer ("Legal pages" below) | yes (a footer on every page) |
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
-| `@anotoki/lib/footer` (0.6.3) | `<anotoki-site-footer>`, the family's footer: the version, What's new, Send feedback, Terms · Privacy · Contact, the fan clause ("Footer" below) | yes (every page) |
-| `@anotoki/lib/footer/feedback` (0.6.3) | the footer's feedback dialog: the kit's dialog around the feedback form; the library's own, a site imports nothing of it | loaded with the press on Send feedback |
+| `@anotoki/lib/footer` (0.6.3) | `<anotoki-site-footer>`, the family's footer: the version, What's new, Feedback, Terms · Privacy · Contact, the fan clause ("Footer" below) | yes (every page) |
+| `@anotoki/lib/footer/feedback` (0.6.3) | the footer's feedback dialog: the kit's dialog around the feedback form; the library's own, a site imports nothing of it | loaded with the press on Feedback |
 | `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper`, `/tabs`, `/date-field`, `/color-field`, `/file-picker`, `/combobox` and `/rich-text` (the kit's pieces', 0.6.0 - read by those pieces alone), `/footer` (the footer's, 0.6.3 - read by the footer itself) | with its module, which alone imports it and registers it with the translations module (the legal pages, the kit's pieces and the footer read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
@@ -1168,7 +1168,7 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
 - `010_backups_where_words.sql` (0.6.1) and `011_privacy_words_made_true.sql` (0.6.2) reword sentences of
   the Privacy page where they are still 005's words (CHANGELOG.md).
 - `012_footer_words.sql` (0.6.3) adds the footer's words (`anotoki.footer.*`: "Version {version}",
-  "What's new", "Send feedback" and the HoYoverse fan clause), 4 keys in English and impersonal Slovak,
+  "What's new", "Feedback" and the HoYoverse fan clause), 4 keys in English and impersonal Slovak,
   by 002's rule - 261 library keys.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
@@ -2940,7 +2940,7 @@ provideAnotokiFeedback(() => ({ /* "The visitors' feedback form" above */ })),
 | --- | --- |
 | `version` | the version of the site the page runs (`'0.3'`): "Version 0.3", first in the row; null or empty - neither it nor its dot |
 | `whatsNew`, `(whatsNew)` | "What's new" after the version, a link button naming the dialog it opens (`aria-haspopup="dialog"`); pressed, `(whatsNew)`: the site opens its own What's new |
-| `feedback` | "Send feedback", last in the row: the library's feedback form in the kit's dialog, named by the button's words, the form with its Cancel and - after the thanks - its Close (the site's `provideAnotokiFeedback()` as it is). The dialog's and the form's code come with the first press (`@anotoki/lib/footer/feedback`, the footer's own: no first load carries them), the button busy meanwhile; the focus is back on the button once the dialog goes. Left out on a site that takes no feedback (the IAM, the survey) |
+| `feedback` | "Feedback", last in the row: the library's feedback form in the kit's dialog, named by the button's words, the form with its Cancel and - after the thanks - its Close (the site's `provideAnotokiFeedback()` as it is). The dialog's and the form's code come with the first press (`@anotoki/lib/footer/feedback`, the footer's own: no first load carries them), the button busy meanwhile; the focus is back on the button once the dialog goes. Left out on a site that takes no feedback (the IAM, the survey) |
 | `fan` | `'hoyoverse'`: the fan clause, last (genshin, the build analyzer); Terms and Contact say it longer (`fanDisclaimer`) |
 
 - **Drawn**: a top border (`--anotoki-border`), everything centred in the muted
@@ -3040,7 +3040,7 @@ bun run showcase        # projects/showcase on http://localhost:4320: every piec
                         # failure's screen (?code=state_mismatch, ..., unavailable); /terms, /privacy, /contact,
                         # the legal pages with a sample site's facts, linked from the footer (?iam=1 the anotoki
                         # account's own, ?fan=1 the fan clause, ?feedback=0 a site without feedback); the family's
-                        # footer under every page (the library's version, What's new, Send feedback; the same
+                        # footer under every page (the library's version, What's new, Feedback; the same
                         # ?fan=1 and ?feedback=0) and its samples in the gallery; never published)
 bun run build:showcase  # the same, built into angular/dist/showcase
 bun run words           # the Angular half's library words from php/resources/library-words.json (--check: stale?)

@@ -4,11 +4,11 @@ import { DialogComponent } from '@anotoki/lib/ui/dialog';
 
 /**
  * The library's feedback form in the kit's dialog (the focus kept inside it, and back where it was after), as the
- * footer opens it: named by the footer's Send feedback, the form with no heading of its own, and with its Cancel and -
+ * footer opens it: named by the footer's Feedback, the form with no heading of its own, and with its Cancel and -
  * after the thanks - its Close. The form takes the site's provideAnotokiFeedback() as it is (its words, its sections,
  * the person's address).
  *
- * <anotoki-site-footer> makes it when Send feedback is pressed - its code loaded then - and takes it away on `closed`.
+ * <anotoki-site-footer> makes it when Feedback is pressed - its code loaded then - and takes it away on `closed`.
  */
 @Component({
   selector: 'anotoki-footer-feedback-dialog',

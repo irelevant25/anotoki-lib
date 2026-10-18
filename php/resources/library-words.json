@@ -1297,8 +1297,8 @@
         },
         "anotoki.footer.feedback": {
             "description": "The anotoki library's footer, on a site that takes feedback: the button that opens the feedback form (the anotoki library's form, in a dialog), and the heading of that dialog. Short: it stands in one row with the version and What's new. No placeholders.",
-            "en": "Send feedback",
-            "sk": "Poslať spätnú väzbu"
+            "en": "Feedback",
+            "sk": "Spätná väzba"
         },
         "anotoki.footer.fanHoyoverse": {
             "description": "The anotoki library's footer, on a site that asks for it (the genshin site, the build analyzer): the fan clause, the last line under Terms · Privacy · Contact. Terms and Contact say it longer (anotoki.legal.fanHoyoverse). HoYoverse is the games' publisher, a name never translated. No placeholders.",

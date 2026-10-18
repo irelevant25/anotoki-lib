@@ -164,7 +164,7 @@ final class LibraryWordsTest extends TestCase
         self::assertSame('Bulleted list', LibraryWords::english('anotoki.richText.bulletList'));
         self::assertSame(['version'], LibraryWords::placeholders('anotoki.footer.version'));
         self::assertSame([], LibraryWords::placeholders('anotoki.footer.fanHoyoverse'));
-        self::assertSame('Send feedback', LibraryWords::english('anotoki.footer.feedback'));
+        self::assertSame('Feedback', LibraryWords::english('anotoki.footer.feedback'));
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

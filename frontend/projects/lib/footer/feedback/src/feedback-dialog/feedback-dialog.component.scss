@@ -1,4 +1,0 @@
-// No box of its own: the dialog is drawn over the page (the top layer), wherever the footer puts this.
-:host {
-  display: contents;
-}

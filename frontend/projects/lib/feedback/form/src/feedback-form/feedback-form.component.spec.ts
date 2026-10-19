@@ -358,4 +358,84 @@ describe("<anotoki-feedback-form>: a visitor's message, in their language, check
     (host.querySelector('[data-close]') as HTMLButtonElement).click();
     expect(closed).toBe(2);
   });
+
+  /** The form taken away and drawn again on the same page - a dialog closed and opened, a page left and come back to. */
+  async function drawAgain(): Promise<void> {
+    fixture.destroy();
+    fixture = TestBed.createComponent(FeedbackFormComponent);
+    host = fixture.nativeElement;
+    document.body.appendChild(host);
+    await settle(fixture);
+  }
+
+  it('keeps what was typed for the page: a form drawn again shows it - never in the browser’s storage', async () => {
+    await open({ fields: () => [{ name: 'steps', label: 'Steps', kinds: ['bug'], max: 100 }] });
+    localStorage.clear();
+    sessionStorage.clear();
+    type(field('subject'), 'Empty talents');
+    type(field('message'), 'Amber shows no talents.');
+    type(host.querySelector('[data-field="steps"] textarea'), 'Open Amber.');
+    type(field('email'), 'reader@example.test');
+    await settle(fixture);
+
+    await drawAgain();
+    expect([field('subject')?.value, field('message')?.value, host.querySelector<HTMLTextAreaElement>('[data-field="steps"] textarea')?.value, field('email')?.value]).toEqual([
+      'Empty talents',
+      'Amber shows no talents.',
+      'Open Amber.',
+      'reader@example.test',
+    ]);
+    // The address the person typed stays theirs: the account's is not written over it in the new form either.
+    signedIn.set(true);
+    email.set('mira@example.test');
+    await settle(fixture);
+    expect(field('email')?.value).toBe('reader@example.test');
+    expect([localStorage.length, sessionStorage.length]).toEqual([0, 0]);
+  });
+
+  it('draws Clear at the left of its buttons, the quiet red outlined in red, named to a screen reader - and empties every field and the kept draft', async () => {
+    await open({}, { closable: true });
+    const buttons = Array.from(host.querySelectorAll<HTMLButtonElement>('[data-actions] button'));
+    expect(buttons.map((button) => words(button))).toEqual(['Clear', 'Cancel', 'Send']);
+    const clear = host.querySelector<HTMLButtonElement>('[data-clear]')!;
+    expect(clear.classList).toContain('anotoki-button--danger-ghost');
+    expect(clear.classList).toContain('anotoki-feedback-form__clear');
+    expect(clear.getAttribute('aria-label')).toBe('Clear the form');
+    expect(clear.getAttribute('type')).toBe('button');
+
+    (host.querySelector('[data-kind] input[value="idea"]') as HTMLInputElement).click();
+    type(field('subject'), 'A dark map');
+    type(field('message'), 'A dark map, please.');
+    type(field('email'), 'reader@example.test');
+    await settle(fixture);
+    clear.click();
+    await settle(fixture);
+    expect(host.querySelector<HTMLInputElement>('[data-kind] input:checked')?.value).toBe('bug');
+    expect([field('subject')?.value, field('message')?.value, field('email')?.value]).toEqual(['', '', '']);
+    expect(document.activeElement).toBe(field('message'));
+    expect(closed).toBe(0);
+    http.expectNone('/api/feedback');
+
+    // Cleared from the draft too, and the account's address written in again for somebody signed in.
+    signedIn.set(true);
+    email.set('mira@example.test');
+    await drawAgain();
+    expect([field('subject')?.value, field('message')?.value, field('email')?.value]).toEqual(['', '', 'mira@example.test']);
+  });
+
+  it('a message sent empties the draft - a form drawn again starts empty - while Send another keeps who sends it', async () => {
+    await open();
+    (host.querySelector('[data-kind] input[value="idea"]') as HTMLInputElement).click();
+    type(field('message'), 'A dark map, please.');
+    type(field('email'), 'reader@example.test');
+    await send();
+    request().flush({ ok: true }, { status: 201, statusText: 'Created' });
+    await settle(fixture);
+    expect(host.querySelector('[data-thanks] [data-another]')).not.toBeNull();
+
+    await drawAgain();
+    expect(host.querySelector('[data-thanks]')).toBeNull();
+    expect(host.querySelector<HTMLInputElement>('[data-kind] input:checked')?.value).toBe('bug');
+    expect([field('message')?.value, field('email')?.value]).toEqual(['', '']);
+  });
 });

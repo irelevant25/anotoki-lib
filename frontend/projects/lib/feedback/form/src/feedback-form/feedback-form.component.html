@@ -11,12 +11,9 @@
         <anotoki-icon class="anotoki-feedback-form__thanks-icon" name="checkCircle" [size]="30" />
         <p class="anotoki-feedback-form__thanks-title">{{ w().thanks }}</p>
         <p class="anotoki-feedback-form__text">{{ w().thanksText }}</p>
-        <div class="anotoki-feedback-form__actions">
-            <button anotokiButton data-another (click)="another()">{{ w().another }}</button>
-            @if (closable()) {
-                <button anotokiButton variant="primary" data-close [attr.lang]="kit.foreignLang()" (click)="closed.emit()">{{ kit.t("ui.close") }}</button>
-            }
-        </div>
+        @if (!actionsOutside()) {
+            <ng-container [ngTemplateOutlet]="buttons" />
+        }
     </div>
 } @else {
     <p class="anotoki-feedback-form__text anotoki-feedback-form__lead">{{ w().lead }}</p>
@@ -24,6 +21,7 @@
     <form
         class="anotoki-feedback-form__form"
         novalidate
+        [id]="formId"
         [attr.aria-labelledby]="title() ? id + '-title' : null"
         [attr.aria-busy]="sending() ? 'true' : null"
         (submit)="$event.preventDefault(); submit()">
@@ -128,11 +126,32 @@
             </anotoki-alert>
         }
 
-        <div class="anotoki-feedback-form__actions">
+        @if (!actionsOutside()) {
+            <ng-container [ngTemplateOutlet]="buttons" />
+        }
+    </form>
+}
+
+<!--
+    The buttons, one row: under the fields, or in the footer of the dialog around the form (actionsOutside). Their
+    language is the form's wherever they are drawn; Send submits the form by its id from there too, so Enter in a
+    field still sends.
+-->
+<ng-template #buttons>
+    <div class="anotoki-feedback-form__actions" data-actions [class.anotoki-feedback-form__actions--outside]="actionsOutside()" [attr.lang]="said().lang">
+        @if (done()) {
+            <button anotokiButton data-another (click)="another()">{{ w().another }}</button>
+            @if (closable()) {
+                <button anotokiButton variant="primary" data-close [attr.lang]="kit.foreignLang()" (click)="closed.emit()">{{ kit.t("ui.close") }}</button>
+            }
+        } @else {
+            <button anotokiButton type="button" variant="danger-ghost" class="anotoki-feedback-form__clear" data-clear [disabled]="sending()" [attr.aria-label]="w().clearName" (click)="clear()">
+                {{ w().clear }}
+            </button>
             @if (closable()) {
                 <button anotokiButton type="button" data-cancel [disabled]="sending()" [attr.lang]="kit.foreignLang()" (click)="closed.emit()">{{ kit.t("ui.cancel") }}</button>
             }
-            <button anotokiButton type="submit" variant="primary" data-send [loading]="sending()">{{ sending() ? w().sending : w().send }}</button>
-        </div>
-    </form>
-}
+            <button anotokiButton type="submit" variant="primary" data-send [attr.form]="formId" [loading]="sending()">{{ sending() ? w().sending : w().send }}</button>
+        }
+    </div>
+</ng-template>

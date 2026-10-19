@@ -42,6 +42,21 @@
   gap: 0.6rem;
 }
 
+// In the footer of the dialog around the form: the footer's whole row.
+.anotoki-feedback-form__actions--outside {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// Clear stands apart from Cancel and Send, at the left of their row: the kit's quiet red (its words in the danger ink,
+// no ground until hovered) outlined in the danger red - an outline, never a filled ground. Drawn here, in the form's
+// own entry point, so that no first load carries it (a variant of the kit's button would be in every one).
+.anotoki-feedback-form__clear,
+.anotoki-feedback-form__clear:hover {
+  margin-inline-end: auto;
+  border-color: kit.token(danger);
+}
+
 // The robots' field: in the page, so a robot filling every field finds it, but off the screen - never
 // display: none, which some of them pass over - out of the tab order and hidden from screen readers.
 .anotoki-feedback-form__trap {

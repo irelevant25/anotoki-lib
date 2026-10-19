@@ -72,22 +72,41 @@ describe('<anotoki-contact-page>: every message is read - feedback, the address,
     expect(words(section('about')?.querySelector('[data-fan]'))).toContain('is not affiliated with or endorsed by HoYoverse');
   });
 
-  it("opens the library's feedback form in the kit's dialog - its code fetched with the press - named by the dialog", async () => {
+  it("opens the library's feedback form in the kit's dialog - its code fetched with the press - named by the dialog, its buttons in the dialog's footer", async () => {
     drawn = await drawPage(ContactPageComponent);
     expect(host().querySelector('anotoki-feedback-form')).toBeNull();
 
-    host().querySelector<HTMLButtonElement>('[data-open-feedback]')!.click();
-    for (let i = 0; i < 20 && !host().querySelector('anotoki-feedback-form'); i++) {
+    const open = async (): Promise<Element | null> => {
+      host().querySelector<HTMLButtonElement>('[data-open-feedback]')!.click();
+      for (let i = 0; i < 20 && !host().querySelector('anotoki-feedback-form'); i++) {
+        await settle(drawn.fixture);
+      }
+      // Made at once when its code is here already: drawn with the next render.
       await settle(drawn.fixture);
-    }
-    const dialog = host().querySelector('[data-feedback-dialog]');
+      return host().querySelector('[data-feedback-dialog]');
+    };
+    let dialog = await open();
     expect(words(dialog?.querySelector('.anotoki-dialog__title, h2'))).toBe('Send feedback');
-    expect(dialog?.querySelector('anotoki-feedback-form')).not.toBeNull();
+    expect(dialog?.querySelector('.anotoki-dialog__body anotoki-feedback-form')).not.toBeNull();
     expect(dialog?.querySelector('anotoki-feedback-form h2, anotoki-feedback-form h3')).toBeNull();
+    // The footer's dialog (0.8.0): Clear, Cancel and Send in the dialog's own footer (in the form's language - here the
+    // document's, as the page configures no form).
+    expect(Array.from(dialog?.querySelectorAll<HTMLElement>('.anotoki-dialog__footer button') ?? []).map((button) => Object.keys(button.dataset))).toEqual([['clear'], ['cancel'], ['send']]);
     expect(host().querySelector('[data-feedback-failed]')).toBeNull();
 
     // Closed, the focus is back on the button - which was busy, and so disabled, while the form's code came.
+    const message = dialog!.querySelector<HTMLTextAreaElement>('[data-message] textarea')!;
+    message.value = 'A question about my data.';
+    message.dispatchEvent(new Event('input', { bubbles: true }));
     dialog?.querySelector<HTMLButtonElement>('.anotoki-dialog__close')!.click();
+    await settle(drawn.fixture);
+    expect(host().querySelector('[data-feedback-dialog]')).toBeNull();
+    expect(document.activeElement).toBe(host().querySelector('[data-open-feedback]'));
+
+    // Opened again: what was typed is still there; Cancel closes it too.
+    dialog = await open();
+    expect(dialog?.querySelector<HTMLTextAreaElement>('[data-message] textarea')?.value).toBe('A question about my data.');
+    dialog?.querySelector<HTMLButtonElement>('.anotoki-dialog__footer [data-cancel]')!.click();
     await settle(drawn.fixture);
     expect(host().querySelector('[data-feedback-dialog]')).toBeNull();
     expect(document.activeElement).toBe(host().querySelector('[data-open-feedback]'));

@@ -7,7 +7,5 @@
 </p>
 
 @if (open()) {
-    <anotoki-dialog [heading]="title()" size="md" (dismiss)="open.set(false)">
-        <anotoki-feedback-form [heading]="null" [closable]="true" (closed)="open.set(false)" />
-    </anotoki-dialog>
+    <anotoki-feedback-dialog [heading]="title()" (closed)="open.set(false)" />
 }

@@ -1,0 +1,7 @@
+<anotoki-dialog class="anotoki-feedback-dialog__dialog" data-feedback-dialog size="md" [heading]="heading()" [attr.lang]="lang()" (dismiss)="closed.emit()">
+    <anotoki-feedback-form #form class="anotoki-feedback-dialog__form" [heading]="null" closable actionsOutside (closed)="closed.emit()" />
+    <!-- The form's buttons, in the dialog's own footer: always in view while the form scrolls. -->
+    <ng-container ngProjectAs="[dialogFooter]">
+        <ng-container [ngTemplateOutlet]="form.actions()" />
+    </ng-container>
+</anotoki-dialog>

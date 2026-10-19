@@ -59,8 +59,5 @@
     </section>
 </article>
 
-@if (formOpen() && form(); as component) {
-    <anotoki-dialog data-feedback-dialog [heading]="w().contactFeedbackButton" size="md" (dismiss)="closeFeedback()">
-        <ng-container *ngComponentOutlet="component; inputs: formInputs" />
-    </anotoki-dialog>
-}
+<!-- The feedback form in its dialog (<anotoki-feedback-dialog>), made here with the press on the button - its code loaded then. -->
+<ng-container #feedbackSlot />

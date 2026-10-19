@@ -170,24 +170,29 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     expect(host.querySelector('anotoki-feedback-form')).toBeNull();
 
     let dialog = await openFeedback(host);
-    // Named by the button's words; the form draws no heading of its own, and has its Cancel.
+    // Named by the button's words; the form draws no heading of its own; its buttons - Clear, Cancel, Send - are the
+    // dialog's own footer (0.8.0), in view while the form scrolls.
     expect(words(dialog.querySelector('.anotoki-dialog__title'))).toBe('Feedback');
     expect(dialog.querySelector('dialog')?.hasAttribute('open')).toBe(true);
-    expect(dialog.querySelector('anotoki-feedback-form')).not.toBeNull();
+    expect(dialog.querySelector('.anotoki-dialog__body anotoki-feedback-form')).not.toBeNull();
     expect(dialog.querySelector('anotoki-feedback-form h2, anotoki-feedback-form h3')).toBeNull();
+    expect(Array.from(dialog.querySelectorAll('.anotoki-dialog__footer button')).map((button) => words(button))).toEqual(['Clear', 'Cancel', 'Send']);
     expect(dialog.hasAttribute('lang')).toBe(false);
     // Outside the footer's own <footer>: the dialog is drawn over the page, not in the footer's landmark.
     expect(host.querySelector('footer [data-feedback-dialog]')).toBeNull();
 
-    // The form's Cancel closes it: the focus is back on the button.
-    dialog.querySelector<HTMLButtonElement>('anotoki-feedback-form [data-cancel]')!.click();
+    // Cancel closes it: the focus is back on the button.
+    const message = dialog.querySelector<HTMLTextAreaElement>('[data-message] textarea')!;
+    message.value = 'The map is dark.';
+    message.dispatchEvent(new Event('input', { bubbles: true }));
+    dialog.querySelector<HTMLButtonElement>('.anotoki-dialog__footer [data-cancel]')!.click();
     await settle(fixture);
     expect(host.querySelector('[data-feedback-dialog]')).toBeNull();
     expect(document.activeElement).toBe(host.querySelector('[data-open-feedback]'));
 
-    // Again - its code here already - and Escape this time.
+    // Again - its code here already, what was typed still there - and Escape this time.
     dialog = await openFeedback(host);
-    expect(dialog.querySelector('anotoki-feedback-form')).not.toBeNull();
+    expect(dialog.querySelector<HTMLTextAreaElement>('[data-message] textarea')?.value).toBe('The map is dark.');
     press(dialog.querySelector('dialog')!, 'Escape');
     await settle(fixture);
     expect(host.querySelector('[data-feedback-dialog]')).toBeNull();

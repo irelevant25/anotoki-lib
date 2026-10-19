@@ -3,8 +3,8 @@
  * site and of its admin panel, the build analyzer's - "Version X · What's new · Feedback", Terms · Privacy ·
  * Contact under them (<anotoki-legal-links>, the site's provideAnotokiLegal()), and the fan clause where the site asks
  * for it. In every site's first load, so small: its words (`anotoki.footer.*`, @anotoki/lib/words/footer) are read by
- * the footer itself, and the feedback form (@anotoki/lib/feedback/form, configured by the site's
- * provideAnotokiFeedback()) is loaded with the press that opens it.
+ * the footer itself, and the feedback form in its dialog (@anotoki/lib/feedback/form's
+ * <anotoki-feedback-dialog>, configured by the site's provideAnotokiFeedback()) is loaded with the press that opens it.
  *
  *   <anotoki-shell>
  *     ...

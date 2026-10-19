@@ -18,16 +18,17 @@
 //   import() alone) - import its shared part (auth/core), never the module itself. The People page imports the
 //   kit and its configuration's small entry point, which imports nothing. The admin tools' pages import their
 //   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
-//   the feedback form imports its configuration, the kit's fields and the auth module's marker (its message is
-//   anybody's), never the auth module. The legal pages import their configuration (and
-//   the footer's links, @anotoki/lib/legal), the kit's pieces, its dialog and its copy button, and the feedback form by
-//   import() alone. The kit's pieces of 0.6.0 are entry points of their own (ui/chips, ui/link-card, ui/stat-tiles,
-//   ui/progress, ..., ui/side-nav, ui/current-link), outside the core and its limit, each importing the core's pieces it
-//   draws; the tabs (lazy, no limit) gained the link tabs, the badge, the icon and the scroll hint in their own. Its input
-//   pieces (ui/date-field, ui/slider, ui/color-field, ui/file-picker, ui/combobox, ui/rich-text) too, each held to a
-//   limit of its own (LAZY_LIMITS): big pieces, lazy, kept from growing unseen. The family's footer (0.6.3) imports the
-//   core's pieces, the legal links (@anotoki/lib/legal) and its own words, and its feedback dialog (footer/feedback: the
-//   kit's dialog and the feedback form) by import() alone.
+//   the feedback form imports its configuration, the kit's fields, the kit's dialog (0.8.0: the form in its dialog,
+//   its buttons in the dialog's footer) and the auth module's marker (its message is anybody's), never the auth
+//   module. The legal pages import their configuration (and the footer's links, @anotoki/lib/legal), the kit's pieces
+//   and its copy button, and the feedback form - its dialog - by import() alone. The kit's pieces of 0.6.0 are
+//   entry points of their own (ui/chips, ui/link-card, ui/stat-tiles, ui/progress, ..., ui/side-nav, ui/current-link),
+//   outside the core and its limit, each importing the core's pieces it draws; the tabs (lazy, no limit) gained the
+//   link tabs, the badge, the icon and the scroll hint in their own. Its input pieces (ui/date-field, ui/slider,
+//   ui/color-field, ui/file-picker, ui/combobox, ui/rich-text) too, each held to a limit of its own (LAZY_LIMITS):
+//   big pieces, lazy, kept from growing unseen. The family's footer (0.6.3) imports the
+//   core's pieces, the legal links (@anotoki/lib/legal) and its own words, and the feedback form's dialog
+//   (@anotoki/lib/feedback/form, 0.8.0 - footer/feedback's before) by import() alone.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -111,8 +112,9 @@ const PIECES = ['config', 'dom', 'icon', 'spinner', 'button', 'badge', 'alert', 
  *
  * footer (0.6.3): the family's footer under every page of every site - its row and its four words, read by itself (2.6
  * at 0.6.3, its template and styles twice in the FESM as every component's); the legal links and the kit's pieces it
- * draws are entry points of their own, and its feedback dialog (footer/feedback: the kit's dialog around the feedback
- * form) comes with the press (its first load is "the footer" below).
+ * draws are entry points of their own, and its feedback dialog (the kit's dialog around the feedback form - since 0.8.0
+ * @anotoki/lib/feedback/form's, which the Contact page opens too) comes with the press (its first load is "the footer"
+ * below).
  */
 const LIMITS = {
   [CORE]: 15,
@@ -264,22 +266,22 @@ const MAY_IMPORT = {
   '@anotoki/lib/admin/backups': ADMIN_PAGE,
   '@anotoki/lib/admin/files': [...ADMIN_PAGE, '@anotoki/lib/ui/menu'],
   // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it -
-  // its message anybody's (0.7.2): the auth module's marker, never the auth module.
+  // its message anybody's (0.7.2): the auth module's marker, never the auth module - and, 0.8.0, the form in the kit's
+  // dialog, as the footer and the Contact page open it.
   '@anotoki/lib/feedback': ['@anotoki/lib/ui/config', '@anotoki/lib/words/feedback'],
-  '@anotoki/lib/feedback/form': ['@anotoki/lib/feedback', ...PIECES, '@anotoki/lib/ui/forms', '@anotoki/lib/auth/marker'],
+  '@anotoki/lib/feedback/form': ['@anotoki/lib/feedback', ...PIECES, '@anotoki/lib/ui/forms', '@anotoki/lib/ui/dialog', '@anotoki/lib/auth/marker'],
   // The browser's errors, reported: Angular's own (its ErrorHandler and HttpClient) and the report's mark, an entry
   // point of its own that imports nothing.
   '@anotoki/lib/error-report': ['@anotoki/lib/error-report/marker'],
   '@anotoki/lib/error-report/marker': [],
   // The legal pages: their configuration and the footer's links register the links' words; the pages, each on a
-  // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form by import() as it is opened.
+  // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form's dialog by import() as it is opened.
   '@anotoki/lib/legal': ['@anotoki/lib/ui/config', '@anotoki/lib/words/legal-links'],
-  '@anotoki/lib/legal/pages': ['@anotoki/lib/legal', '@anotoki/lib/words/legal', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/copy', '@anotoki/lib/feedback/form'],
+  '@anotoki/lib/legal/pages': ['@anotoki/lib/legal', '@anotoki/lib/words/legal', ...PIECES, '@anotoki/lib/ui/copy', '@anotoki/lib/feedback/form'],
   // The family's footer (0.6.3): the kit's buttons, the legal links, its own words (read by itself, READ_BY_THEIR_PAGES)
-  // through ui/piece-words, and its feedback dialog by import() as it is opened - which holds the kit's dialog and the
-  // feedback form, so that the footer's first load carries neither.
-  '@anotoki/lib/footer': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/footer', '@anotoki/lib/legal', '@anotoki/lib/footer/feedback'],
-  '@anotoki/lib/footer/feedback': ['@anotoki/lib/ui/dialog', '@anotoki/lib/feedback/form'],
+  // through ui/piece-words, and the feedback form's dialog by import() as it is opened (0.8.0; its own footer/feedback
+  // before) - the kit's dialog and the feedback form, so that the footer's first load carries neither.
+  '@anotoki/lib/footer': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/footer', '@anotoki/lib/legal', '@anotoki/lib/feedback/form'],
   // @anotoki/lib/words and every @anotoki/lib/words/<namespace>: below, from the entry points the package has.
 };
 const OTHERS = /^(@angular\/|rxjs(\/|$)|tslib$)/;

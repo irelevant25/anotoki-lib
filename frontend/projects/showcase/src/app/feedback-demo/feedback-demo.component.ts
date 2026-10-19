@@ -1,21 +1,22 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FeedbackFormComponent } from '@anotoki/lib/feedback/form';
+import { FeedbackDialogComponent, FeedbackFormComponent } from '@anotoki/lib/feedback/form';
 import { TranslationService } from '@anotoki/lib/translations';
 import { ButtonComponent } from '@anotoki/lib/ui/button';
 import { CardComponent } from '@anotoki/lib/ui/card';
-import { DialogComponent } from '@anotoki/lib/ui/dialog';
 import { ToastService } from '@anotoki/lib/ui/toast';
 import { feedbackWords } from '@anotoki/lib/feedback';
 
 /**
  * The visitors' feedback form, as a site places it - on a page of its own, and
- * in a dialog its footer opens - in the page's language (?lang=sk), against
- * the showcase's imagined server: a message saying "too many" is refused as a
- * sender over the limit, one saying "offline" as a site that takes none now.
+ * in the dialog its footer opens (<anotoki-feedback-dialog>, 0.8.0: its buttons
+ * in the dialog's footer) - in the page's language (?lang=sk), against the
+ * showcase's imagined server: a message saying "too many" is refused as a sender
+ * over the limit, one saying "offline" as a site that takes none now. Both are
+ * the page's one draft: what is typed in one is in the other.
  */
 @Component({
   selector: 'show-feedback-demo',
-  imports: [ButtonComponent, CardComponent, DialogComponent, FeedbackFormComponent],
+  imports: [ButtonComponent, CardComponent, FeedbackDialogComponent, FeedbackFormComponent],
   templateUrl: './feedback-demo.component.html',
   styleUrl: './feedback-demo.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

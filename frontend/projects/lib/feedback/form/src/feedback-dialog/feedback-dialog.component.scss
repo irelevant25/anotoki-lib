@@ -1,0 +1,4 @@
+// No box of its own: the dialog is drawn over the page (the top layer), wherever the page puts this.
+:host {
+  display: contents;
+}

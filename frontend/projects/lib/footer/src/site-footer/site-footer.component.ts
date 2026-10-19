@@ -16,7 +16,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import type { FooterFeedbackDialogComponent } from '@anotoki/lib/footer/feedback';
+import type { FeedbackDialogComponent } from '@anotoki/lib/feedback/form';
 import { LegalLinksComponent } from '@anotoki/lib/legal';
 import { ButtonComponent } from '@anotoki/lib/ui/button';
 import { pieceWords } from '@anotoki/lib/ui/piece-words';
@@ -40,10 +40,11 @@ type RowPart = 'version' | 'whatsNew' | 'feedback';
  * - the fan clause, where the site asks for it (`fan`).
  *
  * What's new is the site's own: the footer tells it (`whatsNew`). Feedback opens the library's feedback form -
- * the site's provideAnotokiFeedback() as it is - in the kit's dialog, named by the button's words. The dialog and the
- * form come with the first press (@anotoki/lib/footer/feedback), as the Contact page's form does, so no first load
- * carries them; the focus is back on the button once the dialog goes (Cancel, Close after the thanks, Escape, the
- * backdrop, its close button).
+ * the site's provideAnotokiFeedback() as it is - in the kit's dialog, named by the button's words, its buttons in the
+ * dialog's footer (<anotoki-feedback-dialog>, 0.8.0, which the Contact page opens too). The dialog and the form come
+ * with the first press (@anotoki/lib/feedback/form), so no first load carries them; the focus is back on the button
+ * once the dialog goes (Cancel, Close after the thanks, Escape, the backdrop, its close button), and what was typed
+ * waits in the form's draft for the next press.
  *
  * Its words are the library's (`anotoki.footer.*`: the site's string first, through provideAnotokiUi's `lookup` - the
  * database's -, then the built-in English and impersonal Slovak), read by the footer itself: it has no provide*() of
@@ -105,8 +106,8 @@ export class SiteFooterComponent {
   private readonly feedbackButton = viewChild('feedbackButton', { read: ElementRef<HTMLButtonElement> });
   /** Where the feedback dialog is made: after the footer's <footer>, never in its landmark. */
   private readonly feedbackSlot = viewChild.required('feedbackSlot', { read: ViewContainerRef });
-  private dialogPart: Type<FooterFeedbackDialogComponent> | null = null;
-  private dialog: ComponentRef<FooterFeedbackDialogComponent> | null = null;
+  private dialogPart: Type<FeedbackDialogComponent> | null = null;
+  private dialog: ComponentRef<FeedbackDialogComponent> | null = null;
   private gone = false;
 
   constructor() {
@@ -126,7 +127,7 @@ export class SiteFooterComponent {
     if (!part) {
       this.opening.set(true);
       try {
-        part = this.dialogPart = (await import('@anotoki/lib/footer/feedback')).FooterFeedbackDialogComponent;
+        part = this.dialogPart = (await import('@anotoki/lib/feedback/form')).FeedbackDialogComponent;
       } catch (error) {
         console.error('[anotoki footer] the feedback form could not be loaded', error);
         return;

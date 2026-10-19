@@ -65,6 +65,36 @@ jobs:
       - name: Check the archive's contents
         run: sh .github/scripts/check-archive.sh
 
+  # The deploy tool (deploy/): a tool of the computer that builds a site, never part of a site's upload. Its tests,
+  # and its version - the library's: one tag publishes both tarballs.
+  deploy:
+    name: Deploy tool
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The tool's version is the library's
+        run: |
+          tool="$(node -p "require('./package.json').version")"
+          lib="$(node -p "require('../frontend/projects/lib/package.json').version")"
+          if [ "$tool" != "$lib" ]; then
+            echo "::error::deploy/package.json says $tool, the library is $lib: bump both."
+            exit 1
+          fi
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
   angular:
     name: Angular
     runs-on: ubuntu-latest

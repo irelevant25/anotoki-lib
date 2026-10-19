@@ -1,0 +1,29 @@
+{
+  "name": "@anotoki/deploy",
+  "version": "0.9.0",
+  "description": "The anotoki sites' build and deploy tool: a site's release as frontend/ and backend/, each replaced whole on the FTP-only host, the state beside them never touched. A tool of the computer that builds - never part of a site's upload.",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/irelevant25/anotoki-lib.git",
+    "directory": "deploy"
+  },
+  "type": "module",
+  "bin": {
+    "anotoki-deploy": "cli.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "lib/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ssh2-sftp-client": "12.1.1"
+  }
+}

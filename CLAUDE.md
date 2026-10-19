@@ -16,7 +16,9 @@ the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker
 `legal/pages`, `legal/about` and `legal/support` (0.8.0), `footer` (0.6.3), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
-version changed.
+version changed. Beside the halves, in neither: `deploy/` - `@anotoki/deploy`, the
+sites' one build and deploy tool (0.9.0), an npm tarball of the same release, never
+part of a site's upload (`deploy/README.md`).
 
 ## Commands
 
@@ -38,6 +40,10 @@ bun run words           # the library's words from backend/resources/library-wor
                         # ui/config/src/library-words.ts (the kit's), words/<namespace>/, words/ (--check, in CI;
                         # a spec and LibraryWordsTest fail when stale)
 
+# The deploy tool (deploy/; npm, its own package-lock.json)
+npm ci
+npm test                # node --test - no network, no host
+
 # Formatting (repository root; bun install there first)
 bun run format:check    # the family's Prettier setup, both halves (bun run format writes); .prettierignore keeps out
                         # the generated words, the SQL and the Markdown
@@ -45,6 +51,12 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
 
 ## Conventions
 
+- **The deploy tool knows no site either**: what differs between sites is a setting
+  in the site's `backend/composer.json` (`extra["anotoki-deploy"]`, the table in
+  `deploy/README.md`), never a name or a branch in `deploy/`. It never writes,
+  renames or deletes a site's `config/`, `storage/` or the folders it keeps
+  `beside`, and every remote path goes through `remotePath()`. Its version is the
+  library's (CI checks it).
 - **Nothing site-specific in the library**: a site's differences are options and
   hooks (`prepare`, `ready`, `beforeFile`, `beforeApply`, the open paths, the
   config's closures, the kit's inputs and adapters), never a site's name, path,

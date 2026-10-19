@@ -15,6 +15,9 @@
 # The root's Prettier (package.json: the anotoki family's one formatting setup).
 /node_modules/
 
+# The deploy tool (deploy/: npm, its own package-lock.json).
+/deploy/node_modules/
+
 # Editors and systems
 .idea/
 .vscode/

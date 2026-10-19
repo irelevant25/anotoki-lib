@@ -1,5 +1,6 @@
-# A tag vX.Y.Z publishes a release: the Angular package's tarball, attached to a GitHub Release of
-# that tag, which every site's frontend/package.json points at. (Composer reads the same tag from git.)
+# A tag vX.Y.Z publishes a release: the Angular package's tarball and the deploy tool's, attached to a
+# GitHub Release of that tag, which every site's frontend/package.json points at. (Composer reads the
+# same tag from git.)
 name: Release
 
 on:
@@ -34,6 +35,14 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: The deploy tool's version is the same
+        run: |
+          tool="$(node -p "require('./deploy/package.json').version")"
+          if [ "$tool" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::deploy/package.json says $tool, not ${{ steps.version.outputs.version }}: bump it too."
+            exit 1
+          fi
+
       - name: Install
         working-directory: frontend
         run: bun install --frozen-lockfile
@@ -50,8 +59,18 @@ jobs:
         working-directory: frontend/dist/lib
         run: npm pack
 
+      - name: Test the deploy tool
+        working-directory: deploy
+        run: npm ci && npm test
+
+      - name: Pack the deploy tool
+        working-directory: deploy
+        run: npm pack
+
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
-          files: frontend/dist/lib/anotoki-lib-${{ steps.version.outputs.version }}.tgz
+          files: |
+            frontend/dist/lib/anotoki-lib-${{ steps.version.outputs.version }}.tgz
+            deploy/anotoki-deploy-${{ steps.version.outputs.version }}.tgz
           fail_on_unmatched_files: true

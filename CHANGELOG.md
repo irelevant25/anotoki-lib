@@ -5,6 +5,27 @@ and the npm package `@anotoki/lib` (`frontend/projects/lib/package.json`). While
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.9.0 - 2026-10-19
+
+The deploy tool. Neither half changes: a site on 0.8.1 needs nothing from this version but the tool.
+
+**`@anotoki/deploy` (`deploy/`, `anotoki-deploy`): one build and one deploy for every site.** A site's folder on the
+FTP-only host holds `frontend/` (the built app, `index.php`, `.htaccess`) and `backend/` (the PHP code,
+`release.json`) - a release, each replaced whole - beside `config/` and `storage/`, which no deploy writes, under the
+switch: the `.htaccess` at the top that sends every request into `frontend/`. `build` runs the site's own frontend
+build and assembles the release (never a `*.local.php`, never a dot-file of the sources); `deploy` copies the live
+release home, puts the new one up beside it, checks it file by file and swaps it in by renames (the one before kept as
+`.old`: `rollback`); `switch` is a site's first step from the old layout (everything uploaded over one folder);
+`content` adds to what a site keeps on the host beside the release (audio clips); each change of the host is followed
+by a check of the live site over HTTPS. What differs between sites is a setting in the site's `backend/composer.json`
+(`extra["anotoki-deploy"]`); the login stays outside every repository (`ANOTOKI_DEPLOY_SECRETS`). It is in neither half:
+the Composer archive and the npm package of `@anotoki/lib` never hold it. The release workflow attaches its tarball,
+`anotoki-deploy-X.Y.Z.tgz`, beside the Angular half's, and CI tests it.
+
+**What a site does:** `"@anotoki/deploy": "https://github.com/irelevant25/anotoki-lib/releases/download/v0.9.0/anotoki-deploy-0.9.0.tgz"`
+in `frontend/package.json`'s `devDependencies`, its settings in `backend/composer.json`, and one rule in its PHP: with
+`release.json` in its `backend/`, its `config/` and `storage/` are the ones beside `backend/` (`deploy/README.md`).
+
 ## 0.8.1 - 2026-10-19
 
 Two findings of the IAM's security review of 2026-10-19, and the count the IAM's admin panel puts beside Feedback.

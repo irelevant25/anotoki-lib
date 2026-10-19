@@ -1417,7 +1417,12 @@ this.i18n.noteAddress(url);
   offer the language) keeps it the site's own for the visit, any other sets
   `languageNotSaved` (the switcher's note). Otherwise this device's choice comes
   first and the account's is adopted only while nothing is stored. A choice made
-  before signing in holds for the visit.
+  before signing in holds for the visit. While no bundle is in memory (the
+  server out of reach, the site not set up; 0.7.2), the same wishes - a choice
+  made before, the browser's languages - settle on the languages the library has
+  built-in words for (`en`, `sk`) instead of the offered ones: never a language
+  with no built-in words, English otherwise. The library's words (the kit's,
+  the status page's) are in it; the site's own read its compiled English.
 - Words, for each key: the bundle's string; while no bundle is in memory, the
   site's compiled English (`fallbackEnglish`), then the key (warned once). With a
   bundle, a key it lacks is shown as the key, warned once: the owner wants to see

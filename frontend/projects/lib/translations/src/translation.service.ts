@@ -70,7 +70,11 @@ interface SaveWaiter {
  * string for comes back as itself, on the page, and warns once - the owner
  * wants to see which key is missing; while no bundle is in memory at all (an
  * upload not applied yet, the server out of reach) the site's compiled
- * English is read (`fallbackEnglish`), and then the key. A library key
+ * English is read (`fallbackEnglish`), and then the key - and `language` is
+ * the one the same wishes settle on among the languages the library has
+ * built-in words for (`en`, `sk`; 0.7.2), English when none of them is: the
+ * library's words (the kit's, the status page's) are in the reader's
+ * language even then, never in one it has no words for. A library key
  * (`anotoki.*`) is never shown as a key: the database's string, else the
  * site's own words for it (`libraryWords`), else the library's built-in words
  * of the language, else their English. The built-in words are the kit's, and
@@ -110,9 +114,21 @@ export class TranslationService {
   private readonly _english = signal<ReadonlyMap<string, string> | null>(null);
   private readonly _englishOnly = signal(false);
   private readonly _notSaved = signal(false);
+  /** init() has decided the language at least once: only then is there anything to follow or ask again for, or a wish to read. */
+  private readonly _started = signal(false);
+  /**
+   * The language the reader's wishes settle on among those the library has built-in words for (the kit's and each
+   * registered module's: `en`, `sk`), English when none of them is - what the page is in while no bundle is in
+   * memory. English before the start: the wishes are read through the site's configuration, read when first needed.
+   */
+  private readonly builtInLanguage = computed(() => (this._started() ? pickLanguage(this.candidates(), [...this.builtIns().keys()], this.settings().browserAliases) : FALLBACK_LANGUAGE));
 
-  /** The person's language - what the switcher shows. `en` while there is no bundle. */
-  readonly language = this._language.asReadonly();
+  /**
+   * The person's language - what the switcher shows: the bundle's. While no bundle is in memory (the server out of
+   * reach, the site not set up, a first answer still on its way), the one their wishes settle on among the languages
+   * the library has built-in words for: the library's words are in it, the site's own read its compiled English.
+   */
+  readonly language = computed(() => (this._values() === null ? this.builtInLanguage() : this._language()));
   /** The languages on offer, in the order the owner set. Empty while no bundle has arrived. */
   readonly languages = this._languages.asReadonly();
   /** A bundle is in memory, from the cache or from the server. False: the pages read the compiled English. */
@@ -120,7 +136,7 @@ export class TranslationService {
   /** The address is one of the English areas. */
   readonly englishOnly = this._englishOnly.asReadonly();
   /** The language on the page: English in the English areas, the person's everywhere else. */
-  readonly effectiveLanguage = computed(() => (this._englishOnly() ? FALLBACK_LANGUAGE : this._language()));
+  readonly effectiveLanguage = computed(() => (this._englishOnly() ? FALLBACK_LANGUAGE : this.language()));
   /** What `Intl` is given for dates and numbers in the language on the page. */
   readonly locale = computed(() => {
     const code = this.effectiveLanguage();
@@ -135,8 +151,9 @@ export class TranslationService {
   readonly storedEnglishLang = computed<'en' | null>(() => (this.effectiveLanguage() === FALLBACK_LANGUAGE ? null : FALLBACK_LANGUAGE));
   /**
    * What a sign-in hands the IAM as `uiLocales`: the person's language - only
-   * while a bundle is in memory. With none, `language` is an `en` nobody chose,
-   * and saying it would override the IAM's own choice.
+   * while a bundle is in memory. With none, `language` is settled against the
+   * library's built-in words, not against what the site offers, and saying it
+   * would override the IAM's own choice.
    */
   readonly signInLanguage = computed<string | undefined>(() => (this.ready() ? this._language() : undefined));
   /** The account refused the language chosen last: the switcher's note says so while this is true. */
@@ -153,8 +170,6 @@ export class TranslationService {
   private out = 0;
   /** Who waits for the loads out to be over (settled()). */
   private idle: (() => void)[] = [];
-  /** init() has decided the language at least once: only then is there anything to follow or ask again for. */
-  private started = false;
   /** What is in force came from the server since the page was loaded. False with the cache's, or nothing: the next navigation asks again. */
   private fresh = false;
   /** The first navigation of a visit ends a moment after init() asked: it does not ask a second time. */
@@ -337,8 +352,8 @@ export class TranslationService {
    * The language a new account is given: the reader's wishes - the same the
    * page follows - settled against what the server offers (the IAM's public
    * configuration's `languages`). With a bundle on the page this is
-   * `language()`; without one it is not: the page reads the compiled English,
-   * and an account made then would be English for good.
+   * `language()`; without one it is not: `language` is settled against the
+   * library's built-in words then, not against what the server offers.
    */
   preferred(offered: readonly string[]): string {
     return offered.length ? pickLanguage(this.candidates(), offered, this.settings().browserAliases) : this._language();
@@ -357,7 +372,7 @@ export class TranslationService {
    */
   async reload(): Promise<void> {
     try {
-      if (!this.started) {
+      if (!this._started()) {
         // Nothing has been read yet: the start asks, and what it gets is fresh.
         await this.init();
         return;
@@ -387,7 +402,7 @@ export class TranslationService {
     this._englishOnly.set(this.settings().englishOnly(url));
     const first = this.firstNavigation;
     this.firstNavigation = false;
-    if (!this.started) {
+    if (!this._started()) {
       return;
     }
     const tag = addressLanguage(url);
@@ -413,7 +428,7 @@ export class TranslationService {
    * their account's pages in the sign-in page's language first.
    */
   settled(): Promise<void> {
-    if (!this.started) {
+    if (!this._started()) {
       return Promise.resolve();
     }
     // The account's language may have changed a moment ago, before the effect that follows it ran.
@@ -452,7 +467,7 @@ export class TranslationService {
     this._englishOnly.set(this.settings().englishOnly(location?.pathname ?? '/'));
     this.takeAddressLanguage();
     this.seenAccount = this.accountLanguage();
-    this.started = true;
+    this._started.set(true);
 
     // Whether the server can be asked decides what a cache is worth. While it cannot, nothing is known of
     // the wishes the server would settle, and the language the cache is in is the best there is.
@@ -668,7 +683,7 @@ export class TranslationService {
    * never stored.
    */
   private followAccount(language: string | null): void {
-    if (!this.started || language === this.seenAccount) {
+    if (!this._started() || language === this.seenAccount) {
       return;
     }
     this.seenAccount = language;

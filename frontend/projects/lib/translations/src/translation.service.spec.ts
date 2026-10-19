@@ -366,8 +366,10 @@ describe('TranslationService', () => {
 
       expect(site.calls).toEqual(['sk']);
       expect(service().ready()).toBe(false);
-      expect(service().language()).toBe('en');
+      // The site's own words in its compiled English; the library's in the language the wishes settle on, built in.
+      expect(service().language()).toBe('sk');
       expect(service().t('theme.label')).toBe('Theme');
+      expect(service().t('anotoki.ui.close')).toBe('Zavrieť');
       expect(warn).not.toHaveBeenCalled();
 
       vi.useRealTimers();
@@ -428,6 +430,85 @@ describe('TranslationService', () => {
       await service().init();
       expect(service().ready()).toBe(false);
       expect(service().t('theme.label')).toBe('Theme');
+    });
+  });
+
+  describe("while no bundle is in memory: the library's words in the reader's language, where it has words for it", () => {
+    it("takes the choice made before - the site's own words in its compiled English, `<html lang>` and `Intl` in that language", async () => {
+      localStorage.setItem(LANGUAGE_KEY, 'sk');
+      browser.mockReturnValue(['de-DE', 'de']);
+      site.respond = fails(OFFLINE);
+      await service().init();
+      TestBed.tick();
+
+      expect(service().ready()).toBe(false);
+      expect(service().language()).toBe('sk');
+      expect(service().effectiveLanguage()).toBe('sk');
+      expect(document.documentElement.lang).toBe('sk');
+      expect(service().locale()).toBe('sk-SK');
+      expect(service().t('anotoki.ui.close')).toBe('Zavrieť');
+      expect(service().t('theme.label')).toBe('Theme');
+      // Settled against the library's words, not against what the site offers: a sign-in hands the IAM nothing.
+      expect(service().signInLanguage()).toBeUndefined();
+      // The English areas are English all the same.
+      service().noteAddress('/admin');
+      expect(service().effectiveLanguage()).toBe('en');
+      expect(service().t('anotoki.ui.close')).toBe('Close');
+    });
+
+    it("takes the browser's language without a choice - a Czech browser's Slovak too - and English when the library has words for none", async () => {
+      const cases: [string[], string][] = [
+        [['sk-SK', 'en'], 'sk'],
+        [['cs-CZ'], 'sk'],
+        [['de-DE', 'sk'], 'sk'],
+        [['de-DE', 'de'], 'en'],
+      ];
+      for (const [languages, expected] of cases) {
+        reload();
+        browser.mockReturnValue(languages);
+        site.respond = fails(UNAVAILABLE);
+        await service().init();
+        expect(service().ready()).toBe(false);
+        expect(service().language(), languages.join()).toBe(expected);
+      }
+    });
+
+    it('is never a language the library has no words for: a choice of one (the site offered it) gives way to the browser, then English', async () => {
+      localStorage.setItem(LANGUAGE_KEY, 'de');
+      browser.mockReturnValue(['sk']);
+      site.respond = fails(OFFLINE);
+      await service().init();
+      expect(service().language()).toBe('sk');
+
+      reload();
+      browser.mockReturnValue(['de-DE', 'fr']);
+      site.respond = fails(OFFLINE);
+      await service().init();
+      expect(service().language()).toBe('en');
+      expect(service().t('anotoki.ui.close')).toBe('Close');
+    });
+
+    it('asks nothing while the server cannot be asked (the site not set up), and is in the language chosen before all the same', async () => {
+      site.canAsk.set(false);
+      localStorage.setItem(LANGUAGE_KEY, 'sk');
+      await service().init();
+      expect(site.calls).toEqual([]);
+      expect(service().language()).toBe('sk');
+      expect(service().t('anotoki.ui.close')).toBe('Zavrieť');
+    });
+
+    it('is English before the start, and the bundle’s language once one comes', async () => {
+      localStorage.setItem(LANGUAGE_KEY, 'sk');
+      expect(service().language()).toBe('en');
+      site.respond = fails(OFFLINE);
+      await service().init();
+      expect(service().language()).toBe('sk');
+
+      site.respond = (code) => Promise.resolve(code === 'sk' ? SK_BUNDLE : EN_BUNDLE);
+      await service().reload();
+      expect(service().ready()).toBe(true);
+      expect(service().language()).toBe('sk');
+      expect(service().t('theme.label')).toBe('Vzhľad');
     });
   });
 
@@ -916,7 +997,8 @@ describe('TranslationService', () => {
       browser.mockReturnValue(['sk-SK']);
       site.respond = fails(UNAVAILABLE);
       await service().init();
-      expect(service().language()).toBe('en');
+      // The page's language is settled against the library's built-in words then, not against what the server offers.
+      expect(service().language()).toBe('sk');
       expect(service().preferred(['en', 'sk'])).toBe('sk');
       expect(service().preferred(['en'])).toBe('en');
       expect(service().preferred([])).toBe('en');

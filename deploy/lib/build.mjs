@@ -83,7 +83,7 @@ function run(command, cwd, log) {
 /** The Angular build's browser folder, from angular.json: the application project's outputPath. */
 export function browserOutput(root, config) {
   const frontend = join(root, 'frontend');
-  const workspace = JSON.parse(readFileSync(join(frontend, 'angular.json'), 'utf8'));
+  const workspace = parseJsonWithComments(readFileSync(join(frontend, 'angular.json'), 'utf8'));
   const projects = Object.entries(workspace.projects ?? {}).filter(([name, project]) => (config.project ? name === config.project : project.projectType === 'application'));
   if (projects.length !== 1) {
     throw new Error(config.project ? `angular.json has no project "${config.project}".` : 'angular.json has more than one application (or none): name it in "project".');
@@ -102,6 +102,47 @@ export function browserOutput(root, config) {
     throw new Error(`No built app at ${browser} (no index.html): the frontend build did not run, or angular.json says another folder.`);
   }
   return browser;
+}
+
+/** JSON as the Angular CLI reads angular.json: // and /* *\/ comments and trailing commas outside strings allowed. */
+export function parseJsonWithComments(text) {
+  const strip = (source, drop) => {
+    let out = '';
+    for (let i = 0; i < source.length; i++) {
+      if (source[i] === '"') {
+        let end = i + 1;
+        while (end < source.length && source[end] !== '"') {
+          end += source[end] === '\\' ? 2 : 1;
+        }
+        out += source.slice(i, end + 1);
+        i = end;
+      } else {
+        const skipped = drop(source, i);
+        if (skipped === null) {
+          out += source[i];
+        } else {
+          i = skipped;
+        }
+      }
+    }
+    return out;
+  };
+  const comments = (source, i) => {
+    if (source.startsWith('//', i)) {
+      const end = source.indexOf('\n', i);
+      return end < 0 ? source.length : end - 1;
+    }
+    if (source.startsWith('/*', i)) {
+      const end = source.indexOf('*/', i + 2);
+      if (end < 0) {
+        throw new Error('angular.json has a comment that is never closed.');
+      }
+      return end + 1;
+    }
+    return null;
+  };
+  const trailingCommas = (source, i) => (source[i] === ',' && /^\s*[}\]]/.test(source.slice(i + 1)) ? i : null);
+  return JSON.parse(strip(strip(text, comments), trailingCommas));
 }
 
 /** What goes into backend/: the include entries (folders, files, globs), less the excluded, the host's settings and dot-files. */

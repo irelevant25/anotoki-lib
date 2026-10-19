@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, test } from 'node:test';
-import { build, globToRegex, listFiles, MARKER } from '../lib/build.mjs';
+import { build, globToRegex, listFiles, MARKER, parseJsonWithComments } from '../lib/build.mjs';
 import { normalizeConfig } from '../lib/config.mjs';
 import { remotePath } from '../lib/remote.mjs';
 import { frontendHtaccess, frontIndexPhp, switchHtaccess } from '../lib/templates.mjs';
@@ -49,6 +49,11 @@ test('remote paths stay in the site folder', () => {
       assert.throws(() => remotePath(config, bad), /Refusing/);
     }
   }
+});
+
+test('angular.json is read as the Angular CLI reads it: comments and trailing commas outside strings', () => {
+  const text = '{\n  // a comment, "with a quote"\n  "a": "http://x/*not a comment*/", /* block */\n  "b": [1, 2,],\n  "c": "a \\" // still a string",\n}\n';
+  assert.deepEqual(parseJsonWithComments(text), { a: 'http://x/*not a comment*/', b: [1, 2], c: 'a " // still a string' });
 });
 
 test('globs: * stays in one folder, ** crosses them, a folder takes what is in it', () => {

@@ -1,4 +1,4 @@
-# Both halves' tests, on every push to main and every pull request.
+# Both halves' tests and the formatting check, on every push to main and every pull request.
 name: CI
 
 on:
@@ -96,3 +96,25 @@ jobs:
 
       - name: Test the library
         run: bun run test
+
+  # The family's one formatting setup, at the root: every file of both halves as `bun run format` writes it
+  # (.prettierignore keeps out the generated words, the SQL and the Markdown).
+  format:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Check the formatting
+        run: bun run format:check

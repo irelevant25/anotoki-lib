@@ -12,8 +12,8 @@ the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
-`feedback/form`, `error-report`, `error-report/marker`, `legal`, `legal/pages`, `footer` (0.6.3, with its
-own lazy `footer/feedback`), and the generated `words`,
+`feedback/form` (with 0.8.0's `<anotoki-feedback-dialog>`), `error-report`, `error-report/marker`, `legal`,
+`legal/pages`, `legal/about` and `legal/support` (0.8.0), `footer` (0.6.3), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
 installs, uses and updates it, and how to release; `CHANGELOG.md` what each
 version changed.
@@ -48,7 +48,10 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
 - **Nothing site-specific in the library**: a site's differences are options and
   hooks (`prepare`, `ready`, `beforeFile`, `beforeApply`, the open paths, the
   config's closures, the kit's inputs and adapters), never a site's name, path,
-  key or service in the code.
+  key or service in the code. The family's own facts are the one exception, the
+  same on every site: the operator, and the About page's projects with their
+  addresses and the Support page's Ko-fi address (0.8.0, the owner's words) -
+  in code, never in a string.
 - **Never change a site's bookkeeping table**: read every shape that exists
   (`filename` or `name`; `folder` or none; TIMESTAMP holding UTC or TIMESTAMPTZ;
   with or without `id`). A site adopts an older shape itself, in `prepare`.
@@ -85,7 +88,8 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   them. Two exceptions, read by their readers themselves and never registered
   (`READ_BY_THEIR_PAGES` in both scripts), their Slovak impersonal (no "ty", no
   "Vy": they fit the formal survey too): words its lazy pages alone say, pages of
-  text (the legal pages' `anotoki.legal.*`), and the words of the kit's pieces
+  text (the legal pages' `anotoki.legal.*`; 0.8.0's About and Support pages'
+  `anotoki.about.*`, `anotoki.support.*`), and the words of the kit's pieces
   that are entry points of their own (0.6.0: `anotoki.chips.*`,
   `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*`, `anotoki.dateField.*`, `anotoki.colorField.*`,
   `anotoki.filePicker.*`, `anotoki.combobox.*`, `anotoki.richText.*` - a piece has no provide*(), and provideAnotokiUi is in
@@ -127,10 +131,12 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
   `migrations`, `error-report/marker` (a token, never the reporter) and `auth/marker` (whom a request is
   for - `ISSUED_AS`, `issuedAs()` - which imports nothing); `feedback/form` its configuration, the kit's fields
-  and `auth/marker` (its message is anybody's), never `auth`; `people/page` the kit and `people`, which imports nothing;
-  `legal/pages` the kit, `legal` and the feedback form by import() alone; `footer`
-  the core's pieces, `legal`, its words and - by import() alone - `footer/feedback`,
-  which holds the kit's dialog and the feedback form; a
+  and dialog (0.8.0: the form in the dialog, its buttons in the dialog's footer) and `auth/marker` (its message is
+  anybody's), never `auth`; `people/page` the kit and `people`, which imports nothing;
+  `legal/pages` the kit, `legal` and the feedback form by import() alone; `legal/about` and `legal/support` the
+  core's pieces, `legal` and their own words; `footer`
+  the core's pieces, `legal`, its words and - by import() alone - `feedback/form`
+  (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); a
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the

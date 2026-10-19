@@ -24,14 +24,18 @@ export interface LegalOperator {
  */
 export const LEGAL_OPERATOR: LegalOperator = { name: 'Code Hero s.r.o.', url: 'https://codehero.sk', email: ['support', 'anotoki.eu'] };
 
-/** Where a site shows the three pages: its own paths. */
+/** Where a site shows the legal pages and, 0.8.0, the About and Support pages: its own paths. */
 export interface LegalPaths {
   terms: string;
   privacy: string;
   contact: string;
+  /** The About page (@anotoki/lib/legal/about): '/about'. */
+  about: string;
+  /** The Support page (@anotoki/lib/legal/support): '/support'. */
+  support: string;
 }
 
-export const DEFAULT_LEGAL_PATHS: Readonly<LegalPaths> = { terms: '/terms', privacy: '/privacy', contact: '/contact' };
+export const DEFAULT_LEGAL_PATHS: Readonly<LegalPaths> = { terms: '/terms', privacy: '/privacy', contact: '/contact', about: '/about', support: '/support' };
 
 /** The anotoki account, as the pages speak of it. */
 export interface LegalAccount {
@@ -180,7 +184,7 @@ export interface AnotokiLegalConfig {
    * before the built-in words. With the translations module: `(key) => inject(TranslationService).libraryWord(key)`.
    */
   translate?: (key: string) => string | null | undefined;
-  /** Where the site shows the three pages: /terms, /privacy and /contact unless it says otherwise. */
+  /** Where the site shows the pages: /terms, /privacy, /contact, /about and /support unless it says otherwise. */
   paths?: Partial<LegalPaths>;
   /** Who runs the site: the family's operator (LEGAL_OPERATOR), each part the site's where it names another. */
   operator?: Partial<LegalOperator>;
@@ -193,8 +197,9 @@ export interface AnotokiLegalConfig {
 export const ANOTOKI_LEGAL_CONFIG = new InjectionToken<AnotokiLegalConfig>('ANOTOKI_LEGAL_CONFIG');
 
 /**
- * Configures the legal pages (@anotoki/lib/legal/pages) and the footer's links (<anotoki-legal-links>). The factory
- * runs in an injection context, so it can inject the site's own services:
+ * Configures the legal pages (@anotoki/lib/legal/pages), the About and Support pages (@anotoki/lib/legal/about,
+ * @anotoki/lib/legal/support - their language, words and paths) and the footer's links (<anotoki-legal-links>). The
+ * factory runs in an injection context, so it can inject the site's own services:
  *
  * ```ts
  * provideAnotokiLegal(() => {
@@ -208,7 +213,8 @@ export const ANOTOKI_LEGAL_CONFIG = new InjectionToken<AnotokiLegalConfig>('ANOT
  * ```
  *
  * It registers the footer's words (`anotoki.legalLinks.*`) with the translations module. The pages' own words
- * (`anotoki.legal.*`, pages of text) come with the pages alone: they read them themselves.
+ * (`anotoki.legal.*`, `anotoki.about.*`, `anotoki.support.*`: pages of text) come with the pages alone: they read
+ * them themselves.
  */
 export function provideAnotokiLegal(factory: () => AnotokiLegalConfig): EnvironmentProviders {
   return makeEnvironmentProviders([{ provide: ANOTOKI_LEGAL_CONFIG, useFactory: factory }, provideLibraryWords(LEGAL_LINKS_LIBRARY_WORDS)]);
@@ -220,6 +226,8 @@ export function legalPaths(paths?: Partial<LegalPaths> | null): LegalPaths {
     terms: paths?.terms || DEFAULT_LEGAL_PATHS.terms,
     privacy: paths?.privacy || DEFAULT_LEGAL_PATHS.privacy,
     contact: paths?.contact || DEFAULT_LEGAL_PATHS.contact,
+    about: paths?.about || DEFAULT_LEGAL_PATHS.about,
+    support: paths?.support || DEFAULT_LEGAL_PATHS.support,
   };
 }
 

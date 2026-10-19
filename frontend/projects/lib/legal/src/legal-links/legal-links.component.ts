@@ -4,12 +4,13 @@ import { ANOTOKI_LEGAL_CONFIG, LegalPaths, legalPaths } from '../config';
 import { legalLinkWords } from '../link-words';
 
 /**
- * Terms · Privacy · Contact: the three links a site puts in its footer (in the family's frame,
- * `<anotoki-shell>`'s `[shellFooter]`), to its own paths - provideAnotokiLegal()'s, or this piece's `paths`.
+ * About · Support · Terms · Privacy · Contact: the links a site puts in its footer (in the family's frame,
+ * `<anotoki-shell>`'s `[shellFooter]` - the family's footer holds them), to its own paths - provideAnotokiLegal()'s, or
+ * this piece's `paths`. About and Support (0.8.0) come first, wherever the links are drawn.
  *
  * A navigation of its own ("Legal" to a screen reader), the page that is open marked `aria-current`; the dots
  * between the links are drawn, never read. Its words are the library's (`anotoki.legalLinks.*`), an owner's
- * rewording from the site's database, in the page's language. A site whose footer is its own adds the three links
+ * rewording from the site's database, in the page's language. A site whose footer is its own adds the links
  * itself, with the same words (`i18n.t('anotoki.legalLinks.terms')`).
  */
 @Component({
@@ -36,6 +37,8 @@ export class LegalLinksComponent {
     const paths = legalPaths({ ...this.config?.paths, ...this.paths() });
     const words = this.said().words;
     return [
+      { id: 'about', label: words.about, path: paths.about },
+      { id: 'support', label: words.support, path: paths.support },
       { id: 'terms', label: words.terms, path: paths.terms },
       { id: 'privacy', label: words.privacy, path: paths.privacy },
       { id: 'contact', label: words.contact, path: paths.contact },

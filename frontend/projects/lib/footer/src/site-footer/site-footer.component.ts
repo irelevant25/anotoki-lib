@@ -36,7 +36,8 @@ type RowPart = 'version' | 'whatsNew' | 'feedback';
  * - a row - "Version X" (its figures of one width), "What's new" and "Feedback", the kit's small link buttons
  *   (44 px where the pointer is a finger), each naming the dialog it opens (`aria-haspopup`), a dot between two parts
  *   that is drawn and never read. A part the site leaves out takes its dot with it, and with none the row is not drawn;
- * - Terms · Privacy · Contact, always (<anotoki-legal-links>, to the paths of the site's provideAnotokiLegal());
+ * - About · Support · Terms · Privacy · Contact, always (<anotoki-legal-links>, to the paths of the site's
+ *   provideAnotokiLegal());
  * - the fan clause, where the site asks for it (`fan`).
  *
  * What's new is the site's own: the footer tells it (`whatsNew`). Feedback opens the library's feedback form -

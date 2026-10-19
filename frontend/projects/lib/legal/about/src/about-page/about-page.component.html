@@ -1,0 +1,55 @@
+<article class="anotoki-about-page__page" data-about>
+    <anotoki-page-header [heading]="w().title" />
+
+    <section class="anotoki-about-page__section" data-section="name">
+        <h2 class="anotoki-about-page__heading">{{ w().nameTitle }}</h2>
+        <!-- Each part an element of its own: no space a formatter puts between them reaches the page. -->
+        <p class="anotoki-about-page__text" data-name-origin>
+            @for (part of nameParts(); track $index) {
+                @switch (part.name) {
+                    @case ("word") {
+                        <span class="anotoki-about-page__word" lang="ja" data-word>{{ origin.word }}</span>
+                    }
+                    @case ("reading") {
+                        <i class="anotoki-about-page__reading" lang="ja-Latn" data-reading>{{ origin.reading }}</i>
+                    }
+                    @default {
+                        <span>{{ part.text }}</span>
+                    }
+                }
+            }
+        </p>
+    </section>
+
+    <section class="anotoki-about-page__section" data-section="author">
+        <h2 class="anotoki-about-page__heading">{{ w().authorTitle }}</h2>
+        <p class="anotoki-about-page__text">{{ w().authorText }}</p>
+    </section>
+
+    <section class="anotoki-about-page__section" data-section="projects">
+        <h2 class="anotoki-about-page__heading">{{ w().projectsTitle }}</h2>
+        <ul class="anotoki-about-page__projects">
+            @for (project of projects(); track project.id) {
+                <li class="anotoki-about-page__project" [attr.data-project]="project.id">
+                    <h3 class="anotoki-about-page__project-name">
+                        <a class="anotoki-about-page__link" [href]="project.url">{{ project.name }}</a>
+                    </h3>
+                    <p class="anotoki-about-page__text">{{ project.text }}</p>
+                    @if (project.fan) {
+                        <p class="anotoki-about-page__fan" data-fan>{{ w().fanLine }}</p>
+                    }
+                </li>
+            }
+        </ul>
+    </section>
+
+    <p class="anotoki-about-page__closing" data-closing>
+        @for (part of closingParts(); track $index) {
+            @if (part.name === "support") {
+                <a class="anotoki-about-page__link" data-support-link [routerLink]="supportPath()">{{ w().closingLink }}</a>
+            } @else {
+                <span>{{ part.text }}</span>
+            }
+        }
+    </p>
+</article>

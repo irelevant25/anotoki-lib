@@ -1,0 +1,66 @@
+import { ABOUT_LIBRARY_WORDS, AboutLibraryKey } from '@anotoki/lib/words/about';
+
+/**
+ * The About page's words - the owner's own, the same on every anotoki site: where the name comes from, who makes the
+ * projects, each project, and the last line. Each is the library's word `anotoki.about.<name>`: built in for English
+ * and Slovak (impersonal - no "ty", no "Vy": the owner speaks of himself), and in every site's database
+ * (anotoki_translations/013), where its owner may reword them (`translate`: the translations module's libraryWord()).
+ * Their names come from backend/resources/library-words.json, through the generated words: one source.
+ *
+ * The page reads them itself and never registers them with the translations module: a page of text, they would
+ * otherwise come with the eager configuration, in every first load.
+ */
+export type AboutWordName = AboutLibraryKey extends `anotoki.about.${infer Name}` ? Name : never;
+export type AboutWords = Record<AboutWordName, string>;
+
+const PREFIX = 'anotoki.about.';
+
+function builtIn(language: 'en' | 'sk'): AboutWords {
+  const words = {} as AboutWords;
+  for (const [key, text] of Object.entries(ABOUT_LIBRARY_WORDS[language])) {
+    words[key.slice(PREFIX.length) as AboutWordName] = text;
+  }
+  return words;
+}
+
+/**
+ * The built-in words (@anotoki/lib/words/about, generated from backend/resources/library-words.json) - never a copy by
+ * hand, and in no first load. The calls are marked pure: a site's build keeps a top-level call it is not told is pure.
+ */
+export const BUILT_IN_ABOUT_WORDS: Readonly<Record<'en' | 'sk', AboutWords>> = {
+  en: /* @__PURE__ */ builtIn('en'),
+  sk: /* @__PURE__ */ builtIn('sk'),
+};
+
+/** Every word's name, in the JSON's order. */
+export function aboutWordNames(): AboutWordName[] {
+  return Object.keys(BUILT_IN_ABOUT_WORDS.en) as AboutWordName[];
+}
+
+/** The library's key of a word, as a site's database holds it. */
+export function aboutKey(name: AboutWordName): string {
+  return PREFIX + name;
+}
+
+/**
+ * The words for a language - English, under the built-in words of that language, under the site's database's
+ * (`translate`) - and the language they are in ('en' when nothing has that language).
+ */
+export function aboutWords(language: string | null | undefined, translate?: (key: string) => string | null | undefined): { lang: string; words: AboutWords } {
+  const code = (language || 'en').trim().toLowerCase();
+  const builtIn = BUILT_IN_ABOUT_WORDS[code as 'en'] ?? BUILT_IN_ABOUT_WORDS[code.split('-')[0] as 'en'];
+  const words: AboutWords = { ...BUILT_IN_ABOUT_WORDS.en, ...builtIn };
+  let translated = false;
+  if (translate) {
+    for (const name of aboutWordNames()) {
+      const key = aboutKey(name);
+      const value = translate(key);
+      // A bundle without the key answers the key itself, or nothing.
+      if (typeof value === 'string' && value !== '' && value !== key) {
+        words[name] = value;
+        translated = true;
+      }
+    }
+  }
+  return { lang: builtIn || translated ? code : 'en', words };
+}

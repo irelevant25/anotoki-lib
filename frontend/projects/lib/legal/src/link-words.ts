@@ -1,20 +1,22 @@
 import { LEGAL_LINKS_LIBRARY_WORDS } from '@anotoki/lib/words/legal-links';
 
 /**
- * The footer's words: the three links' names and the name of their group. Each is the library's word
- * `anotoki.legalLinks.<name>`: built in for English and Slovak, and in every site's database
- * (anotoki_translations/005), where its owner may reword them (`translate`: the translations module's
- * libraryWord()).
+ * The footer's words: the links' names - About, Support, Terms, Privacy, Contact - and the name of their group. Each is
+ * the library's word `anotoki.legalLinks.<name>`: built in for English and Slovak, and in every site's database
+ * (anotoki_translations/005; About and Support 013), where its owner may reword them (`translate`: the translations
+ * module's libraryWord()).
  */
 export interface LegalLinkWords {
   label: string;
   terms: string;
   privacy: string;
   contact: string;
+  about: string;
+  support: string;
 }
 
 /** The words' names, each the library's word `anotoki.legalLinks.<name>`. */
-export const LEGAL_LINK_WORD_NAMES = ['label', 'terms', 'privacy', 'contact'] as const satisfies readonly (keyof LegalLinkWords)[];
+export const LEGAL_LINK_WORD_NAMES = ['label', 'terms', 'privacy', 'contact', 'about', 'support'] as const satisfies readonly (keyof LegalLinkWords)[];
 
 function builtIn(language: 'en' | 'sk'): LegalLinkWords {
   return Object.fromEntries(LEGAL_LINK_WORD_NAMES.map((name) => [name, LEGAL_LINKS_LIBRARY_WORDS[language][`anotoki.legalLinks.${name}`]])) as unknown as LegalLinkWords;

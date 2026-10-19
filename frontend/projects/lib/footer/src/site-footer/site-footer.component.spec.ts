@@ -63,7 +63,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
 
   /** The row as it is read: each part's words, the dots between them. */
   const row = (host: HTMLElement) => Array.from(host.querySelectorAll('.anotoki-site-footer__row > *')).map((part) => words(part));
-  /** Terms · Privacy · Contact as they are drawn: [the words, where each goes]. */
+  /** About · Support · Terms · Privacy · Contact as they are drawn: [the words, where each goes]. */
   const legalLinks = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLAnchorElement>('anotoki-legal-links a')).map((link) => [words(link), link.getAttribute('href')]);
 
   /** Presses Feedback and waits for the form - its code comes with the first press - and for the page to be drawn. */
@@ -84,7 +84,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     document.body.innerHTML = '';
   });
 
-  it("draws the row - Version · What's new · Feedback - then Terms · Privacy · Contact, in a footer of its own", async () => {
+  it("draws the row - Version · What's new · Feedback - then About · Support · Terms · Privacy · Contact, in a footer of its own", async () => {
     const { host } = await setUp(FooterPageComponent);
     const footer = host.querySelector('anotoki-site-footer > footer.anotoki-site-footer__footer')!;
     expect(footer).not.toBeNull();
@@ -107,6 +107,8 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     expect(footer.children[1].tagName.toLowerCase()).toBe('anotoki-legal-links');
     expect(host.querySelector('.anotoki-site-footer__row anotoki-legal-links')).toBeNull();
     expect(legalLinks(host)).toEqual([
+      ['About', '/about'],
+      ['Support', '/support'],
       ['Terms', '/terms'],
       ['Privacy', '/privacy'],
       ['Contact', '/contact'],
@@ -145,7 +147,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     await settle(fixture);
     expect(host.querySelector('.anotoki-site-footer__row')).toBeNull();
     expect(host.querySelector('.anotoki-site-footer__footer')?.firstElementChild?.tagName.toLowerCase()).toBe('anotoki-legal-links');
-    expect(legalLinks(host)).toHaveLength(3);
+    expect(legalLinks(host)).toHaveLength(5);
   });
 
   it("tells the site What's new was pressed - the site opens its own", async () => {
@@ -228,7 +230,7 @@ describe("<anotoki-site-footer>: the family's footer - the build analyzer's", ()
     page.fan.set('hoyoverse');
     await settle(fixture);
     expect(row(host)).toEqual(['v0.3Verzia 0.3', '·', 'Čo je nové', '·', 'Spätná väzba']);
-    expect(legalLinks(host).map(([label]) => label)).toEqual(['Podmienky', 'Súkromie', 'Kontakt']);
+    expect(legalLinks(host).map(([label]) => label)).toEqual(['O projekte', 'Podporiť', 'Podmienky', 'Súkromie', 'Kontakt']);
     expect(words(host.querySelector('[data-fan]'))).toBe('Táto stránka je fanúšikovský projekt a nie je prepojená so spoločnosťou HoYoverse ani ňou schválená.');
     expect(host.querySelector('[lang]')).toBeNull();
 

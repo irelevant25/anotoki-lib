@@ -1,0 +1,14 @@
+<article class="anotoki-support-page__page" data-support>
+    <anotoki-page-header [heading]="w().title" />
+
+    <p class="anotoki-support-page__text" data-support-text>{{ w().text }}</p>
+
+    <p class="anotoki-support-page__actions">
+        <a anotokiButton variant="primary" class="anotoki-support-page__ko-fi" data-ko-fi target="_blank" rel="noopener noreferrer" [href]="koFi">
+            {{ w().button }}
+            <anotoki-icon name="externalLink" [size]="16" />
+        </a>
+    </p>
+
+    <p class="anotoki-support-page__thanks" data-thanks>{{ w().thanks }}</p>
+</article>

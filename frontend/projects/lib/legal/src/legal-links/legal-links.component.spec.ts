@@ -37,19 +37,27 @@ describe('the legal configuration: the operator, the paths, the address joined i
   });
 
   it("takes the site's paths, the defaults under them", () => {
-    expect(legalPaths()).toEqual({ terms: '/terms', privacy: '/privacy', contact: '/contact' });
-    expect(legalPaths({ privacy: '/legal/privacy' })).toEqual({ terms: '/terms', privacy: '/legal/privacy', contact: '/contact' });
+    expect(legalPaths()).toEqual({ terms: '/terms', privacy: '/privacy', contact: '/contact', about: '/about', support: '/support' });
+    expect(legalPaths({ privacy: '/legal/privacy', support: '/help/support' })).toEqual({
+      terms: '/terms',
+      privacy: '/legal/privacy',
+      contact: '/contact',
+      about: '/about',
+      support: '/help/support',
+    });
   });
 
   it("words the links in the page's language, an owner's rewording over the built-in words", () => {
     expect(legalLinkWords('sk')).toEqual({ lang: 'sk', words: BUILT_IN_LEGAL_LINK_WORDS.sk });
     expect(legalLinkWords('de')).toEqual({ lang: 'en', words: BUILT_IN_LEGAL_LINK_WORDS.en });
     const reworded = legalLinkWords('en', (key) => (key === 'anotoki.legalLinks.terms' ? 'Terms of use' : key));
-    expect(reworded.words).toEqual({ label: 'Legal', terms: 'Terms of use', privacy: 'Privacy', contact: 'Contact' });
+    expect(reworded.words).toEqual({ label: 'Legal', terms: 'Terms of use', privacy: 'Privacy', contact: 'Contact', about: 'About', support: 'Support' });
+    // The Slovak Support link is a verb (0.8.0, the owner's word): "Podporiť", never "Podpora".
+    expect([BUILT_IN_LEGAL_LINK_WORDS.sk.about, BUILT_IN_LEGAL_LINK_WORDS.sk.support]).toEqual(['O projekte', 'Podporiť']);
   });
 });
 
-describe('<anotoki-legal-links>: Terms · Privacy · Contact in a footer', () => {
+describe('<anotoki-legal-links>: About · Support · Terms · Privacy · Contact in a footer', () => {
   let fixture: ComponentFixture<LegalLinksComponent>;
   let host: HTMLElement;
   let language: WritableSignal<string>;
@@ -84,23 +92,27 @@ describe('<anotoki-legal-links>: Terms · Privacy · Contact in a footer', () =>
     document.body.innerHTML = '';
   });
 
-  it('draws the three links to the default paths in a navigation of their own, and registers their words', async () => {
+  it('draws the links to the default paths - About and Support first - in a navigation of their own, and registers their words', async () => {
     await draw();
     expect(links()).toEqual([
+      ['About', '/about'],
+      ['Support', '/support'],
       ['Terms', '/terms'],
       ['Privacy', '/privacy'],
       ['Contact', '/contact'],
     ]);
     const nav = host.querySelector('nav');
     expect(nav?.getAttribute('aria-label')).toBe('Legal');
-    expect(nav?.querySelectorAll('ul > li')).toHaveLength(3);
+    expect(nav?.querySelectorAll('ul > li')).toHaveLength(5);
     expect(host.hasAttribute('lang')).toBe(false);
     expect(TestBed.inject(ANOTOKI_LIBRARY_WORDS)).toContain(LEGAL_LINKS_LIBRARY_WORDS);
   });
 
   it("goes to the site's paths - the configuration's, and this piece's own over them", async () => {
-    await draw({ paths: { privacy: '/legal/privacy' } }, { paths: { contact: '/write-to-us' } });
+    await draw({ paths: { privacy: '/legal/privacy', about: '/about-us' } }, { paths: { contact: '/write-to-us', support: '/donate' } });
     expect(links()).toEqual([
+      ['About', '/about-us'],
+      ['Support', '/donate'],
       ['Terms', '/terms'],
       ['Privacy', '/legal/privacy'],
       ['Contact', '/write-to-us'],
@@ -122,12 +134,12 @@ describe('<anotoki-legal-links>: Terms · Privacy · Contact in a footer', () =>
     await draw({ translate: (key) => (language() === 'sk' && key === 'anotoki.legalLinks.privacy' ? 'Osobné údaje' : null) });
     language.set('sk');
     await settle(fixture);
-    expect(links().map(([label]) => label)).toEqual(['Podmienky', 'Osobné údaje', 'Kontakt']);
+    expect(links().map(([label]) => label)).toEqual(['O projekte', 'Podporiť', 'Podmienky', 'Osobné údaje', 'Kontakt']);
     expect(host.querySelector('nav')?.getAttribute('aria-label')).toBe('Právne informácie');
 
     language.set('de');
     await settle(fixture);
-    expect(links().map(([label]) => label)).toEqual(['Terms', 'Privacy', 'Contact']);
+    expect(links().map(([label]) => label)).toEqual(['About', 'Support', 'Terms', 'Privacy', 'Contact']);
     expect(host.getAttribute('lang')).toBe('en');
   });
 
@@ -135,6 +147,8 @@ describe('<anotoki-legal-links>: Terms · Privacy · Contact in a footer', () =>
     document.documentElement.lang = 'sk';
     await draw(null);
     expect(links()).toEqual([
+      ['O projekte', '/about'],
+      ['Podporiť', '/support'],
       ['Podmienky', '/terms'],
       ['Súkromie', '/privacy'],
       ['Kontakt', '/contact'],

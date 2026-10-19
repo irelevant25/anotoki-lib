@@ -116,6 +116,9 @@ bootstrapApplication(AppComponent, {
       { path: 'terms', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.TermsPageComponent) },
       { path: 'privacy', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.PrivacyPageComponent) },
       { path: 'contact', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.ContactPageComponent) },
+      // The About and Support pages (0.8.0), the same on every site, linked from the footer before the legal pages.
+      { path: 'about', loadComponent: () => import('@anotoki/lib/legal/about').then((m) => m.AboutPageComponent) },
+      { path: 'support', loadComponent: () => import('@anotoki/lib/legal/support').then((m) => m.SupportPageComponent) },
       { path: '**', redirectTo: '' },
     ]),
     // The People page: the reader is Mira (7); the site deletes what it keeps of a person, in its own words.

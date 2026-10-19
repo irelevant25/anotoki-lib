@@ -34,6 +34,25 @@
   }
 }
 
+// On a phone the five links are two lines (0.8.0): About · Support, then Terms · Privacy · Contact - no line begins
+// with a dot, in any language (Slovak's five need 407 px of a line). A line of its own between them (the list's
+// ::before, a whole line high nothing) breaks the row there, and Terms drops its dot.
+@media (max-width: 28rem) {
+  .anotoki-legal-links__list::before {
+    content: "";
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .anotoki-legal-links__item:nth-child(n + 3) {
+    order: 2;
+  }
+
+  .anotoki-legal-links__item + .anotoki-legal-links__item:nth-child(3)::before {
+    content: none;
+  }
+}
+
 // At least 24 px to press (WCAG 2.5.8), whatever a site's own `a {}` says.
 .anotoki-legal-links__link {
   display: inline-flex;

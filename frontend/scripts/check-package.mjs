@@ -21,7 +21,8 @@
 //   the feedback form imports its configuration, the kit's fields, the kit's dialog (0.8.0: the form in its dialog,
 //   its buttons in the dialog's footer) and the auth module's marker (its message is anybody's), never the auth
 //   module. The legal pages import their configuration (and the footer's links, @anotoki/lib/legal), the kit's pieces
-//   and its copy button, and the feedback form - its dialog - by import() alone. The kit's pieces of 0.6.0 are
+//   and its copy button, and the feedback form - its dialog - by import() alone; the About and Support pages (0.8.0),
+//   an entry point each, their configuration, the core's pieces and their own words. The kit's pieces of 0.6.0 are
 //   entry points of their own (ui/chips, ui/link-card, ui/stat-tiles, ui/progress, ..., ui/side-nav, ui/current-link),
 //   outside the core and its limit, each importing the core's pieces it draws; the tabs (lazy, no limit) gained the
 //   link tabs, the badge, the icon and the scroll hint in their own. Its input pieces (ui/date-field, ui/slider,
@@ -35,9 +36,10 @@
 //   which imports none and holds the kit's alone; @anotoki/lib/words, every namespace's, is for a site's specs and
 //   the showcase. Every first load carries the words of the namespaces its page says, and no others: a module that
 //   brings words weighs neither on the kit's first loads nor on the translations module's. Some namespaces are read
-//   by their readers alone and never registered (READ_BY_THEIR_PAGES: the legal pages', pages of text - a registration
-//   comes with the eager configuration -, and the kit's pieces' of their own entry points and the footer's, which have
-//   no provide*()): only those readers may import them, and no first load carries them but their reader's own.
+//   by their readers alone and never registered (READ_BY_THEIR_PAGES: the legal pages', the About and Support pages',
+//   pages of text - a registration comes with the eager configuration -, and the kit's pieces' of their own entry
+//   points and the footer's, which have no provide*()): only those readers may import them, and no first load carries
+//   them but their reader's own.
 // - Valid CSS: the tokens as the styles module writes them, and every component's styles, hold no one-item list as
 //   Sass reads it back - `(0 1px 2px …,)`, which no property takes.
 // - Text, never markup: no bundle names one of the ways to put a string into a page as HTML, or to switch Angular's
@@ -276,8 +278,12 @@ const MAY_IMPORT = {
   '@anotoki/lib/error-report/marker': [],
   // The legal pages: their configuration and the footer's links register the links' words; the pages, each on a
   // lazy route, read their own (READ_BY_THEIR_PAGES) and load the feedback form's dialog by import() as it is opened.
+  // The About and Support pages (0.8.0), an entry point each on a lazy route: the paths and the language of the
+  // legal configuration, the core's pieces, and their own words, read by themselves.
   '@anotoki/lib/legal': ['@anotoki/lib/ui/config', '@anotoki/lib/words/legal-links'],
   '@anotoki/lib/legal/pages': ['@anotoki/lib/legal', '@anotoki/lib/words/legal', ...PIECES, '@anotoki/lib/ui/copy', '@anotoki/lib/feedback/form'],
+  '@anotoki/lib/legal/about': ['@anotoki/lib/legal', '@anotoki/lib/words/about', ...PIECES],
+  '@anotoki/lib/legal/support': ['@anotoki/lib/legal', '@anotoki/lib/words/support', ...PIECES],
   // The family's footer (0.6.3): the kit's buttons, the legal links, its own words (read by itself, READ_BY_THEIR_PAGES)
   // through ui/piece-words, and the feedback form's dialog by import() as it is opened (0.8.0; its own footer/feedback
   // before) - the kit's dialog and the feedback form, so that the footer's first load carries neither.
@@ -310,6 +316,9 @@ const READ_BY_THEIR_PAGES = {
   '@anotoki/lib/words/rich-text': ['@anotoki/lib/ui/rich-text'],
   // The footer's (0.6.3): it is in a first load itself, which carries them (its row below) - no other does.
   '@anotoki/lib/words/footer': ['@anotoki/lib/footer'],
+  // The About and Support pages' (0.8.0): pages of text, each read by its page alone.
+  '@anotoki/lib/words/about': ['@anotoki/lib/legal/about'],
+  '@anotoki/lib/words/support': ['@anotoki/lib/legal/support'],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */

@@ -1,0 +1,107 @@
+@use "../../../../sass/kit";
+
+// The legal pages' measure and rhythm (a text a person reads comfortably, sections apart), the kit's colours.
+:host {
+  display: block;
+  color: kit.token(text);
+}
+
+.anotoki-about-page__page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  max-width: 46rem;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.anotoki-about-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.anotoki-about-page__heading {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.anotoki-about-page__text {
+  margin: 0;
+}
+
+// あの時 in a Japanese font of the reader's system (the family's Manrope has none), its reading in italics.
+.anotoki-about-page__word {
+  font-weight: 600;
+}
+
+.anotoki-about-page__reading {
+  font-style: italic;
+}
+
+// The projects: a card each, its name a link to its site.
+.anotoki-about-page__projects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anotoki-about-page__project {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+}
+
+.anotoki-about-page__project-name {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+// The family's link, whatever a site's own `a {}` says.
+.anotoki-about-page__link {
+  color: kit.token(link);
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  @include kit.focus-ring(1px);
+}
+
+// The fan clause under a project about HoYoverse's games: smaller, quieter.
+.anotoki-about-page__fan {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+// The last line, and its link to the Support page: set apart, on the soft ground of the family's blue.
+.anotoki-about-page__closing {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border-radius: kit.token(radius-lg);
+  background: kit.token(primary-soft);
+  color: kit.token(text);
+
+  .anotoki-about-page__link {
+    font-weight: 600;
+  }
+}

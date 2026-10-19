@@ -29,10 +29,10 @@ kind words in place; what was typed stays. A site's own request may say `issuedA
 **The library's words in the reader's language when the server is out of reach** (Angular). While no bundle is in
 memory - the database out of reach, the site not set up (nothing is asked while `canAsk()` is false), a first answer
 still on its way - the translations module knew no language but English, so a Slovak reader read the status page in
-English. Now `TranslationService.language` is then what the reader's wishes settle on among the languages the library
-has built-in words for (`en`, `sk`) in place of the offered ones: a choice made before (the module's stored choice),
-else the browser's languages (a Czech browser's Slovak too) - never a language with no built-in words, English
-otherwise. `effectiveLanguage`, `<html lang>`, `locale` and the kit's words (`forKit()`) follow it, and so does the
+English. Now `TranslationService.language` is then what the family's ranking settles on among the languages the
+library has built-in words for (`en`, `sk`) in place of the offered ones - this tab's `?lang=`, a choice made before
+(the module's stored choice), the account's language, the browser's languages (a Czech browser's Slovak too) - never
+a language with no built-in words, English otherwise. `effectiveLanguage`, `<html lang>`, `locale` and the kit's words (`forKit()`) follow it, and so does the
 status page, through `siteStatusWords()` and the `language` a site hands `provideAnotokiMigrations()`. The site's own
 keys read its compiled English as before, the English areas stay English, `signInLanguage` stays undefined, and once a
 bundle comes, the page is in its language: nothing changed with a bundle in memory.

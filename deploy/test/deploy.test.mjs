@@ -79,6 +79,14 @@ test('the generated files say what the settings say', () => {
   assert.match(htaccess, /Content-Security-Policy "default-src 'self'"/);
   assert.match(htaccess, /\^\(index\\\.html\|theme-boot\\\.js\)\$/);
   assert.doesNotMatch(htaccess, /^\s*(Options|DirectoryIndex|RewriteBase)/m);
+  // Apache names a request for /.well-known/jwks.json, no file, ".well-known": a rule refusing every dot-name would
+  // refuse it before the rewrite to index.php (the IAM's discovery, 2026-10-19). Only Apache's own .ht* files.
+  const refused = [...htaccess.matchAll(/<FilesMatch "([^"]+)">\s*Require all denied/g)].map((match) => new RegExp(match[1]));
+  assert.ok(!refused.some((rule) => rule.test('.well-known')), 'a .well-known address is not refused');
+  assert.ok(
+    refused.some((rule) => rule.test('.htaccess')),
+    '.htaccess is',
+  );
   const theSwitch = switchHtaccess(config);
   assert.match(theSwitch, /RewriteRule \^uploads\(\/\|\$\) - \[L\]\nRewriteCond/);
   assert.match(theSwitch, /RewriteRule \^\(\.\*\)\$ frontend\/\$1 \[L\]\n$/);

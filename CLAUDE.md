@@ -11,7 +11,7 @@ pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker`, `ui/combobox`, `ui/rich-text`),
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
-`auth`, `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
+`auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
 `feedback/form`, `error-report`, `error-report/marker`, `legal`, `legal/pages`, `footer` (0.6.3, with its
 own lazy `footer/feedback`), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
@@ -125,7 +125,9 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   limits (and the big lazy input pieces of 0.6.0 to limits of their own, `LAZY_LIMITS`),
   every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
-  `migrations` and `error-report/marker` (a token, never the reporter); `people/page` the kit and `people`, which imports nothing;
+  `migrations`, `error-report/marker` (a token, never the reporter) and `auth/marker` (whom a request is
+  for - `ISSUED_AS`, `issuedAs()` - which imports nothing); `feedback/form` its configuration, the kit's fields
+  and `auth/marker` (its message is anybody's), never `auth`; `people/page` the kit and `people`, which imports nothing;
   `legal/pages` the kit, `legal` and the feedback form by import() alone; `footer`
   the core's pieces, `legal`, its words and - by import() alone - `footer/feedback`,
   which holds the kit's dialog and the feedback form; a

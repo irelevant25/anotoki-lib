@@ -91,6 +91,7 @@ test('build: one release - the app, the code the settings name, nothing of the h
   write(join(browser, 'media', 'font-ABCDEFGH.woff2'));
   write(join(browser, '.hidden'));
   write(join(browser, 'stray.php'));
+  write(join(dirname(browser), '3rdpartylicenses.txt'));
   write(join(root, 'backend', 'composer.json'), '{}');
   write(join(root, 'backend', 'api', 'index.php'), '<?php');
   write(join(root, 'backend', 'api', '.htaccess'), 'RewriteEngine On');
@@ -105,10 +106,17 @@ test('build: one release - the app, the code the settings name, nothing of the h
   const config = normalizeConfig({ ...site, include: ['api', 'config', 'vendor', 'data/*.json', 'setup.php'], exclude: ['vendor/autoload.php'] });
   const { dist, release } = build(root, config, { skipFrontend: true, log: () => {} });
   assert.equal(release.version, '1.2.3');
-  assert.deepEqual(listFiles(join(dist, 'frontend')).sort(), ['.htaccess', 'index.html', 'index.php', 'main-ABCDEFGH.js', 'media/font-ABCDEFGH.woff2']);
+  assert.deepEqual(listFiles(join(dist, 'frontend')).sort(), ['.htaccess', '3rdpartylicenses.txt', 'index.html', 'index.php', 'main-ABCDEFGH.js', 'media/font-ABCDEFGH.woff2']);
   assert.deepEqual(listFiles(join(dist, 'backend')).sort(), ['.htaccess', 'api/index.php', 'config/config.php', 'data/words.json', 'release.json']);
   assert.ok(existsSync(join(dist, MARKER)));
   assert.equal(JSON.parse(readFileSync(join(dist, 'backend', 'release.json'), 'utf8')).site, 'demo');
+
+  // An app built already, instead of the site's build.
+  const ready = join(temp, 'ready-app');
+  write(join(ready, 'index.html'), '<p>');
+  write(join(ready, 'main-READYAPP.js'));
+  const other = build(root, config, { out: join(temp, 'with-ready-app'), frontend: ready, log: () => {} });
+  assert.deepEqual(listFiles(join(other.dist, 'frontend')).sort(), ['.htaccess', 'index.html', 'index.php', 'main-READYAPP.js']);
 
   // An earlier build is replaced; a folder that is not one is refused.
   build(root, config, { skipFrontend: true, log: () => {} });

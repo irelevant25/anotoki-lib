@@ -10,7 +10,7 @@ import { smoke } from './lib/smoke.mjs';
 const USAGE = `anotoki-deploy <command> [options]          (in a site's repository)
 
   build [--out DIR] [--skip-frontend]      the site's own build, then the release in DIR (default dist/):
-                                           frontend/ and backend/
+        [--frontend DIR]                   frontend/ and backend/ (--frontend: an app built already)
   deploy [--dist DIR] --backups DIR [--go] the release up as .new, the live one copied into DIR and kept as
                                            .old, swapped in, checked
   rollback [--go]                          the .old release back in
@@ -30,7 +30,7 @@ for (let i = 0; i < rest.length; i++) {
     options._.push(rest[i]);
   } else if (['go', 'undo', 'skip-frontend'].includes(match[1])) {
     options[match[1]] = true;
-  } else if (['out', 'dist', 'backups', 'root'].includes(match[1])) {
+  } else if (['out', 'dist', 'backups', 'root', 'frontend'].includes(match[1])) {
     options[match[1]] = match[2] ?? rest[++i];
   } else {
     fail(`Unknown option --${match[1]}.\n\n${USAGE}`);
@@ -48,7 +48,7 @@ try {
   let ok = true;
   switch (command) {
     case 'build':
-      build(root, config, { out: options.out, skipFrontend: options['skip-frontend'] });
+      build(root, config, { out: options.out, skipFrontend: options['skip-frontend'], frontend: options.frontend });
       break;
     case 'deploy':
       ok = await deploy(config, { dist, backups: options.backups ? resolve(options.backups) : null, go: options.go });

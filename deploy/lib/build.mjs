@@ -8,17 +8,21 @@ import { denyHtaccess, frontendHtaccess, frontIndexPhp } from './templates.mjs';
 
 export const MARKER = '.anotoki-deploy';
 
-export function build(root, config, { out, skipFrontend = false, log = console.log } = {}) {
+/** `frontend`: an app built already (a folder with its index.html) - the site's frontend build does not run. */
+export function build(root, config, { out, skipFrontend = false, frontend = null, log = console.log } = {}) {
   const dist = resolve(out ?? join(root, 'dist'));
   checkOut(root, dist);
 
   for (const command of config.before) {
     run(command, root, log);
   }
-  if (!skipFrontend) {
+  if (!skipFrontend && !frontend) {
     run(config.frontendBuild, join(root, 'frontend'), log);
   }
-  const browser = browserOutput(root, config);
+  const browser = frontend ? resolve(frontend) : browserOutput(root, config);
+  if (!existsSync(join(browser, 'index.html'))) {
+    throw new Error(`No built app at ${browser} (no index.html).`);
+  }
 
   rmSync(dist, { recursive: true, force: true });
   mkdirSync(dist, { recursive: true });
@@ -27,6 +31,12 @@ export function build(root, config, { out, skipFrontend = false, log = console.l
 
   const frontendFiles = listFiles(browser).filter((path) => !hidden(path) && !/\.(php|phtml|phar)$/i.test(path));
   copyAll(browser, join(dist, 'frontend'), frontendFiles);
+  // The notices of the libraries the bundles hold: Angular writes them beside the app's folder.
+  const licenses = join(dirname(browser), '3rdpartylicenses.txt');
+  if (existsSync(licenses) && !frontendFiles.includes('3rdpartylicenses.txt')) {
+    copyFileSync(licenses, join(dist, 'frontend', '3rdpartylicenses.txt'));
+    frontendFiles.push('3rdpartylicenses.txt');
+  }
   writeFileSync(join(dist, 'frontend', 'index.php'), frontIndexPhp(config));
   writeFileSync(join(dist, 'frontend', '.htaccess'), frontendHtaccess(config));
 

@@ -39,6 +39,7 @@ Run in the site's repository (any folder of it; `--root` names it otherwise):
 
 ```
 anotoki-deploy build [--out DIR] [--skip-frontend]       the site's build, then the release in DIR (default dist/)
+                     [--frontend DIR]                    (--frontend: an app built already - a site's tests)
 anotoki-deploy deploy --backups DIR [--dist DIR] [--go]   the release up, the live one copied into DIR, swapped
 anotoki-deploy rollback [--go]                           the .old release back
 anotoki-deploy switch [--go] [--undo]                    once per site: the site's .htaccess becomes the switch
@@ -85,7 +86,8 @@ deleted once the site runs well.
 | `smoke` | none | paths that answer 200 after a release (`/api/health`) |
 | `content` | none | `{ "audio": { "from": "backend/data/audio", "to": "content/audio" } }`: kept on the host beside the release, only ever added to (`content audio`) |
 
-The app's folder is read from `angular.json` (the project's `outputPath`, plus `browser/`).
+The app's folder is read from `angular.json` (the project's `outputPath`, plus `browser/`); Angular's
+`3rdpartylicenses.txt` beside it goes into `frontend/` too.
 
 ## Working on it
 

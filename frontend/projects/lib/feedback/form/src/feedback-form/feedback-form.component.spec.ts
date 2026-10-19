@@ -1,8 +1,11 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, TestRequest } from '@angular/common/http/testing';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { WritableSignal, provideZonelessChangeDetection, signal } from '@angular/core';
+import { EnvironmentProviders, Provider, WritableSignal, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { AnotokiAuth, anotokiAuthInterceptor } from '@anotoki/lib/auth';
+import { ISSUED_AS } from '@anotoki/lib/auth/marker';
+import { provideTestAnotokiAuth, testAnotokiAuth } from '@anotoki/lib/auth/testing';
 import { AnotokiFeedbackConfig, provideAnotokiFeedback } from '@anotoki/lib/feedback';
 import { ANOTOKI_LIBRARY_WORDS } from '@anotoki/lib/ui/config';
 import { FEEDBACK_LIBRARY_WORDS } from '@anotoki/lib/words/feedback';
@@ -44,14 +47,23 @@ describe("<anotoki-feedback-form>: a visitor's message, in their language, check
   let sent: number;
   let closed: number;
 
-  async function open(config: Partial<AnotokiFeedbackConfig> = {}, inputs: Record<string, unknown> = {}): Promise<void> {
+  /**
+   * The form, configured. `site`: what the site gives besides (HttpClient alone, by default); `starting`: what runs
+   * before the form is drawn (the site's own start).
+   */
+  async function open(
+    config: Partial<AnotokiFeedbackConfig> = {},
+    inputs: Record<string, unknown> = {},
+    site: (Provider | EnvironmentProviders)[] = [provideHttpClient()],
+    starting: () => Promise<void> = async () => undefined,
+  ): Promise<void> {
     language = signal('en');
     signedIn = signal(false);
     email = signal<string | null>(null);
     TestBed.configureTestingModule({
       providers: [
         provideZonelessChangeDetection(),
-        provideHttpClient(),
+        ...site,
         provideHttpClientTesting(),
         provideAnotokiFeedback(() => ({
           language: () => language(),
@@ -63,6 +75,7 @@ describe("<anotoki-feedback-form>: a visitor's message, in their language, check
       ],
     });
     http = TestBed.inject(HttpTestingController);
+    await starting();
     fixture = TestBed.createComponent(FeedbackFormComponent);
     for (const [name, value] of Object.entries(inputs)) {
       fixture.componentRef.setInput(name, value);
@@ -272,6 +285,42 @@ describe("<anotoki-feedback-form>: a visitor's message, in their language, check
     await settle(fixture);
     expect(words(host.querySelector('[data-field="steps"] .anotoki-field__error'))).toBe('Toto je dlhšie ako 100 znakov.');
     expect(document.activeElement).toBe(host.querySelector('[data-field="steps"] textarea'));
+  });
+
+  it("says whom its message is for: anybody's (ISSUED_AS), which the site's interceptor reads as it is issued", async () => {
+    await open();
+    type(field('message'), 'Hello');
+    await send();
+    const sending = request();
+    expect(sending.request.context.get(ISSUED_AS)).toBe('anybody');
+    sending.flush({ ok: true }, { status: 201, statusText: 'Created' });
+    await settle(fixture);
+    expect(sent).toBe(1);
+  });
+
+  it("with the auth module, nobody signed in where the site requires signing in: sent, never refused before; the server's refusal said in place - nobody sent to sign in, nothing typed lost", async () => {
+    const iam = testAnotokiAuth();
+    await open({}, {}, [provideHttpClient(withInterceptors([anotokiAuthInterceptor])), ...provideTestAnotokiAuth({ loginRequired: true }, iam)], () => TestBed.inject(AnotokiAuth).init());
+    const auth = TestBed.inject(AnotokiAuth);
+    expect(auth.state()).toBe('signed-out');
+    language.set('sk');
+    type(field('subject'), 'Mapa');
+    type(field('message'), 'Tmavá mapa, prosím.');
+    await send();
+
+    const sending = request();
+    expect(sending.request.headers.has('Authorization')).toBe(false);
+    sending.flush({ code: 'sign_in_required', message: 'Sign in to send feedback.' }, { status: 401, statusText: 'Unauthorized' });
+    await settle(fixture);
+
+    expect(words(host.querySelector('[data-failure]'))).toBe('Na poslanie správy sa prihlás.');
+    expect(field('subject')!.value).toBe('Mapa');
+    expect(field('message')!.value).toBe('Tmavá mapa, prosím.');
+    expect(iam.client!.logins).toEqual([]);
+    expect(iam.browser.navigations).toEqual([]);
+    expect(iam.browser.reloads).toBe(0);
+    expect(auth.state()).toBe('signed-out');
+    expect(sent).toBe(0);
   });
 
   it("hides its robots' field from people, and sends what a robot wrote in it as it is", async () => {

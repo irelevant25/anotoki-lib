@@ -48,8 +48,11 @@ export { AnotokiAuth } from './src/auth.service';
 export type { AuthBrowser } from '@anotoki/lib/auth/core';
 export { ANOTOKI_AUTH_BROWSER } from '@anotoki/lib/auth/core';
 export { anotokiAuthInterceptor } from './src/auth.interceptor';
-export type { Caller } from './src/issued-as';
-export { CARRIES_VISITOR_KEY, ISSUED_AS, VISITOR_KEY_HEADER, issuedAs } from './src/issued-as';
+// Whom a request is for: an entry point of its own (@anotoki/lib/auth/marker), which a request's maker - the feedback
+// form - names without this module; named here too, where a site has always taken it.
+export type { Caller } from '@anotoki/lib/auth/marker';
+export { ISSUED_AS, issuedAs } from '@anotoki/lib/auth/marker';
+export { CARRIES_VISITOR_KEY, VISITOR_KEY_HEADER } from './src/issued-as';
 export { SavesInFlight } from './src/saves-in-flight';
 export { adminGuard, personGuard, personOrVisitorGuard, staffGuard } from './src/guards';
 export type { AccountPreference, PreferenceSave, ShownPreferences } from './src/preferences';

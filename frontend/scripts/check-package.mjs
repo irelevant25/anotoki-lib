@@ -11,13 +11,15 @@
 //   places every piece any page uses in the first load. The shell imports only the core and ui/menu; nothing imports
 //   the shell; the Migrations page is never pulled back into the gate's entry point, nor the admin Translations and
 //   Languages pages into the translations module's. The auth module imports the core's pieces, the migrations
-//   module (whether the site is blocked) and the error report's marker (@anotoki/lib/error-report/marker, a token: a
-//   report's failure is left alone) - never the reporter -, and nothing imports it but its testing helper; its parts
-//   loaded later - the screens (auth/screens) and the client's token requests (auth/session, which it imports by
+//   module (whether the site is blocked), the error report's marker (@anotoki/lib/error-report/marker, a token: a
+//   report's failure is left alone) - never the reporter - and its own marker (@anotoki/lib/auth/marker, 0.7.2: whom
+//   a request is for - ISSUED_AS, issuedAs(); it imports nothing), and nothing imports it but its testing helper; its
+//   parts loaded later - the screens (auth/screens) and the client's token requests (auth/session, which it imports by
 //   import() alone) - import its shared part (auth/core), never the module itself. The People page imports the
 //   kit and its configuration's small entry point, which imports nothing. The admin tools' pages import their
 //   configuration, their shared parts (@anotoki/lib/admin/parts) and the kit's lazy pieces, and nothing imports a page;
-//   the feedback form imports its configuration and the kit's fields. The legal pages import their configuration (and
+//   the feedback form imports its configuration, the kit's fields and the auth module's marker (its message is
+//   anybody's), never the auth module. The legal pages import their configuration (and
 //   the footer's links, @anotoki/lib/legal), the kit's pieces, its dialog and its copy button, and the feedback form by
 //   import() alone. The kit's pieces of 0.6.0 are entry points of their own (ui/chips, ui/link-card, ui/stat-tiles,
 //   ui/progress, ..., ui/side-nav, ui/current-link), outside the core and its limit, each importing the core's pieces it
@@ -85,7 +87,9 @@ const PIECES = ['config', 'dom', 'icon', 'spinner', 'button', 'badge', 'alert', 
  * at 0.4.0 before the screen, 15.3 with it. Every site that signs in loads it on its first page, with its shared part
  * (auth/core: the client's types and helpers, the configuration, the built-in words, the screens' port). Since 0.5.0
  * what runs only at a moment is loaded then: the client's token requests (auth/session, by import()) and the callback
- * page and the failure's screen (auth/screens, on lazy routes) - 34.4 kB raw of a site's first load at 0.4.1.
+ * page and the failure's screen (auth/screens, on lazy routes) - 34.4 kB raw of a site's first load at 0.4.1. Its
+ * marker (auth/marker, 0.7.2: whom a request is for) is an entry point of its own, which the feedback form names
+ * without the module - a token and a function, on every first page that signs in.
  *
  * people: the People page's configuration and the shape of its API, in a site's app.config - a token and a function
  * (the page itself is people/page, on a lazy admin route).
@@ -118,6 +122,7 @@ const LIMITS = {
   '@anotoki/lib/translations': 8,
   '@anotoki/lib/auth': 12,
   '@anotoki/lib/auth/core': 3.5,
+  '@anotoki/lib/auth/marker': 0.5,
   '@anotoki/lib/people': 0.5,
   '@anotoki/lib/admin': 1.5,
   '@anotoki/lib/feedback': 1.5,
@@ -226,8 +231,19 @@ const MAY_IMPORT = {
   '@anotoki/lib/translations': PIECES,
   '@anotoki/lib/translations/admin': ['@anotoki/lib/translations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/forms'],
   '@anotoki/lib/translations/testing': ['@anotoki/lib/translations'],
-  // The error report's marker alone (a token), never the reporter.
-  '@anotoki/lib/auth': [...PIECES, '@anotoki/lib/migrations', '@anotoki/lib/error-report/marker', '@anotoki/lib/auth/core', '@anotoki/lib/auth/session', '@anotoki/lib/auth/screens'],
+  // The error report's marker alone (a token), never the reporter; its own marker, whom a request is for.
+  '@anotoki/lib/auth': [
+    ...PIECES,
+    '@anotoki/lib/migrations',
+    '@anotoki/lib/error-report/marker',
+    '@anotoki/lib/auth/marker',
+    '@anotoki/lib/auth/core',
+    '@anotoki/lib/auth/session',
+    '@anotoki/lib/auth/screens',
+  ],
+  // Whom a request is for (0.7.2): a token and a function, importing nothing - the auth module's, and the feedback
+  // form's, which names it without the module.
+  '@anotoki/lib/auth/marker': [],
   // The auth module's shared part, and its parts loaded later: never the module itself (it names them, by import()
   // the session part - a site's build puts that in a chunk of its own).
   '@anotoki/lib/auth/core': ['@anotoki/lib/ui/config', '@anotoki/lib/words/sign-in'],
@@ -247,9 +263,10 @@ const MAY_IMPORT = {
   '@anotoki/lib/admin/feedback': ADMIN_PAGE,
   '@anotoki/lib/admin/backups': ADMIN_PAGE,
   '@anotoki/lib/admin/files': [...ADMIN_PAGE, '@anotoki/lib/ui/menu'],
-  // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it.
+  // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it -
+  // its message anybody's (0.7.2): the auth module's marker, never the auth module.
   '@anotoki/lib/feedback': ['@anotoki/lib/ui/config', '@anotoki/lib/words/feedback'],
-  '@anotoki/lib/feedback/form': ['@anotoki/lib/feedback', ...PIECES, '@anotoki/lib/ui/forms'],
+  '@anotoki/lib/feedback/form': ['@anotoki/lib/feedback', ...PIECES, '@anotoki/lib/ui/forms', '@anotoki/lib/auth/marker'],
   // The browser's errors, reported: Angular's own (its ErrorHandler and HttpClient) and the report's mark, an entry
   // point of its own that imports nothing.
   '@anotoki/lib/error-report': ['@anotoki/lib/error-report/marker'],

@@ -4,7 +4,8 @@ import { Observable, catchError, defer, finalize, from, switchMap, tap, throwErr
 import { AnotokiAuth } from './auth.service';
 import { ANOTOKI_AUTH_BROWSER, ANOTOKI_AUTH_CONFIG, AnotokiAuthConfig, DEFAULT_PREFIXES, DEFAULT_SKIP, VisitorKeyStore } from '@anotoki/lib/auth/core';
 import { ANOTOKI_ERROR_REPORT } from '@anotoki/lib/error-report/marker';
-import { CARRIES_VISITOR_KEY, Caller, ISSUED_AS, VISITOR_KEY_HEADER } from './issued-as';
+import { Caller, ISSUED_AS } from '@anotoki/lib/auth/marker';
+import { CARRIES_VISITOR_KEY, VISITOR_KEY_HEADER } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';
 
 /**
@@ -30,6 +31,16 @@ import { SavesInFlight } from './saves-in-flight';
  *   sign_in_required says the site requires signing in now
  *   (AnotokiAuth.noteSignInRequired(): the key stays).
  * - **Nobody's**: neither.
+ * - **Anybody's** (ISSUED_AS 'anybody', 0.7.2: the feedback form's message - a
+ *   route that takes anybody's, and a person's as theirs): whoever the page is
+ *   shown to as it is handed over - a person's while somebody is signed in, a
+ *   visitor's while the page is a visitor's, nobody's otherwise. Never refused
+ *   here for want of a token (with none to send it goes as nobody's), and its
+ *   failure is handed back as it came: no fresh token and no retry, no page
+ *   following a session that ended, no sign-in noted as required - a route that
+ *   takes signed-in people alone answers 401 sign_in_required, its maker's to
+ *   say. Only a visitor key the server no longer knows is forgotten and tried
+ *   once more with what the browser holds then, as on any visitor's request.
  *
  * Every write (anything but GET and HEAD) is counted while it is on its way
  * (SavesInFlight): a sign-in waits for them before it leaves the page. The
@@ -58,16 +69,16 @@ export const anotokiAuthInterceptor: HttpInterceptorFn = (original, next) => {
     request = request.clone({ setHeaders: extra });
   }
   const issued = original.context.get(ISSUED_AS);
-  const caller: Caller = issued === null || issued === 'caller' ? auth.caller() : issued;
-  const report = original.context.get(ANOTOKI_ERROR_REPORT);
+  const caller: Caller = issued === 'anybody' ? shownTo(auth) : issued === null || issued === 'caller' ? auth.caller() : issued;
+  const handling: Handling = issued === 'anybody' ? 'anybody' : original.context.get(ANOTOKI_ERROR_REPORT) ? 'report' : 'own';
 
   let sent: Observable<HttpEvent<unknown>>;
   if (caller === 'person') {
-    sent = asPerson(request, next, auth, report);
+    sent = asPerson(request, next, auth, handling);
   } else if (caller === 'visitor') {
     const prefixes = config.api?.visitorPrefixes;
     const visitorPath = prefixes === undefined || prefixes.some((prefix) => under(path, prefix));
-    sent = asVisitor(request, next, auth, visitorPath ? auth.visitors() : null, config, false, report);
+    sent = asVisitor(request, next, auth, visitorPath ? auth.visitors() : null, config, false, handling);
   } else {
     sent = next(bare(request));
   }
@@ -108,10 +119,27 @@ function under(path: string, prefix: string): boolean {
 }
 
 /**
- * A person's request: with the token, or not at all. `report`: an error report's - with the token as any, its
- * failure handed back as it came (no fresh token, no retry, the page not told to follow).
+ * How a request's failure is handled:
+ *
+ *   own       the site's own request: a fresh token and one retry, the page following a session that ended, a
+ *             visitor's key the server no longer knows forgotten and tried once more, sign-in noted as required
+ *   report    a report of the page's own error (ANOTOKI_ERROR_REPORT): handed back as it came
+ *   anybody   anybody's (ISSUED_AS 'anybody'): handed back as it came, but for a visitor's key the server no longer
+ *             knows - and a person's with no token to send goes as nobody's, never refused here
  */
-function asPerson(request: HttpRequest<unknown>, next: HttpHandlerFn, auth: AnotokiAuth, report: boolean): Observable<HttpEvent<unknown>> {
+type Handling = 'own' | 'report' | 'anybody';
+
+/** Whom anybody's request is for: the person signed in, the visitor the page is shown to, or nobody - never a person on the way to sign in. */
+function shownTo(auth: AnotokiAuth): Caller {
+  const state = auth.state();
+  return state === 'signed-in' ? 'person' : state === 'visitor' ? 'visitor' : 'nobody';
+}
+
+/**
+ * A person's request: with the token, or not at all - anybody's with none goes as nobody's. A report's and anybody's
+ * go with the token as any, their failure handed back as it came (no fresh token, no retry, the page not told to follow).
+ */
+function asPerson(request: HttpRequest<unknown>, next: HttpHandlerFn, auth: AnotokiAuth, handling: Handling): Observable<HttpEvent<unknown>> {
   const carriesKey = request.context.get(CARRIES_VISITOR_KEY);
   if (!carriesKey) {
     request = request.clone({ headers: request.headers.delete(VISITOR_KEY_HEADER) });
@@ -119,7 +147,10 @@ function asPerson(request: HttpRequest<unknown>, next: HttpHandlerFn, auth: Anot
   return from(auth.token()).pipe(
     switchMap((token) => {
       if (!token) {
-        if (!report) {
+        if (handling === 'anybody') {
+          return next(bare(request));
+        }
+        if (handling === 'own') {
           auth.refused();
         }
         return throwError(() => notSignedIn(request));
@@ -134,7 +165,7 @@ function asPerson(request: HttpRequest<unknown>, next: HttpHandlerFn, auth: Anot
             }
           }),
         );
-      if (report) {
+      if (handling !== 'own') {
         return send(token);
       }
       return send(token).pipe(
@@ -159,9 +190,9 @@ function asPerson(request: HttpRequest<unknown>, next: HttpHandlerFn, auth: Anot
 
 /**
  * A visitor's request: with the key held as it leaves, if any; with no key, behind the first save that may
- * make the visitor. `retried`: this is the one try again after a key the server no longer knew. `report`: an
- * error report's - with the key as any, its failure handed back as it came (no key forgotten, no retry, no
- * sign-in noted as required).
+ * make the visitor. `retried`: this is the one try again after a key the server no longer knew. A report's goes
+ * with the key as any, its failure handed back as it came (no key forgotten, no retry, no sign-in noted as
+ * required); anybody's too, but for a key the server no longer knows, forgotten and tried once more.
  */
 function asVisitor(
   request: HttpRequest<unknown>,
@@ -170,15 +201,15 @@ function asVisitor(
   store: VisitorKeyStore | null,
   config: AnotokiAuthConfig,
   retried: boolean,
-  report: boolean,
+  handling: Handling,
 ): Observable<HttpEvent<unknown>> {
   const plain = bare(request);
   if (store === null || auth.loginRequired()) {
-    return report
+    return handling !== 'own'
       ? next(plain)
       : next(plain).pipe(
           catchError((error: unknown) => {
-            refusedAsVisitor(error, auth, store, null);
+            refusedAsVisitor(error, auth, store, null, true);
             return throwError(() => error);
           }),
         );
@@ -193,12 +224,12 @@ function asVisitor(
         }
       }),
     );
-    return report
+    return handling === 'report'
       ? answered
       : answered.pipe(
           catchError((error: unknown) => {
-            if (refusedAsVisitor(error, auth, store, key) === 'forgotten' && !retried) {
-              return asVisitor(request, next, auth, store, config, true, report);
+            if (refusedAsVisitor(error, auth, store, key, handling === 'own') === 'forgotten' && !retried) {
+              return asVisitor(request, next, auth, store, config, true, handling);
             }
             return throwError(() => error);
           }),
@@ -213,7 +244,7 @@ function asVisitor(
     const pending = store.firstSave?.() ?? null;
     if (pending) {
       // Another request may be making the visitor right now: after its answer, with the key it brought.
-      return from(pending).pipe(switchMap(() => asVisitor(request, next, auth, store, config, retried, report)));
+      return from(pending).pipe(switchMap(() => asVisitor(request, next, auth, store, config, retried, handling)));
     }
     if (store.beginFirstSave && config.makesVisitor?.(request)) {
       const done = store.beginFirstSave();
@@ -223,12 +254,17 @@ function asVisitor(
   });
 }
 
-/** A visitor's 401: sign-in required now (the key stays), or a key the server no longer knows (forgotten, when it was the one sent). */
-function refusedAsVisitor(error: unknown, auth: AnotokiAuth, store: VisitorKeyStore | null, key: string | null): 'forgotten' | null {
+/**
+ * A visitor's 401: sign-in required now (`noted`: the site's own request - the key stays), or a key the server no
+ * longer knows (forgotten, when it was the one sent).
+ */
+function refusedAsVisitor(error: unknown, auth: AnotokiAuth, store: VisitorKeyStore | null, key: string | null, noted: boolean): 'forgotten' | null {
   if (error instanceof HttpErrorResponse && error.status === 401) {
     const code = codeOf(error);
     if (code === 'sign_in_required') {
-      auth.noteSignInRequired();
+      if (noted) {
+        auth.noteSignInRequired();
+      }
     } else if (code === 'visitor_unknown' && key && store) {
       store.forget(key, true);
       return 'forgotten';

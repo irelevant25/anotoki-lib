@@ -1,5 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DOCUMENT, ElementRef, Injector, afterNextRender, booleanAttribute, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+// Whom the message is for, from the auth module's own small entry point - never the auth module itself.
+import { issuedAs } from '@anotoki/lib/auth/marker';
 import { ANOTOKI_FEEDBACK_CONFIG, DEFAULT_FEEDBACK_ENDPOINT, DEFAULT_HONEYPOT, FeedbackField, FeedbackKind, FeedbackWords, feedbackWords } from '@anotoki/lib/feedback';
 import { AlertComponent } from '@anotoki/lib/ui/alert';
 import { ButtonComponent } from '@anotoki/lib/ui/button';
@@ -62,7 +64,14 @@ let nextId = 0;
  * here as the server checks it, the refusal beside the field, the focus on the
  * first; what the server refuses is said kindly, in the visitor's words, never
  * in its English: too many messages ("try again in an hour", "tomorrow"), the
- * site not taking any now, a dropped connection - and what was written stays.
+ * site not taking any now, signing in first (a site that takes signed-in
+ * people's alone), a dropped connection - and what was written stays.
+ *
+ * The message is anybody's (ISSUED_AS 'anybody', @anotoki/lib/auth/marker):
+ * with the auth module's interceptor, the person's token while somebody is
+ * signed in, the visitor's key while the page is shown to a visitor, neither
+ * otherwise - never refused before it is sent for want of a token, and never
+ * a page sent to sign in: the server's answer is the form's to say.
  *
  * A field no person sees or reaches waits for robots (the PHP half's
  * honeypot): filled in, the server answers as for anybody and keeps nothing.
@@ -227,7 +236,7 @@ export class FeedbackFormComponent {
 
     this.sending.set(true);
     try {
-      await firstValueFrom(this.http.post(this.config?.endpoint || DEFAULT_FEEDBACK_ENDPOINT, this.body()));
+      await firstValueFrom(this.http.post(this.config?.endpoint || DEFAULT_FEEDBACK_ENDPOINT, this.body(), { context: issuedAs('anybody') }));
       this.done.set(true);
       this.sent.emit();
       afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('[data-thanks]')?.focus(), { injector: this.injector });

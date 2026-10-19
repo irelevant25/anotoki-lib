@@ -4,10 +4,11 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AnotokiAuth } from './auth.service';
-import { AnotokiAuthConfig, VisitorKeyStore } from '@anotoki/lib/auth/core';
+import { AnotokiAuthConfig, AuthBootConfig, VisitorKeyStore } from '@anotoki/lib/auth/core';
+import { issuedAs } from '@anotoki/lib/auth/marker';
 import { ANOTOKI_ERROR_REPORT, provideAnotokiErrorReport } from '@anotoki/lib/error-report';
 import { apiPath } from './auth.interceptor';
-import { CARRIES_VISITOR_KEY, issuedAs } from './issued-as';
+import { CARRIES_VISITOR_KEY } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';
 import { SpecSite, provideSpecAuth, settle, specSite, user } from './testing';
 
@@ -55,8 +56,8 @@ describe('anotokiAuthInterceptor: who a request is, decided when it is issued', 
   let backend: HttpTestingController;
   let auth: AnotokiAuth;
 
-  async function start(signedIn: boolean, config: Partial<AnotokiAuthConfig> = {}, reporter = false): Promise<void> {
-    site = specSite();
+  async function start(signedIn: boolean, config: Partial<AnotokiAuthConfig> = {}, reporter = false, boot: Partial<AuthBootConfig> = {}): Promise<void> {
+    site = specSite(boot);
     keys = new Keys();
     if (signedIn) {
       site.prepare = (client) => client.hold(user('7'), null);
@@ -389,6 +390,128 @@ describe('anotokiAuthInterceptor: who a request is, decided when it is issued', 
       await expect(sent).rejects.toBeInstanceOf(HttpErrorResponse);
       expect(auth.loginRequired()).toBe(false);
       expect(auth.state()).toBe('visitor');
+    });
+  });
+
+  describe("anybody's request (issuedAs('anybody'): the feedback form's message): whoever the page is shown to - never refused here, the page never following", () => {
+    /** A message as the feedback form sends it. */
+    const message = () => firstValueFrom(http.post('/api/feedback', { kind: 'idea', message: 'A dark map, please.' }, { context: issuedAs('anybody') }));
+
+    /** Nothing sent the page anywhere: no sign-in started, no navigation, no reload. */
+    function stayed(): void {
+      expect(site.client!.logins).toEqual([]);
+      expect(site.browser.navigations).toEqual([]);
+      expect(site.browser.reloads).toBe(0);
+    }
+
+    it("signed in: the person's token, never a key - a 401 handed back as it came, no fresh token, no retry, the page not following", async () => {
+      await start(true);
+      keys.key = 'k1';
+
+      let sent = message();
+      await settle();
+      const request = backend.expectOne('/api/feedback');
+      expect(request.request.headers.get('Authorization')).toBe('Bearer token-1');
+      expect(request.request.headers.has('X-Visitor-Key')).toBe(false);
+      request.flush({ ok: true }, { status: 201, statusText: 'Created' });
+      expect(await sent).toEqual({ ok: true });
+
+      sent = message();
+      await settle();
+      backend.expectOne('/api/feedback').flush({ code: 'invalid_token' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(sent).rejects.toMatchObject({ status: 401, error: { code: 'invalid_token' } });
+      backend.expectNone('/api/feedback');
+      expect(site.client!.refreshes).toBe(0);
+      expect(auth.state()).toBe('signed-in');
+      stayed();
+    });
+
+    it("signed in with no token to send: it goes as nobody's - never refused here, and the page does not follow", async () => {
+      await start(true);
+      keys.key = 'k1';
+      site.client!.session = null;
+
+      const sent = message();
+      await settle();
+      const request = backend.expectOne('/api/feedback');
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      expect(request.request.headers.has('X-Visitor-Key')).toBe(false);
+      request.flush({ ok: true }, { status: 201, statusText: 'Created' });
+      expect(await sent).toEqual({ ok: true });
+      expect(auth.state()).toBe('signed-in');
+      stayed();
+
+      // The control: the person's own request is never sent, and the page follows the session that ended.
+      await expect(firstValueFrom(http.get('/api/progress'))).rejects.toMatchObject({ status: 401, error: { code: 'sign_in_required' } });
+      backend.expectNone('/api/progress');
+      expect(auth.state()).toBe('signed-out');
+    });
+
+    it("a visitor's: the key, never a token - a 401 sign_in_required handed back, the site not noted as requiring signing in", async () => {
+      await start(false);
+      keys.key = 'k1';
+
+      const sent = message();
+      const request = backend.expectOne('/api/feedback');
+      expect(request.request.headers.get('X-Visitor-Key')).toBe('k1');
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      request.flush({ code: 'sign_in_required', message: 'Sign in to send feedback.' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(sent).rejects.toMatchObject({ status: 401, error: { code: 'sign_in_required' } });
+      backend.expectNone('/api/feedback');
+      expect(auth.loginRequired()).toBe(false);
+      expect(auth.state()).toBe('visitor');
+      expect([keys.key, keys.forgotten]).toEqual(['k1', []]);
+      stayed();
+    });
+
+    it("a visitor's key the server no longer knows: forgotten and tried once more, as on any visitor's request", async () => {
+      await start(false);
+      keys.key = 'old';
+
+      const sent = message();
+      backend.expectOne((request) => request.headers.get('X-Visitor-Key') === 'old').flush({ code: 'visitor_unknown' }, { status: 401, statusText: 'Unauthorized' });
+      const again = backend.expectOne('/api/feedback');
+      expect(again.request.headers.has('X-Visitor-Key')).toBe(false);
+      again.flush({ ok: true }, { status: 201, statusText: 'Created' });
+      expect(await sent).toEqual({ ok: true });
+      expect(keys.forgotten).toEqual(['old']);
+      expect(auth.state()).toBe('visitor');
+    });
+
+    it("nobody's - nobody signed in where the site requires signing in: sent bare, never refused here; the server's refusal handed back, nobody sent to sign in", async () => {
+      await start(false, {}, false, { login_required: true });
+      keys.key = 'k1';
+      expect(auth.state()).toBe('signed-out');
+
+      const sent = message();
+      await settle();
+      const request = backend.expectOne('/api/feedback');
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      expect(request.request.headers.has('X-Visitor-Key')).toBe(false);
+      request.flush({ code: 'sign_in_required', message: 'Sign in to send feedback.' }, { status: 401, statusText: 'Unauthorized' });
+      await expect(sent).rejects.toMatchObject({ status: 401, error: { code: 'sign_in_required' } });
+      backend.expectNone('/api/feedback');
+      expect(auth.state()).toBe('signed-out');
+      stayed();
+
+      // The control: the same message saying nothing of whom it is for is the person's the page is on the way to -
+      // refused here, never sent (the sites' own feedbackSenderInterceptor marked it, until 0.7.2).
+      expect(auth.caller()).toBe('person');
+      await expect(firstValueFrom(http.post('/api/feedback', {}))).rejects.toMatchObject({ status: 401, error: { code: 'sign_in_required' } });
+      backend.expectNone('/api/feedback');
+    });
+
+    it("nobody's on a site with no sign-in set up: bare", async () => {
+      await start(false, {}, false, { issuer: '' });
+      expect(auth.state()).toBe('unavailable');
+      keys.key = 'k1';
+
+      const sent = message();
+      const request = backend.expectOne('/api/feedback');
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      expect(request.request.headers.has('X-Visitor-Key')).toBe(false);
+      request.flush({ ok: true }, { status: 201, statusText: 'Created' });
+      expect(await sent).toEqual({ ok: true });
     });
   });
 

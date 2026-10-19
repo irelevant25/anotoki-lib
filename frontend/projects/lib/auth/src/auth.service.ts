@@ -23,7 +23,8 @@ import {
 } from '@anotoki/lib/auth/core';
 import { ANOTOKI_AUTH_CLIENT_FACTORY } from './config';
 import { HINT_PROBE_MS, hintMayHop, readHint, readMarker, writeMarker } from './hint';
-import { Caller, VISITOR_KEY_HEADER } from './issued-as';
+import { Caller } from '@anotoki/lib/auth/marker';
+import { VISITOR_KEY_HEADER } from './issued-as';
 import { SavesInFlight } from './saves-in-flight';
 
 /** How long the boot waits for the refresh that follows the IAM before the page is drawn anyway. */

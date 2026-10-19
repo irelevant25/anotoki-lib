@@ -35,7 +35,10 @@ path in a settings file is relative to the state root.
 
 ## Commands
 
-Run in the site's repository (any folder of it; `--root` names it otherwise):
+Run in the site's `frontend/`, where it is installed, as `bun run anotoki-deploy <command>`: `bun run` finds it
+whichever tool installed `node_modules/`, and never fetches a package (on Windows `npx` misses bun's links and asks the
+npm registry for `anotoki-deploy` instead). The tool finds the site's repository from any folder of it (`--root` names
+it otherwise):
 
 ```
 anotoki-deploy build [--out DIR] [--skip-frontend]       the site's build, then the release in DIR (default dist/)

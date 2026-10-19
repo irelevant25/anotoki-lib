@@ -437,8 +437,13 @@ const gz = (code) => gzipSync(code, { level: 9 }).length;
 
 for (const { name, file } of entries) {
   const source = readFileSync(file, 'utf8');
-  // The code alone: the comments (JSDoc, the license's) stay out of a site's bundle.
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // The code alone: the comments (JSDoc, the license's) stay out of a site's bundle. And as the release builds it, on
+  // Linux (0.8.1): a Windows checkout's CRLF, baked into a template's or a stylesheet's string as an escaped \r\n, is no
+  // byte a site gets - it weighed the shell about 0.1 kB more here than in CI. The library's code writes no \r of its own.
+  const code = source
+    .replace(/\\r\\n/g, '\\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
   codeOf[name] = code;
   weights[name] = gz(code) / 1024;
   const limit = name === CORE ? undefined : (LIMITS[name] ?? LAZY_LIMITS[name]);

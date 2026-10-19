@@ -2383,7 +2383,10 @@ FeedbackRoutes::admin($app, '/api/admin/feedback', $feedback, $context, $audit, 
   failure the error log writes, where `feature_unavailable` (no table yet) is a
   state it leaves out.
 - The admin side: `GET $base` (`kind`, `status`, `section`, `search`, `page`),
-  `/facets`, `/unread`, `GET $base/{id}` (opening a new one makes it read),
+  `/facets`, `/unread`, `GET $base/{id}` (read-only: a GET changes nothing -
+  0.8.1), `PUT $base/{id}/read` (a new one marked read as the page opens it,
+  a write the site's middleware on the group guards like any other; nobody
+  named, nothing audited - 0.8.1),
   `PUT $base/{id}/status`, `DELETE $base/{id}` (both audited; a delete with
   the message's `created_at` beside its id, 0.5.0: a restore deletes it again
   by both, `People::replay()` - with the site's `AuditLog`, written inside the
@@ -2650,11 +2653,14 @@ protected readonly unread = inject(FeedbackUnread);       // void this.unread.re
   keeps it, the details whole. While the table waits for an update: "Apply the
   pending database update first", and the Migrations page.
 - **Feedback**: by status (new, read, resolved, spam, each counted), kind,
-  section and a search; a message opens in a dialog (the server marks it read):
-  the visitor's words as text, never markup, the site's extra fields
-  (`feedbackFields` names them), who sent it (`personLink`), where to answer,
-  the page, the language, the browser; "Mark as" saves at once; Delete asks
-  first. `FeedbackUnread` follows every change.
+  section and a search; a message opens in a dialog (a new one marked read by
+  the page's `PUT {id}/read`, 0.8.1): the visitor's words as text, never
+  markup, the site's extra fields (`feedbackFields` names them), who sent it -
+  the account the token proved (`personLink`), else "Not signed in", never the
+  address the form carried, which anybody may type (0.8.1) -, that address
+  apart as "Reply address (typed by the sender, not confirmed)" (in the list
+  too), the page, the language, the browser; "Mark as" saves at once; Delete
+  asks first. `FeedbackUnread` follows every change.
 - **Backups**: how many and how much, the last daily, encryption, and why a
   backup or a restore cannot run here (the folder not writable, the server's PHP
   without COPY, restoring switched off - `restoreOffText` adds the site's

@@ -576,7 +576,7 @@ export const adminServer: HttpInterceptorFn = (request, next) => {
   if (url === '/api/admin/feedback/unread') {
     return ok({ unread: feedback.filter((message) => message.status === 'new').length }, 150);
   }
-  const message = /^\/api\/admin\/feedback\/(\d+)(\/status)?$/.exec(url);
+  const message = /^\/api\/admin\/feedback\/(\d+)(\/status|\/read)?$/.exec(url);
   if (message) {
     const index = feedback.findIndex((each) => each.id === Number(message[1]));
     if (index < 0) {
@@ -586,10 +586,11 @@ export const adminServer: HttpInterceptorFn = (request, next) => {
       feedback.splice(index, 1);
       return ok({ deleted: true });
     }
-    if (message[2]) {
+    // The GET changes nothing (0.8.1): a new message is marked read by the page's PUT {id}/read.
+    if (message[2] === '/status') {
       const status = String(body?.['status'] ?? '');
       feedback[index] = { ...feedback[index], status: status as FeedbackStatus, handled_by: 7, handled_by_name: 'mira', handled_at: new Date().toISOString() };
-    } else if (feedback[index].status === 'new') {
+    } else if (message[2] === '/read' && feedback[index].status === 'new') {
       feedback[index] = { ...feedback[index], status: 'read' };
     }
     return ok({ message: feedback[index] }, 200);

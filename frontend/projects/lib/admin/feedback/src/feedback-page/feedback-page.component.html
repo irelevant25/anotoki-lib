@@ -105,13 +105,17 @@
                                     @if (message.subject) {
                                         <span class="anotoki-feedback-page__excerpt">{{ excerptOf(message) }}</span>
                                     }
-                                    <span class="anotoki-feedback-page__from">
-                                        From {{ senderOf(message) }}
+                                    <span class="anotoki-feedback-page__from" data-from>
+                                        {{ fromOf(message) }}
                                         @if (message.page) {
                                             · on
                                             <code>{{ message.page }}</code>
                                         }
                                     </span>
+                                    @if (message.contact_email) {
+                                        <!-- What the form carried, typed by whoever sent it: an address to answer at, never who sent it. -->
+                                        <span class="anotoki-feedback-page__reply" data-reply>Reply address (typed by the sender, not confirmed): {{ message.contact_email }}</span>
+                                    }
                                 </button>
                             </li>
                         }
@@ -152,17 +156,21 @@
                 <dl class="anotoki-admin__facts" data-facts>
                     <div>
                         <dt>From</dt>
-                        <dd>
+                        <dd data-sender>
                             @if (tools.personLink(message.user_id); as link) {
                                 <a [routerLink]="link">{{ senderOf(message) }}</a>
                             } @else {
-                                {{ message.user_id === null && !message.contact_email ? "Anonymous" : senderOf(message) }}
+                                {{ senderOf(message) }}
                             }
                         </dd>
                     </div>
                     @if (message.contact_email) {
-                        <div>
-                            <dt>Answer at</dt>
+                        <!-- Typed into the form by whoever sent it: an address to answer at, never who sent it - a line of its own. -->
+                        <div class="anotoki-feedback-page__reply-fact" data-reply>
+                            <dt>
+                                Reply address
+                                <span class="anotoki-feedback-page__unconfirmed">(typed by the sender, not confirmed)</span>
+                            </dt>
                             <dd>
                                 <a [href]="mailLink(message.contact_email)">{{ message.contact_email }}</a>
                             </dd>

@@ -88,7 +88,9 @@
   overflow-wrap: anywhere;
 }
 
-.anotoki-feedback-page__from {
+// Who sent it, and - on a line of its own - the reply address the sender typed.
+.anotoki-feedback-page__from,
+.anotoki-feedback-page__reply {
   color: kit.token(muted);
   font-size: 0.8125rem;
   overflow-wrap: anywhere;
@@ -135,6 +137,18 @@
 .anotoki-feedback-page__agent dd {
   font-family: kit.token(font-mono);
   font-size: 0.8125rem;
+}
+
+// The reply address: a row of the facts of its own, apart from who sent it.
+.anotoki-feedback-page__reply-fact {
+  grid-column: 1 / -1;
+}
+
+// What the reply address is, said in the label's ink without its capitals: read, not shouted.
+.anotoki-feedback-page__unconfirmed {
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 // Mark as (the kit's labelled group, inline), at the footer's start; Delete and Close at its end.

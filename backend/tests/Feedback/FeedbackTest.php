@@ -296,12 +296,33 @@ final class FeedbackTest extends DatabaseTestCase
 
         $id = (int) $page['items'][1]['id'];
         $opened = $this->json($this->send($app, 'GET', "/api/admin/feedback/$id"))['message'];
-        self::assertSame('read', $opened['status'], 'opening a new one makes it read');
+        self::assertSame([$id, 'More weapons', 'new'], [$opened['id'], $opened['message'], $opened['status']], 'a GET changes nothing (0.8.1)');
+        // What an <img src> of the address on a sibling subdomain sends: the Lax cookie and no more. Nothing is read.
+        $this->send($app, 'GET', "/api/admin/feedback/$id", headers: ['Accept' => 'image/avif,image/webp,*/*', 'Sec-Fetch-Dest' => 'image', 'Sec-Fetch-Site' => 'same-site']);
+        self::assertSame('new', $this->value("SELECT status FROM anotoki_feedback WHERE id = $id"));
+        self::assertSame(['unread' => 3], $this->json($this->send($app, 'GET', '/api/admin/feedback/unread')), 'the unread count as it was');
+
+        // The page marks it read with a write of its own.
+        $read = $this->json($this->send($app, 'PUT', "/api/admin/feedback/$id/read"))['message'];
+        self::assertSame([$id, 'read', null, null, null], [$read['id'], $read['status'], $read['handled_by'], $read['handled_by_name'], $read['handled_at']], 'read, naming nobody');
+        self::assertSame(['unread' => 2], $this->json($this->send($app, 'GET', '/api/admin/feedback/unread')), 'the unread count follows');
+        self::assertSame('read', $this->json($this->send($app, 'PUT', "/api/admin/feedback/$id/read", '{}'))['message']['status'], 'again: as it is');
         self::assertSame(['unread' => 2], $this->json($this->send($app, 'GET', '/api/admin/feedback/unread')));
+        self::assertSame(['new' => 2, 'read' => 1, 'resolved' => 0, 'spam' => 0], $this->json($this->send($app, 'GET', '/api/admin/feedback/facets'))['byStatus']);
         self::assertSame(0, (int) $this->value('SELECT count(*) FROM anotoki_audit_log'), 'reading is no decision');
+
+        // The ADMIN's alone, a message that is there, a body that is an object or nothing.
+        $other = (int) $page['items'][0]['id'];
+        self::assertSame(401, $this->send($app, 'PUT', "/api/admin/feedback/$other/read", admin: false)->getStatusCode());
+        self::assertSame(403, $this->send($app, 'PUT', "/api/admin/feedback/$other/read", headers: ['X-Test-Admin' => 'no'], admin: false)->getStatusCode());
+        self::assertSame([422, 'invalid_body'], [($refused = $this->send($app, 'PUT', "/api/admin/feedback/$other/read", '[1]'))->getStatusCode(), $this->json($refused)['code']]);
+        self::assertSame('new', $this->value("SELECT status FROM anotoki_feedback WHERE id = $other"), 'none of them marked it');
+        self::assertSame([404, 'not_found'], [($none = $this->send($app, 'PUT', '/api/admin/feedback/999/read'))->getStatusCode(), $this->json($none)['code']]);
+        self::assertSame(['unread' => 2], $this->json($this->send($app, 'GET', '/api/admin/feedback/unread')));
 
         $resolved = $this->json($this->send($app, 'PUT', "/api/admin/feedback/$id/status", '{"status":"resolved"}'))['message'];
         self::assertSame(['resolved', 7, 'Bo'], [$resolved['status'], $resolved['handled_by'], $resolved['handled_by_name']]);
+        self::assertSame('resolved', $this->json($this->send($app, 'PUT', "/api/admin/feedback/$id/read"))['message']['status'], 'opened again: never back to read');
         self::assertSame(422, $this->send($app, 'PUT', "/api/admin/feedback/$id/status", '{"status":"done"}')->getStatusCode());
         self::assertSame(404, $this->send($app, 'PUT', '/api/admin/feedback/999/status', '{"status":"spam"}')->getStatusCode());
         self::assertSame(['deleted' => true], $this->json($this->send($app, 'DELETE', "/api/admin/feedback/$id")));
@@ -372,6 +393,7 @@ final class FeedbackTest extends DatabaseTestCase
         $response = $this->post($app, ['kind' => 'idea', 'message' => 'x']);
         self::assertSame([503, 'feature_unavailable', '60'], [$response->getStatusCode(), $this->json($response)['code'], $response->getHeaderLine('Retry-After')]);
         self::assertSame(503, $this->send($app, 'GET', '/api/admin/feedback/unread')->getStatusCode());
+        self::assertSame(503, $this->send($app, 'PUT', '/api/admin/feedback/1/read')->getStatusCode());
     }
 
     public function testWhatIsKeptNoLongerGoesAndAPersonIsForgotten(): void

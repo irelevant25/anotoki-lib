@@ -23,6 +23,8 @@ const STATUSES: FeedbackStatus[] = ['new', 'read', 'resolved', 'spam'];
 const STATUS_TONES: Record<FeedbackStatus, BadgeTone> = { new: 'primary', read: 'neutral', resolved: 'success', spam: 'warning' };
 /** How much of a message a row shows before it is opened. */
 const EXCERPT = 180;
+/** Who sent a message with no account: nobody the server knows of. */
+const NOT_SIGNED_IN = 'Not signed in';
 
 interface Filter {
   status: string;
@@ -61,11 +63,12 @@ let nextId = 0;
  *
  * Narrowed by status (with how many each has), kind, the site's sections and
  * a search. Opening a message shows it whole - its subject, its words, the
- * site's extra fields, who sent it (a signed-in person's name, the address
- * they gave, or nobody), the page, the language and the browser - and marks a
- * new one read; its status is set there (saved at once), and it is deleted
- * after a question. The unread count (FeedbackUnread, the admin navigation's
- * badge) follows.
+ * site's extra fields, who sent it (the signed-in account, or "Not signed
+ * in"), the reply address the sender typed (said as such, never as who sent
+ * it), the page, the language and the browser - and marks a new one read, with
+ * a write of its own (PUT {id}/read: the GET changes nothing); its status is
+ * set there (saved at once), and it is deleted after a question. The unread
+ * count (FeedbackUnread, the admin navigation's badge) follows.
  *
  * Spam is deleted by itself after 30 days, a resolved message after a year
  * (the PHP half's prune).
@@ -238,19 +241,21 @@ export class FeedbackPageComponent {
 
   // ── One message ────────────────────────────────────────────────────────────
 
-  /** Opens a message - asking the server for it, which marks a new one read. */
+  /**
+   * Opens a message: the server's copy of it (a GET, which changes nothing), and a new one marked read with a write
+   * of its own (PUT {id}/read, 0.8.1) - never by the GET, which a page on a sibling subdomain could make with an
+   * <img> while the session's cookie goes along.
+   */
   protected async view(message: FeedbackMessage): Promise<void> {
     this.viewing.set(message);
     this.viewError.set(null);
     this.viewLoading.set(true);
     try {
       const answer = await this.tools.get<{ message: FeedbackMessage }>(`${this.base}/${message.id}`);
-      if (this.viewing()?.id === message.id) {
-        this.viewing.set(answer.message);
-      }
-      this.replace(answer.message);
-      if (message.status === 'new') {
-        this.countChanged(message.status, answer.message.status);
+      this.show(message, answer.message);
+      if (answer.message.status === 'new') {
+        const marked = await this.tools.put<{ message: FeedbackMessage }>(`${this.base}/${message.id}/read`, {});
+        this.show(answer.message, marked.message);
       }
     } catch (error) {
       if (this.viewing()?.id === message.id) {
@@ -333,15 +338,28 @@ export class FeedbackPageComponent {
     return words.length > EXCERPT ? `${words.slice(0, EXCERPT - 1)}…` : words;
   }
 
-  /** Who sent it, as a person reads it. */
+  /**
+   * Who sent it, as far as the server knows: the account the sender's token proved (its name, else "Person 42"), or
+   * "Not signed in" - never the address in the form, which anybody may type, anybody's (the IAM's security review of
+   * 2026-10-19: "please clear my two-factor", sent signed out under the victim's address). That address is the reply
+   * address, said as typed and not confirmed, beside who sent it.
+   */
   protected senderOf(message: FeedbackMessage): string {
-    if (message.user_name) {
-      return message.user_name;
+    return message.user_id === null ? NOT_SIGNED_IN : message.user_name || `Person ${message.user_id}`;
+  }
+
+  /** A row's line of who sent it: "From reader42", or "Not signed in". */
+  protected fromOf(message: FeedbackMessage): string {
+    return message.user_id === null ? NOT_SIGNED_IN : `From ${this.senderOf(message)}`;
+  }
+
+  /** What the server says of a message the page showed as `before`: its dialog (while open), its row and the counts. */
+  private show(before: FeedbackMessage, now: FeedbackMessage): void {
+    if (this.viewing()?.id === now.id) {
+      this.viewing.set(now);
     }
-    if (message.user_id !== null) {
-      return `Person ${message.user_id}`;
-    }
-    return message.contact_email ?? 'Anonymous';
+    this.replace(now);
+    this.countChanged(before.status, now.status);
   }
 
   /** The list's row and the counts follow a message that changed. */

@@ -46,6 +46,22 @@ const IDEA = message({
   user_agent: null,
 });
 
+/** Sent signed out - with a stolen password, say - under the victim's address: the IAM's security review of 2026-10-19. */
+const SIGNED_OUT = message({
+  id: 13,
+  kind: 'other',
+  section: null,
+  subject: 'Please clear my two-factor',
+  message: 'I lost my phone. Please switch two-factor off for my account.',
+  details: {},
+  contact_email: 'victim@example.test',
+  user_id: null,
+  user_name: null,
+  page: '/account/security',
+});
+
+const REPLY = 'Reply address (typed by the sender, not confirmed)';
+
 function list(items: FeedbackMessage[] = [message(), IDEA], overrides: Partial<FeedbackList> = {}): FeedbackList {
   return { total: items.length, page: 1, pageSize: 25, items, ...overrides };
 }
@@ -98,12 +114,16 @@ describe('<anotoki-feedback-page>: what visitors sent, opened, marked and delete
     return answer(items, counts);
   }
 
-  /** Opens a message of the list; the server answers it (read now, when it was new). */
+  /** Opens a message of the list: the server answers its GET with `answered` - and a new one's PUT {id}/read, read. */
   async function view(index: number, answered: FeedbackMessage): Promise<void> {
     click(host.querySelectorAll('[data-message]')[index]);
     await settle(fixture);
-    http.expectOne(`${BASE}/${answered.id}`).flush({ message: answered });
+    http.expectOne({ method: 'GET', url: `${BASE}/${answered.id}` }).flush({ message: answered });
     await settle(fixture);
+    if (answered.status === 'new') {
+      http.expectOne({ method: 'PUT', url: `${BASE}/${answered.id}/read` }).flush({ message: { ...answered, status: 'read' } });
+      await settle(fixture);
+    }
   }
 
   const items = () => Array.from(host.querySelectorAll<HTMLElement>('[data-message]'));
@@ -133,8 +153,10 @@ describe('<anotoki-feedback-page>: what visitors sent, opened, marked and delete
     expect(words(host.querySelector('[data-counts]'))).toBe('3 new');
     expect(unread.count()).toBe(3);
     expect(items().map((item) => words(item))).toEqual([
-      expect.stringMatching(/^New Bug Characters .+ The talent list is empty Opening Amber shows no talents\. It worked yesterday\. From reader42 · on \/characters\/amber$/),
-      expect.stringMatching(/^Read Idea .+ A dark map would be lovely at night\. From Anonymous · on \/map$/),
+      expect.stringMatching(
+        /^New Bug Characters .+ The talent list is empty Opening Amber shows no talents\. It worked yesterday\. From reader42 · on \/characters\/amber Reply address \(typed by the sender, not confirmed\): reader@example\.test$/,
+      ),
+      expect.stringMatching(/^Read Idea .+ A dark map would be lovely at night\. Not signed in · on \/map$/),
     ]);
     expect(items()[0].classList).toContain('anotoki-feedback-page__item--new');
     expect(words(host.querySelector('[data-status]'))).toBe('All 8 New 3 Read 4 Resolved 1 Spam 0');
@@ -171,16 +193,28 @@ describe('<anotoki-feedback-page>: what visitors sent, opened, marked and delete
     expect(request.request.params.keys()).toEqual([]);
   });
 
-  it('opens a message whole - marking a new one read, the counts and the badge following', async () => {
+  it('opens a message whole - the GET changing nothing, a new one marked read by a PUT of its own, the counts and the badge following', async () => {
     setUp();
     await open();
 
-    await view(0, message({ status: 'read' }));
+    click(items()[0]);
+    await settle(fixture);
+    const opened = http.expectOne(`${BASE}/12`);
+    expect(opened.request.method).toBe('GET');
+    opened.flush({ message: message() });
+    await settle(fixture);
     expect(viewer()?.open).toBe(true);
+    // The server's copy is still new: only the page's write marks it.
+    const marked = http.expectOne(`${BASE}/12/read`);
+    expect([marked.request.method, marked.request.body]).toEqual(['PUT', {}]);
+    expect(unread.count()).toBe(3);
+    marked.flush({ message: message({ status: 'read' }) });
+    await settle(fixture);
+
     expect(words(viewer()!.querySelector('.anotoki-dialog__title'))).toBe('The talent list is empty');
     expect(viewer()!.querySelector('[data-words]')?.textContent).toBe('Opening Amber shows no talents.\nIt worked yesterday.');
     expect(words(viewer()!.querySelector('[data-field="steps"]'))).toBe('Steps to reproduce Open Amber, then Talents.');
-    expect(facts()).toMatchObject({ From: 'reader42', 'Answer at': 'reader@example.test', Page: '/characters/amber', Language: 'sk', Browser: 'Mozilla/5.0 (X11; Linux x86_64)' });
+    expect(facts()).toMatchObject({ From: 'reader42', [REPLY]: 'reader@example.test', Page: '/characters/amber', Language: 'sk', Browser: 'Mozilla/5.0 (X11; Linux x86_64)' });
     expect(viewer()!.querySelector('[data-facts] a[href="/admin/people/42"]')).not.toBeNull();
     expect(viewer()!.querySelector('a[href="mailto:reader@example.test"]')).not.toBeNull();
     expect(viewer()!.querySelector('[data-mark] [aria-checked="true"]')?.getAttribute('data-value')).toBe('read');
@@ -192,6 +226,62 @@ describe('<anotoki-feedback-page>: what visitors sent, opened, marked and delete
     press(viewer()!, 'Escape');
     await settle(fixture);
     expect(viewer()).toBeNull();
+
+    // A message already read is opened by the GET alone.
+    await view(1, IDEA);
+    http.expectNone(`${BASE}/11/read`);
+    expect(unread.count()).toBe(2);
+  });
+
+  it('says so when the PUT that marks a message read is refused - and leaves it new', async () => {
+    setUp();
+    await open();
+
+    click(items()[0]);
+    await settle(fixture);
+    http.expectOne(`${BASE}/12`).flush({ message: message() });
+    await settle(fixture);
+    refuse(http.expectOne(`${BASE}/12/read`), 403, 'csrf', 'This request did not come from the site’s own pages.');
+    await settle(fixture);
+    expect(words(viewer()!.querySelector('[data-view-error]'))).toBe('This request did not come from the site’s own pages.');
+    expect(viewer()!.querySelector('[data-mark] [aria-checked="true"]')?.getAttribute('data-value')).toBe('new');
+    expect(words(items()[0].querySelector('[data-status]'))).toBe('New');
+    expect(unread.count()).toBe(3);
+  });
+
+  it('names only a proven sender: an account by its name, a message with no account "Not signed in" - the address it carried its reply address, never who sent it', async () => {
+    setUp();
+    await open(list([message(), SIGNED_OUT, IDEA, message({ id: 9, status: 'read', user_name: null, contact_email: null })]));
+    const [signedIn, signedOut, nothing, nameless] = items();
+
+    // The list.
+    expect(words(signedIn.querySelector('[data-from]'))).toBe('From reader42 · on /characters/amber');
+    expect(words(signedIn.querySelector('[data-reply]'))).toBe(`${REPLY}: reader@example.test`);
+    expect(words(signedOut.querySelector('[data-from]'))).toBe('Not signed in · on /account/security');
+    expect(words(signedOut.querySelector('[data-reply]'))).toBe(`${REPLY}: victim@example.test`);
+    expect(words(nothing.querySelector('[data-from]'))).toBe('Not signed in · on /map');
+    expect(nothing.querySelector('[data-reply]')).toBeNull();
+    expect(words(nameless.querySelector('[data-from]'))).toBe('From Person 42 · on /characters/amber');
+    expect(nameless.querySelector('[data-reply]')).toBeNull();
+
+    // The dialog: who sent it, and apart from it, on a line of its own, the address typed into the form.
+    await view(1, SIGNED_OUT);
+    expect(facts()).toMatchObject({ From: 'Not signed in', [REPLY]: 'victim@example.test' });
+    expect(viewer()!.querySelector('[data-sender] a')).toBeNull();
+    expect(words(viewer()!.querySelector('[data-sender]'))).not.toContain('victim@example.test');
+    expect(viewer()!.querySelector('[data-reply] a[href="mailto:victim@example.test"]')).not.toBeNull();
+    press(viewer()!, 'Escape');
+    await settle(fixture);
+
+    await view(0, message());
+    expect(facts()).toMatchObject({ From: 'reader42', [REPLY]: 'reader@example.test' });
+    expect(viewer()!.querySelector('[data-sender] a')?.getAttribute('href')).toBe('/admin/people/42');
+    press(viewer()!, 'Escape');
+    await settle(fixture);
+
+    await view(2, IDEA);
+    expect(facts()['From']).toBe('Not signed in');
+    expect(viewer()!.querySelector('[data-reply]')).toBeNull();
   });
 
   it('links to the address a visitor gave as an address and nothing more, whatever it holds', async () => {

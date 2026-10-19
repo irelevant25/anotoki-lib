@@ -11,6 +11,14 @@ export interface ShellNavItem {
   icon?: string;
   /** Marked only on this exact address - for the area's own home, which every other address starts with. */
   exact?: boolean;
+  /**
+   * A count beside the label (0.8.1: the new feedback), drawn as the top bar's and @anotoki/lib/ui/side-nav's - seen
+   * alone, and heard after the label with what it counts: `badgeLabel`, or the kit's "{count} new" ("Feedback, 3 new").
+   * A 0, null or '' shows nothing: nothing new.
+   */
+  badge?: string | number | null;
+  /** What the badge counts, in the site's words and the page's language, for the ear alone: "12 reviews due". */
+  badgeLabel?: string | null;
 }
 
 /**
@@ -22,8 +30,9 @@ export interface ShellNavItem {
  * The skip link moves the focus by hand: with `<base href="/">` a bare `#main`
  * would resolve to "/#main" and leave the page. The side navigation (`nav`) is
  * a list of 15rem beside the page, a scrolling strip under the bar up to
- * 860 px. With it the frame is 88rem wide, else 84rem, unless the site says
- * how wide (`maxWidth`) - and the family's bar inside lines up with it.
+ * 860 px; a section may have a count beside it (`badge`, 0.8.1 - heard
+ * "Feedback, 3 new"). With it the frame is 88rem wide, else 84rem, unless the
+ * site says how wide (`maxWidth`) - and the family's bar inside lines up with it.
  */
 @Component({
   selector: 'anotoki-shell',
@@ -54,5 +63,13 @@ export class ShellComponent {
   protected skipTo(event: Event, main: HTMLElement): void {
     event.preventDefault();
     main.focus();
+  }
+
+  /**
+   * What a section's count says, heard after its label: the site's words (the page's language), or the kit's "3 new"
+   * (its own - marked so where it is not the page's).
+   */
+  protected counted(item: ShellNavItem): string {
+    return item.badgeLabel || this.words.t('topbar.linkCount', { count: item.badge });
   }
 }

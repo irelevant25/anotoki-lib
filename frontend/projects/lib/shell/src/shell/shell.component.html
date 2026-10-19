@@ -18,6 +18,11 @@
                                 <anotoki-icon [name]="item.icon" [size]="18" />
                             }
                             <span>{{ item.label }}</span>
+                            @if (item.badge && item.badge !== "0") {
+                                <!-- The number is seen; what it counts is heard: "Feedback, 3 new", never "Feedback 3". -->
+                                <span class="anotoki-shell__nav-badge" aria-hidden="true">{{ item.badge }}</span>
+                                <span class="anotoki-visually-hidden" [attr.lang]="item.badgeLabel ? null : words.foreignLang()">, {{ counted(item) }}</span>
+                            }
                         </a>
                     </li>
                 }

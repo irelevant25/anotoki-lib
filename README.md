@@ -780,6 +780,11 @@ is `login_required` - nobody signed in any more - is no refusal; `themeColor`) a
   the bar up to 860 px), `<main id="main">`, `[shellFooter]`. 84rem wide, 88rem
   with a side navigation, or what `maxWidth` says (a CSS length: the IAM's
   account pages `maxWidth="88rem"`); the family's bar inside lines up with it.
+  `nav` is `{ link, label, icon?, exact?, badge?, badgeLabel? }[]`: a `badge`
+  (0.8.1) is a count beside the section, drawn as the top bar's, seen alone and
+  heard after the label - "Feedback, 3 new" (the kit's `topbar.linkCount`) or
+  the site's `badgeLabel`; a 0 shows nothing. The admin panel's unread feedback:
+  `{ link: '/admin/feedback', label: 'Feedback', badge: unread.count() }`.
 - `<anotoki-top-bar #bar="anotokiTopBar">` - the family's one bar:
 
 | Input | |

@@ -12,6 +12,13 @@ const NAV: ShellNavItem[] = [
   { link: '/admin/users', label: 'Users', icon: 'user' },
 ];
 
+/** What a screen reader hears of an element: its words without what is hidden from it; a space before a comma is not heard. */
+function heard(element: Element | null | undefined): string {
+  const said = (node: Node): string =>
+    node.nodeType === Node.TEXT_NODE ? (node.textContent ?? '') : node instanceof Element && node.getAttribute('aria-hidden') === 'true' ? '' : Array.from(node.childNodes, said).join('');
+  return element ? said(element).replace(/\s+/g, ' ').replace(/ ,/g, ',').trim() : '';
+}
+
 @Component({
   selector: 'anotoki-test-frame',
   imports: [ShellComponent],
@@ -86,6 +93,51 @@ describe('<anotoki-shell>: the frame of a site’s pages', () => {
     expect(links.map(words)).toEqual(['Overview', 'Users']);
     expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([null, 'page']);
     expect(links[1].classList).toContain('anotoki-shell__nav-link--active');
+    fixture.nativeElement.remove();
+  });
+
+  it('a count beside a section (0.8.1): seen alone, heard after its label - "Feedback, 3 new", or the site’s words - and nothing at 0', async () => {
+    const fixture = await draw();
+    const nav = (feedback: number | string | null): ShellNavItem[] => [
+      { link: '/admin', label: 'Overview', icon: 'sparkle', exact: true },
+      { link: '/admin/feedback', label: 'Feedback', icon: 'mail', badge: feedback },
+      { link: '/admin/reviews', label: 'Reviews', badge: 12, badgeLabel: '12 reviews due' },
+      { link: '/admin/errors', label: 'Error log', badge: '0' },
+    ];
+    fixture.componentInstance.nav.set(nav(3));
+    await settle(fixture);
+    await TestBed.inject(Router).navigateByUrl('/admin/feedback');
+    await settle(fixture);
+    const links = () => Array.from<HTMLAnchorElement>(fixture.nativeElement.querySelectorAll('nav a'));
+    const badge = (link: HTMLAnchorElement) => link.querySelector('.anotoki-shell__nav-badge');
+
+    expect(words(badge(links()[1]))).toBe('3');
+    expect(badge(links()[1])?.getAttribute('aria-hidden')).toBe('true');
+    expect(links().map(heard)).toEqual(['Overview', 'Feedback, 3 new', 'Reviews, 12 reviews due', 'Error log']);
+    expect([badge(links()[0]), badge(links()[3])]).toEqual([null, null]);
+    expect(links()[1].getAttribute('aria-current')).toBe('page');
+    expect(links()[1].querySelector('.anotoki-visually-hidden')?.hasAttribute('lang')).toBe(false);
+
+    // The count moves with the site's own (the unread feedback); nothing new, nothing shown.
+    fixture.componentInstance.nav.set(nav('99+'));
+    await settle(fixture);
+    expect([words(badge(links()[1])), heard(links()[1])]).toEqual(['99+', 'Feedback, 99+ new']);
+    for (const none of [0, null, '']) {
+      fixture.componentInstance.nav.set(nav(none));
+      await settle(fixture);
+      expect([badge(links()[1]), heard(links()[1])]).toEqual([null, 'Feedback']);
+    }
+
+    // The kit's words in the page's language - and, on a page in a language the kit has none for, its English, said so.
+    fixture.componentInstance.nav.set(nav(3));
+    language.set('sk');
+    await settle(fixture);
+    expect(heard(links()[1])).toBe('Feedback, nové: 3');
+    language.set('de');
+    await settle(fixture);
+    expect(heard(links()[1])).toBe('Feedback, 3 new');
+    expect(links()[1].querySelector('.anotoki-visually-hidden')?.getAttribute('lang')).toBe('en');
+    expect(links()[2].querySelector('.anotoki-visually-hidden')?.hasAttribute('lang')).toBe(false);
     fixture.nativeElement.remove();
   });
 

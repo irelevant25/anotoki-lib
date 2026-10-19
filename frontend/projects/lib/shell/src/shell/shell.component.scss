@@ -96,6 +96,29 @@
   @include kit.focus-ring;
 }
 
+// A count beside a section (0.8.1): as the top bar draws it, filled, at the row's end.
+.anotoki-shell__nav-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 1.35rem;
+  margin-left: auto;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: kit.token(primary);
+  color: kit.token(primary-contrast);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}
+
 .anotoki-shell__content {
   min-width: 0;
   padding: 2rem 1.75rem 4rem;

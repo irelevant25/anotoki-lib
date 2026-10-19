@@ -243,7 +243,7 @@ final class TranslationsRoutesTest extends DatabaseTestCase
         self::assertSame('attachment; filename="translations-sk.json"', $export->getHeaderLine('Content-Disposition'));
         self::assertSame('no-store', $export->getHeaderLine('Cache-Control'));
         self::assertStringStartsWith(
-            "{\n    \"anotoki.chips.remove\": \"Odstrániť: {name}\",\n    \"anotoki.colorField.invalid\": \"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.\",\n",
+            "{\n    \"anotoki.about.authorText\": \"Každý projekt anotoki navrhujem, tvorím a prevádzkujem sám. Na projekte Genshin Impact som pracoval takmer dva roky a čakal som, že dokončiť ho potrvá ešte rok. Keď sa súčasťou vývoja stal Claude Code, bol hotový za pár mesiacov – a ďalšie projekty nasledovali.\",\n    \"anotoki.about.authorTitle\": \"Robí to jeden človek\",\n",
             (string) $export->getBody(),
         );
         self::assertStringEndsWith("}\n", (string) $export->getBody());

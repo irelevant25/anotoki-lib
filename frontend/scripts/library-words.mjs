@@ -9,9 +9,10 @@
 //                                                  the migrations module's status page; signIn: the auth module's
 //                                                  sign-in page), imported by that module alone, which registers
 //                                                  them with the translations module (provideLibraryWords) - or,
-//                                                  for words its lazy pages alone say (legal: pages of text), or a
-//                                                  kit piece of its own entry point (chips, progress, stepper, tabs,
-//                                                  dateField, colorField, ...), or the family's footer (footer),
+//                                                  for words its lazy pages alone say (legal, about, support: pages
+//                                                  of text), or a kit piece of its own entry point (chips, progress,
+//                                                  stepper, tabs, dateField, colorField, ...), or the family's footer
+//                                                  (footer),
 //                                                  read by those pages, that piece or the footer themselves
 //                                                  (READ_BY_THEIR_PAGES).
 //   projects/lib/words/                            @anotoki/lib/words: LIBRARY_WORDS, every namespace's, for a
@@ -46,8 +47,8 @@ const KIT_NAMESPACES = ['language', 'ui', 'topbar', 'theme'];
 
 /**
  * The namespaces whose words their readers read themselves and never register, and who those readers are: the legal
- * pages' (pages of text: a registration comes with the module's eager configuration, so they would ride in every first
- * load), and those of the kit's pieces that are entry points of their own (0.6.0: a piece has no provide*() function,
+ * pages' and, 0.8.0, the About and Support pages' (pages of text: a registration comes with the module's eager
+ * configuration, so they would ride in every first load), and those of the kit's pieces that are entry points of their own (0.6.0: a piece has no provide*() function,
  * and the kit's own, provideAnotokiUi, is in every first load) and of the family's footer (0.6.3, which has none
  * either) - each read through @anotoki/lib/ui/piece-words, the site's string first. scripts/check-package.mjs lets
  * their readers import them unregistered, and holds every first load free of them but their reader's own.
@@ -72,10 +73,15 @@ const READ_BY_THEIR_PAGES = {
     "the kit's rich-text toolbar (@anotoki/lib/ui/rich-text), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the toolbar alone.",
   footer:
     "the family's footer (@anotoki/lib/footer), which reads them itself, never registered - it has no provide*() of its own - never by the kit's core nor by the translations module, so they reach a site with the footer alone.",
+  about: 'the About page (@anotoki/lib/legal/about), which reads them itself, never registered - never by the kit nor by the translations module, so they reach a site with that page alone.',
+  support: 'the Support page (@anotoki/lib/legal/support), which reads them itself, never registered - never by the kit nor by the translations module, so they reach a site with that page alone.',
 };
 
-/** The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages', the kit's pieces' of 0.6.0, the footer's of 0.6.3). */
-const IMPERSONAL = ['legal', 'legalLinks', 'chips', 'progress', 'stepper', 'tabs', 'dateField', 'colorField', 'filePicker', 'combobox', 'richText', 'footer'];
+/**
+ * The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages',
+ * the kit's pieces' of 0.6.0, the footer's of 0.6.3, the About and Support pages' of 0.8.0).
+ */
+const IMPERSONAL = ['legal', 'legalLinks', 'chips', 'progress', 'stepper', 'tabs', 'dateField', 'colorField', 'filePicker', 'combobox', 'richText', 'footer', 'about', 'support'];
 
 /** Every file this writes says so: how a left-over one is known - and only such a one is ever removed. */
 const GENERATED = 'GENERATED from backend/resources/library-words.json by frontend/scripts/library-words.mjs';

@@ -14,6 +14,8 @@ const EN = {
   'anotoki.legalLinks.terms': 'Terms',
   'anotoki.legalLinks.privacy': 'Privacy',
   'anotoki.legalLinks.contact': 'Contact',
+  'anotoki.legalLinks.about': 'About',
+  'anotoki.legalLinks.support': 'Support',
 } as const;
 
 /** A key of these words. */
@@ -24,6 +26,8 @@ const SK: Readonly<Record<LegalLinksLibraryKey, string>> = {
   'anotoki.legalLinks.terms': 'Podmienky',
   'anotoki.legalLinks.privacy': 'Súkromie',
   'anotoki.legalLinks.contact': 'Kontakt',
+  'anotoki.legalLinks.about': 'O projekte',
+  'anotoki.legalLinks.support': 'Podporiť',
 };
 
 /** These words, per language: English and Slovak, each with every key. */

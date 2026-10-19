@@ -88,7 +88,7 @@ final class TranslationsTest extends DatabaseTestCase
 
         // As the IAM's route writes it, byte for byte.
         self::assertStringStartsWith(
-            '{"language":"sk","languages":[{"code":"en","name":"English","native_name":"English"},{"code":"sk","name":"Slovak","native_name":"Slovenčina"}],"values":{"anotoki.chips.remove":"Odstrániť: {name}","anotoki.colorField.invalid":"Farbu treba zadať ako # a šesť číslic alebo písmen a – f, napríklad #1f5fbf.",',
+            '{"language":"sk","languages":[{"code":"en","name":"English","native_name":"English"},{"code":"sk","name":"Slovak","native_name":"Slovenčina"}],"values":{"anotoki.about.authorText":"Každý projekt anotoki navrhujem, tvorím a prevádzkujem sám. Na projekte Genshin Impact som pracoval takmer dva roky a čakal som, že dokončiť ho potrvá ešte rok. Keď sa súčasťou vývoja stal Claude Code, bol hotový za pár mesiacov – a ďalšie projekty nasledovali.","anotoki.about.authorTitle":"Robí to jeden človek",',
             json_encode($bundle, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         );
     }

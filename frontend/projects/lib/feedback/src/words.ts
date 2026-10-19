@@ -43,6 +43,9 @@ export interface FeedbackWords {
   failed: string;
   network: string;
   honeypot: string;
+  /** 0.8.0: the button that empties every field, and what a screen reader says for it. */
+  clear: string;
+  clearName: string;
 }
 
 /** The words' names, each the library's word `anotoki.feedback.<name>`. */
@@ -78,6 +81,8 @@ export const FEEDBACK_WORD_NAMES = [
   'failed',
   'network',
   'honeypot',
+  'clear',
+  'clearName',
 ] as const satisfies readonly (keyof FeedbackWords)[];
 
 function builtIn(language: 'en' | 'sk'): FeedbackWords {

@@ -40,6 +40,8 @@ const EN = {
   'anotoki.feedback.failed': 'The message could not be sent. Try again - what you wrote is still here.',
   'anotoki.feedback.network': 'The site could not be reached. Check the connection, then try again.',
   'anotoki.feedback.honeypot': 'Leave this field empty',
+  'anotoki.feedback.clear': 'Clear',
+  'anotoki.feedback.clearName': 'Clear the form',
 } as const;
 
 /** A key of these words. */
@@ -77,6 +79,8 @@ const SK: Readonly<Record<FeedbackLibraryKey, string>> = {
   'anotoki.feedback.failed': 'Správu sa nepodarilo poslať. Skús to znova - tvoj text tu stále je.',
   'anotoki.feedback.network': 'Stránka nie je dostupná. Skontroluj pripojenie a skús to znova.',
   'anotoki.feedback.honeypot': 'Toto pole nechaj prázdne',
+  'anotoki.feedback.clear': 'Vymazať',
+  'anotoki.feedback.clearName': 'Vymazať formulár',
 };
 
 /** These words, per language: English and Slovak, each with every key. */

@@ -139,11 +139,17 @@ final class LibraryWordsTest extends TestCase
                 'anotoki.feedback.failed',
                 'anotoki.feedback.network',
                 'anotoki.feedback.honeypot',
+                // (its Clear and the name a screen reader says for it, from 013)
+                'anotoki.feedback.clear',
+                'anotoki.feedback.clearName',
                 // The legal pages' footer links (frontend/projects/lib/legal: <anotoki-legal-links>), from 005 ...
                 'anotoki.legalLinks.label',
                 'anotoki.legalLinks.terms',
                 'anotoki.legalLinks.privacy',
                 'anotoki.legalLinks.contact',
+                // (About and Support before them, from 013)
+                'anotoki.legalLinks.about',
+                'anotoki.legalLinks.support',
                 // ... and the legal pages themselves (frontend/projects/lib/legal/pages: Terms, Privacy, Contact), from 005.
                 'anotoki.legal.updated',
                 'anotoki.legal.onThisPage',
@@ -312,6 +318,30 @@ final class LibraryWordsTest extends TestCase
                 'anotoki.footer.whatsNew',
                 'anotoki.footer.feedback',
                 'anotoki.footer.fanHoyoverse',
+                // The About and Support pages (frontend/projects/lib/legal/about, /support, each read by the page itself), from 013.
+                'anotoki.about.title',
+                'anotoki.about.nameTitle',
+                'anotoki.about.nameText',
+                'anotoki.about.authorTitle',
+                'anotoki.about.authorText',
+                'anotoki.about.projectsTitle',
+                'anotoki.about.japaneseName',
+                'anotoki.about.japaneseText',
+                'anotoki.about.pianoName',
+                'anotoki.about.pianoText',
+                'anotoki.about.genshinName',
+                'anotoki.about.genshinText',
+                'anotoki.about.builderName',
+                'anotoki.about.builderText',
+                'anotoki.about.surveyName',
+                'anotoki.about.surveyText',
+                'anotoki.about.fanLine',
+                'anotoki.about.closing',
+                'anotoki.about.closingLink',
+                'anotoki.support.title',
+                'anotoki.support.text',
+                'anotoki.support.button',
+                'anotoki.support.thanks',
             ],
             LibraryWords::keys(),
         );
@@ -350,6 +380,12 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['version'], LibraryWords::placeholders('anotoki.footer.version'));
         self::assertSame([], LibraryWords::placeholders('anotoki.footer.fanHoyoverse'));
         self::assertSame('Feedback', LibraryWords::english('anotoki.footer.feedback'));
+        self::assertSame(['word', 'reading'], LibraryWords::placeholders('anotoki.about.nameText'));
+        self::assertSame(['support'], LibraryWords::placeholders('anotoki.about.closing'));
+        self::assertSame([], LibraryWords::placeholders('anotoki.support.text'));
+        self::assertSame('Podporiť', LibraryWords::all()['anotoki.legalLinks.support']['sk'], 'a verb, never the noun');
+        self::assertSame('Clear', LibraryWords::english('anotoki.feedback.clear'));
+        self::assertStringStartsWith('Clear', (string) LibraryWords::english('anotoki.feedback.clearName'), 'its name starts with its words');
         self::assertNull(LibraryWords::english('common.save'));
         self::assertNull(LibraryWords::placeholders('anotoki.no.such'));
         self::assertTrue(LibraryWords::isLibraryKey('anotoki.x.y'));

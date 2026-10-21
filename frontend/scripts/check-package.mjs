@@ -29,7 +29,10 @@
 //   ui/color-field, ui/file-picker, ui/combobox, ui/rich-text) too, each held to a limit of its own (LAZY_LIMITS):
 //   big pieces, lazy, kept from growing unseen. The family's footer (0.6.3) imports the
 //   core's pieces, the legal links (@anotoki/lib/legal) and its own words, and the feedback form's dialog
-//   (@anotoki/lib/feedback/form, 0.8.0 - footer/feedback's before) by import() alone.
+//   (@anotoki/lib/feedback/form, 0.8.0 - footer/feedback's before) by import() alone. The code editor (0.9.2,
+//   ui/code-editor, a limit of its own too) imports the core's pieces, the field base and the kit's highlighters -
+//   ui/code-json and ui/code-sql, an entry point each that imports nothing, so that the Migrations page takes the
+//   SQL's alone.
 // - The library's words, a namespace at a time (scripts/library-words.mjs): ui/config holds the kit's namespaces
 //   alone; each @anotoki/lib/words/<namespace> holds one namespace, imports nothing, and is imported by its module
 //   alone, which registers it (provideLibraryWords) - the only way a module's words reach the translations module,
@@ -137,9 +140,10 @@ const LIMITS = {
 const UI_AND_SHELL = 28.5;
 
 /**
- * Gzipped kB each of the kit's input pieces of 0.6.0 may weigh - its code, without the comments. Lazy (no first load
- * takes them), but big: a limit of its own, set with a little room over what it weighed when it came, keeps one from
- * growing unseen. A limit crossed is a reason to look at what grew, not to raise the limit.
+ * Gzipped kB each of the kit's input pieces of 0.6.0 may weigh - its code, without the comments - and the code editor
+ * of 0.9.2 with its highlighters. Lazy (no first load takes them), but big: a limit of its own, set with a little room
+ * over what it weighed when it came, keeps one from growing unseen. A limit crossed is a reason to look at what grew,
+ * not to raise the limit.
  */
 const LAZY_LIMITS = {
   // 9.4 at 0.6.0: the field and its calendar - two components, their templates and styles (each twice in the FESM,
@@ -151,6 +155,11 @@ const LAZY_LIMITS = {
   '@anotoki/lib/ui/combobox': 7,
   // 5.4 at 0.6.0: the toolbar, its item, the contenteditable's driver and the copies of twelve icons.
   '@anotoki/lib/ui/rich-text': 6,
+  // 3.4 at 0.9.2: the field, its layer and its styles; the highlighters apart - SQL's 2.4 (its words 0.8 of it, the
+  // Migrations page's too), JSON's 0.5.
+  '@anotoki/lib/ui/code-editor': 4,
+  '@anotoki/lib/ui/code-sql': 3,
+  '@anotoki/lib/ui/code-json': 1,
 };
 
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
@@ -229,9 +238,14 @@ const MAY_IMPORT = {
   '@anotoki/lib/ui/combobox': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/menu', '@anotoki/lib/ui/chips', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/combobox'],
   // The rich-text toolbar: no field and no box - its buttons and its words.
   '@anotoki/lib/ui/rich-text': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/rich-text'],
+  // The code editor (0.9.2): a field of the kit's over the highlighters, each an entry point of its own that imports
+  // nothing - the Migrations page takes the SQL's alone.
+  '@anotoki/lib/ui/code-json': [],
+  '@anotoki/lib/ui/code-sql': [],
+  '@anotoki/lib/ui/code-editor': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/code-json', '@anotoki/lib/ui/code-sql'],
   '@anotoki/lib/shell': [...PIECES, '@anotoki/lib/ui/menu'],
   '@anotoki/lib/migrations': [...PIECES, '@anotoki/lib/words/site-status'],
-  '@anotoki/lib/migrations/page': ['@anotoki/lib/migrations', ...PIECES, '@anotoki/lib/ui/dialog'],
+  '@anotoki/lib/migrations/page': ['@anotoki/lib/migrations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/code-sql'],
   '@anotoki/lib/translations': PIECES,
   '@anotoki/lib/translations/admin': ['@anotoki/lib/translations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/forms'],
   '@anotoki/lib/translations/testing': ['@anotoki/lib/translations'],

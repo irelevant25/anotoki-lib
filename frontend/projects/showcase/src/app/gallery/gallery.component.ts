@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { SiteFooterComponent } from '@anotoki/lib/footer';
 import { LanguageSwitcherComponent, ThemeToggleComponent, TopBarComponent } from '@anotoki/lib/shell';
 import {
@@ -16,6 +16,7 @@ import {
   SpinnerComponent,
 } from '@anotoki/lib/ui';
 import { ChipComponent, ChipGroupComponent, ChipItem, ChipListComponent, ChipOption } from '@anotoki/lib/ui/chips';
+import { CodeEditorComponent } from '@anotoki/lib/ui/code-editor';
 import { ColorFieldComponent, ColorSwatch } from '@anotoki/lib/ui/color-field';
 import { ComboboxComponent, ComboboxOption } from '@anotoki/lib/ui/combobox';
 import { CopyButtonComponent } from '@anotoki/lib/ui/copy';
@@ -124,6 +125,7 @@ function portrait(name: string, colour: string): string {
     ChipComponent,
     ChipGroupComponent,
     ChipListComponent,
+    CodeEditorComponent,
     CodeInputComponent,
     ColorFieldComponent,
     ComboboxComponent,
@@ -395,6 +397,44 @@ export class GalleryComponent {
   /** Every button of the rich-text toolbar, in groups. */
   protected readonly allTools: ToolbarTool[] = ['bold', 'italic', 'underline', 'strike', '|', 'bulletList', 'orderedList', 'indent', 'outdent', '|', 'link', 'clear', '|', 'undo', 'redo'];
   protected readonly textSize = signal('Normal');
+  /** The code editor (0.9.2): genshin's quiz levels as JSON - said, as genshin says it, while they are no JSON. */
+  protected readonly levels = signal(
+    JSON.stringify(
+      {
+        quizzes: [
+          { id: 'character', name: 'Guess the character', levels: [{ level: 1, label: 'Easy', tries: [0, 1, 2, 3, 4], hint: true }] },
+          { id: 'mismatch', name: 'Mismatch', levels: [{ level: 3, label: 'Hard', shows: 2.5, hint: false, note: null }] },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+  protected readonly levelsError = computed(() => {
+    try {
+      JSON.parse(this.levels());
+      return null;
+    } catch (error) {
+      return `Not JSON yet: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  });
+  /** A migration's SQL, read-only: a table, and the DO $$ gate after it, coloured as code too. */
+  protected readonly migration = signal(
+    [
+      '-- 004 - the quiz levels a site saves',
+      'CREATE TABLE IF NOT EXISTS quiz_levels (',
+      '    id          SMALLINT     PRIMARY KEY DEFAULT 1 CHECK (id = 1),',
+      '    levels      JSONB        NOT NULL,',
+      '    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP',
+      ');',
+      'DO $$',
+      'BEGIN',
+      "    IF to_regclass('quiz_levels') IS NULL THEN",
+      "        RAISE EXCEPTION '004: the table quiz_levels is not here.';",
+      '    END IF;',
+      'END $$;',
+    ].join('\n'),
+  );
 
   /** The toolbar's commands on the showcase's contenteditable; a link's address asked in the browser's own words here (a site asks in its own dialog). */
   protected onCommand(command: TextCommand, editable: RichTextEditableDirective): void {

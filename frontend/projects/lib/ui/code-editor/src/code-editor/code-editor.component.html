@@ -1,0 +1,47 @@
+<div class="anotoki-field">
+    <label class="anotoki-field__label" [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </label>
+    <div class="anotoki-field__control anotoki-code-editor__control" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
+        <div class="anotoki-code-editor__layer" aria-hidden="true">
+            <div class="anotoki-code-editor__code" [style.transform]="offset()">
+                @for (piece of pieces(); track $index) {
+                    <span [attr.class]="piece.kind && 'anotoki-code-editor__' + piece.kind">{{ piece.text }}</span>
+                }
+            </div>
+        </div>
+        <textarea
+            #control
+            class="anotoki-code-editor__input"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            [value]="value()"
+            [attr.rows]="rows()"
+            [attr.placeholder]="placeholder() || null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            [required]="required()"
+            [readOnly]="readonly()"
+            [disabled]="disabled()"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+            wrap="off"
+            (input)="onInput($event)"
+            (scroll)="onScroll($event)"
+            (blur)="blurred.emit()"></textarea>
+    </div>
+    @if (hint() && !error()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

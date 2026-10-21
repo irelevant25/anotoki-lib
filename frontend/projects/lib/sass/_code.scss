@@ -1,0 +1,42 @@
+////
+/// The colours of highlighted code - the Migrations page's SQL (0.9.1) and the code editor (0.9.2) - for each kind
+/// of piece the kit's highlighters tell (@anotoki/lib/ui/code-sql, /code-json), by its class: `$prefix` and the
+/// kind. Internal, as the rest of this folder: compiled into the components that include it.
+///
+/// The family's inks, each WCAG AA on the grounds code sits on (`bg`, `surface`) in both themes - at least 5.1:1 in
+/// light and 5.4:1 in dark. Names, quoted names and plain text are the text's own colour: no rule. A colour alone,
+/// never a weight or a style, so that every piece keeps the font's widths - and the code editor's caret stays over
+/// its letters.
+////
+
+@use "kit";
+
+@mixin colours($prefix) {
+  // SQL's keywords; JSON's keys.
+  .#{$prefix}keyword,
+  .#{$prefix}key {
+    color: kit.token(primary);
+  }
+
+  // SQL's types; JSON's true, false and null.
+  .#{$prefix}type,
+  .#{$prefix}literal {
+    color: kit.token(success-text);
+  }
+
+  // Strings, and a dollar quote's delimiters (its body is code again).
+  .#{$prefix}string,
+  .#{$prefix}dollar {
+    color: kit.token(warning-text);
+  }
+
+  .#{$prefix}number {
+    color: kit.token(danger-text);
+  }
+
+  .#{$prefix}comment,
+  .#{$prefix}operator,
+  .#{$prefix}punctuation {
+    color: kit.token(muted);
+  }
+}

@@ -1,4 +1,4 @@
-@use "../../../../sass/kit";
+@use "../../../../sass/code";
 @use "../../../src/theme";
 
 :host {
@@ -66,31 +66,9 @@
   }
 }
 
-// The SQL's colours (0.9.1): the family's inks, each at least 5.1:1 on the box's ground in light and 6:1 in dark (WCAG
-// AA). Its names - and a quoted name, "..." - are the box's text, white space anywhere shows none; a colour alone, so
-// every piece keeps the box's font, its width and the file's columns.
-.anotoki-migrations-page__sql-keyword {
-  color: var(--_primary);
-}
-
-.anotoki-migrations-page__sql-type {
-  color: kit.token(success-text);
-}
-
-.anotoki-migrations-page__sql-string,
-.anotoki-migrations-page__sql-dollar {
-  color: var(--_warning-text);
-}
-
-.anotoki-migrations-page__sql-number {
-  color: kit.token(danger-text);
-}
-
-.anotoki-migrations-page__sql-comment,
-.anotoki-migrations-page__sql-operator,
-.anotoki-migrations-page__sql-punctuation {
-  color: var(--_muted);
-}
+// The SQL's colours (0.9.1): the kit's for code, the code editor's too - a colour alone, so every piece keeps the
+// box's font, its width and the file's columns; its names, and a quoted name, are the box's text.
+@include code.colours("anotoki-migrations-page__sql-");
 
 .anotoki-migrations-page__cards {
   display: grid;

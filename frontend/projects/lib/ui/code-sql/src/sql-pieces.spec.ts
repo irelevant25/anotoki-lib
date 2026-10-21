@@ -52,7 +52,7 @@ async function libraryMigrations(): Promise<Map<string, string>> {
   return new Map(files.map((path) => [path, fs.readFileSync(`${root}/${path}`, 'utf8')]));
 }
 
-describe('sqlPieces(): a migration’s SQL in pieces for the Migrations page’s colours - PostgreSQL as the family writes it', () => {
+describe('sqlPieces(): SQL in pieces to colour, the Migrations page’s and the code editor’s - PostgreSQL as the family writes it', () => {
   it('comments: -- to the end of the line, and block comments - nested, as PostgreSQL nests them - whatever they hold', () => {
     expect(show("-- SELECT 'it' $$\nSELECT 1")).toEqual(["comment:-- SELECT 'it' $$\n", 'keyword:SELECT ', 'number:1']);
     expect(show('/* a /* nested */ still a comment */ x')).toEqual(['comment:/* a /* nested */ still a comment */ ', '_:x']);

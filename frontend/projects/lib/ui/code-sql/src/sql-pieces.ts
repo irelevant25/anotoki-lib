@@ -1,6 +1,7 @@
 /*
- * A migration's SQL in pieces, for the Migrations page to colour (0.9.1): the library's own small highlighter, no
- * package - PostgreSQL as the family's migrations write it, and nothing it would have to guess at:
+ * SQL in pieces, to colour: the library's own small highlighter, no package - the Migrations page's (0.9.1), and the
+ * code editor's since 0.9.2, in an entry point of its own both take. PostgreSQL as the family's migrations write it,
+ * and nothing it would have to guess at:
  *
  *   comments       -- to the end of the line; block comments, nested as PostgreSQL nests them
  *   strings        '...' ('' inside), E'...' (a backslash escapes too), B'...', X'...', N'...' and U&'...'

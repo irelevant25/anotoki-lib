@@ -8,7 +8,8 @@ pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/button`, ...), `ui/menu`, `ui/dialog`, ..., the pieces of 0.6.0 (`ui/chips`,
 `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`, `ui/labelled-group`,
 `ui/select`, `ui/field`, `ui/piece-words`, `ui/side-nav`, `ui/current-link`; `ui/tabs` gained the link tabs;
-the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker`, `ui/combobox`, `ui/rich-text`),
+the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker`, `ui/combobox`, `ui/rich-text`;
+0.9.2's code editor `ui/code-editor` and the highlighters `ui/code-json`, `ui/code-sql`),
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
@@ -138,7 +139,7 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   page uses). Top-level code a site's build cannot prove harmless - a call or a
   `new` of anything but an InjectionToken - is kept whether used or not: mark it
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
-  limits (and the big lazy input pieces of 0.6.0 to limits of their own, `LAZY_LIMITS`),
+  limits (and the big lazy input pieces of 0.6.0, the code editor and its highlighters to limits of their own, `LAZY_LIMITS`),
   every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
   `migrations`, `error-report/marker` (a token, never the reporter) and `auth/marker` (whom a request is
@@ -148,7 +149,9 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   `legal/pages` the kit, `legal` and the feedback form by import() alone; `legal/about` and `legal/support` the
   core's pieces, `legal` and their own words; `footer`
   the core's pieces, `legal`, its words and - by import() alone - `feedback/form`
-  (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); a
+  (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); `ui/code-editor` the core's
+  pieces, `ui/field` and the highlighters, `ui/code-json` and `ui/code-sql`, which import nothing (`migrations/page`
+  takes `ui/code-sql` alone, never the editor); a
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the

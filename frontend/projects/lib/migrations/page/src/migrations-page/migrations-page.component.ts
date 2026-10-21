@@ -9,9 +9,9 @@ import { CardComponent } from '@anotoki/lib/ui/card';
 import { PageHeaderComponent } from '@anotoki/lib/ui/page-header';
 import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 import { DialogComponent } from '@anotoki/lib/ui/dialog';
+import { sqlPieces } from '@anotoki/lib/ui/code-sql';
 import { firstValueFrom } from 'rxjs';
 import { defaultFormatDate, messageOf } from '../messages';
-import { sqlPieces } from '../sql-pieces';
 
 /** A file of a set, as the server names it. */
 interface MigrationFile {
@@ -86,7 +86,7 @@ let nextId = 0;
  *
  * Drawn with the family's kit: a page header, cards, badges, an alert for
  * what an Apply did, and dialogs for the question before it and for a file's
- * SQL - coloured (0.9.1) by the library's own highlighter (../sql-pieces): a
+ * SQL - coloured (0.9.1) by the kit's highlighter (@anotoki/lib/ui/code-sql): a
  * span a piece, its characters drawn as text, so the file's own words can
  * never be markup. Anybody who is not the site's ADMIN is told whose page it
  * is, and nothing is asked of the server.

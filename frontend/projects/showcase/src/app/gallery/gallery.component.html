@@ -291,6 +291,19 @@
         </div>
     </section>
 
+    <section class="section" aria-labelledby="code-title" data-code-editors>
+        <h2 class="section-title" id="code-title">Code editor (0.9.2)</h2>
+        <!-- A textarea over the same text coloured: genshin's quiz levels as JSON, and a migration's SQL, read-only. -->
+        <anotoki-code-editor
+            label="The levels, as JSON"
+            language="json"
+            [rows]="12"
+            hint="Six quizzes, each with its levels 1 (Easy), 2 (Medium) and 3 (Hard)"
+            [error]="levelsError()"
+            [(value)]="levels" />
+        <anotoki-code-editor label="A migration" language="sql" [rows]="12" readonly [(value)]="migration" />
+    </section>
+
     <section class="section" aria-labelledby="choices-title">
         <h2 class="section-title" id="choices-title">Choices, menus, popovers</h2>
         <div class="cluster">

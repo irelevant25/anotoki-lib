@@ -1,0 +1,98 @@
+@use "../../../../sass/kit";
+@use "../../../../sass/code";
+@use "../../../forms/src/field";
+
+@include field.styles;
+
+// The colours of each kind of piece: the kit's for code, the Migrations page's SQL's too.
+@include code.colours("anotoki-code-editor__");
+
+// The field's box holds the layer and the textarea over it; the layer's text stays inside its rounded edge.
+.anotoki-code-editor__control {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+// The textarea and the layer: one box, one font, one size, one line height - so that each letter of the layer lies
+// under the textarea's own, transparent, and the caret stands where the text is.
+.anotoki-code-editor__input,
+.anotoki-code-editor__code {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  font-family: kit.token(font-mono);
+  // 16 px: iOS zooms the page into any field smaller than that.
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 400;
+  // A ligature would set the layer's letters apart from the textarea's.
+  font-variant-ligatures: none;
+  line-height: 1.5;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: left;
+  text-indent: 0;
+  text-transform: none;
+  tab-size: 4;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.anotoki-code-editor__layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.anotoki-code-editor__code {
+  color: kit.token(text);
+}
+
+.anotoki-code-editor__input {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: auto;
+  border-radius: inherit;
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: kit.token(text);
+  outline: none;
+  box-shadow: none;
+  appearance: none;
+  resize: vertical;
+
+  &::placeholder {
+    color: kit.token(subtle);
+    -webkit-text-fill-color: kit.token(subtle);
+    opacity: 1;
+  }
+
+  // The selection a tint over the layer's colours, never a ground that hides them.
+  &::selection {
+    background: kit.token(ring);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// Forced colours: one text, the textarea's own, in the system's colours - the layer gives way.
+@media (forced-colors: active) {
+  .anotoki-code-editor__layer {
+    display: none;
+  }
+
+  .anotoki-code-editor__input {
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
+}

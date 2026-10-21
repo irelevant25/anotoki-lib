@@ -51,6 +51,56 @@ const MIGRATIONS = {
   missing: [{ set: 'site', name: '000_bootstrap.sql', applied_at: '2026-09-01T00:00:00Z' }],
 };
 
+/** A migration file as the family writes them - what View shows for every file: its comments, tables, rows and gate. */
+const MIGRATION_SQL = [
+  '-- site 001 - the first tables: the people who use the site, and the notes they leave',
+  '--',
+  '-- Released with the first version, and never edited once released: a change is a new file.',
+  '',
+  'CREATE TABLE IF NOT EXISTS people (',
+  '    id          BIGSERIAL     PRIMARY KEY,',
+  '    name        VARCHAR(200)  NOT NULL,',
+  '    email       TEXT          NOT NULL UNIQUE,',
+  "    language    VARCHAR(10)   NOT NULL DEFAULT 'en',",
+  '    score       NUMERIC(5, 2) NOT NULL DEFAULT 0.5,',
+  '    created_at  TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,',
+  "    CONSTRAINT people_language_check CHECK (language ~ '^[a-z]{2}$')",
+  ');',
+  '',
+  '/* The notes: kept 365 days, an "address" only where the sender typed one. */',
+  'CREATE TABLE IF NOT EXISTS notes (',
+  '    id         BIGSERIAL PRIMARY KEY,',
+  '    person_id  BIGINT    REFERENCES people (id) ON DELETE CASCADE,',
+  '    body       TEXT      NOT NULL CHECK (length(body) BETWEEN 1 AND 5000),',
+  '    "address"  TEXT',
+  ');',
+  '',
+  'INSERT INTO people (name, email, language)',
+  "VALUES ('Ana', 'ana@example.com', 'sk'), ('O''Brien', 'ob@example.com', 'en')",
+  'ON CONFLICT (email) DO NOTHING;',
+  '',
+  '-- The table must be the site’s: every column there.',
+  'DO $$',
+  'DECLARE',
+  '    problems TEXT[] := ARRAY[]::TEXT[];',
+  '    wanted   CONSTANT INTEGER := 6;',
+  '    found    INTEGER;',
+  'BEGIN',
+  '    SELECT count(*) INTO found',
+  '      FROM information_schema.columns',
+  "     WHERE table_schema = current_schema() AND table_name = 'people';",
+  '    IF found <> wanted THEN',
+  "        problems := problems || format('people has %s columns, not %s', found, wanted);",
+  '    END IF;',
+  '    IF array_length(problems, 1) > 0 THEN',
+  "        RAISE EXCEPTION 'site 001: %.', array_to_string(problems, '; ');",
+  '    END IF;',
+  'END $$;',
+  '',
+  '-- end of 001',
+  '',
+].join('\n');
+
 /** The server, as the showcase imagines it: a site whose database waits for an update. */
 const fixtures: HttpInterceptorFn = (request, next) => {
   const answer = (body: unknown, wait = 0) => of(new HttpResponse({ status: 200, body })).pipe(delay(wait));
@@ -60,7 +110,7 @@ const fixtures: HttpInterceptorFn = (request, next) => {
     case '/api/admin/migrations':
       return answer(MIGRATIONS, 300);
     case '/api/admin/migrations/file':
-      return answer({ set: 'site', name: request.params.get('name'), sql: '-- The first tables.\nCREATE TABLE people (\n    id SERIAL PRIMARY KEY,\n    name VARCHAR(200) NOT NULL\n);\n' }, 300);
+      return answer({ set: 'site', name: request.params.get('name'), sql: MIGRATION_SQL }, 300);
     case '/api/admin/migrations/apply':
       return answer({ applied: [{ set: 'site', name: '004_announcements.sql' }], failed: null, error: null, note: 'A copy of every table was saved first.' }, 900);
     default:

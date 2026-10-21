@@ -113,7 +113,7 @@
     @if (viewing(); as shown) {
         <anotoki-dialog data-sql size="lg" [heading]="label(shown.file)" (dismiss)="closeSql()">
             @if (viewingSql() !== null) {
-                <pre class="anotoki-migrations-page__sql" #sqlText tabindex="0" role="region" [attr.aria-label]="'The SQL of ' + label(shown.file)">{{ viewingSql() }}</pre>
+                <pre class="anotoki-migrations-page__sql" #sqlText tabindex="0" role="region" [attr.aria-label]="'The SQL of ' + label(shown.file)"><ng-container [ngTemplateOutlet]="sql" /></pre>
             } @else if (shown.error) {
                 <p class="anotoki-migrations-page__dialog-text" role="alert">The file could not be read. {{ shown.error }}</p>
             } @else {
@@ -129,6 +129,13 @@
         </anotoki-dialog>
     }
 }
+
+<!-- A file's SQL, a span a piece, its text never markup - out here, as a <pre> keeps a template's white space. -->
+<ng-template #sql>
+    @for (piece of viewingPieces(); track $index) {
+        <span [attr.class]="piece.kind && 'anotoki-migrations-page__sql-' + piece.kind">{{ piece.text }}</span>
+    }
+</ng-template>
 
 <!-- A file's name, a line free to break after its slash and between its words, never inside one: <wbr> adds
      nothing to the words a screen reader hears or a copy takes. -->

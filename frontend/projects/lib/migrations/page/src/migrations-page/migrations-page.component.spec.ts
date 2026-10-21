@@ -489,6 +489,77 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
       expect(text('[data-sql] .anotoki-migrations-page__copied')).toBe('The text is selected: copy it with Ctrl+C.');
     });
 
+    /** The dialog's SQL, once a file is in it: its <pre>, and each of its spans as [kind, text] ('' for plain text). */
+    async function viewed(sql: string): Promise<{ pre: HTMLElement; pieces: string[][] }> {
+      click('[data-applied] button');
+      fileRequest().flush({ set: 'site', name: '001_initial.sql', sql });
+      await settle(fixture);
+      const pre = host.querySelector<HTMLElement>('[data-sql] pre')!;
+      return { pre, pieces: Array.from(pre.children, (span) => [span.className.replace('anotoki-migrations-page__sql-', ''), span.textContent ?? '']) };
+    }
+
+    it('colours the SQL (0.9.1): a span a piece, of its kind’s class - its text, joined, the file as it is, in the same region', async () => {
+      setUp();
+      await load();
+      const sql = "-- 001\nDO $$\nDECLARE\n    n INT := 42;\nBEGIN\n    RAISE NOTICE 'it''s %', \"n\";\nEND $$;\n";
+      const { pre, pieces } = await viewed(sql);
+
+      expect(pieces).toEqual([
+        ['comment', '-- 001\n'],
+        ['keyword', 'DO '],
+        ['dollar', '$$\n'],
+        ['keyword', 'DECLARE\n    '],
+        ['', 'n '],
+        ['type', 'INT '],
+        ['operator', ':= '],
+        ['number', '42'],
+        ['punctuation', ';\n'],
+        ['keyword', 'BEGIN\n    RAISE NOTICE '],
+        ['string', "'it''s %'"],
+        ['punctuation', ', '],
+        ['name', '"n"'],
+        ['punctuation', ';\n'],
+        ['keyword', 'END '],
+        ['dollar', '$$'],
+        ['punctuation', ';\n'],
+      ]);
+      // Spans alone, holding text alone: nothing of the file outside them, and the file whole inside.
+      expect(Array.from(pre.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE)).toEqual([]);
+      expect(pre.querySelector(':not(span)')).toBeNull();
+      expect(pre.textContent).toBe(sql);
+      expect(pre.querySelector('span:not([class])')?.textContent).toBe('n ');
+      // The region as it was: named, in the tab order.
+      expect(pre.getAttribute('role')).toBe('region');
+      expect(pre.getAttribute('aria-label')).toBe('The SQL of 001_initial.sql');
+      expect(pre.tabIndex).toBe(0);
+    });
+
+    it('the file’s words are text, never markup - <script>, </span>, {{ }} show as written, and Copy takes them as written', async () => {
+      setUp();
+      await load();
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const sql = "SELECT '<script>alert(1)</script>' AS \"</span><b>bold</b>\", '{{ 1 + 1 }}';\n<img src=x onerror=alert(2)>";
+      const { pre, pieces } = await viewed(sql);
+
+      expect(pre.textContent).toBe(sql);
+      expect(pre.querySelector(':not(span)')).toBeNull();
+      expect(Array.from(pre.querySelectorAll('span')).every((span) => span.childElementCount === 0)).toBe(true);
+      expect(host.querySelector('[data-sql] script, [data-sql] b, [data-sql] img')).toBeNull();
+      expect(pieces.slice(0, 6)).toEqual([
+        ['keyword', 'SELECT '],
+        ['string', "'<script>alert(1)</script>' "],
+        ['keyword', 'AS '],
+        ['name', '"</span><b>bold</b>"'],
+        ['punctuation', ', '],
+        ['string', "'{{ 1 + 1 }}'"],
+      ]);
+
+      click('[data-copy]');
+      await settle(fixture);
+      expect(writeText).toHaveBeenCalledWith(sql);
+    });
+
     it('a file that cannot be read says so', async () => {
       setUp();
       await load();

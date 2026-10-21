@@ -11,6 +11,7 @@ import { SpinnerComponent } from '@anotoki/lib/ui/spinner';
 import { DialogComponent } from '@anotoki/lib/ui/dialog';
 import { firstValueFrom } from 'rxjs';
 import { defaultFormatDate, messageOf } from '../messages';
+import { sqlPieces } from '../sql-pieces';
 
 /** A file of a set, as the server names it. */
 interface MigrationFile {
@@ -85,8 +86,10 @@ let nextId = 0;
  *
  * Drawn with the family's kit: a page header, cards, badges, an alert for
  * what an Apply did, and dialogs for the question before it and for a file's
- * SQL. Anybody who is not the site's ADMIN is told whose page it is, and
- * nothing is asked of the server.
+ * SQL - coloured (0.9.1) by the library's own highlighter (../sql-pieces): a
+ * span a piece, its characters drawn as text, so the file's own words can
+ * never be markup. Anybody who is not the site's ADMIN is told whose page it
+ * is, and nothing is asked of the server.
  *
  * Its own entry point (@anotoki/lib/migrations/page), so a site's first load
  * never carries it: `loadComponent: () => import('@anotoki/lib/migrations/page').then((m) => m.MigrationsPageComponent)`.
@@ -131,6 +134,15 @@ export class MigrationsPageComponent {
   protected readonly pending = computed(() => (this.data()?.pending ?? []).map((file) => ({ ...file, badge: (!file.ready ? 'draft' : file.blocked ? 'waits' : 'pending') as Badge })));
 
   protected readonly viewingSql = computed(() => this.viewing()?.sql ?? null);
+  /**
+   * The file's SQL in the pieces the dialog colours - joined, they are the file, character for character - each a
+   * span of its kind's class (anotoki-migrations-page__sql-keyword, ...; plain text none): a kind of the
+   * highlighter's, never a word of the file's.
+   */
+  protected readonly viewingPieces = computed(() => {
+    const sql = this.viewingSql();
+    return sql === null ? [] : sqlPieces(sql);
+  });
 
   private readonly sqlText = viewChild<ElementRef<HTMLElement>>('sqlText');
   private started = false;

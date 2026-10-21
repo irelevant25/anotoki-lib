@@ -9,4 +9,4 @@
  */
 
 /** The installed version: one number for both halves (this package and the Composer package anotoki/lib). */
-export const ANOTOKI_LIB_VERSION = '0.9.0';
+export const ANOTOKI_LIB_VERSION = '0.9.1';

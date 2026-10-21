@@ -13,7 +13,7 @@ Beside the two halves, in neither of them: **the deploy tool** `@anotoki/deploy`
 same release; 0.9.0) - a tool of the computer that builds a site, never part of a site's upload (the section
 "Deploying a site").
 
-Version 0.9.0 holds:
+Version 0.9.1 holds:
 
 - **migrations** - the engine that brings a site's database up to date, with
   the library's own migration sets beside a site's, and one behaviour for every
@@ -898,7 +898,14 @@ provideAppInitializer(() => inject(SiteStatus).check()),   // early in the boot;
   in what an Apply did: the site's one set's by the file's name alone, every
   other with its set (`anotoki_translations/003_sign_in_words.sql`; genshin's
   two sets, `users/041_news.sql`). A name breaks after its slash or between its
-  words (`<wbr>`, which adds nothing to its text), never inside a word.
+  words (`<wbr>`, which adds nothing to its text), never inside a word. A
+  file's SQL is coloured (0.9.1) by the library's own highlighter, no package:
+  PostgreSQL as the family writes it - comments, strings (`E'...'` too), dollar
+  quotes whose body (a `DO $$` gate's PL/pgSQL) is coloured as code, quoted
+  names, numbers, keywords in capitals (a word in small letters is a name: a
+  column called `key` or `type` stays one), types in any case, operators and
+  punctuation; anything else plain. Each piece is a span holding text, never
+  markup; Copy takes the file as it is.
 
 A site that does not block while an update waits (the IAM, `blockWhilePending:
 false`) puts **no** gate around its outlet and does not ask at boot: the status
@@ -910,7 +917,12 @@ everybody. It uses the interceptor, `<anotoki-update-banner>` in its admin panel
 Theming: the module reads the family's tokens (`@anotoki/lib/styles`), each with
 the family's value as its fallback; a site's 0.1 mapping of the 13
 `--anotoki-*` properties keeps working (the "pending" ink reads
-`--anotoki-warning-text`, then `--anotoki-warning`).
+`--anotoki-warning-text`, then `--anotoki-warning`). The SQL's colours are the
+family's inks on the box's `--anotoki-bg`: keywords `--anotoki-primary`, types
+`--anotoki-success-text`, strings and dollar quotes `--anotoki-warning-text`,
+numbers `--anotoki-danger-text`, comments, operators and punctuation
+`--anotoki-muted`, names the text's own - a site that changes one of them keeps
+it at 4.5:1 on its `bg`.
 
 ## Upgrading from 0.1.x
 

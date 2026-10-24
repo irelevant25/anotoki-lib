@@ -118,8 +118,16 @@ const fixtures: HttpInterceptorFn = (request, next) => {
   }
 };
 
-/** The showcase's admin pages: English, whatever the page is read in. */
-const ENGLISH_AREAS = /^\/(migrations|translations|languages|people|admin)(\/|\?|#|$)/;
+/** The showcase's admin pages: English, whatever the page is read in (the admin frame's, 0.10.0, too). */
+const ENGLISH_AREAS = /^\/(migrations|translations|languages|people|admin|admin-frame)(\/|\?|#|$)/;
+
+/** The admin frame's pages (0.10.0): one page of its own a section, titled by its route. */
+const framePage = (path: string, title: string) => ({
+  path,
+  pathMatch: 'full' as const,
+  data: { title },
+  loadComponent: () => import('./app/admin-frame-demo/admin-frame-page.component').then((m) => m.AdminFramePageComponent),
+});
 
 /** ?signedin=1: somebody signed in, for the feedback form (their address written in, "send it without my name"). */
 const signedIn = signal(!!params.get('signedin'));
@@ -159,6 +167,22 @@ bootstrapApplication(AppComponent, {
           { path: 'feedback', loadComponent: () => import('@anotoki/lib/admin/feedback').then((m) => m.FeedbackPageComponent) },
           { path: 'backups', loadComponent: () => import('@anotoki/lib/admin/backups').then((m) => m.BackupsPageComponent) },
           { path: 'files', loadComponent: () => import('@anotoki/lib/admin/files').then((m) => m.FilesPageComponent) },
+        ],
+      },
+      // The admin panel's frame (0.10.0): a whole page of its own, outside the showcase's bar and footer (app.component).
+      {
+        path: 'admin-frame',
+        loadComponent: () => import('./app/admin-frame-demo/admin-frame-demo.component').then((m) => m.AdminFrameDemoComponent),
+        children: [
+          framePage('', 'Dashboard'),
+          framePage('characters', 'Characters'),
+          framePage('weapons', 'Weapons'),
+          framePage('materials', 'Materials'),
+          framePage('languages', 'Languages'),
+          framePage('translations', 'Translations'),
+          framePage('settings', 'Site settings'),
+          framePage('feedback', 'Feedback'),
+          framePage('backups', 'Backups'),
         ],
       },
       { path: 'feedback', loadComponent: () => import('./app/feedback-demo/feedback-demo.component').then((m) => m.FeedbackDemoComponent) },

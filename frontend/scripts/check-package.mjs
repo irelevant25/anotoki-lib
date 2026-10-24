@@ -281,6 +281,9 @@ const MAY_IMPORT = {
   '@anotoki/lib/admin/feedback': ADMIN_PAGE,
   '@anotoki/lib/admin/backups': ADMIN_PAGE,
   '@anotoki/lib/admin/files': [...ADMIN_PAGE, '@anotoki/lib/ui/menu'],
+  // The admin panel's frame (0.10.0, genshin's for every site): the core's pieces it draws and the kit's side navigation
+  // (its drawer on a phone). Never the shell: the theme's switch - the shell's - is the site's, in the frame's slot.
+  '@anotoki/lib/admin/frame': [...PIECES, '@anotoki/lib/ui/side-nav'],
   // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it -
   // its message anybody's (0.7.2): the auth module's marker, never the auth module - and, 0.8.0, the form in the kit's
   // dialog, as the footer and the Contact page open it.

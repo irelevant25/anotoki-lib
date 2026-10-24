@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, NavigationStart, Router, RouterOutlet } from '@angular/router';
 import { ANOTOKI_LIB_VERSION } from '@anotoki/lib';
 import { FeedbackUnread } from '@anotoki/lib/admin';
 import { SiteFooterComponent, SiteFooterFan } from '@anotoki/lib/footer';
@@ -13,6 +13,9 @@ import { filter } from 'rxjs';
 
 /** The query, as the legal pages' sample facts read it: ?fan=1 the fan clause, ?feedback=0 a site that takes none. */
 const params = new URLSearchParams(location.search);
+
+/** The admin frame's pages (0.10.0): an admin panel's frame of their own, never the showcase's bar and footer. */
+const FRAMED = /^\/admin-frame(\/|\?|#|$)/;
 
 /**
  * The showcase's frame: the family's bar and frame around the gallery, as a
@@ -57,6 +60,8 @@ export class AppComponent {
   protected readonly frameWidth = new URLSearchParams(location.search).get('frame');
   /** Signing out takes a moment here: the item says "Saving…" meanwhile. */
   protected readonly signOut = () => new Promise<void>((done) => setTimeout(done, 2500));
+  /** The page is the admin frame's (/admin-frame, 0.10.0): drawn in that frame alone. */
+  protected readonly framed = signal(FRAMED.test(location.pathname));
 
   /** The footer: the library's version, Send feedback unless ?feedback=0, the fan clause with ?fan=1. */
   protected readonly version = ANOTOKI_LIB_VERSION;
@@ -74,11 +79,19 @@ export class AppComponent {
   constructor() {
     // The new feedback beside the admin tools' link, as a site's admin navigation reads it once.
     void this.unread.refresh();
-    inject(Router)
-      .events.pipe(
+    const router = inject(Router);
+    router.events
+      .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
       .subscribe((event) => this.i18n.noteAddress(event.urlAfterRedirects));
+    // Into the admin frame's pages and out of them: the showcase's bar and footer go, or come back, as the way starts.
+    router.events
+      .pipe(
+        filter((event): event is NavigationStart => event instanceof NavigationStart),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => this.framed.set(FRAMED.test(event.url)));
   }
 }

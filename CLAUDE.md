@@ -12,7 +12,8 @@ the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker
 0.9.2's code editor `ui/code-editor` and the highlighters `ui/code-json`, `ui/code-sql`),
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
-`auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `feedback`,
+`auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `admin/frame` (0.10.0:
+`<anotoki-admin-frame>`, the admin panel's frame), `feedback`,
 `feedback/form` (with 0.8.0's `<anotoki-feedback-dialog>`), `error-report`, `error-report/marker`, `legal`,
 `legal/pages`, `legal/about` and `legal/support` (0.8.0), `footer` (0.6.3), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
@@ -149,7 +150,8 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   `legal/pages` the kit, `legal` and the feedback form by import() alone; `legal/about` and `legal/support` the
   core's pieces, `legal` and their own words; `footer`
   the core's pieces, `legal`, its words and - by import() alone - `feedback/form`
-  (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); `ui/code-editor` the core's
+  (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); `admin/frame` the core's pieces and
+  `ui/side-nav` - never the shell: the theme's switch comes in its slot (0.10.0); `ui/code-editor` the core's
   pieces, `ui/field` and the highlighters, `ui/code-json` and `ui/code-sql`, which import nothing (`migrations/page`
   takes `ui/code-sql` alone, never the editor); a
   `words/<namespace>` is imported by its module, which

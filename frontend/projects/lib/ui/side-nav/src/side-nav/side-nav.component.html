@@ -13,7 +13,15 @@
     }
     @if (isOpen()) {
         <anotoki-drawer [heading]="heading() || label()" (dismiss)="close()">
-            <ng-container [ngTemplateOutlet]="navigation" [ngTemplateOutletContext]="{ $implicit: true }" />
+            <!-- A link followed anywhere in the drawer - the navigation's, or one of what stands above it - closes it. -->
+            <div class="anotoki-side-nav__drawer-body" (click)="chosen($event)">
+                @if (drawerTop(); as top) {
+                    <div class="anotoki-side-nav__drawer-top">
+                        <ng-container [ngTemplateOutlet]="top" />
+                    </div>
+                }
+                <ng-container [ngTemplateOutlet]="navigation" [ngTemplateOutletContext]="{ $implicit: true }" />
+            </div>
         </anotoki-drawer>
     }
 } @else {
@@ -22,7 +30,7 @@
 
 <!-- The navigation: beside the page, or in the drawer on a phone - one of the two at a time, so its ids are unique. -->
 <ng-template #navigation let-inDrawer>
-    <nav class="anotoki-side-nav__nav" [class.anotoki-side-nav__nav--drawer]="inDrawer" [id]="inDrawer ? drawerNavId : navId" [attr.aria-label]="label()" (click)="chosen($event)">
+    <nav class="anotoki-side-nav__nav" [class.anotoki-side-nav__nav--drawer]="inDrawer" [id]="inDrawer ? drawerNavId : navId" [attr.aria-label]="label()">
         @for (group of groups(); track groupKey(group, $index); let index = $index) {
             <div class="anotoki-side-nav__group">
                 @if (group.label) {

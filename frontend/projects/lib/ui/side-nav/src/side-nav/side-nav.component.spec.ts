@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, RouterOutlet, provideRouter } from '@angular/router';
+import { Router, RouterLink, RouterOutlet, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { tabbable } from '@anotoki/lib/ui/dom';
 import { kitProviders, press, settle, windowOf, words } from '../../../src/testing';
@@ -361,6 +361,78 @@ describe('<anotoki-side-nav>: links in groups beside the page, in the kit’s dr
       expect(ownButton()).toBeNull();
       expect(nav()).not.toBeNull();
     });
+  });
+});
+
+/** An area whose drawer holds more than its pages (0.10.0, the admin frame's): who is signed in, a way out, a button. */
+@Component({
+  selector: 'anotoki-test-drawer-top',
+  imports: [RouterLink, SideNavComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <ng-template #top>
+      <p class="mine">Mira Nováková</p>
+      <a class="mine-back" routerLink="/">Back to the site</a>
+      <button class="mine-button" type="button" (click)="pressed.set(pressed() + 1)">Sign out</button>
+    </ng-template>
+    <anotoki-side-nav label="Admin panel" [groups]="groups" [drawerTop]="top" />
+  `,
+})
+class DrawerTopComponent {
+  readonly groups = GROUPS;
+  readonly pressed = signal(0);
+}
+
+describe('<anotoki-side-nav>: what stands above the navigation in its drawer (drawerTop, 0.10.0)', () => {
+  let host: HTMLElement;
+
+  afterEach(() => {
+    host?.remove();
+    vi.unstubAllGlobals();
+  });
+
+  async function setUp(width: number): Promise<ComponentFixture<DrawerTopComponent>> {
+    windowOf(width);
+    TestBed.configureTestingModule({ providers: [...kitProviders(), provideRouter([{ path: '**', component: PageComponent }])] });
+    const fixture = TestBed.createComponent(DrawerTopComponent);
+    host = fixture.nativeElement;
+    document.body.appendChild(host);
+    await TestBed.inject(Router).navigateByUrl('/admin');
+    await settle(fixture);
+    return fixture;
+  }
+
+  const button = () => host.querySelector<HTMLButtonElement>('.anotoki-side-nav__open')!;
+  const dialog = () => host.querySelector<HTMLDialogElement>('dialog');
+
+  it('beside the page it is not drawn - the site draws its own there', async () => {
+    await setUp(1280);
+    expect(host.querySelector('nav')).not.toBeNull();
+    expect(host.querySelector('.mine, .anotoki-side-nav__drawer-top')).toBeNull();
+  });
+
+  it('in the drawer: made as it opens, above the navigation; a button pressed in it leaves the drawer open, a link followed closes it', async () => {
+    const fixture = await setUp(390);
+    expect(host.querySelector('.mine')).toBeNull();
+    button().click();
+    await settle(fixture);
+    const top = dialog()!.querySelector('.anotoki-side-nav__drawer-top')!;
+    expect(words(top.querySelector('.mine'))).toBe('Mira Nováková');
+    // Above the navigation, in the drawer's order: the heading's focus first, then the top's link and button, then the pages.
+    const stops = tabbable(dialog()!).filter((element) => !element.matches('.anotoki-drawer__close'));
+    expect(stops.slice(0, 3).map(words)).toEqual(['Back to the site', 'Sign out', 'Dashboard']);
+    expect(top.compareDocumentPosition(dialog()!.querySelector('nav')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    top.querySelector<HTMLButtonElement>('.mine-button')!.click();
+    await settle(fixture);
+    expect(fixture.componentInstance.pressed()).toBe(1);
+    expect(dialog()?.open).toBe(true);
+
+    top.querySelector<HTMLAnchorElement>('.mine-back')!.click();
+    await settle(fixture);
+    expect(TestBed.inject(Router).url).toBe('/');
+    expect(dialog()).toBeNull();
+    expect(document.activeElement).toBe(button());
   });
 });
 

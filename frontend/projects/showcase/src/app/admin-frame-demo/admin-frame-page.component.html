@@ -1,0 +1,30 @@
+<anotoki-page-header [heading]="title" lead="A page of the admin panel, in the admin frame: the column of pages on the left, the page on the right - each scrolls on its own.">
+    <button anotokiButton variant="primary">Add</button>
+</anotoki-page-header>
+
+<anotoki-card heading="The characters" subheading="Enough of them that the page scrolls on its own" [flush]="true">
+    <div class="table-scroll">
+        <table class="table table-stack table-middle" data-frame-table>
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Element</th>
+                    <th scope="col">Region</th>
+                    <th scope="col" class="cell-num">Rarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (row of rows; track row.name) {
+                    <tr>
+                        <td data-label="Name">{{ row.name }}</td>
+                        <td data-label="Element">
+                            <anotoki-badge>{{ row.element }}</anotoki-badge>
+                        </td>
+                        <td data-label="Region">{{ row.region }}</td>
+                        <td data-label="Rarity" class="cell-num">{{ row.rarity }} ★</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</anotoki-card>

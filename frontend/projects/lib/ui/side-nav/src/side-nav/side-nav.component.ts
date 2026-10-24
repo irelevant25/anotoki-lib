@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, Signal, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, Signal, TemplateRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonComponent } from '@anotoki/lib/ui/button';
 import { AnotokiWords } from '@anotoki/lib/ui/config';
@@ -31,6 +31,10 @@ import { COUNT, SideNavGroup, SideNavLink } from '../side-nav-item';
  * (genshin's phone bar), and then none of its own. The drawer (`heading`, else the name) takes the focus as it opens and
  * gives it back to the button as it closes - on a link, on Escape, on the backdrop and on its Close; while it is shut
  * nothing of the navigation is in the page, so nothing of it is in the tab order.
+ *
+ * `drawerTop` (0.10.0): what the drawer shows above the navigation - a template, made as the drawer opens: the admin
+ * frame's person, Back, Sign out and theme (@anotoki/lib/admin/frame), which a phone has nowhere else. A link followed
+ * in it closes the drawer as the navigation's own do.
  */
 @Component({
   selector: 'anotoki-side-nav',
@@ -58,6 +62,11 @@ export class SideNavComponent {
   readonly headingLevel = input<2 | 3 | 4 | 5 | 6 | null>(null);
   /** The id of the link to mark as the page's, whatever the address says; null (the default): the router's address says. */
   readonly current = input<string | null>(null);
+  /**
+   * What the drawer shows above the navigation (0.10.0): a template, made each time the drawer opens - the admin frame's
+   * person, Back, Sign out and theme. Beside the page it is not drawn: the site draws its own there.
+   */
+  readonly drawerTop = input<TemplateRef<unknown> | null>(null);
 
   private readonly narrow = mediaQuery(() => `(max-width: ${this.phoneMax() ?? 0}px)`);
   /** It is a phone's: a button and the drawer in place of the column. */
@@ -186,7 +195,10 @@ export class SideNavComponent {
     return `${this.id}-list-${index}`;
   }
 
-  /** A link followed in the drawer closes it (a link opened elsewhere - a new tab, a new window - leaves it open). */
+  /**
+   * A link followed in the drawer closes it - the navigation's, or one of what stands above it (`drawerTop`); a link
+   * opened elsewhere (a new tab, a new window) leaves it open, and so does a button.
+   */
   protected chosen(event: MouseEvent): void {
     if (!this.opened() || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       return;

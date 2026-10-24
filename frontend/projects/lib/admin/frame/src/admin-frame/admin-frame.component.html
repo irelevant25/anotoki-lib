@@ -1,0 +1,99 @@
+<!-- The focus moved by hand: with <base href="/"> a bare #main would resolve to "/#main" and leave the page. -->
+<a class="anotoki-admin-frame__skip" href="#main" [attr.lang]="skipLabel() ? null : words.foreignLang()" (click)="skipTo($event, main)">{{ skip() }}</a>
+
+<!-- The panel's own banner: on a computer the column - the name, the person, the ways out, the theme, the pages; on a
+     phone a row with the name and Menu, everything else in the side navigation's drawer. -->
+<header class="anotoki-admin-frame__column">
+    @if (phone()) {
+        <div class="anotoki-admin-frame__row">
+            <a class="anotoki-admin-frame__brand" [routerLink]="brand().path">{{ brand().name }}</a>
+            <button anotokiButton class="anotoki-admin-frame__menu" [anotokiSideNavTrigger]="nav" [attr.lang]="words.foreignLang()">
+                <anotoki-icon name="menu" [size]="18" />
+                {{ words.t("topbar.phoneMenu") }}
+            </button>
+        </div>
+    } @else {
+        <div class="anotoki-admin-frame__head">
+            <a class="anotoki-admin-frame__brand" [routerLink]="brand().path">{{ brand().name }}</a>
+        </div>
+        <div class="anotoki-admin-frame__account-column">
+            <ng-container [ngTemplateOutlet]="account" />
+        </div>
+    }
+    <!-- Never inside display: none - on a phone its drawer opens from it. -->
+    <anotoki-side-nav
+        #nav="anotokiSideNav"
+        class="anotoki-admin-frame__nav"
+        [label]="navName()"
+        [heading]="brand().name"
+        [groups]="groups()"
+        [phoneMax]="phoneMax()"
+        [current]="current()"
+        [drawerTop]="account" />
+</header>
+
+<!-- The page's column: what the site says above the page, the page, and the site's footer after it - a landmark of its
+     own, beside the <main>, never inside it. -->
+<div #pageColumn class="anotoki-admin-frame__page-column">
+    <div class="anotoki-admin-frame__page">
+        <ng-content select="[adminFrameNotice]" />
+        <main #main id="main" class="anotoki-admin-frame__main" tabindex="-1">
+            <ng-content />
+        </main>
+    </div>
+    <ng-content select="[adminFrameFooter]" />
+</div>
+
+<!-- What the column holds above the pages, and the drawer on a phone: who is signed in, Back, Sign out, the theme. -->
+<ng-template #account>
+    <div class="anotoki-admin-frame__account">
+        @if (shown(); as me) {
+            <div class="anotoki-admin-frame__person">
+                <anotoki-avatar [name]="me.first" shape="circle" [size]="36" />
+                <span class="anotoki-admin-frame__who">
+                    <span class="anotoki-admin-frame__name">{{ me.first }}</span>
+                    @if (me.second) {
+                        &ngsp;
+                        <span class="anotoki-admin-frame__email">{{ me.second }}</span>
+                    }
+                </span>
+            </div>
+        }
+        @if (back(); as way) {
+            @if (way.href) {
+                <a class="anotoki-admin-frame__action anotoki-admin-frame__back" [href]="way.href">
+                    <anotoki-icon name="arrowLeft" [size]="18" />
+                    <span class="anotoki-admin-frame__action-label">{{ way.label }}</span>
+                </a>
+            } @else {
+                <a class="anotoki-admin-frame__action anotoki-admin-frame__back" [routerLink]="way.path ?? '/'">
+                    <anotoki-icon name="arrowLeft" [size]="18" />
+                    <span class="anotoki-admin-frame__action-label">{{ way.label }}</span>
+                </a>
+            }
+        }
+        @if (signOut()) {
+            <button
+                type="button"
+                class="anotoki-admin-frame__action anotoki-admin-frame__sign-out"
+                [attr.aria-disabled]="signingOut() ? 'true' : null"
+                [attr.aria-busy]="signingOut() ? 'true' : null"
+                [attr.lang]="words.foreignLang()"
+                (click)="signOutNow()">
+                @if (signingOut()) {
+                    <anotoki-spinner size="sm" />
+                    <span class="anotoki-admin-frame__action-label">{{ words.t("topbar.saving") }}</span>
+                } @else {
+                    <anotoki-icon name="logOut" [size]="18" />
+                    <span class="anotoki-admin-frame__action-label">{{ words.t("topbar.signOut") }}</span>
+                }
+            </button>
+        }
+        <!-- The site's theme switch (<anotoki-theme-toggle adminFrameTheme />): it names itself "Theme", so the word beside
+             it is for the eye, never said twice - drawn before it, written after it: without a switch, neither is drawn. -->
+        <div class="anotoki-admin-frame__theme">
+            <span class="anotoki-admin-frame__theme-slot"><ng-content select="[adminFrameTheme]" /></span>
+            <span class="anotoki-admin-frame__theme-label" aria-hidden="true">{{ words.t("theme.label") }}</span>
+        </div>
+    </div>
+</ng-template>

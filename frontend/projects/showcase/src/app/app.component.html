@@ -1,9 +1,14 @@
-<anotoki-shell [maxWidth]="frameWidth">
-    <anotoki-top-bar topBar [brand]="brand()" [links]="links()" [person]="person()" [menuItems]="items()" [signOut]="signOut" [languages]="true" [phoneMax]="760" [phoneMark]="mark()" />
+@if (framed()) {
+    <!-- The admin frame's page (0.10.0): a frame of its own - the admin panel's - never inside the showcase's bar and footer. -->
     <router-outlet />
-    <!-- The family's footer (0.6.3), as a site puts it under every page: ?fan=1 the fan clause, ?feedback=0 a site without feedback. -->
-    <anotoki-site-footer shellFooter [version]="version" whatsNew (whatsNew)="whatsNewOpen.set(true)" [feedback]="feedback" [fan]="fan" />
-</anotoki-shell>
+} @else {
+    <anotoki-shell [maxWidth]="frameWidth">
+        <anotoki-top-bar topBar [brand]="brand()" [links]="links()" [person]="person()" [menuItems]="items()" [signOut]="signOut" [languages]="true" [phoneMax]="760" [phoneMark]="mark()" />
+        <router-outlet />
+        <!-- The family's footer (0.6.3), as a site puts it under every page: ?fan=1 the fan clause, ?feedback=0 a site without feedback. -->
+        <anotoki-site-footer shellFooter [version]="version" whatsNew (whatsNew)="whatsNewOpen.set(true)" [feedback]="feedback" [fan]="fan" />
+    </anotoki-shell>
+}
 <anotoki-confirm-host />
 <anotoki-toast-host />
 

@@ -1,0 +1,8 @@
+<!-- As a site's admin layout: the frame round the panel's routes, the family's theme switch, the IAM's update line above
+     every page, and the family's footer under it. -->
+<anotoki-admin-frame [brand]="brand" [person]="person" [back]="back" [signOut]="signOut" [groups]="groups()">
+    <anotoki-theme-toggle adminFrameTheme />
+    <anotoki-update-banner adminFrameNotice />
+    <router-outlet />
+    <anotoki-site-footer adminFrameFooter [version]="version" whatsNew (whatsNew)="whatsNew()" feedback />
+</anotoki-admin-frame>

@@ -291,6 +291,8 @@ export class GalleryComponent {
     { id: 'people', label: 'People', path: '/people', lang: 'en', badge: 7, badgeLabel: '7 people' },
     { id: 'migrations', label: 'Migrations', path: '/migrations', lang: 'en', badge: 4, badgeLabel: '4 waiting', badgeTone: 'warning' },
     { id: 'feedback', label: 'Feedback form', path: '/feedback', lang: 'en' },
+    // 0.10.0: the admin panel's frame, a page of its own (no bar, no footer of the showcase's round it).
+    { id: 'admin-frame', label: 'Admin frame', path: '/admin-frame', lang: 'en' },
     { id: 'terms', label: 'Terms', path: '/terms' },
     { id: 'privacy', label: 'Privacy', path: '/privacy' },
   ];

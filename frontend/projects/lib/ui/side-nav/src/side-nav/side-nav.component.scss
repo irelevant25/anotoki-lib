@@ -7,8 +7,10 @@
 }
 
 // Beside the page: as tall as the site's column lets it be, scrolling inside it when the links are more (its padding
-// keeps every link's focus ring clear of the edges it would be cut at).
+// keeps every link's focus ring clear of the edges it would be cut at). Positioned (0.10.0), so that a badge's words for
+// the ear (visually hidden: position absolute) are the list's and scroll in it - never past the window's foot.
 .anotoki-side-nav__nav {
+  position: relative;
   box-sizing: border-box;
   max-height: 100%;
   padding: 0.75rem 0.5rem;
@@ -22,6 +24,13 @@
   max-height: none;
   padding: 0.25rem 0;
   overflow: visible;
+}
+
+// What stands above the navigation in the drawer (0.10.0, `drawerTop`): a line between it and the navigation.
+.anotoki-side-nav__drawer-top {
+  margin: 0 0 0.5rem;
+  padding: 0 0 0.75rem;
+  border-bottom: 1px solid kit.token(border);
 }
 
 .anotoki-side-nav__group + .anotoki-side-nav__group {

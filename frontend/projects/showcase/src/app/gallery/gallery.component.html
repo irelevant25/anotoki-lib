@@ -227,7 +227,7 @@
 
     <section class="section" aria-labelledby="inputs-title">
         <h2 class="section-title" id="inputs-title">Inputs (0.6.0)</h2>
-        <!-- The account's date format, as a site passes it (AccountPreferences' date_format), or the page language's own. -->
+        <!-- The account's date format, as a site passes it (AccountPreferences' date_format), or none: the kit's choice (0.11.1). -->
         <anotoki-segmented data-date-format label="Date format" [options]="dateFormats" [(value)]="dateFormat" />
         <div class="form-grid" data-date-fields>
             <anotoki-date-field label="Opens" [(value)]="opens" [format]="dateFormatValue()" min="2026-10-01" max="2027-06-30" hint="From 1 October 2026 to the end of June 2027" />

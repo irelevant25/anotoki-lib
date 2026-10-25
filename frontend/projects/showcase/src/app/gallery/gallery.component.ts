@@ -360,9 +360,13 @@ export class GalleryComponent {
 
   // ── 0.6.0's input pieces ────────────────────────────────────────────────────
 
-  /** The account's date format (AccountPreferences' date_format in a site), or the page language's own. */
+  /**
+   * The account's date format as a page passes it (AccountPreferences' date_format in a site), or none: then the field
+   * follows the kit (0.11.1) - the account's order the dates page chooses (provideAnotokiUi's dateChoices), else the
+   * locale's own (en-GB in English, sk-SK in Slovak).
+   */
   protected readonly dateFormats: SegmentedOption[] = [
-    { value: 'auto', label: 'The language’s' },
+    { value: 'auto', label: 'The kit’s' },
     { value: 'dmy_dot', label: '6.10.2026' },
     { value: 'dmy_slash', label: '06/10/2026' },
     { value: 'mdy_slash', label: '10/06/2026' },

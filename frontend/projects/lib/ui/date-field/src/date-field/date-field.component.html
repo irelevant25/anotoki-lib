@@ -42,7 +42,7 @@
             </button>
         </span>
     </div>
-    <anotoki-date-calendar #days align="end" [label]="choose.text" [value]="value()" [dayMonth]="dayMonth()" [min]="min()" [max]="max()" (choose)="onChoose($event)" />
+    <anotoki-date-calendar #days align="end" [label]="choose.text" [locale]="locale()" [value]="value()" [dayMonth]="dayMonth()" [min]="min()" [max]="max()" (choose)="onChoose($event)" />
     @if (hint() && !shownError()) {
         <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
     }

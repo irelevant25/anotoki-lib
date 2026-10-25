@@ -109,11 +109,24 @@ final class RobotsTest extends DatabaseTestCase
                 ['https://genshin.anotoki.eu/terms', null],
                 ['https://genshin.anotoki.eu/database/characters/12', '2026-10-24'],
                 ['https://genshin.anotoki.eu/database/characters/Hu%20Tao', '2026-10-20'],
-                ['https://genshin.anotoki.eu/database/weapons/A%26B%20%3CC%3E', null],
+                ['https://genshin.anotoki.eu/database/weapons/A&B%20%3CC%3E', null],
                 ['https://genshin.anotoki.eu/database/weapons/%C5%BD', null],
             ],
             $this->urls((string) $response->getBody()),
             'each page once, every segment encoded, a lastmod only where it is a date',
+        );
+    }
+
+    public function testASegmentIsWrittenAsTheAppsRouterWritesIt(): void
+    {
+        // 0.11.1: a ":" in a segment was "%3A", where the app's own links keep it (Angular's router, every anotoki site's)
+        // as RFC 3986 lets a segment hold it - so the sitemap's address and the page's own were two addresses of one page.
+        // Now each segment is the router's: ":", "@", "$", ",", "&" and "!", "*", "'" kept, "(" and ")" encoded.
+        $robots = new Robots(static fn(): string => 'https://academy.example', pages: ['/kana/a:i', '/x/a:b@c$d,e&f!g*h\'i(j)k;l=m+n o~', '/given/a%3Ai']);
+        self::assertSame(
+            ['https://academy.example/kana/a:i', 'https://academy.example/x/a:b@c$d,e&f!g*h\'i%28j%29k%3Bl%3Dm%2Bn%20o~', 'https://academy.example/given/a:i'],
+            array_column($this->urls((string) $robots->sitemapXml()), 0),
+            'every segment as the app links to it - a ":" given encoded too',
         );
     }
 

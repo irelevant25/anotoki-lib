@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { draw, kitProviders, press, settle, words } from '../../../src/testing';
 import { NumberFieldComponent, readNumber } from './number-field.component';
@@ -149,4 +149,40 @@ describe('<anotoki-number-field>: a number typed, its value a number or null', (
     await leave('price');
     expect(error('price')).toBe('The price is not saved yet.');
   });
+
+  it('tells every input that changes what the box holds - null included: emptied, then a number it does not take (0.11.1)', async () => {
+    const told = await draw(ToldPageComponent);
+    const box = told.nativeElement.querySelector('input') as HTMLInputElement;
+    // What a page beside the field hears through the model itself (genshin's directive), as (valueChange) hears it.
+    const heard: (number | null)[] = [];
+    told.componentInstance.field().value.subscribe((value) => heard.push(value));
+    const typeIn = async (text: string) => {
+      box.value = text;
+      box.dispatchEvent(new Event('input'));
+      await settle(told);
+    };
+
+    await typeIn('');
+    // Over the largest (6), then under the smallest (1): no number the field takes - null again, told again.
+    await typeIn('7');
+    await typeIn('0');
+    await typeIn('3');
+    // The same number, written otherwise: told again.
+    await typeIn('3 ');
+    expect(told.componentInstance.told).toEqual([null, null, null, 3, 3]);
+    expect(heard).toEqual([null, null, null, 3, 3]);
+    expect(told.componentInstance.level()).toBe(3);
+    told.nativeElement.remove();
+  });
 });
+
+@Component({
+  selector: 'anotoki-test-told-number',
+  imports: [NumberFieldComponent],
+  template: `<anotoki-number-field label="Level" [min]="1" [max]="6" [(value)]="level" (valueChange)="told.push($event)" />`,
+})
+class ToldPageComponent {
+  readonly level = signal<number | null>(5);
+  readonly told: (number | null)[] = [];
+  readonly field = viewChild.required(NumberFieldComponent);
+}

@@ -121,9 +121,11 @@ const PIECES = ['config', 'dom', 'icon', 'spinner', 'button', 'badge', 'alert', 
  * @anotoki/lib/feedback/form's, which the Contact page opens too) comes with the press (its first load is "the footer"
  * below).
  *
- * site-settings (0.11.0): the site settings on a site's pages - what every page is told, the announcement bar, Page
- * access's guard and the administrators' notice, with their words read by themselves (4.4 at 0.11.0, the bar's and the
- * notice's templates and styles twice in the FESM as every component's). The administrators' page is
+ * site-settings (0.11.0): the site settings on a site's pages - what every page is told, Page access's guard and the
+ * two elements (4.4 at 0.11.0, with the bar and the notice drawn in it and their words: in every site's first load, an
+ * announcement or none; 3.6 at 0.11.1). Since 0.11.1 the bar and the notice as they are drawn are entry points of their
+ * own (site-settings/bar, site-settings/notice) that the elements fetch only when there is something to draw - each
+ * with the kit's pieces it draws and the words, which no first load carries any more. The administrators' page is
  * @anotoki/lib/admin/site-settings, on a lazy admin route; the closed sign @anotoki/lib/migrations/maintenance, loaded by
  * the status page as the site says it is closed.
  */
@@ -142,7 +144,7 @@ const LIMITS = {
   '@anotoki/lib/error-report': 3,
   '@anotoki/lib/legal': 3,
   '@anotoki/lib/footer': 3,
-  '@anotoki/lib/site-settings': 5,
+  '@anotoki/lib/site-settings': 4,
 };
 const UI_AND_SHELL = 28.5;
 
@@ -220,7 +222,9 @@ const MAY_IMPORT = {
   // The fields; since 0.6.0 the field base and the select are entry points of their own, which it names (a first load
   // can take the select alone, without every field).
   '@anotoki/lib/ui/forms': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/select'],
-  '@anotoki/lib/ui/field': ['@anotoki/lib/ui/config', '@anotoki/lib/ui/dom'],
+  // The field base counts its ids itself (0.11.1): ui/dom's one file, every DOM helper of the kit, stays out of a first
+  // load that draws a field - beside lazy pages it took the select's whole slack (SHARED_SLACK).
+  '@anotoki/lib/ui/field': ['@anotoki/lib/ui/config'],
   '@anotoki/lib/ui/select': [...PIECES, '@anotoki/lib/ui/field'],
   // The tabs and, 0.6.0, the link tabs: their arrows' words (read by the tabs themselves, READ_BY_THEIR_PAGES below)
   // and which link is the page's (ui/current-link).
@@ -345,10 +349,15 @@ const MAY_IMPORT = {
   // The admin panel's frame (0.10.0, genshin's for every site): the core's pieces it draws and the kit's side navigation
   // (its drawer on a phone). Never the shell: the theme's switch - the shell's - is the site's, in the frame's slot.
   '@anotoki/lib/admin/frame': [...PIECES, '@anotoki/lib/ui/side-nav'],
-  // The site settings (0.11.0): what the pages show - the announcement bar, Page access's guard, the administrators'
-  // notice (closed for maintenance, as the public settings say) - and read their own words
-  // (READ_BY_THEIR_PAGES); the administrators' page, an admin tool's page that tells the pages what it saved.
-  '@anotoki/lib/site-settings': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/site-settings'],
+  // The site settings (0.11.0): what every page is told, Page access's guard, and the two elements - which, since
+  // 0.11.1, fetch what they draw by import() alone, as there is something to draw: the bar (an announcement to show)
+  // and the notice (an administrator with something to be told), each an entry point of its own that draws the kit's
+  // pieces and reads its own words (READ_BY_THEIR_PAGES) - and imports nothing of the module that loads it (ng-packagr
+  // allows no cycle). The elements themselves take the kit's configuration alone (the page's language): no piece, no
+  // word. The administrators' page, an admin tool's page that tells the pages what it saved.
+  '@anotoki/lib/site-settings': ['@anotoki/lib/ui/config', '@anotoki/lib/site-settings/bar', '@anotoki/lib/site-settings/notice'],
+  '@anotoki/lib/site-settings/bar': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/site-settings'],
+  '@anotoki/lib/site-settings/notice': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/site-settings'],
   '@anotoki/lib/admin/site-settings': [...ADMIN_PAGE, '@anotoki/lib/migrations', '@anotoki/lib/site-settings'],
   // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it -
   // its message anybody's (0.7.2): the auth module's marker, never the auth module - and, 0.8.0, the form in the kit's
@@ -408,8 +417,9 @@ const READ_BY_THEIR_PAGES = {
   '@anotoki/lib/words/multiselect': ['@anotoki/lib/ui/multiselect'],
   '@anotoki/lib/words/audio-player': ['@anotoki/lib/ui/audio-player'],
   '@anotoki/lib/words/html-editor': ['@anotoki/lib/ui/html-editor'],
-  // The site settings' pieces' (0.11.0): the announcement bar and the administrators' notice read them themselves.
-  '@anotoki/lib/words/site-settings': ['@anotoki/lib/site-settings'],
+  // The site settings' pieces' (0.11.0): the announcement bar and the administrators' notice read them themselves -
+  // since 0.11.1 as they are drawn, each an entry point its element fetches when there is something to draw.
+  '@anotoki/lib/words/site-settings': ['@anotoki/lib/site-settings/bar', '@anotoki/lib/site-settings/notice'],
   // The closed sign's (0.11.0): read by the sign, loaded only while the site is closed.
   '@anotoki/lib/words/maintenance': ['@anotoki/lib/migrations/maintenance'],
 };
@@ -498,11 +508,14 @@ const FIRST_LOADS = [
     words: [...KIT_WORDS, 'legalLinks', 'footer'],
   },
   {
-    // 0.11.0: what a site offering the announcement and page access puts on every page.
+    // 0.11.0: what a site offering the announcement and page access puts on every page - since 0.11.1 what boot and the
+    // guard need and the two elements, which fetch the bar and the notice as there is something to draw: no piece of
+    // the kit they draw, and none of their words (10.1 alone, 10.5 beside lazy pages, at 0.11.0; 3.9 and 4.2 at 0.11.1,
+    // the kit's configuration and words - the page's language - 2.4 of it, which every site's first load holds anyway).
     title: 'the site settings',
     imports: { '@anotoki/lib/site-settings': ['SiteSettings', 'provideAnotokiSiteSettings', 'pageAccessGuard', 'AnnouncementComponent', 'PageNoticeComponent'] },
-    limit: 11.5,
-    words: [...KIT_WORDS, 'siteSettings'],
+    limit: 5,
+    words: KIT_WORDS,
   },
 ];
 

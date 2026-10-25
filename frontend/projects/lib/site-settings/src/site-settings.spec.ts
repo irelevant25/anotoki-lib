@@ -6,6 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { kitProviders, settle, words } from '../../ui/src/testing';
 import { AnnouncementComponent, announcementMark } from './announcement/announcement.component';
 import { provideAnotokiSiteSettings } from './config';
+import { drawnParts } from './drawn-part';
 import { pageAccessGuard } from './page-access.guard';
 import { PageNoticeComponent } from './page-notice/page-notice.component';
 import { SiteSettings, pageMatches } from './site-settings.service';
@@ -284,6 +285,137 @@ describe('The site settings on the pages', () => {
       await settle(fixture);
       expect(notices()).toEqual(['limited']);
       expect(words(fixture.nativeElement.querySelector('[data-notice="limited"]'))).toContain('Zobrazuje sa editorom a administrátorom.');
+    });
+  });
+
+  /**
+   * 0.11.1: the bar and the notice are entry points of their own (@anotoki/lib/site-settings/bar, /notice), fetched by
+   * their elements only when there is something to draw - so that no first load carries them, their words or the kit's
+   * pieces they draw (the package check holds the first load to it). Each fetch is counted here.
+   */
+  describe('drawn only when there is something to draw', () => {
+    let fixture: ComponentFixture<FrameComponent>;
+    let fetchBar: ReturnType<typeof vi.spyOn>;
+    let fetchNotice: ReturnType<typeof vi.spyOn>;
+    const bar = () => fixture.nativeElement.querySelector('anotoki-announcement [data-announcement]') as HTMLElement | null;
+    const notices = () => Array.from(fixture.nativeElement.querySelectorAll('anotoki-page-notice anotoki-alert')).map((alert) => (alert as HTMLElement).getAttribute('data-notice'));
+    /** What an element holds: nothing at all (an anchor comment is no child), while it has nothing to draw. */
+    const held = (selector: string) => (fixture.nativeElement.querySelector(selector) as HTMLElement).children.length;
+
+    async function frame(): Promise<void> {
+      fixture = TestBed.createComponent(FrameComponent);
+      document.body.appendChild(fixture.nativeElement);
+      await settle(fixture);
+    }
+
+    beforeEach(() => {
+      // Nothing has come yet: what an earlier case fetched is forgotten.
+      drawnParts.came = {};
+      fetchBar = vi.spyOn(drawnParts.load, 'bar');
+      fetchNotice = vi.spyOn(drawnParts.load, 'notice');
+    });
+
+    afterEach(() => {
+      fixture?.nativeElement.remove();
+      vi.restoreAllMocks();
+    });
+
+    it('the bar: never fetched while there is none to show - none written, hidden, or in no language the page reads', async () => {
+      setUp();
+      await load({ announcement: null, pages: [] });
+      await frame();
+      expect(fetchBar).not.toHaveBeenCalled();
+      expect(held('anotoki-announcement')).toBe(0);
+
+      // Written in German alone, on an English page: nothing to show.
+      await load({ announcement: { level: 'info', message: { de: 'Heute Nacht' } }, pages: [] });
+      await settle(fixture);
+      expect(fetchBar).not.toHaveBeenCalled();
+
+      // Hidden in this browser before (a page loaded again): nothing to show.
+      fixture.nativeElement.remove();
+      fixture.destroy();
+      localStorage.setItem(KEY, announcementMark({ level: 'info', message: { en: 'Down tonight' } }));
+      await load({ announcement: { level: 'info', message: { en: 'Down tonight' } }, pages: [] });
+      await frame();
+      expect(fetchBar).not.toHaveBeenCalled();
+      expect(held('anotoki-announcement')).toBe(0);
+      expect(fetchNotice).not.toHaveBeenCalled();
+    });
+
+    it('the bar: fetched as there is one to show, and drawn - once: a new announcement, or a frame made again, draws the same part', async () => {
+      setUp();
+      await load({ announcement: { level: 'warning', message: { en: 'Down tonight' } }, pages: [] });
+      await frame();
+      expect(fetchBar).toHaveBeenCalledTimes(1);
+      expect(bar()?.getAttribute('data-level')).toBe('warning');
+      expect(words(bar()?.querySelector('.anotoki-announcement__message'))).toBe('Down tonight');
+      expect(held('anotoki-announcement')).toBe(1);
+
+      await load({ announcement: { level: 'danger', message: { en: 'Down all night' } }, pages: [] });
+      await settle(fixture);
+      expect(words(bar()?.querySelector('.anotoki-announcement__message'))).toBe('Down all night');
+      expect(bar()?.classList).toContain('anotoki-announcement__bar--danger');
+
+      // A frame made again (the IAM's sign-in pages, then its account pages): drawn at once, nothing fetched again.
+      fixture.nativeElement.remove();
+      fixture.destroy();
+      fixture = TestBed.createComponent(FrameComponent);
+      fixture.detectChanges();
+      expect(bar()).not.toBeNull();
+      expect(fetchBar).toHaveBeenCalledTimes(1);
+
+      // Hidden: taken away - the element holds nothing again.
+      bar()!.querySelector<HTMLButtonElement>('[data-hide]')!.click();
+      await settle(fixture);
+      expect(held('anotoki-announcement')).toBe(0);
+      expect(fetchNotice).not.toHaveBeenCalled();
+    });
+
+    it('the notice: never fetched for anybody but an administrator, nor for one with nothing to be told', async () => {
+      setUp();
+      signedIn.set(true);
+      await load({ maintenance: false, announcement: null, pages: [{ path: '/members', visibility: 'USER', blocked: false }] });
+      const router = TestBed.inject(Router);
+      // Somebody signed in, on a page kept for people signed in: nothing they are ever told.
+      await router.navigateByUrl('/members');
+      await frame();
+      expect(fetchNotice).not.toHaveBeenCalled();
+
+      // An administrator on a page no row governs, the site open: nothing to tell.
+      roles.set(['ADMIN']);
+      await router.navigateByUrl('/elsewhere');
+      await settle(fixture);
+      expect(fetchNotice).not.toHaveBeenCalled();
+      expect(held('anotoki-page-notice')).toBe(0);
+
+      // On a page kept for some readers: fetched, and told.
+      await router.navigateByUrl('/members');
+      await settle(fixture);
+      expect(fetchNotice).toHaveBeenCalledTimes(1);
+      expect(notices()).toEqual(['limited']);
+
+      // Back where there is nothing to tell: taken away - the element holds nothing, as a frame's :empty reads it.
+      await router.navigateByUrl('/elsewhere');
+      await settle(fixture);
+      expect(held('anotoki-page-notice')).toBe(0);
+      expect(fetchBar).not.toHaveBeenCalled();
+    });
+
+    it('a part that cannot be fetched (offline, a release swapped) is said in the console, draws nothing, and is asked for again', async () => {
+      setUp();
+      const said = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      fetchBar.mockRejectedValueOnce(new Error('offline'));
+      await load({ announcement: { level: 'info', message: { en: 'Down tonight' } }, pages: [] });
+      await frame();
+      expect(bar()).toBeNull();
+      expect(said).toHaveBeenCalledWith('[anotoki site settings] the announcement bar could not be loaded', expect.any(Error));
+
+      // The next announcement asks again - and is drawn.
+      await load({ announcement: { level: 'info', message: { en: 'Down tonight, at ten' } }, pages: [] });
+      await settle(fixture);
+      expect(fetchBar).toHaveBeenCalledTimes(2);
+      expect(words(bar()?.querySelector('.anotoki-announcement__message'))).toBe('Down tonight, at ten');
     });
   });
 });

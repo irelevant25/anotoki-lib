@@ -48,6 +48,16 @@ const FORMATS: Readonly<Record<DateFieldFormat, readonly [DatePattern, DatePatte
   ],
 };
 
+/**
+ * The locale a field writes and reads its days in, and its calendar names them in - as the kit's dates write theirs
+ * (@anotoki/lib/ui/dates): the kit's `locale` (provideAnotokiUi's; the translations module's forKit() gives en-GB,
+ * sk-SK), else the page's language - English as the family writes it, en-GB: 25/10/2026, never the United States'
+ * 10/25/2026, which read "01/03/2024" as 3 January on a site whose lists write 1 March (genshin's, 0.11.1).
+ */
+export function fieldLocale(given: string | null | undefined, language: string): string {
+  return given ? given : language === 'en' ? 'en-GB' : language;
+}
+
 /** Intl's writer of days in a language - in English where the browser does not know the language - in UTC. */
 export function intlDate(language: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   try {
@@ -58,8 +68,9 @@ export function intlDate(language: string, options: Intl.DateTimeFormatOptions):
 }
 
 /**
- * The language's own way of writing a day in numbers, read from Intl: "5. 1. 2026" in Slovak, "1/5/2026" in English
- * ("5. 1." and "1/5" without the year). The account's dmy_dot where Intl writes something else.
+ * A locale's own way of writing a day in numbers, read from Intl: "5. 1. 2026" in Slovak, "05/01/2026" in British
+ * English, "1/5/2026" in the United States' ("5. 1." and "05/01" without the year). The account's dmy_dot where Intl
+ * writes something else.
  */
 function languagePattern(language: string, withYear: boolean): DatePattern {
   const fallback = FORMATS.dmy_dot[withYear ? 0 : 1];
@@ -90,7 +101,7 @@ function languagePattern(language: string, withYear: boolean): DatePattern {
   }
 }
 
-/** How a field writes and reads its days: in the account's format, or the page language's own; with the year or without. */
+/** How a field writes and reads its days: in the account's format, or the locale's own (fieldLocale()); with the year or without. */
 export function datePattern(format: DateFieldFormat | null | undefined, language: string, dayMonth: boolean): DatePattern {
   const fixed = format ? FORMATS[format] : undefined;
   return fixed ? fixed[dayMonth ? 1 : 0] : languagePattern(language, !dayMonth);

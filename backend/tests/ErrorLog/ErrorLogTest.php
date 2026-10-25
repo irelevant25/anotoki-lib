@@ -287,6 +287,30 @@ final class ErrorLogTest extends TestCase
         self::assertContains('update_pending', array_column($this->lines(), 'code'), 'a site that wants them written says so');
     }
 
+    public function testTheSiteSettingsStatesAreNoFailuresEither(): void
+    {
+        // 0.11.1: a site its administrators closed answers 503 maintenance to every visit, and a page they switched off
+        // 423 page_locked to every call of its API (written where a site keeps every 4xx, as genshin does): states somebody
+        // put the site into on purpose - Japanese Academy named maintenance itself on 0.11.0.
+        [$app] = $this->app(['responses' => static fn(int $status): bool => $status >= 400]);
+        foreach (['maintenance' => 503, 'page_locked' => 423, 'locked' => 423] as $code => $status) {
+            $app->get('/api/state/' . $code, static function (ServerRequestInterface $request, ResponseInterface $response) use ($code, $status): ResponseInterface {
+                $response->getBody()->write((string) json_encode(['code' => $code, 'message' => 'Not now.']));
+
+                return $response->withStatus($status)->withHeader('Content-Type', 'application/json');
+            });
+        }
+        for ($visit = 0; $visit < 3; $visit++) {
+            foreach (['maintenance', 'page_locked', 'locked'] as $code) {
+                $this->send($app, 'GET', '/api/state/' . $code);
+            }
+        }
+
+        self::assertSame(['locked'], array_values(array_unique(array_column($this->lines(), 'code'))), 'closed for maintenance, a page switched off: states, not failures - another 423 is written');
+        self::assertContains('maintenance', ErrorLog::EXPECTED_CODES);
+        self::assertContains('page_locked', ErrorLog::EXPECTED_CODES);
+    }
+
     public function testAFailureOnAnAdminToolsRouteNamesWhoAskedFromTheRequestTheRouteSaw(): void
     {
         // The site's reader of who asks finds what its own middleware set - which the outer middleware never sees.

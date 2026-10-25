@@ -87,7 +87,7 @@ const READ_BY_THEIR_PAGES = {
   htmlEditor:
     "the kit's HTML editor (@anotoki/lib/ui/html-editor), which reads them itself, never registered - never by the kit's core nor by the translations module, so they reach a site with the editor alone.",
   siteSettings:
-    "the site settings' pieces on a site's pages (@anotoki/lib/site-settings: the announcement bar, the administrators' notice), which read them themselves, never registered - never by the kit nor by the translations module, so they reach a site with those pieces alone.",
+    "the site settings' announcement bar and administrators' notice as they are drawn (@anotoki/lib/site-settings/bar and /notice, which <anotoki-announcement> and <anotoki-page-notice> fetch only when there is something to draw), which read them themselves, never registered - never by the kit, the site settings' first load nor the translations module, so they reach a site with those parts alone.",
   maintenance:
     'the closed sign (@anotoki/lib/migrations/maintenance, which the status page loads while the site is closed for maintenance), which reads them itself, never registered - never by the kit, the gate nor the translations module, so they reach a site with the closed sign alone.',
 };

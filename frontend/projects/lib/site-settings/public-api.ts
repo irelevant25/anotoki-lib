@@ -3,7 +3,11 @@
  * every page is told (SiteSettings, from the site's GET /api/site-settings, read once at boot), the announcement bar
  * (<anotoki-announcement>), Page access's guard (pageAccessGuard) and what an administrator is told about the page
  * they are on (<anotoki-page-notice>). Small - a site whose pages offer an announcement or page access has it on every
- * page - and its words (`anotoki.siteSettings.*`, @anotoki/lib/words/site-settings) are read by its pieces themselves.
+ * page: since 0.11.1 it holds only what boot and the guard need, and the two elements, which fetch what they draw as
+ * there is something to draw - the bar (@anotoki/lib/site-settings/bar) while there is an announcement to show, the
+ * notice (@anotoki/lib/site-settings/notice) for an administrator with something to be told - with the kit's pieces
+ * they draw and their words (`anotoki.siteSettings.*`, @anotoki/lib/words/site-settings, read by those parts
+ * themselves). No first load carries either.
  *
  * Getting in is the migrations module's (@anotoki/lib/migrations): the site's status says `maintenance`, and the
  * gate draws the closed sign. The administrators' page is @anotoki/lib/admin/site-settings, on a lazy admin route.

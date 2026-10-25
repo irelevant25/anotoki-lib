@@ -1,8 +1,7 @@
-// A notice or two above the page, as wide as the site gives them; nothing at all while there is none.
+// A notice or two above the page (@anotoki/lib/site-settings/notice), as wide as the site gives them; nothing at all
+// while there is none - the element holds nothing then, so a frame's `:empty` sees it so too.
 :host {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: block;
 }
 
 :host:empty {

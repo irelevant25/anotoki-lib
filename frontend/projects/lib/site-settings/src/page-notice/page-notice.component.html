@@ -1,3 +1,2 @@
-@for (notice of notices(); track notice.id) {
-    <anotoki-alert class="anotoki-page-notice__notice" [attr.data-notice]="notice.id" [attr.lang]="notice.lang" [tone]="notice.tone" [heading]="notice.title">{{ notice.text }}</anotoki-alert>
-}
+<!-- The notice (@anotoki/lib/site-settings/notice), fetched and drawn here while there is something to tell an administrator. -->
+<ng-container #slot />

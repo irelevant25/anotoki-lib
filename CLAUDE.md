@@ -16,7 +16,8 @@ the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker
 `migrations/page`, `migrations/maintenance` (0.11.0: the closed sign), `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `admin/frame` (0.10.0:
 `<anotoki-admin-frame>`, the admin panel's frame), `site-settings` and `admin/site-settings` (0.11.0: the site
-settings on a site's pages and the administrators' page), `feedback`,
+settings on a site's pages and the administrators' page), `site-settings/bar` and `site-settings/notice` (0.11.1:
+the bar and the notice as drawn, which their elements fetch when there is something to draw), `feedback`,
 `feedback/form` (with 0.8.0's `<anotoki-feedback-dialog>`), `error-report`, `error-report/marker`, `legal`,
 `legal/pages`, `legal/about` and `legal/support` (0.8.0), `footer` (0.6.3), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
@@ -158,8 +159,12 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); `admin/frame` the core's pieces and
   `ui/side-nav` - never the shell: the theme's switch comes in its slot (0.10.0); `migrations` the closed sign
   (`migrations/maintenance`) by import() alone, which imports the core's pieces, `ui/piece-words` and its words, never
-  the module that loads it; `site-settings` the core's pieces, `ui/piece-words` and its words; `admin/site-settings`
-  an admin page's, `migrations` and `site-settings` (0.11.0); `ui/code-editor` the core's
+  the module that loads it; `site-settings` the kit's configuration and - by import() alone - `site-settings/bar` and
+  `site-settings/notice` (0.11.1: the bar and the notice as drawn, each the core's pieces, `ui/piece-words` and its
+  words, never the module that loads it, fetched only when there is something to draw: no first load carries what they
+  draw); `admin/site-settings` an admin page's, `migrations` and `site-settings` (0.11.0); `ui/field` the kit's
+  configuration alone (0.11.1: it counts its ids itself - ui/dom's one file stays out of a field's first load);
+  `ui/code-editor` the core's
   pieces, `ui/field` and the highlighters, `ui/code-json` and `ui/code-sql`, which import nothing (`migrations/page`
   takes `ui/code-sql` alone, never the editor); 0.11.0's `ui/rich-html` and `ui/search` nothing, `ui/file-size` and
   `ui/dates` the kit's configuration (and the dates their words), `ui/html-editor` the core's pieces, `ui/field`,

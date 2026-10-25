@@ -1,4 +1,19 @@
-import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, computed, input, linkedSignal, model, output, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  ModelSignal,
+  OutputEmitterRef,
+  OutputRefSubscription,
+  booleanAttribute,
+  computed,
+  input,
+  linkedSignal,
+  model,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FieldBase } from '@anotoki/lib/ui/field';
 import { IconComponent } from '@anotoki/lib/ui/icon';
 import { PieceWord, pieceWords } from '@anotoki/lib/ui/piece-words';
@@ -35,6 +50,27 @@ function decimalsOf(number: number): number {
 }
 
 /**
+ * Lets a model tell its value again where it has not changed - which a model never does by itself (its set() tells a
+ * new value alone) - and gives the function that tells. Whoever listens to the model hears both: a template's
+ * (valueChange) and [(value)], an outputBinding(), a subscribe(). Called where the model is made: an injection context.
+ */
+function toldAgain<T>(value: ModelSignal<T>): (told: T) => void {
+  const again = new OutputEmitterRef<T>();
+  const subscribe = value.subscribe.bind(value);
+  value.subscribe = (callback: (told: T) => void): OutputRefSubscription => {
+    const first = subscribe(callback);
+    const second = again.subscribe(callback);
+    return {
+      unsubscribe: () => {
+        first.unsubscribe();
+        second.unsubscribe();
+      },
+    };
+  };
+  return (told) => again.emit(told);
+}
+
+/**
  * A number typed: `<anotoki-number-field label="Attempts a day" [(value)]="attempts" [min]="1" [max]="10" />`.
  *
  * The value is a number - or null while the field holds none: nothing typed, or a text that is no number the field
@@ -43,7 +79,9 @@ function decimalsOf(number: number): number {
  * `min` (or from 0); 'any' any number. Typing is lenient: a dot or a comma before the decimals, spaces between the
  * digits; once the person leaves the field (or presses Enter) it writes the number the page's way ("1,5" in Slovak) -
  * never under the caret - or says why it is not taken: "Write a whole number.", "The largest number is 10." (the
- * library's `anotoki.numberField.*`; the page's own `error` comes first).
+ * library's `anotoki.numberField.*`; the page's own `error` comes first). Every input that changes what the box holds
+ * is told (`valueChange`), the value as it is then - null included, from an emptied box to a number the field does not
+ * take (0.11.1): a page that reads the box beside its value ("required" while it is empty) hears of each.
  *
  * A real text input with a number keyboard on a phone (inputmode numeric, or decimal for a step with decimals; the
  * whole keyboard where the number may be below nought, as a phone's number pad has no minus) - never type="number",
@@ -63,8 +101,10 @@ function decimalsOf(number: number): number {
 export class NumberFieldComponent extends FieldBase {
   protected readonly word = pieceWords(NUMBER_FIELD_LIBRARY_WORDS);
 
-  /** The number; null while the field holds none. */
+  /** The number; null while the field holds none. Told on every input, null included, whether it changed or not. */
   readonly value = model<number | null>(null);
+  /** Tells the value where an input left it as it was: null and null, an emptied box and a number the field does not take. */
+  private readonly tellAgain = toldAgain(this.value);
   /** The smallest number taken; null for no bound. */
   readonly min = input<number | null>(null);
   /** The largest number taken; null for no bound. */
@@ -151,7 +191,13 @@ export class NumberFieldComponent extends FieldBase {
   protected onInput(event: Event): void {
     const text = (event.target as HTMLInputElement).value;
     this.text.set(text);
-    this.value.set(this.numberOf(text));
+    // Told either way: a new number by the model itself, the same one again - the box changed all the same.
+    const number = this.numberOf(text);
+    if (Object.is(this.value(), number)) {
+      this.tellAgain(number);
+    } else {
+      this.value.set(number);
+    }
     if (this.problem()) {
       this.problem.set(this.problemOf(text));
     }

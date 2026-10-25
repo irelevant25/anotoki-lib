@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { TextFieldComponent } from '@anotoki/lib/ui/forms';
 import { draw, kitProviders, press, settle, words } from '../../../src/testing';
 import { DialogComponent, DialogSize } from './dialog.component';
 
@@ -143,6 +144,82 @@ describe('<anotoki-dialog>: a modal dialog on <dialog>', () => {
     expect(host.querySelector<HTMLButtonElement>('.anotoki-dialog__close')!.disabled).toBe(true);
     press(el('name'), 'Escape');
     expect(page.dismissed).toBe(0);
+  });
+});
+
+/** A form of its own inside the dialog, as a site's is: its fields in a view of their own, the second one `autofocus`. */
+@Component({
+  selector: 'anotoki-test-dialog-form',
+  imports: [TextFieldComponent],
+  template: '<anotoki-text-field label="Nickname" /><anotoki-text-field label="Name" autofocus />',
+})
+class DialogFormComponent {}
+
+@Component({
+  selector: 'anotoki-test-dialog-autofocus',
+  imports: [DialogComponent, DialogFormComponent, TextFieldComponent],
+  template: `
+    @if (open() === 'form') {
+      <anotoki-dialog heading="Rename"><anotoki-test-dialog-form /></anotoki-dialog>
+    }
+    @if (open() === 'inline') {
+      <anotoki-dialog heading="Rename">
+        @if (ready()) {
+          <anotoki-text-field label="Nickname" /><anotoki-text-field label="Name" [autofocus]="true" />
+        }
+      </anotoki-dialog>
+    }
+  `,
+})
+class AutofocusPageComponent {
+  readonly open = signal<'form' | 'inline' | null>(null);
+  readonly ready = signal(true);
+}
+
+/**
+ * 0.11.1: a kit field's `autofocus` inside the dialog - on the field's element, which takes no focus itself, or bound
+ * - took the focus to the Close button. A browser gives no focus to what a closed <dialog> holds, and showModal() puts
+ * it on the first thing it can; a field drawn in a view of its own asked for the focus before the dialog was open.
+ */
+describe('<anotoki-dialog> and a kit field’s autofocus', () => {
+  let fixture: Awaited<ReturnType<typeof draw<AutofocusPageComponent>>>;
+  const field = (label: string) =>
+    Array.from(fixture.nativeElement.querySelectorAll('anotoki-text-field') as NodeListOf<HTMLElement>)
+      .find((element) => words(element.querySelector('label')) === label)!
+      .querySelector('input');
+
+  beforeEach(async () => {
+    // As a browser does: nothing a closed <dialog> holds takes the focus, and showModal() focuses the first thing it can.
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+      if (!this.closest('dialog:not([open])')) {
+        focus.call(this, options);
+      }
+    });
+    const showModal = HTMLDialogElement.prototype.showModal;
+    vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (this: HTMLDialogElement) {
+      showModal.call(this);
+      this.querySelector<HTMLElement>('button, input, [href]')?.focus();
+    });
+    TestBed.configureTestingModule({ providers: kitProviders() });
+    fixture = await draw(AutofocusPageComponent);
+  });
+
+  afterEach(() => {
+    fixture.nativeElement.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('on a field of a form inside the dialog: the focus in the field, not on Close', async () => {
+    fixture.componentInstance.open.set('form');
+    await settle(fixture);
+    expect(document.activeElement).toBe(field('Name'));
+  });
+
+  it('bound on a field the dialog draws in a block of its own: the focus in that field, not the first one', async () => {
+    fixture.componentInstance.open.set('inline');
+    await settle(fixture);
+    expect(document.activeElement).toBe(field('Name'));
   });
 });
 

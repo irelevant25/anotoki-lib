@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, booleanAttribute, computed, inject, input, output, signal, viewChild } from '@angular/core';
-import { AnotokiWords } from '@anotoki/lib/ui/config';
+import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, booleanAttribute, computed, input, output, signal, viewChild } from '@angular/core';
 import { tabbable, uniqueId } from '@anotoki/lib/ui/dom';
 import { IconComponent } from '@anotoki/lib/ui/icon';
 import { AnchoredPanel } from '@anotoki/lib/ui/menu';
@@ -10,7 +9,7 @@ import { ANY_YEAR, Day, addDays, addMonths, compareDays, dateOf, dayOfIso, daysI
 /** One day of the month shown. */
 interface CalendarDay {
   readonly day: Day;
-  /** Its whole name, for screen readers: "Wednesday, October 14, 2026" ("October 14" for a day and a month). */
+  /** Its whole name, for screen readers: "Wednesday, 14 October 2026" ("14 October" for a day and a month). */
   readonly name: string;
   readonly chosen: boolean;
   readonly today: boolean;
@@ -27,9 +26,10 @@ interface CalendarDay {
  * The focus goes into it on the chosen day (or today, or the nearest day the field takes): the grid is one Tab stop,
  * the arrow keys move a day and a week, Home and End to the week's ends, Page Up and Page Down a month (with Shift a
  * year), Enter or Space choose; Tab and Shift+Tab go round the dialog (its two month buttons and the grid) and never
- * out of it; Escape closes it, the focus back on the field. Every day is named whole ("Wednesday, October 14, 2026")
- * and the month's name over the grid is announced as it changes; today is aria-current="date", the chosen day
- * aria-selected. Days before `min` or after `max` are drawn but cannot be chosen, and the keyboard stops at them.
+ * out of it; Escape closes it, the focus back on the field. Every day is named whole, in the field's locale
+ * ("Wednesday, 14 October 2026"), and the month's name over the grid is announced as it changes; today is
+ * aria-current="date", the chosen day aria-selected. Days before `min` or after `max` are drawn but cannot be chosen,
+ * and the keyboard stops at them.
  *
  * A day and a month alone (`dayMonth`): the month's name with no year, the days in rows of seven from the 1st with no
  * weekdays (those belong to a year), February with its 29th, and December followed by January.
@@ -43,11 +43,12 @@ interface CalendarDay {
   host: { class: 'anotoki-date-calendar' },
 })
 export class CalendarComponent extends AnchoredPanel {
-  private readonly words = inject(AnotokiWords);
   protected readonly word = pieceWords(DATE_FIELD_LIBRARY_WORDS);
 
   /** The dialog's name: "Choose a date: Birthday". */
   readonly label = input.required<string>();
+  /** The locale the days are named in - the field's (fieldLocale(): the kit's, else the page's language, English as en-GB). */
+  readonly locale = input('en-GB');
   /** The field's value: the day drawn as chosen. */
   readonly value = input('');
   readonly dayMonth = input(false, { transform: booleanAttribute });
@@ -66,7 +67,7 @@ export class CalendarComponent extends AnchoredPanel {
   protected readonly focusDay = signal<Day>({ year: ANY_YEAR, month: 1, day: 1 });
   private readonly todayDay = signal<Day | null>(null);
 
-  private readonly language = computed(() => this.words.language());
+  private readonly language = computed(() => this.locale());
   private readonly minDay = computed(() => (this.dayMonth() ? null : dayOfIso(this.min(), false)));
   private readonly maxDay = computed(() => (this.dayMonth() ? null : dayOfIso(this.max(), false)));
   private readonly chosen = computed(() => dayOfIso(this.value(), this.dayMonth()));

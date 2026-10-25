@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, computed, effect, inject, input, linkedSignal, model, output, signal, viewChild } from '@angular/core';
+import { ANOTOKI_UI_CONFIG } from '@anotoki/lib/ui/config';
 import { AnotokiIcons, IconComponent } from '@anotoki/lib/ui/icon';
 import { FieldBase } from '@anotoki/lib/ui/field';
 import { PieceWord, pieceWords } from '@anotoki/lib/ui/piece-words';
 import { DATE_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/date-field';
 import { CalendarComponent } from '../calendar/calendar.component';
-import { DateFieldFormat, DatePattern, dayOfIso, datePattern, isoOf, readDay, writeDay } from '../dates';
+import { DateFieldFormat, DatePattern, dayOfIso, datePattern, fieldLocale, isoOf, readDay, writeDay } from '../dates';
 import { registerDateFieldIcons } from '../icons';
 
 /** Why what was typed is no value: no date it can read, or one before `min` or after `max`. */
@@ -15,10 +16,12 @@ type Problem = 'invalid' | 'early' | 'late';
  *
  * The value is ISO - 'YYYY-MM-DD', or '' while there is none - and `dayMonth` makes it a day and a month without a
  * year (a birthday): '--MM-DD', 29 February included. The field writes the date, and reads what is typed, in the
- * reader's date format: `format` is the anotoki account's `date_format` (AccountPreferences, @anotoki/lib/auth:
- * 'dmy_dot' 6.10.2026, 'dmy_slash' 06/10/2026, 'mdy_slash' 10/06/2026, 'ymd_dash' 2026-10-06), and null - a visitor,
- * an account that chose none - is the page language's own (Intl: "6. 10. 2026" in Slovak). Typing is lenient: any of
- * . / - or a space between the numbers, a 0 before one digit or none, and an ISO date whatever the format.
+ * reader's date format, as the kit's dates write theirs (@anotoki/lib/ui/dates): `format` when the page gives one, else
+ * the anotoki account's `date_format` the kit is told (provideAnotokiUi's `dateChoices`: 'dmy_dot' 6.10.2026,
+ * 'dmy_slash' 06/10/2026, 'mdy_slash' 10/06/2026, 'ymd_dash' 2026-10-06), else - a visitor, an account that chose none
+ * - the page's locale's own (provideAnotokiUi's `locale`, else the page's language, English as en-GB: "6. 10. 2026" in
+ * Slovak, "06/10/2026" in English); its calendar names the days in that locale too. Typing is lenient: any of . / - or
+ * a space between the numbers, a 0 before one digit or none, and an ISO date whatever the format.
  *
  * A text field of the kit's (its label, hint, error, required, optional, disabled), with a button inside it that opens
  * the calendar (named "Choose a date: Opens"): a dialog of the month's days - the arrow keys, Page Up and Page Down for
@@ -41,10 +44,11 @@ type Problem = 'invalid' | 'early' | 'late';
 })
 export class DateFieldComponent extends FieldBase {
   protected readonly word = pieceWords(DATE_FIELD_LIBRARY_WORDS);
+  private readonly kit = inject(ANOTOKI_UI_CONFIG, { optional: true });
 
   /** 'YYYY-MM-DD' ('--MM-DD' with `dayMonth`); '' while there is none. */
   readonly value = model<string>('');
-  /** The reader's date format - the account's `date_format`; null: the page language's own way. */
+  /** The reader's date format - the account's `date_format`; null: the one the kit is told (`dateChoices`), else the locale's own way. */
   readonly format = input<DateFieldFormat | null>(null);
   /** A day and a month without a year (a birthday): the value '--MM-DD', 29 February included. */
   readonly dayMonth = input(false, { transform: booleanAttribute });
@@ -61,8 +65,11 @@ export class DateFieldComponent extends FieldBase {
   private readonly toggle = viewChild<ElementRef<HTMLButtonElement>>('toggle');
   private readonly calendar = viewChild(CalendarComponent);
 
-  /** How the field writes and reads dates now. */
-  protected readonly pattern = computed(() => datePattern(this.format(), this.words.language(), this.dayMonth()));
+  /** The locale the field writes and reads in, and its calendar names the days in: the kit's, as its dates' (ui/dates). */
+  protected readonly locale = computed(() => fieldLocale(this.kit?.locale?.(), this.words.language()));
+
+  /** How the field writes and reads dates now: the page's format, else the account's the kit knows, else the locale's own. */
+  protected readonly pattern = computed(() => datePattern(this.format() ?? this.kit?.dateChoices?.()?.date_format ?? null, this.locale(), this.dayMonth()));
 
   /**
    * What the input holds: the value written the field's way - or what the person typed, while it says the same date

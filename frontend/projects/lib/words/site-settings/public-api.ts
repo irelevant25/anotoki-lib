@@ -1,8 +1,10 @@
 /*
  * @anotoki/lib/words/site-settings - the anotoki library's own words of `anotoki.siteSettings.*`, in English and in
- * Slovak (impersonal: no "ty", no "Vy" - it fits every site). Imported by the site settings' pieces on a site's pages
- * (@anotoki/lib/site-settings: the announcement bar, the administrators' notice), which read them themselves, never
- * registered - never by the kit nor by the translations module, so they reach a site with those pieces alone.
+ * Slovak (impersonal: no "ty", no "Vy" - it fits every site). Imported by the site settings' announcement bar and
+ * administrators' notice as they are drawn (@anotoki/lib/site-settings/bar and /notice, which <anotoki-announcement>
+ * and <anotoki-page-notice> fetch only when there is something to draw), which read them themselves, never registered -
+ * never by the kit, the site settings' first load nor the translations module, so they reach a site with those parts
+ * alone.
  *
  * GENERATED from backend/resources/library-words.json by frontend/scripts/library-words.mjs - never
  * edited by hand: a change is made in the JSON (with the library migration that writes it to the sites'

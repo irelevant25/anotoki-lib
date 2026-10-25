@@ -1,0 +1,60 @@
+@use "../../../../sass/kit";
+
+// The bar is the element itself (a <section>): the kind's colours, from the family's tokens - information, a warning,
+// something wrong - the kit's callout's own.
+:host {
+  --_bg: #{kit.token(info-soft)};
+  --_border: #{kit.token(info-border)};
+  --_accent: #{kit.token(info)};
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--_border);
+  background: var(--_bg);
+  color: kit.token(text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+:host(.anotoki-announcement__bar--warning) {
+  --_bg: #{kit.token(warning-soft)};
+  --_border: #{kit.token(warning-border)};
+  --_accent: #{kit.token(warning)};
+}
+
+:host(.anotoki-announcement__bar--danger) {
+  --_bg: #{kit.token(danger-soft)};
+  --_border: #{kit.token(danger-border)};
+  --_accent: #{kit.token(danger)};
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}
+
+.anotoki-announcement__icon {
+  flex: none;
+  color: var(--_accent);
+}
+
+.anotoki-announcement__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+// The administrators' words keep the lines they wrote.
+.anotoki-announcement__message {
+  white-space: pre-line;
+}
+
+.anotoki-announcement__hide {
+  flex: none;
+  margin-left: auto;
+}

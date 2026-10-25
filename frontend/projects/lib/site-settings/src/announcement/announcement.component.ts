@@ -1,19 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ButtonComponent } from '@anotoki/lib/ui/button';
+import { ChangeDetectionStrategy, Component, ViewContainerRef, computed, inject, inputBinding, outputBinding, signal, viewChild } from '@angular/core';
 import { AnotokiWords } from '@anotoki/lib/ui/config';
-import { IconComponent, KitIconName } from '@anotoki/lib/ui/icon';
-import { pieceWords } from '@anotoki/lib/ui/piece-words';
-import { SITE_SETTINGS_LIBRARY_WORDS } from '@anotoki/lib/words/site-settings';
 import { ANOTOKI_SITE_SETTINGS_CONFIG } from '../config';
-import { AnnouncementLevel, SiteAnnouncement, SiteSettings } from '../site-settings.service';
-
-const ICONS: Record<AnnouncementLevel, KitIconName> = { info: 'info', warning: 'alert', danger: 'xCircle' };
-
-const LEVEL_WORDS = {
-  info: 'anotoki.siteSettings.levelInfo',
-  warning: 'anotoki.siteSettings.levelWarning',
-  danger: 'anotoki.siteSettings.levelDanger',
-} as const;
+import { drawWhile } from '../drawn-part';
+import { SiteAnnouncement, SiteSettings } from '../site-settings.service';
 
 /**
  * A mark of an announcement - its kind and its words in every language - never the words themselves: what the browser
@@ -46,11 +35,12 @@ export function announcementMark(announcement: SiteAnnouncement): string {
  * the site's `storageKey`, never the words. Where the browser keeps nothing (a private window, storage switched off),
  * it hides for the page's life.
  *
- * Its words are the library's (`anotoki.siteSettings.*`), read by the bar itself - the site's string first.
+ * The bar itself is drawn by @anotoki/lib/site-settings/bar, which this element fetches only while there is an
+ * announcement to show (0.11.1): the bar, the kit's pieces it draws and its words (`anotoki.siteSettings.*`, read by
+ * the bar itself - the site's string first) are in no first load. With nothing to show the element holds nothing.
  */
 @Component({
   selector: 'anotoki-announcement',
-  imports: [ButtonComponent, IconComponent],
   templateUrl: './announcement.component.html',
   styleUrl: './announcement.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,11 +50,11 @@ export class AnnouncementComponent {
   private readonly settings = inject(SiteSettings);
   private readonly kit = inject(AnotokiWords);
   private readonly config = inject(ANOTOKI_SITE_SETTINGS_CONFIG, { optional: true });
-  protected readonly word = pieceWords(SITE_SETTINGS_LIBRARY_WORDS);
+  private readonly slot = viewChild.required('slot', { read: ViewContainerRef });
 
   private readonly dismissed = signal(this.read());
 
-  /** The bar as it is drawn: its kind, its words in the page's language (or English) and theirs; null for none. */
+  /** The bar to draw: its kind, its words in the page's language (or English) and theirs, its mark; null for none. */
   protected readonly bar = computed(() => {
     const announcement = this.settings.announcement();
     if (!announcement || announcementMark(announcement) === this.dismissed()) {
@@ -74,13 +64,25 @@ export class AnnouncementComponent {
     for (const code of [language, language.split('-')[0], 'en']) {
       const text = announcement.message[code]?.trim();
       if (text) {
-        return { level: announcement.level, text, lang: code === language ? null : code, icon: ICONS[announcement.level], mark: announcementMark(announcement) };
+        return { level: announcement.level, text, lang: code === language ? null : code, mark: announcementMark(announcement) };
       }
     }
     return null;
   });
 
-  protected readonly levelWord = computed(() => this.word(LEVEL_WORDS[this.bar()?.level ?? 'info']));
+  constructor() {
+    drawWhile(
+      'bar',
+      () => this.slot(),
+      () => this.bar() !== null,
+      () => [
+        inputBinding('level', () => this.bar()?.level ?? 'info'),
+        inputBinding('text', () => this.bar()?.text ?? ''),
+        inputBinding('lang', () => this.bar()?.lang ?? null),
+        outputBinding('hide', () => this.dismiss()),
+      ],
+    );
+  }
 
   protected dismiss(): void {
     const bar = this.bar();

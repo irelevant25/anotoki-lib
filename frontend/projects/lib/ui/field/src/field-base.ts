@@ -1,6 +1,12 @@
 import { Directive, ElementRef, Signal, afterNextRender, booleanAttribute, computed, inject, input } from '@angular/core';
 import { AnotokiWords } from '@anotoki/lib/ui/config';
-import { uniqueId } from '@anotoki/lib/ui/dom';
+
+/**
+ * The fields' ids, counted here (0.11.1) rather than by ui/dom's uniqueId(): a site's build places whole files in its
+ * chunks, so the one id took every DOM helper of the kit (the focus trap's, the media queries', the popovers') into each
+ * first load that draws a field, beside lazy pages that use them. No other id of the kit is named `anotoki-field-`.
+ */
+let fieldIds = 0;
 
 /**
  * What every field of the kit has: a label (a real `<label for>` on a native
@@ -34,7 +40,7 @@ export abstract class FieldBase {
   /** The focus here once the field is drawn. */
   readonly autofocus = input(false, { transform: booleanAttribute });
 
-  protected readonly inputId = uniqueId('anotoki-field');
+  protected readonly inputId = `anotoki-field-${++fieldIds}`;
   protected readonly hintId = `${this.inputId}-hint`;
   protected readonly errorId = `${this.inputId}-error`;
   protected readonly describedBy = computed(() => (this.error() ? this.errorId : this.hint() ? this.hintId : null));

@@ -1,6 +1,6 @@
 {
   "name": "@anotoki/deploy",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "The anotoki sites' build and deploy tool: a site's release as frontend/ and backend/, each replaced whole on the FTP-only host, the state beside them never touched. A tool of the computer that builds - never part of a site's upload.",
   "license": "UNLICENSED",
   "repository": {

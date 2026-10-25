@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AnotokiUiConfig } from '@anotoki/lib/ui/config';
+import { AnotokiDateChoices, AnotokiUiConfig } from '@anotoki/lib/ui/config';
 import { AnotokiIcons } from '@anotoki/lib/ui/icon';
 import { draw, kitProviders, press, settle, words } from '../../../src/testing';
 import { DateFieldFormat } from '../dates';
@@ -84,7 +84,7 @@ describe('<anotoki-date-field>: a date typed in the reader’s format, or chosen
     expect(TestBed.inject(AnotokiIcons).has('calendar')).toBe(true);
   });
 
-  it('writes the value in the reader’s format: the account’s, or the page language’s own', async () => {
+  it('writes the value in the reader’s format: the account’s, or the page language’s own - English as the family writes it', async () => {
     const language = signal('en');
     await setUp(() => ({ language }));
     expect(input().value).toBe('14.10.2026');
@@ -96,13 +96,63 @@ describe('<anotoki-date-field>: a date typed in the reader’s format, or chosen
     expect(input().value).toBe('2026-10-14');
     page.format.set(null);
     await settle(fixture);
-    expect(input().value).toBe('10/14/2026');
+    // No locale given: English is en-GB, as the kit's dates write it - never the United States' 10/14/2026.
+    expect(input().value).toBe('14/10/2026');
     language.set('sk');
     await settle(fixture);
     expect(input().value).toBe('14. 10. 2026');
     page.opens.set('');
     await settle(fixture);
     expect(input().value).toBe('');
+  });
+
+  it('no format from the page: the account’s order the kit is told (dateChoices), else the kit’s locale - as the kit’s dates read them (0.11.1)', async () => {
+    const locale = signal('en-GB');
+    const choices = signal<AnotokiDateChoices | null>({ date_format: 'dmy_slash' });
+    await setUp(() => ({ language: () => 'en', locale, dateChoices: choices }));
+    page.format.set(null);
+    await settle(fixture);
+    // genshin's: an English page, an account that writes the day first - "15/06/2024" was no date, "01/03/2024" 3 January.
+    expect(input().value).toBe('14/10/2026');
+    await type('15/06/2024');
+    expect(page.opens()).toBe('2024-06-15');
+    await type('01/03/2024');
+    expect(page.opens()).toBe('2024-03-01');
+
+    choices.set({ date_format: 'ymd_dash' });
+    await settle(fixture);
+    expect(input().value).toBe('2024-03-01');
+
+    // The account chose none: the kit's locale - the day first in en-GB, the month first in a site's en-US.
+    choices.set(null);
+    await settle(fixture);
+    expect(input().value).toBe('01/03/2024');
+    locale.set('en-US');
+    await settle(fixture);
+    expect(input().value).toBe('3/1/2024');
+    await type('12/25/2024');
+    expect(page.opens()).toBe('2024-12-25');
+
+    // A format the page gives comes first.
+    page.format.set('dmy_dot');
+    await settle(fixture);
+    expect(input().value).toBe('25.12.2024');
+  });
+
+  it('its calendar names the days in the same locale: the kit’s, else English as en-GB (0.11.1)', async () => {
+    const locale = signal('en-US');
+    await setUp(() => ({ language: () => 'en', locale }));
+    await open();
+    expect(keyboardDay().getAttribute('aria-label')).toBe('Wednesday, October 14, 2026');
+    // The United States' week starts on Sunday.
+    expect(Array.from(dialog()!.querySelectorAll('th')).map((th) => th.textContent?.trim())[0]).toBe('Sun');
+    press(keyboardDay(), 'Escape');
+    await settle(fixture);
+
+    locale.set('en-GB');
+    await open();
+    expect(keyboardDay().getAttribute('aria-label')).toBe('Wednesday, 14 October 2026');
+    expect(Array.from(dialog()!.querySelectorAll('th')).map((th) => th.textContent?.trim())[0]).toBe('Mon');
   });
 
   it('typing: the value follows a whole date at once, the text stays as typed until the field is left', async () => {
@@ -175,41 +225,41 @@ describe('<anotoki-date-field>: a date typed in the reader’s format, or chosen
     expect(grid.querySelector('th')?.getAttribute('abbr')).toBe('Monday');
     expect(days().length).toBe(31);
     expect(document.activeElement).toBe(keyboardDay());
-    expect(keyboardDay().getAttribute('aria-label')).toBe('Tuesday, October 20, 2026');
+    expect(keyboardDay().getAttribute('aria-label')).toBe('Tuesday, 20 October 2026');
     expect(keyboardDay().closest('td')?.getAttribute('aria-selected')).toBe('true');
     expect(days().filter((day) => day.tabIndex === 0).length).toBe(1);
     const today = days().find((day) => day.getAttribute('aria-current') === 'date')!;
-    expect(today.getAttribute('aria-label')).toBe('Wednesday, October 14, 2026');
+    expect(today.getAttribute('aria-label')).toBe('Wednesday, 14 October 2026');
   });
 
   it('the grid’s keys: arrows a day and a week, Home and End the week, Page Up and Down a month, with Shift a year', async () => {
     await setUp();
     await open();
     const at = () => keyboardDay().getAttribute('aria-label');
-    expect(at()).toBe('Wednesday, October 14, 2026');
+    expect(at()).toBe('Wednesday, 14 October 2026');
     press(keyboardDay(), 'ArrowRight');
     await settle(fixture);
-    expect(at()).toBe('Thursday, October 15, 2026');
+    expect(at()).toBe('Thursday, 15 October 2026');
     expect(document.activeElement).toBe(keyboardDay());
     press(keyboardDay(), 'ArrowDown');
     await settle(fixture);
-    expect(at()).toBe('Thursday, October 22, 2026');
+    expect(at()).toBe('Thursday, 22 October 2026');
     press(keyboardDay(), 'Home');
     await settle(fixture);
-    expect(at()).toBe('Monday, October 19, 2026');
+    expect(at()).toBe('Monday, 19 October 2026');
     press(keyboardDay(), 'End');
     await settle(fixture);
-    expect(at()).toBe('Sunday, October 25, 2026');
+    expect(at()).toBe('Sunday, 25 October 2026');
     press(keyboardDay(), 'PageDown');
     await settle(fixture);
-    expect(at()).toBe('Wednesday, November 25, 2026');
+    expect(at()).toBe('Wednesday, 25 November 2026');
     expect(title()).toBe('November 2026');
     press(keyboardDay(), 'PageUp', { shiftKey: true });
     await settle(fixture);
-    expect(at()).toBe('Tuesday, November 25, 2025');
+    expect(at()).toBe('Tuesday, 25 November 2025');
     press(keyboardDay(), 'ArrowUp');
     await settle(fixture);
-    expect(at()).toBe('Tuesday, November 18, 2025');
+    expect(at()).toBe('Tuesday, 18 November 2025');
     expect(document.activeElement).toBe(keyboardDay());
   });
 
@@ -277,10 +327,10 @@ describe('<anotoki-date-field>: a date typed in the reader’s format, or chosen
     keyboardDay().focus();
     press(keyboardDay(), 'PageUp');
     await settle(fixture);
-    expect(keyboardDay().getAttribute('aria-label')).toBe('Saturday, October 10, 2026');
+    expect(keyboardDay().getAttribute('aria-label')).toBe('Saturday, 10 October 2026');
     press(keyboardDay(), 'PageDown');
     await settle(fixture);
-    expect(keyboardDay().getAttribute('aria-label')).toBe('Thursday, November 5, 2026');
+    expect(keyboardDay().getAttribute('aria-label')).toBe('Thursday, 5 November 2026');
     expect(dialog()!.querySelectorAll('.anotoki-date-calendar__step')[1].getAttribute('aria-disabled')).toBe('true');
   });
 
@@ -294,7 +344,7 @@ describe('<anotoki-date-field>: a date typed in the reader’s format, or chosen
     expect(title()).toBe('February');
     expect(dialog()!.querySelector('thead')).toBeNull();
     expect(days().length).toBe(29);
-    expect(keyboardDay().getAttribute('aria-label')).toBe('February 29');
+    expect(keyboardDay().getAttribute('aria-label')).toBe('29 February');
     press(keyboardDay(), 'Escape');
     await settle(fixture);
 

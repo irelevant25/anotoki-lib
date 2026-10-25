@@ -1,4 +1,4 @@
-import { ANY_YEAR, addDays, addMonths, datePattern, dayOfIso, firstWeekday, isoOf, monthRows, readDay, writeDay } from './dates';
+import { ANY_YEAR, addDays, addMonths, datePattern, dayOfIso, fieldLocale, firstWeekday, isoOf, monthRows, readDay, writeDay } from './dates';
 
 describe('the date field’s days: written and read in the reader’s format, ISO values, the calendar’s arithmetic', () => {
   const day = (year: number, month: number, date: number) => ({ year, month, day: date });
@@ -24,6 +24,15 @@ describe('the date field’s days: written and read in the reader’s format, IS
     expect(writeDay(october, datePattern(null, 'ja', false))).toBe('2026/10/6');
     // A language the browser cannot read: English's way, as the kit's words fall back on English.
     expect(writeDay(october, datePattern(null, 'not a language', false))).toBe('10/6/2026');
+  });
+
+  it('the field’s locale, as the kit’s dates’: the kit’s own, else the page’s language - English as en-GB (0.11.1)', () => {
+    expect(fieldLocale(undefined, 'en')).toBe('en-GB');
+    expect(fieldLocale('', 'en')).toBe('en-GB');
+    expect(fieldLocale(null, 'sk')).toBe('sk');
+    expect(fieldLocale('en-US', 'en')).toBe('en-US');
+    expect(fieldLocale('sk-SK', 'sk')).toBe('sk-SK');
+    expect(writeDay(day(2026, 10, 6), datePattern(null, fieldLocale(undefined, 'en'), false))).toBe('06/10/2026');
   });
 
   it('reads leniently: any separator, a 0 or none, an ISO date whatever the format, spaces round it', () => {

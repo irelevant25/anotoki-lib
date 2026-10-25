@@ -17,9 +17,12 @@ export type DialogSize = 'sm' | 'md' | 'lg' | 'xl';
  * showModal() makes the rest of the page inert, which is most of a focus trap;
  * Tab is kept cycling inside as well (never onto anything taken out of the tab
  * order, tabindex="-1"), so the focus never wanders to the browser's own
- * controls. The focus goes to the first `[autofocus]` element inside, else the
+ * controls. The focus goes to the first `[autofocus]` element inside (a kit
+ * field's: its control - the field's own element takes no focus), else the
  * first focusable one that is not the close button, and back where it was
- * when the dialog goes.
+ * when the dialog goes. A field drawn in a view of its own (a form component,
+ * an @if) that asks for the focus itself (`[autofocus]="true"`) asks once the
+ * dialog is open (0.11.1), so it has it.
  *
  * `dismissible` false is for the one dialog that must not close by accident
  * (recovery codes shown once); `busy` holds it open while a request it started
@@ -56,12 +59,17 @@ export class DialogComponent {
   private readonly returnFocus = this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
 
   constructor() {
-    afterNextRender(() => {
-      const dialog = this.dialog().nativeElement;
-      if (!dialog.open) {
-        dialog.showModal();
-      }
-      this.focusFirst(dialog);
+    // Opened in the write phase, before any element's own afterNextRender() (the default phase, which runs after every
+    // write): a field drawn in a view of its own registers its autofocus before the dialog's, and a browser gives no
+    // focus to what a closed <dialog> holds - its showModal() would then put it on the close button.
+    afterNextRender({
+      write: () => {
+        const dialog = this.dialog().nativeElement;
+        if (!dialog.open) {
+          dialog.showModal();
+        }
+        this.focusFirst(dialog);
+      },
     });
 
     inject(DestroyRef).onDestroy(() => {
@@ -116,8 +124,17 @@ export class DialogComponent {
 
   private focusFirst(dialog: HTMLDialogElement): void {
     const preferred = dialog.querySelector<HTMLElement>('[autofocus]');
+    if (preferred) {
+      preferred.focus();
+      // A kit field's `autofocus` stands on the field's own element, which takes no focus: its control does.
+      const inside = this.document.activeElement === preferred ? null : tabbable(preferred)[0];
+      inside?.focus();
+      if (this.document.activeElement === preferred || inside) {
+        return;
+      }
+    }
     const focusable = tabbable(dialog);
-    const target = preferred ?? focusable.find((element) => !element.classList.contains('anotoki-dialog__close')) ?? focusable[0];
+    const target = focusable.find((element) => !element.classList.contains('anotoki-dialog__close')) ?? focusable[0];
     target?.focus();
   }
 

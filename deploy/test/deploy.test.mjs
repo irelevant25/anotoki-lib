@@ -137,3 +137,35 @@ test('build: one release - the app, the code the settings name, nothing of the h
   assert.throws(() => build(root, config, { out: join(temp, 'other'), skipFrontend: true, log: () => {} }), /not empty/);
   assert.throws(() => build(root, config, { out: join(root, 'backend', 'dist'), skipFrontend: true, log: () => {} }), /inside its frontend\/, backend\//);
 });
+
+test("robots.txt and sitemap.xml from the backend: index.php answers them before any file, and the app's own copy is refused", () => {
+  const config = normalizeConfig({ ...site, routes: ['api', 'robots.txt', 'sitemap.xml'] });
+  const htaccess = frontendHtaccess(config);
+  const toIndex = htaccess.indexOf('RewriteRule ^(api|robots\\.txt|sitemap\\.xml)(/|$) index.php [L]');
+  assert.ok(toIndex > 0, 'both go to index.php');
+  assert.ok(toIndex < htaccess.indexOf('RewriteCond %{REQUEST_FILENAME} -f'), 'before a file of the app is looked for');
+  // An exact name, never a prefix of another: /robots.txt.bak is the app's (a 404), not the backend's.
+  assert.ok(!new RegExp(`^(api|robots\\.txt|sitemap\\.xml)(/|$)`).test('robots.txt.bak'));
+
+  // The static robots.txt a site kept from before (genshin's, the build analyzer's): never served once robots.txt is a
+  // route, so the build says to delete it - by name, with every other one at once.
+  const root = join(temp, 'site-with-robots');
+  write(join(root, 'frontend', 'angular.json'), JSON.stringify({ projects: { demo: { projectType: 'application' } } }));
+  const ready = join(temp, 'app-with-robots');
+  write(join(ready, 'index.html'), '<p>');
+  write(join(ready, 'robots.txt'), 'User-agent: *\nDisallow: /admin\n');
+  write(join(ready, 'api', 'mock.json'), '{}');
+  write(join(root, 'backend', 'composer.json'), '{}');
+  write(join(root, 'backend', 'api', 'index.php'), '<?php');
+  assert.throws(
+    () => build(root, config, { out: join(temp, 'robots-refused'), frontend: ready, log: () => {} }),
+    (error) =>
+      /frontend\/robots\.txt is one of the backend's addresses/.test(error.message) &&
+      /frontend\/public\/robots\.txt/.test(error.message) &&
+      /frontend\/api is one of the backend's addresses/.test(error.message) &&
+      !/sitemap\.xml/.test(error.message),
+  );
+  // A site that has not switched keeps its file, served as it is.
+  const before = build(root, normalizeConfig({ ...site, routes: ['apis'] }), { out: join(temp, 'robots-kept'), frontend: ready, log: () => {} });
+  assert.ok(listFiles(join(before.dist, 'frontend')).includes('robots.txt'));
+});

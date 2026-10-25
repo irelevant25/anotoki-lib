@@ -8,6 +8,7 @@ import { provideAnotokiFeedback } from '@anotoki/lib/feedback';
 import { provideAnotokiLegal } from '@anotoki/lib/legal';
 import { provideAnotokiMigrations, siteStatusInterceptor } from '@anotoki/lib/migrations';
 import { provideAnotokiPeople } from '@anotoki/lib/people';
+import { SiteSettings, provideAnotokiSiteSettings } from '@anotoki/lib/site-settings';
 import { AnotokiThemeMode, ThemeService, provideAnotokiShell } from '@anotoki/lib/shell';
 import { TranslationService, anotokiUnsavedChangesGuard, provideAnotokiTranslations, siteStatusWords } from '@anotoki/lib/translations';
 import { provideAnotokiUi } from '@anotoki/lib/ui';
@@ -19,6 +20,7 @@ import { AppComponent } from './app/app.component';
 import { showcaseLegalFacts } from './app/legal-facts';
 import { peopleServer } from './app/people-server';
 import { SignInDemoComponent, signInDemoProviders } from './app/sign-in-demo/sign-in-demo.component';
+import { siteSettingsServer } from './app/site-settings-server';
 import { SHOWCASE_GROUPS, wordsServer } from './app/words-server';
 
 /** The query, read before the translations take ?lang=sk out of the address (it holds for the tab then). */
@@ -135,9 +137,10 @@ const signedIn = signal(!!params.get('signedin'));
 bootstrapApplication(AppComponent, {
   providers: [
     provideZonelessChangeDetection(),
-    // The translations' routes (words-server.ts), the people's (people-server.ts), and the admin tools' and the
-    // feedback form's (admin-server.ts) answer from memory, before the rest of the imagined server.
-    provideHttpClient(withInterceptors([wordsServer, peopleServer, adminServer, fixtures, siteStatusInterceptor])),
+    // The translations' routes (words-server.ts), the people's (people-server.ts), the site settings' (0.11.0,
+    // site-settings-server.ts), and the admin tools' and the feedback form's (admin-server.ts) answer from memory,
+    // before the rest of the imagined server.
+    provideHttpClient(withInterceptors([wordsServer, peopleServer, siteSettingsServer, adminServer, fixtures, siteStatusInterceptor])),
     provideRouter([
       { path: '', loadComponent: () => import('./app/gallery/gallery.component').then((m) => m.GalleryComponent) },
       { path: 'migrations', loadComponent: () => import('./app/migrations-demo/migrations-demo.component').then((m) => m.MigrationsDemoComponent) },
@@ -167,8 +170,16 @@ bootstrapApplication(AppComponent, {
           { path: 'feedback', loadComponent: () => import('@anotoki/lib/admin/feedback').then((m) => m.FeedbackPageComponent) },
           { path: 'backups', loadComponent: () => import('@anotoki/lib/admin/backups').then((m) => m.BackupsPageComponent) },
           { path: 'files', loadComponent: () => import('@anotoki/lib/admin/files').then((m) => m.FilesPageComponent) },
+          // The site settings (0.11.0): Getting in, Announcement, Page access - ?iam=1 the announcement alone.
+          { path: 'site-settings', loadComponent: () => import('@anotoki/lib/admin/site-settings').then((m) => m.SiteSettingsPageComponent) },
         ],
       },
+      // The site settings on a site's pages (0.11.0): the announcement bar, the administrators' notice.
+      { path: 'site-settings', loadComponent: () => import('./app/site-settings-demo/site-settings-demo.component').then((m) => m.SiteSettingsDemoComponent) },
+      // The closed sign (0.11.0): a page of its own, outside the showcase's bar and footer (app.component); at the
+      // showcase's staff route, Sign in.
+      { path: 'maintenance', loadComponent: () => import('./app/maintenance-demo/maintenance-demo.component').then((m) => m.MaintenanceDemoComponent) },
+      { path: 'maintenance/staff', loadComponent: () => import('./app/maintenance-demo/maintenance-demo.component').then((m) => m.MaintenanceDemoComponent) },
       // The admin panel's frame (0.10.0): a whole page of its own, outside the showcase's bar and footer (app.component).
       {
         path: 'admin-frame',
@@ -207,8 +218,11 @@ bootstrapApplication(AppComponent, {
     // The admin tools: for the site's ADMIN (?visitor=1: nobody); "Sign in again" says what a site would do.
     provideAnotokiAdmin(() => {
       const toasts = inject(ToastService);
+      const i18n = inject(TranslationService);
       return {
         isAdmin: admin,
+        // The site settings' messages, a field a language the showcase is read in (0.11.0).
+        languages: () => i18n.languages().map((language) => ({ code: language.code, name: language.native_name })),
         signInAgain: () => toasts.info("A site sends you through the IAM's sign-in here, and back to this page."),
         migrationsRoute: '/migrations',
         siteName: IAM_CASE ? 'the IAM' : 'the showcase',
@@ -294,12 +308,17 @@ bootstrapApplication(AppComponent, {
         isAdmin: admin,
         isSignedIn: () => false,
         signIn: () => undefined,
+        // The closed sign's way in for the administrators (0.11.0): the showcase's own route for it.
+        staffRoute: '/maintenance/staff',
         language: () => i18n.effectiveLanguage(),
         get words() {
           return siteStatusWords(i18n);
         },
       };
     }),
+    // The site settings on the showcase's pages (0.11.0): the bar above its bar, the notice on /site-settings.
+    provideAnotokiSiteSettings(() => ({ roles: () => (admin() ? ['MEMBER', 'ADMIN'] : []), signedIn: admin, storageKey: 'anotoki-showcase:announcement' })),
+    provideAppInitializer(() => inject(SiteSettings).load()),
     provideAppInitializer(() => inject(TranslationService).init()),
     provideAppInitializer(() => {
       const theme = inject(ThemeService);

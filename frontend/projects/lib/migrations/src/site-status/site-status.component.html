@@ -38,4 +38,8 @@
             </div>
         </section>
     }
+    @case ("maintenance") {
+        <!-- The closed sign: an entry point of its own, loaded now (@anotoki/lib/migrations/maintenance). -->
+        <ng-container *ngComponentOutlet="closedSign(); inputs: closedSignInputs()" />
+    }
 }

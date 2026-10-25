@@ -75,13 +75,35 @@ const READ_BY_THEIR_PAGES = {
     "the family's footer (@anotoki/lib/footer), which reads them itself, never registered - it has no provide*() of its own - never by the kit's core nor by the translations module, so they reach a site with the footer alone.",
   about: 'the About page (@anotoki/lib/legal/about), which reads them itself, never registered - never by the kit nor by the translations module, so they reach a site with that page alone.',
   support: 'the Support page (@anotoki/lib/legal/support), which reads them itself, never registered - never by the kit nor by the translations module, so they reach a site with that page alone.',
+  siteSettings:
+    "the site settings' pieces on a site's pages (@anotoki/lib/site-settings: the announcement bar, the administrators' notice), which read them themselves, never registered - never by the kit nor by the translations module, so they reach a site with those pieces alone.",
+  maintenance:
+    'the closed sign (@anotoki/lib/migrations/maintenance, which the status page loads while the site is closed for maintenance), which reads them itself, never registered - never by the kit, the gate nor the translations module, so they reach a site with the closed sign alone.',
 };
 
 /**
  * The namespaces whose Slovak addresses nobody - no ty, no Vy - so that it fits the formal survey too (the legal pages',
- * the kit's pieces' of 0.6.0, the footer's of 0.6.3, the About and Support pages' of 0.8.0).
+ * the kit's pieces' of 0.6.0, the footer's of 0.6.3, the About and Support pages' of 0.8.0, the site settings' pieces'
+ * and the closed sign's of 0.11.0).
  */
-const IMPERSONAL = ['legal', 'legalLinks', 'chips', 'progress', 'stepper', 'tabs', 'dateField', 'colorField', 'filePicker', 'combobox', 'richText', 'footer', 'about', 'support'];
+const IMPERSONAL = [
+  'legal',
+  'legalLinks',
+  'chips',
+  'progress',
+  'stepper',
+  'tabs',
+  'dateField',
+  'colorField',
+  'filePicker',
+  'combobox',
+  'richText',
+  'footer',
+  'about',
+  'support',
+  'siteSettings',
+  'maintenance',
+];
 
 /** Every file this writes says so: how a left-over one is known - and only such a one is ever removed. */
 const GENERATED = 'GENERATED from backend/resources/library-words.json by frontend/scripts/library-words.mjs';

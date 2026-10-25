@@ -1,0 +1,179 @@
+<anotoki-dialog
+    data-pages-dialog
+    size="xl"
+    heading="Page access"
+    description="Which pages exist, who they are shown to, and which API paths are refused with them."
+    [busy]="busy()"
+    (dismiss)="closed.emit()">
+    <div class="anotoki-site-settings-pages__body">
+        @if (refusal(); as message) {
+            <anotoki-alert data-refusal tone="danger" heading="Not saved" announce>{{ message }}</anotoki-alert>
+        }
+
+        <p class="anotoki-site-settings-pages__help">
+            <strong>Shown to</strong>
+            is who the page is drawn for: for everybody else it leaves the menu and stops matching in the router - the site's not-found page at its address.
+            <strong>Off</strong>
+            takes it from everybody but the administrators, whatever the first column says. The administrators keep every page either way, with a line above it saying so - or there would be no way to
+            look at what was just switched off.
+        </p>
+
+        @if (pages().length === 0) {
+            <p class="anotoki-site-settings-pages__help" data-no-pages>No page is governed yet: every page is anybody's.</p>
+        } @else {
+            <div class="anotoki-site-settings-pages__table">
+                <div class="anotoki-admin__table-wrap">
+                    <table class="anotoki-admin__table">
+                        <caption class="anotoki-visually-hidden">The governed pages</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Page</th>
+                                <th scope="col">Shown to</th>
+                                <th scope="col">Off</th>
+                                <th scope="col">Refuses too</th>
+                                <th scope="col"><span class="anotoki-visually-hidden">Stop governing</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (page of pages(); track page.id) {
+                                <tr [attr.data-page]="page.path" [class.anotoki-site-settings-pages__row--changed]="isChanged(page)" [class.anotoki-site-settings-pages__row--off]="of(page).blocked">
+                                    <td data-label="Page">
+                                        <code class="anotoki-site-settings-pages__path">{{ page.path }}</code>
+                                        @if (isChanged(page)) {
+                                            <span class="anotoki-site-settings-pages__flag">changed</span>
+                                        }
+                                        @if (page.refused; as why) {
+                                            <span class="anotoki-site-settings-pages__refused" data-refused>Passed over: {{ why }}</span>
+                                        }
+                                    </td>
+                                    <td data-label="Shown to">
+                                        <anotoki-select
+                                            inline
+                                            hideLabel
+                                            [label]="'Shown to: ' + page.path"
+                                            [disabled]="page.refused !== null"
+                                            [options]="choices()"
+                                            [value]="of(page).visibility"
+                                            (valueChange)="setVisibility(page, $event)" />
+                                    </td>
+                                    <td data-label="Off">
+                                        <anotoki-checkbox [disabled]="page.refused !== null" [checked]="of(page).blocked" (checkedChange)="setBlocked(page, $event)">
+                                            <span class="anotoki-visually-hidden">Off: {{ page.path }}</span>
+                                        </anotoki-checkbox>
+                                    </td>
+                                    <td data-label="Refuses too">
+                                        <button
+                                            anotokiButton
+                                            variant="link"
+                                            size="sm"
+                                            data-api-toggle
+                                            [disabled]="page.refused !== null"
+                                            [attr.aria-expanded]="expanded() === page.id"
+                                            [attr.aria-label]="'API paths refused with ' + page.path + ': ' + (of(page).api_paths.length || 'none')"
+                                            (click)="toggle(page)">
+                                            @if (of(page).api_paths.length) {
+                                                {{ of(page).api_paths.length }} API {{ of(page).api_paths.length === 1 ? "path" : "paths" }}
+                                            } @else {
+                                                nothing
+                                            }
+                                        </button>
+                                    </td>
+                                    <td class="anotoki-admin__cell--whole anotoki-site-settings-pages__remove">
+                                        <button anotokiButton variant="ghost" size="sm" data-remove [attr.aria-label]="'Stop governing ' + page.path" (click)="remove(page)">
+                                            <anotoki-icon name="trash" [size]="16" />
+                                            <span class="anotoki-site-settings-pages__remove-words">Stop governing</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                                @if (expanded() === page.id) {
+                                    <tr class="anotoki-site-settings-pages__api-row" data-api-row>
+                                        <td class="anotoki-admin__cell--whole" colspan="5">
+                                            <p class="anotoki-site-settings-pages__help">
+                                                API paths that go dark with this page, for everybody it is not shown to. Matched from their start:
+                                                <code>/api/quiz</code>
+                                                refuses
+                                                <code>/api/quizzes</code>
+                                                and
+                                                <code>/api/quiz/stats</code>
+                                                alike. None: only the page goes, and its data still answers - what a page that is simply not finished wants.
+                                            </p>
+                                            @if (of(page).api_paths.length) {
+                                                <ul class="anotoki-site-settings-pages__api-list">
+                                                    @for (path of of(page).api_paths; track path) {
+                                                        <li>
+                                                            <code>{{ path }}</code>
+                                                            <button anotokiButton variant="ghost" size="sm" [attr.aria-label]="'Remove ' + path" (click)="removeApiPath(page, path)">
+                                                                <anotoki-icon name="x" [size]="14" />
+                                                            </button>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                            <form class="anotoki-site-settings-pages__api-add" (submit)="$event.preventDefault(); addApiPath(page)">
+                                                <anotoki-text-field
+                                                    data-api-path
+                                                    label="API path"
+                                                    placeholder="/api/quiz"
+                                                    autocomplete="off"
+                                                    [value]="newApiPath()"
+                                                    (valueChange)="newApiPath.set($event)" />
+                                                <button anotokiButton type="submit" [disabled]="!newApiPath().trim()">Add</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- For a page written since the rows were set up - or one to govern before its route exists, the useful order when
+             the point is that nobody reaches it yet. -->
+        <section class="anotoki-site-settings-pages__add" aria-label="Govern another page">
+            @if (adding()) {
+                <form class="anotoki-site-settings-pages__add-form" (submit)="$event.preventDefault(); add()">
+                    <anotoki-text-field data-new-path label="Page" placeholder="/quizzes/something-new" autocomplete="off" [value]="newPath()" (valueChange)="newPath.set($event)" />
+                    <anotoki-select data-new-visibility label="Shown to" [options]="choices()" [value]="newVisibility()" (valueChange)="newVisibility.set($event)" />
+                    <div class="anotoki-site-settings-pages__add-actions">
+                        <button anotokiButton type="submit" variant="primary" data-add [disabled]="!newPath().trim()" [loading]="busy()">
+                            <anotoki-icon name="plus" [size]="16" />
+                            Add
+                        </button>
+                        <button anotokiButton type="button" (click)="adding.set(false)">Cancel</button>
+                    </div>
+                </form>
+                <p class="anotoki-site-settings-pages__help">
+                    Administrators only unless said: the safe answer for a page nobody has thought about yet. Never one of these, nor a page under them:
+                    <!-- Apart by the gap, never by punctuation: a template's space before a comma is the formatter's to add. -->
+                    <span class="anotoki-site-settings-pages__reserved" data-reserved-pages>
+                        @for (reserved of data().reserved.pages; track reserved) {
+                            <code>{{ reserved }}</code>
+                        }
+                    </span>
+                </p>
+            } @else {
+                <button anotokiButton size="sm" data-start-adding (click)="startAdding()">
+                    <anotoki-icon name="plus" [size]="16" />
+                    Govern another page
+                </button>
+            }
+        </section>
+    </div>
+
+    <div dialogFooter>
+        <span class="anotoki-site-settings-pages__count" data-count>
+            @if (changed().length) {
+                {{ changed().length }} unsaved
+            } @else {
+                Nothing changed
+            }
+        </span>
+        <button anotokiButton data-discard [disabled]="!changed().length || busy()" (click)="discard()">Discard</button>
+        <button anotokiButton data-cancel (click)="closed.emit()">{{ changed().length ? "Cancel" : "Close" }}</button>
+        <button anotokiButton variant="primary" data-save [disabled]="!changed().length" [loading]="busy()" (click)="save()">Save</button>
+    </div>
+</anotoki-dialog>
+
+<anotoki-admin-question [questions]="questions" />

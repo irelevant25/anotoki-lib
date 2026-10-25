@@ -10,6 +10,7 @@ const FROM_SERVER: Readonly<Record<string, Exclude<SiteState, 'unknown'>>> = {
   update_pending: 'update-pending',
   not_set_up: 'not-set-up',
   unavailable: 'unavailable',
+  maintenance: 'maintenance',
 };
 
 /** A state by the server's name or the pages' own; null for anything else. */
@@ -21,6 +22,11 @@ function stateNamed(code: unknown): Exclude<SiteState, 'unknown'> | null {
     return FROM_SERVER[code];
   }
   return (Object.values(FROM_SERVER) as string[]).includes(code) ? (code as Exclude<SiteState, 'unknown'>) : null;
+}
+
+/** What the administrators wrote for the maintenance page, per language: its texts alone (the closed sign picks one by its language). */
+function messageFrom(value: unknown): Readonly<Record<string, string>> {
+  return Object.fromEntries(Object.entries(jsonObject(value) ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 }
 
 /**
@@ -35,14 +41,21 @@ export class SiteStatus {
   private readonly _state = signal<SiteState>('unknown');
   /** Never offer the setup page unless the server said the site was never installed. */
   private readonly _installed = signal(true);
+  private readonly _maintenanceMessage = signal<Readonly<Record<string, string>>>({});
   private asking: Promise<Answer> | null = null;
 
   readonly state = this._state.asReadonly();
   readonly installed = this._installed.asReadonly();
-  /** Anything but ready (or not asked yet): the site's pages cannot work now. */
+  /** While the site is closed for maintenance: what its administrators wrote for the page, per language ({} for nothing). */
+  readonly maintenanceMessage = this._maintenanceMessage.asReadonly();
+  /**
+   * Anything but ready (or not asked yet): the site's pages cannot work now -
+   * but for the site's ADMIN while it is closed for maintenance, who sees it as
+   * it is.
+   */
   readonly blocked = computed(() => {
     const state = this._state();
-    return state !== 'ready' && state !== 'unknown';
+    return state !== 'ready' && state !== 'unknown' && !(state === 'maintenance' && this.config.isAdmin());
   });
 
   /**
@@ -50,8 +63,8 @@ export class SiteStatus {
    * body, counts as 'unavailable'. Calls made while one is under way share it.
    */
   check(): Promise<SiteState> {
-    return this.answer().then(({ state, installed }) => {
-      this.report(state, installed);
+    return this.answer().then(({ state, installed, message }) => {
+      this.report(state, installed, message);
       return state;
     });
   }
@@ -64,16 +77,20 @@ export class SiteStatus {
    * check() does.
    */
   checkForReload(): Promise<SiteState> {
-    return this.answer().then(({ state, installed }) => {
+    return this.answer().then(({ state, installed, message }) => {
       if (state !== 'ready') {
-        this.report(state, installed);
+        this.report(state, installed, message);
       }
       return state;
     });
   }
 
-  /** What an API answer said: the server's code ('update_pending', 'not_set_up', ...), and whether the site was installed. */
-  report(code: string, installed?: boolean): void {
+  /**
+   * What an API answer said: the server's code ('update_pending', 'not_set_up',
+   * 'maintenance', ...), whether the site was installed, and - while it is
+   * closed for maintenance - the message its administrators wrote, per language.
+   */
+  report(code: string, installed?: boolean, maintenanceMessage?: unknown): void {
     const state = stateNamed(code);
     if (state === null) {
       return;
@@ -82,6 +99,7 @@ export class SiteStatus {
     if (typeof installed === 'boolean') {
       this._installed.set(installed);
     }
+    this._maintenanceMessage.set(state === 'maintenance' ? messageFrom(maintenanceMessage) : {});
   }
 
   /** The update was applied here (the Migrations page): the site is ready without asking again. */
@@ -105,7 +123,7 @@ export class SiteStatus {
 
     const state = stateNamed(body?.['state']) ?? stateNamed(body?.['code']) ?? 'unavailable';
     const installed = body?.['installed'];
-    return { state, installed: typeof installed === 'boolean' ? installed : undefined };
+    return { state, installed: typeof installed === 'boolean' ? installed : undefined, message: body?.['maintenance_message'] };
   }
 }
 
@@ -113,4 +131,5 @@ export class SiteStatus {
 interface Answer {
   state: Exclude<SiteState, 'unknown'>;
   installed?: boolean;
+  message?: unknown;
 }

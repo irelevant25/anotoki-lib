@@ -1,7 +1,7 @@
 import { EnvironmentProviders, InjectionToken, makeEnvironmentProviders } from '@angular/core';
 
 /** The library's admin tools, each with its routes under the site's admin API (the PHP half's `*Routes::admin()`). */
-export type AdminTool = 'errors' | 'audit' | 'feedback' | 'backups' | 'files';
+export type AdminTool = 'errors' | 'audit' | 'feedback' | 'backups' | 'files' | 'site-settings';
 
 /**
  * A request that failed, as the pages read it whatever the site's error body
@@ -56,6 +56,13 @@ export interface AnotokiAdminConfig {
   siteName?: string;
   /** The names of feedback's extra fields (the PHP half's `fields`) on the admin page: `{ steps: 'Steps to reproduce' }`. */
   feedbackFields?: Readonly<Record<string, string>>;
+  /**
+   * The languages the site's pages are read in, by their own names - the Site settings page (0.11.0) gives each a
+   * field for the maintenance page's and the announcement's words: with the translations module,
+   * `() => i18n.languages().map((language) => ({ code: language.code, name: language.native_name }))`. English and
+   * Slovak by default.
+   */
+  languages?: () => readonly { code: string; name: string }[];
   /** Said on the Backups page where restoring is switched off, after its own sentence - the site's reason (the IAM's). */
   restoreOffText?: string | null;
 }

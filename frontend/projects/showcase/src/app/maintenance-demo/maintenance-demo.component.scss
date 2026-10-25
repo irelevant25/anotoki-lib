@@ -1,0 +1,10 @@
+// A page of its own, as the gate draws the status page: nothing around it.
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.show-maintenance-demo {
+  display: block;
+  padding: 0 1rem;
+}

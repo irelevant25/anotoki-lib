@@ -1,0 +1,103 @@
+<anotoki-dialog [attr.data-switches]="part()" size="lg" [heading]="heading()" [busy]="saving()" (dismiss)="closed.emit()">
+    <div class="anotoki-site-settings-switches__body">
+        @if (refusal(); as message) {
+            <anotoki-alert data-refusal tone="danger" heading="Nothing was saved" announce>{{ message }}</anotoki-alert>
+        }
+
+        <section class="anotoki-site-settings-switches__setting">
+            <anotoki-switch data-enabled [checked]="enabled()" (checkedChange)="enabled.set($event)">
+                @if (part() === "getting_in") {
+                    Maintenance mode
+                } @else {
+                    Show the announcement
+                }
+            </anotoki-switch>
+            @if (part() === "getting_in") {
+                <p class="anotoki-site-settings-switches__help">
+                    Shows the maintenance page instead of the site, and the server refuses everybody but the administrators. They see the site as usual - with a line above each page saying it is
+                    closed - and can always sign in at the staff route, the way back in after switching this on:
+                    <code>{{ staffRoute() }}</code>
+                </p>
+            } @else {
+                <p class="anotoki-site-settings-switches__help">Puts the message across the top of every page. A reader can hide it, and it stays hidden for them until its words change.</p>
+            }
+            @if (history(names().enabled); as said) {
+                <p class="anotoki-site-settings-switches__history">{{ said }}</p>
+            }
+        </section>
+
+        @if (names().level; as levelName) {
+            <section class="anotoki-site-settings-switches__setting">
+                <anotoki-select
+                    class="anotoki-site-settings-switches__kind"
+                    data-level
+                    label="Kind"
+                    hint="The bar's colour, and what a screen reader says before it."
+                    [options]="levels"
+                    [value]="level()"
+                    (valueChange)="setLevel($event)" />
+                @if (history(levelName); as said) {
+                    <p class="anotoki-site-settings-switches__history">{{ said }}</p>
+                }
+            </section>
+        }
+
+        <section class="anotoki-site-settings-switches__setting" [attr.aria-labelledby]="'anotoki-site-settings-words-' + part()">
+            <h3 class="anotoki-site-settings-switches__title" [id]="'anotoki-site-settings-words-' + part()">
+                @if (part() === "getting_in") {
+                    What the maintenance page says
+                } @else {
+                    Message
+                }
+            </h3>
+            @if (part() === "getting_in") {
+                <p class="anotoki-site-settings-switches__help">
+                    One message a language. A language left empty reads English, and English left empty reads the built-in sentence - the page is never blank.
+                </p>
+            } @else {
+                <p class="anotoki-site-settings-switches__help">
+                    One a language. A language left empty reads English; with English empty too, nothing is drawn for that reader, whatever the switch says.
+                </p>
+            }
+            <div class="anotoki-site-settings-switches__languages">
+                @for (field of fields(); track field.code) {
+                    <anotoki-textarea
+                        [attr.data-language]="field.code"
+                        [label]="field.name"
+                        [rows]="3"
+                        [maxlength]="data().limits.message"
+                        [value]="text(field.code)"
+                        (valueChange)="setText(field.code, $event)" />
+                }
+            </div>
+            @if (history(names().message); as said) {
+                <p class="anotoki-site-settings-switches__history">{{ said }}</p>
+            }
+        </section>
+
+        @if (part() === "announcement") {
+            <section class="anotoki-site-settings-switches__setting" aria-labelledby="anotoki-site-settings-preview">
+                <h3 class="anotoki-site-settings-switches__title" id="anotoki-site-settings-preview">How it looks</h3>
+                @if (preview(); as shown) {
+                    <anotoki-alert data-preview [tone]="shown.tone">
+                        <span class="anotoki-site-settings-switches__preview" [attr.lang]="shown.lang">{{ shown.text }}</span>
+                    </anotoki-alert>
+                } @else {
+                    <p class="anotoki-site-settings-switches__help">Nothing is written yet: no bar is drawn.</p>
+                }
+            </section>
+        }
+    </div>
+
+    <div dialogFooter>
+        <span class="anotoki-site-settings-switches__count" data-count>
+            @if (changed()) {
+                {{ changed() }} unsaved
+            } @else {
+                Nothing changed
+            }
+        </span>
+        <button anotokiButton data-cancel (click)="closed.emit()">Cancel</button>
+        <button anotokiButton variant="primary" data-save [disabled]="!changed()" [loading]="saving()" (click)="save()">Save</button>
+    </div>
+</anotoki-dialog>

@@ -1,0 +1,105 @@
+@use "../../../../sass/kit";
+@use "../../../parts/src/page";
+
+@include page.styles;
+
+// A card a part, as many to a row as fit: one in a narrow page, three in a wide one.
+.anotoki-site-settings-page__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anotoki-site-settings-page__card-item {
+  display: flex;
+  min-width: 0;
+}
+
+// A button rather than a box with a click handler: the whole card is the control, and a keyboard reaches it as a
+// mouse does.
+.anotoki-site-settings-page__card {
+  @include kit.button-reset;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface);
+  box-shadow: kit.token(shadow-sm);
+  color: kit.token(text);
+  text-align: left;
+  transition:
+    border-color kit.token(duration) kit.token(ease),
+    background-color kit.token(duration) kit.token(ease);
+
+  &:hover {
+    border-color: kit.token(border-strong);
+    background: kit.token(surface-2);
+  }
+
+  @include kit.focus-ring;
+}
+
+.anotoki-site-settings-page__card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.anotoki-site-settings-page__card-icon {
+  flex: none;
+  color: kit.token(primary);
+}
+
+.anotoki-site-settings-page__card-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.anotoki-site-settings-page__card-note {
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+// What the card is doing, a line a switch: readable without opening anything.
+.anotoki-site-settings-page__card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+  border-top: 1px solid kit.token(border);
+  font-size: 0.875rem;
+}
+
+.anotoki-site-settings-page__card-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.75rem;
+}
+
+.anotoki-site-settings-page__card-label {
+  color: kit.token(muted);
+}
+
+.anotoki-site-settings-page__card-state {
+  margin-left: auto;
+  color: kit.token(text);
+  font-weight: 600;
+  text-align: right;
+}
+
+// Something in force - a switch on, a count that is not nought: the warning's ink, as the difference between "there is
+// a number here" and "something is in force".
+.anotoki-site-settings-page__card-state--on {
+  color: kit.token(warning-text);
+}

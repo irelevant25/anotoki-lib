@@ -13,7 +13,7 @@ final class AdminSchemaTest extends DatabaseTestCase
     public function testEveryFileKeepsTheHouseRules(): void
     {
         $files = glob(Schema::directory() . '/*.sql') ?: [];
-        self::assertSame(['001_audit_log.sql', '002_feedback.sql'], array_map('basename', $files));
+        self::assertSame(['001_audit_log.sql', '002_feedback.sql', '003_site_settings.sql'], array_map('basename', $files));
 
         foreach ($files as $file) {
             $sql = (string) file_get_contents($file);
@@ -41,14 +41,19 @@ final class AdminSchemaTest extends DatabaseTestCase
 
         self::assertNull($result['error']);
         self::assertSame(
-            [['set' => 'anotoki_admin', 'name' => '001_audit_log.sql'], ['set' => 'anotoki_admin', 'name' => '002_feedback.sql'], ['set' => 'survey', 'name' => '001_init.sql']],
+            [
+                ['set' => 'anotoki_admin', 'name' => '001_audit_log.sql'],
+                ['set' => 'anotoki_admin', 'name' => '002_feedback.sql'],
+                ['set' => 'anotoki_admin', 'name' => '003_site_settings.sql'],
+                ['set' => 'survey', 'name' => '001_init.sql'],
+            ],
             $result['applied'],
         );
         self::assertTrue(Schema::has($this->pdo, 'anotoki_audit_log'));
         self::assertTrue(Schema::has($this->pdo, 'anotoki_feedback'));
         self::assertFalse(Schema::has($this->pdo, 'anotoki_nothing'));
         self::assertSame(
-            ['anotoki_admin/001_audit_log.sql', 'anotoki_admin/002_feedback.sql', '001_init.sql'],
+            ['anotoki_admin/001_audit_log.sql', 'anotoki_admin/002_feedback.sql', 'anotoki_admin/003_site_settings.sql', '001_init.sql'],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(\PDO::FETCH_COLUMN),
             'a one-set site records the library\'s files as <set>/<file>',
         );
@@ -64,8 +69,18 @@ final class AdminSchemaTest extends DatabaseTestCase
             array_values(array_filter($feedback['columns'], static fn(string $column): bool => str_starts_with($column, 'client_hash'))),
             'nothing of where a message came from: no address, no hash of one (the owner\'s decision)',
         );
+        // 003 (0.11.0): the site settings - a row per switch, a row per page; nothing seeded.
+        $switches = $this->shapeOf('anotoki_site_settings');
+        self::assertContains('value jsonb NOT NULL', $switches['columns']);
+        self::assertContains('anotoki_site_settings_pkey PRIMARY KEY (name)', $switches['constraints']);
+        $pages = $this->shapeOf('anotoki_page_access');
+        self::assertContains("visibility character varying(16) NOT NULL DEFAULT 'ADMIN'::character varying", $pages['columns'], 'a page nobody thought about is the administrators\' alone');
+        self::assertContains("api_paths text[] NOT NULL DEFAULT '{}'::text[]", $pages['columns']);
+        self::assertContains('anotoki_page_access_path_key UNIQUE (path)', $pages['constraints']);
+        self::assertSame(0, (int) $this->pdo->query('SELECT (SELECT count(*) FROM anotoki_site_settings) + (SELECT count(*) FROM anotoki_page_access)')->fetchColumn());
         foreach (glob(Schema::directory() . '/*.sql') ?: [] as $file) {
-            self::assertStringContainsString('Released with anotoki-lib 0.4.0,', (string) file_get_contents($file), basename($file));
+            $release = basename($file) === '003_site_settings.sql' ? '0.11.0' : '0.4.0';
+            self::assertStringContainsString("Released with anotoki-lib $release,", (string) file_get_contents($file), basename($file));
         }
     }
 
@@ -80,7 +95,7 @@ final class AdminSchemaTest extends DatabaseTestCase
         self::assertNull($this->migrator([Schema::migrationSet(), $users, $genshin])->apply()['error']);
 
         self::assertSame(
-            ['anotoki_admin|001_audit_log.sql', 'anotoki_admin|002_feedback.sql', 'users|001_users.sql', 'genshin_impact|001_characters.sql'],
+            ['anotoki_admin|001_audit_log.sql', 'anotoki_admin|002_feedback.sql', 'anotoki_admin|003_site_settings.sql', 'users|001_users.sql', 'genshin_impact|001_characters.sql'],
             $this->pdo->query("SELECT folder || '|' || filename FROM migrations ORDER BY id")->fetchAll(\PDO::FETCH_COLUMN),
         );
     }
@@ -101,7 +116,7 @@ final class AdminSchemaTest extends DatabaseTestCase
         $result = $this->migrator([Schema::migrationSet(), $site])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(2, $result['applied'], 'the library\'s two files, and nothing of the site\'s again');
+        self::assertCount(3, $result['applied'], 'the library\'s three files, and nothing of the site\'s again');
         self::assertSame($before, $this->siteTables(), 'every table of the site as it was: columns, constraints, indexes, triggers, rows');
         self::assertSame([], $this->migrator([Schema::migrationSet(), $site])->applicable());
     }
@@ -116,6 +131,20 @@ final class AdminSchemaTest extends DatabaseTestCase
         self::assertStringContainsString('the table anotoki_audit_log is not the library\'s', (string) $result['error']);
         self::assertStringContainsString('id is integer, where it must be bigint', (string) $result['error']);
         self::assertStringContainsString('it has no column actor_id', (string) $result['error']);
+    }
+
+    public function testASiteSettingsTableOfThatNameInAnotherShapeIsRefusedNamingWhatDiffers(): void
+    {
+        // Genshin's own table has another name (site_routes): only a table made under the library's name some other way is refused.
+        $this->pdo->exec('CREATE TABLE anotoki_page_access (id SERIAL PRIMARY KEY, path TEXT NOT NULL, visibility TEXT, blocked BOOLEAN)');
+
+        $result = $this->migrator([Schema::migrationSet()])->apply();
+
+        self::assertSame(['set' => 'anotoki_admin', 'name' => '003_site_settings.sql'], $result['failed']);
+        self::assertStringContainsString('the site settings\' tables are not the library\'s', (string) $result['error']);
+        self::assertStringContainsString('anotoki_page_access.id is integer, where it must be bigint', (string) $result['error']);
+        self::assertStringContainsString('anotoki_page_access has no column api_paths', (string) $result['error']);
+        self::assertFalse(Schema::has($this->pdo, 'anotoki_site_settings'), 'the file rolled back whole');
     }
 
     /** @return array<string, mixed> every table but the library's and the bookkeeping, as the catalog has it, with its rows */

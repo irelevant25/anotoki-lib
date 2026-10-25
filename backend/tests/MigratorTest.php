@@ -172,7 +172,7 @@ final class MigratorTest extends DatabaseTestCase
 
         $status = $migrator->status();
         self::assertSame([['set' => 'survey', 'name' => '001_initial.sql', 'applied_at' => '2026-09-28T10:00:00Z']], $status['applied']);
-        self::assertSame([['set' => 'survey', 'name' => '002_next.sql', 'ready' => true, 'blocked' => false]], $status['pending']);
+        self::assertSame([['set' => 'survey', 'name' => '002_next.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []]], $status['pending']);
 
         self::assertSame([['set' => 'survey', 'name' => '002_next.sql']], $migrator->apply()['applied']);
         self::assertSame($before, $this->shapeOf('migrations'));
@@ -262,7 +262,7 @@ final class MigratorTest extends DatabaseTestCase
 
         $status = $this->migrator([$set])->status();
         self::assertSame([], $status['applied']);
-        self::assertSame([['set' => 'analyzer', 'name' => '001_adopt.sql', 'ready' => true, 'blocked' => false]], $status['pending']);
+        self::assertSame([['set' => 'analyzer', 'name' => '001_adopt.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []]], $status['pending']);
         self::assertSame([], $status['missing']);
 
         try {
@@ -314,7 +314,10 @@ final class MigratorTest extends DatabaseTestCase
                 'sets' => ['site'],
                 // By id: the order they ran, whatever their names say.
                 'applied' => [['set' => 'site', 'name' => '002_b.sql', 'applied_at' => '2026-10-02T09:00:00Z'], ['set' => 'site', 'name' => '001_a.sql', 'applied_at' => '2026-10-01T09:00:00Z']],
-                'pending' => [['set' => 'site', 'name' => '003_c.sql', 'ready' => true, 'blocked' => false], ['set' => 'site', 'name' => '004_d.sql', 'ready' => true, 'blocked' => false]],
+                'pending' => [
+                    ['set' => 'site', 'name' => '003_c.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []],
+                    ['set' => 'site', 'name' => '004_d.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []],
+                ],
                 'missing' => [['set' => 'site', 'name' => '005_gone.sql', 'applied_at' => '2026-10-03T09:00:00Z']],
             ],
             $migrator->status(),
@@ -333,7 +336,10 @@ final class MigratorTest extends DatabaseTestCase
             [
                 'sets' => ['users', 'genshin_impact'],
                 'applied' => [],
-                'pending' => [['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false], ['set' => 'genshin_impact', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false]],
+                'pending' => [
+                    ['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []],
+                    ['set' => 'genshin_impact', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []],
+                ],
                 'missing' => [],
             ],
             $this->migrator([$users, $genshin])->status(),
@@ -453,11 +459,11 @@ final class MigratorTest extends DatabaseTestCase
 
         self::assertSame(
             [
-                ['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
-                ['set' => 'users', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false],
-                ['set' => 'users', 'name' => '003_c.sql', 'ready' => true, 'blocked' => true],
-                ['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => true],
-                ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true],
+                ['set' => 'users', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []],
+                ['set' => 'users', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false, 'duplicates' => []],
+                ['set' => 'users', 'name' => '003_c.sql', 'ready' => true, 'blocked' => true, 'duplicates' => []],
+                ['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => true, 'duplicates' => []],
+                ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true, 'duplicates' => []],
             ],
             $migrator->status()['pending'],
         );
@@ -475,7 +481,10 @@ final class MigratorTest extends DatabaseTestCase
         file_put_contents($users->directory . '/002_b.sql', "CREATE TABLE b (id int);\n-- end of 002\n");
         self::assertSame([['set' => 'users', 'name' => '002_b.sql'], ['set' => 'users', 'name' => '003_c.sql']], $migrator->apply()['applied']);
         self::assertSame(
-            [['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => false], ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true]],
+            [
+                ['set' => 'users', 'name' => '004_d.sql', 'ready' => false, 'blocked' => false, 'duplicates' => []],
+                ['set' => 'genshin_impact', 'name' => '001_e.sql', 'ready' => true, 'blocked' => true, 'duplicates' => []],
+            ],
             $migrator->status()['pending'],
         );
     }

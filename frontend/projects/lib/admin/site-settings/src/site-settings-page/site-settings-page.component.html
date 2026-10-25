@@ -1,0 +1,82 @@
+@if (!tools.isAdmin()) {
+    <p class="anotoki-admin__notice">Site settings are for the administrators of {{ tools.siteName }}.</p>
+} @else {
+    <div class="anotoki-admin__page">
+        <anotoki-page-header
+            heading="Site settings"
+            lead="Switches that take effect the moment they are saved, for everybody reading the site. The server keeps them too: what is closed or hidden here is refused to anything that asks the site's API directly - and never to its administrators.">
+            <button anotokiButton data-reload [loading]="loading()" (click)="load()">
+                <anotoki-icon name="refresh" [size]="16" />
+                Read again
+            </button>
+        </anotoki-page-header>
+
+        <p class="anotoki-admin__happened" data-happened role="status">{{ happened() }}</p>
+
+        @if (unavailable()) {
+            <anotoki-alert data-unavailable tone="warning" heading="Apply the pending database update first">
+                <p class="anotoki-admin__text">The site settings' tables come with an update that is uploaded and not applied yet. Until it is, every switch is off and every page is anybody's.</p>
+                <div alertActions>
+                    @if (tools.migrationsRoute; as route) {
+                        <a anotokiButton size="sm" variant="primary" data-migrations-link [routerLink]="route">
+                            <anotoki-icon name="database" [size]="15" />
+                            Open Migrations
+                        </a>
+                    }
+                    <button anotokiButton size="sm" (click)="load()">
+                        <anotoki-icon name="refresh" [size]="15" />
+                        Look again
+                    </button>
+                </div>
+            </anotoki-alert>
+        } @else if (loadError(); as message) {
+            <anotoki-error-state heading="The site settings could not be read" retryLabel="Try again" [message]="message" (retry)="load()" />
+        } @else if (data()) {
+            <!-- A card a part, saying what it is doing without being opened: the whole form on one page was taller than a
+                 screen - the length at which nobody can tell at a glance what the site is up to. -->
+            <ul class="anotoki-site-settings-page__cards" data-cards>
+                @for (card of cards(); track card.part) {
+                    <li class="anotoki-site-settings-page__card-item">
+                        <button type="button" class="anotoki-site-settings-page__card" aria-haspopup="dialog" [attr.data-card]="card.part" (click)="open(card.part)">
+                            <span class="anotoki-site-settings-page__card-head">
+                                <anotoki-icon class="anotoki-site-settings-page__card-icon" [name]="card.icon" [size]="22" />
+                                <span class="anotoki-site-settings-page__card-title">{{ card.title }}</span>
+                            </span>
+                            <span class="anotoki-site-settings-page__card-note">{{ card.note }}</span>
+                            <span class="anotoki-site-settings-page__card-lines">
+                                @for (line of card.lines; track line.label) {
+                                    <span class="anotoki-site-settings-page__card-line">
+                                        <span class="anotoki-site-settings-page__card-label">{{ line.label }}</span>
+                                        <span class="anotoki-site-settings-page__card-state" [class.anotoki-site-settings-page__card-state--on]="line.on">{{ line.state }}</span>
+                                    </span>
+                                }
+                            </span>
+                        </button>
+                    </li>
+                }
+            </ul>
+            @if (cards().length === 0) {
+                <p class="anotoki-admin__notice" data-no-parts>This site offers none of the site settings.</p>
+            }
+        } @else {
+            <div class="anotoki-admin__loading"><anotoki-spinner size="lg" label="Reading the site settings" [showLabel]="true" /></div>
+        }
+    </div>
+
+    @if (editing(); as part) {
+        @if (data(); as current) {
+            @if (part === "page_access") {
+                <anotoki-site-settings-pages [data]="current" (saved)="saved($event)" (closed)="close()" />
+            } @else {
+                <anotoki-site-settings-switches
+                    [part]="part"
+                    [heading]="editingTitle()"
+                    [data]="current"
+                    [languages]="languages()"
+                    [staffRoute]="staffRoute"
+                    (saved)="saved($event)"
+                    (closed)="close()" />
+            }
+        }
+    }
+}

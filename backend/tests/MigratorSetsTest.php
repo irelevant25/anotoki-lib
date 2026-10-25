@@ -308,9 +308,9 @@ final class MigratorSetsTest extends DatabaseTestCase
 
         self::assertSame(
             [
-                ['set' => 'academy', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false],
-                ['set' => 'academy', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false],
-                ['set' => 'anotoki_words', 'name' => '001_words.sql', 'ready' => true, 'blocked' => true],
+                ['set' => 'academy', 'name' => '001_a.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []],
+                ['set' => 'academy', 'name' => '002_b.sql', 'ready' => false, 'blocked' => false, 'duplicates' => []],
+                ['set' => 'anotoki_words', 'name' => '001_words.sql', 'ready' => true, 'blocked' => true, 'duplicates' => []],
             ],
             $migrator->status()['pending'],
         );

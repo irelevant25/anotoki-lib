@@ -128,6 +128,7 @@ const EN = {
   'anotoki.legal.contactResponseText': 'We aim to reply within a few days.',
   'anotoki.legal.contactAboutTitle': 'About',
   'anotoki.legal.contactAboutText': '{site} is run by {operator}, from Slovakia.',
+  'anotoki.legal.storageAnnouncementPurpose': 'Which announcement you hid, so that it stays hidden until its words change.',
 } as const;
 
 /** A key of these words. */
@@ -252,6 +253,7 @@ const SK: Readonly<Record<LegalLibraryKey, string>> = {
   'anotoki.legal.contactResponseText': 'Snažíme sa odpovedať do niekoľkých dní.',
   'anotoki.legal.contactAboutTitle': 'O prevádzkovateľovi',
   'anotoki.legal.contactAboutText': 'Stránku {site} prevádzkuje {operator} zo Slovenska.',
+  'anotoki.legal.storageAnnouncementPurpose': 'Ktoré oznámenie bolo skryté, aby zostalo skryté, kým sa jeho text nezmení.',
 };
 
 /** These words, per language: English and Slovak, each with every key. */

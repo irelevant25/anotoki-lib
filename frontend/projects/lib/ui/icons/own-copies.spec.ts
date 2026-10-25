@@ -3,6 +3,7 @@ import { IconPaths, IconSet } from '@anotoki/lib/ui/config';
 import { AnotokiIcons } from '@anotoki/lib/ui/icon';
 import * as family from '@anotoki/lib/ui/icons';
 import { registerPageIcons as registerPeopleIcons } from '../../people/page/src/icons';
+import { registerPageIcons as registerSiteSettingsIcons } from '../../admin/site-settings/src/icons';
 import { registerPageIcons as registerTranslationsIcons } from '../../translations/admin/src/icons';
 import { registerDateFieldIcons } from '../date-field/src/icons';
 import { registerFilePickerIcons } from '../file-picker/src/icons';
@@ -10,7 +11,7 @@ import { registerRichTextIcons } from '../rich-text/src/icons';
 
 /**
  * The lazy pages carry their own copies of the family's icons they draw - the admin tools' pages, the People page, the
- * translations admin pages, and the kit's pieces of 0.6.0 that draw some (the date field's calendar, the file picker's,
+ * translations admin pages, the site settings page, and the kit's pieces of 0.6.0 that draw some (the date field's calendar, the file picker's,
  * the rich-text toolbar's) - never an import of @anotoki/lib/ui/icons, which a site may load up front for its own: one
  * file is one chunk, and the pages' icons would sit in its first load. The copies stay the family's drawings.
  */
@@ -27,6 +28,8 @@ describe("the lazy pages' own icons: the family's, path for path", () => {
     ['the admin tools', registerAdminIcons, 19],
     ['the People page', registerPeopleIcons, 1],
     ['the translations admin', registerTranslationsIcons, 7],
+    // The site settings' page (0.11.0): its cards' key, message and layers.
+    ['the site settings page', registerSiteSettingsIcons, 3],
     ['the date field', registerDateFieldIcons, 1],
     ['the file picker', registerFilePickerIcons, 2],
     // Every one of the toolbar's twelve, indent and outdent among them (the family's since 0.6.0).

@@ -22,7 +22,7 @@ export interface TestSite {
   admin: WritableSignal<boolean>;
   signedIn: WritableSignal<boolean>;
   language: WritableSignal<string>;
-  signIn: Mock<() => unknown>;
+  signIn: Mock<(returnTo?: string) => unknown>;
   onUpToDate: Mock<() => unknown>;
   reload: Mock<() => void>;
 }
@@ -32,7 +32,7 @@ export function testSite(): TestSite {
     admin: signal(false),
     signedIn: signal(false),
     language: signal('en'),
-    signIn: vi.fn<() => unknown>(),
+    signIn: vi.fn<(returnTo?: string) => unknown>(),
     onUpToDate: vi.fn<() => unknown>(),
     reload: vi.fn<() => void>(),
   };

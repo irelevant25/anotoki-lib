@@ -1,0 +1,10 @@
+// A notice or two above the page, as wide as the site gives them; nothing at all while there is none.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+:host:empty {
+  display: none;
+}

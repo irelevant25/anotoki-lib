@@ -2,6 +2,8 @@
     <!-- The admin frame's page (0.10.0): a frame of its own - the admin panel's - never inside the showcase's bar and footer. -->
     <router-outlet />
 } @else {
+    <!-- The site settings' announcement bar (0.11.0), above the site's own bar: ?announcement=warning, or the admin page's save. -->
+    <anotoki-announcement />
     <anotoki-shell [maxWidth]="frameWidth">
         <anotoki-top-bar topBar [brand]="brand()" [links]="links()" [person]="person()" [menuItems]="items()" [signOut]="signOut" [languages]="true" [phoneMax]="760" [phoneMark]="mark()" />
         <router-outlet />

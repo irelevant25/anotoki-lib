@@ -1,0 +1,68 @@
+@use "../../../../sass/kit";
+@use "../../../parts/src/page";
+
+@include page.details;
+
+:host {
+  display: contents;
+}
+
+.anotoki-site-settings-switches__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.anotoki-site-settings-switches__setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+
+  & + & {
+    padding-top: 1.25rem;
+    border-top: 1px solid kit.token(border);
+  }
+}
+
+.anotoki-site-settings-switches__title {
+  margin: 0;
+  color: kit.token(text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.anotoki-site-settings-switches__help {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.anotoki-site-settings-switches__history {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+.anotoki-site-settings-switches__kind {
+  max-width: 20rem;
+}
+
+.anotoki-site-settings-switches__languages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.anotoki-site-settings-switches__preview {
+  white-space: pre-line;
+}
+
+// Its words at the left of the buttons, which keep to the right.
+.anotoki-site-settings-switches__count {
+  margin-right: auto;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}

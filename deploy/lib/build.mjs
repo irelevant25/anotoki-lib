@@ -229,6 +229,14 @@ function check(dist, config) {
       problems.push(`${path} belongs to the host, never to a release`);
     }
   }
+  // frontend/.htaccess sends a backend's address to index.php before it looks for a file, so a file of the app at one
+  // is never served - the static robots.txt a site kept from before its PHP answered robots.txt and sitemap.xml
+  // (anotoki-lib 0.11.0) would stay in every release looking as if it counted. It goes from the app instead.
+  for (const route of config.routes) {
+    if (existsSync(join(dist, 'frontend', ...route.split('/')))) {
+      problems.push(`frontend/${route} is one of the backend's addresses ("routes"): index.php answers it, so the app's file is never served - delete it from the app (frontend/public/${route})`);
+    }
+  }
   if (problems.length) {
     throw new Error(`The release in ${dist} is not right:\n  ${problems.join('\n  ')}`);
   }

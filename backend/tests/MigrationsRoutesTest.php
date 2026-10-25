@@ -79,7 +79,7 @@ final class MigrationsRoutesTest extends DatabaseTestCase
         self::assertSame(['users', 'genshin_impact'], $list['sets']);
         self::assertSame(['users/001_people.sql', 'genshin_impact/001_characters.sql'], array_map(fn(array $file): string => $file['set'] . '/' . $file['name'], $list['applied']));
         self::assertMatchesRegularExpression('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $list['applied'][0]['applied_at']);
-        self::assertSame([['set' => 'genshin_impact', 'name' => '002_weapons.sql', 'ready' => true, 'blocked' => false]], $list['pending']);
+        self::assertSame([['set' => 'genshin_impact', 'name' => '002_weapons.sql', 'ready' => true, 'blocked' => false, 'duplicates' => []]], $list['pending']);
         self::assertSame([], $list['missing']);
     }
 

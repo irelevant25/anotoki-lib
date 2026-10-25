@@ -330,6 +330,25 @@ describe('<anotoki-migrations-page>: what the database has and lacks, and applyi
     await settle(fixture);
   });
 
+  it('a file whose number its set has already (0.11.0): held, saying which file has it, and what comes after waits', async () => {
+    setUp();
+    await load({
+      ...BEHIND,
+      sets: ['users', 'genshin_impact'],
+      pending: [
+        { set: 'users', name: '064_visitors.sql', ready: false, blocked: false, duplicates: ['064_news.sql'] },
+        { set: 'users', name: '065_after.sql', ready: true, blocked: true, duplicates: [] },
+      ],
+    });
+
+    expect(rows('[data-pending]')).toEqual([
+      'users/064_visitors.sql number taken its number is taken - users/064_news.sql has it too: it does not run until it is given the next free one',
+      'users/065_after.sql waits',
+    ]);
+    expect(host.querySelector('[data-pending] anotoki-badge')?.getAttribute('data-tone')).toBe('danger');
+    expect(applyButton().disabled).toBe(true);
+  });
+
   it('only drafts waiting: Apply cannot be pressed', async () => {
     setUp();
     await load({ ...BEHIND, pending: [{ set: 'site', name: '003_draft.sql', ready: false, blocked: false }] });

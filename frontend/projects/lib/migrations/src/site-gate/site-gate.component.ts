@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, TemplateRef, afterNextR
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs';
-import { ANOTOKI_MIGRATIONS_CONFIG } from '../config';
+import { ANOTOKI_MIGRATIONS_CONFIG, DEFAULT_OPEN_WHILE_CLOSED } from '../config';
 import { isOnRoute } from '../http';
 import { SiteStatus } from '../site-status.service';
 import { SiteStatusComponent } from '../site-status/site-status.component';
@@ -12,7 +12,10 @@ import { SitePagesDirective } from './site-pages.directive';
 /**
  * Wraps the site's pages (its router outlet): shows them while the site is
  * ready - or not asked yet - and the status page otherwise. An ADMIN still
- * reaches the Migrations page while an update waits, and nothing else. It
+ * reaches the Migrations page while an update waits, and nothing else; while
+ * the site is closed for maintenance (0.11.0) the ADMIN sees it as it is, and
+ * anybody reaches the routes that stay open (`openWhileClosed`: the sign-in's
+ * way back, the legal pages, About and Support). It
  * asks the server once, when nothing has asked yet, and follows the router.
  *
  * Give it the pages as a marked template -
@@ -62,6 +65,9 @@ export class SiteGateComponent {
     const state = this.status.state();
     if (state === 'ready' || state === 'unknown') {
       return true;
+    }
+    if (state === 'maintenance') {
+      return this.config.isAdmin() || (this.config.openWhileClosed ?? DEFAULT_OPEN_WHILE_CLOSED).some((route) => isOnRoute(this.url(), route));
     }
     return state === 'update-pending' && this.config.isAdmin() && isOnRoute(this.url(), this.config.migrationsRoute);
   });

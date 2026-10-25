@@ -1,0 +1,36 @@
+<anotoki-page-notice class="show-site-settings-demo__notice" />
+
+<anotoki-page-header
+    heading="Site settings on a site's pages"
+    lead="The announcement bar stands above the site's own bar on every page; the notice above sits between the site's bar and its page, for its administrators alone - this page's row keeps it for editors and administrators." />
+
+<div class="show-site-settings-demo__cards">
+    <anotoki-card heading="The announcement">
+        @if (settings.announcement(); as announcement) {
+            <p class="show-site-settings-demo__text">Shown above, of the kind "{{ announcement.level }}": a reader can hide it, and it stays hidden in their browser until its words change.</p>
+        } @else {
+            <p class="show-site-settings-demo__text">
+                Nothing to say now. Open the admin page and switch it on - or load this page with
+                <code>?announcement=warning</code>
+            </p>
+        }
+    </anotoki-card>
+
+    <anotoki-card heading="Page access">
+        <p class="show-site-settings-demo__text">
+            {{ settings.pages().length }} pages governed: anybody else is never shown a page that is switched off or not for them, and its API paths answer 423.
+        </p>
+    </anotoki-card>
+
+    <anotoki-card heading="Getting in">
+        <p class="show-site-settings-demo__text">Closed for maintenance, everybody but the administrators gets the closed sign - with a way in for them at the staff route.</p>
+        <div class="show-site-settings-demo__actions">
+            <a anotokiButton size="sm" routerLink="/maintenance">The closed sign</a>
+            <a anotokiButton size="sm" variant="ghost" routerLink="/maintenance/staff">At the staff route</a>
+        </div>
+    </anotoki-card>
+</div>
+
+<p class="show-site-settings-demo__text">
+    <a anotokiButton variant="primary" routerLink="/admin/site-settings">Open the administrators' page</a>
+</p>

@@ -10,9 +10,10 @@
  *   { path: 'feedback', loadComponent: () => import('@anotoki/lib/admin/feedback').then((m) => m.FeedbackPageComponent) }
  *   { path: 'backups', loadComponent: () => import('@anotoki/lib/admin/backups').then((m) => m.BackupsPageComponent) }
  *   { path: 'files', loadComponent: () => import('@anotoki/lib/admin/files').then((m) => m.FilesPageComponent) }
+ *   { path: 'settings', loadComponent: () => import('@anotoki/lib/admin/site-settings').then((m) => m.SiteSettingsPageComponent) }   (0.11.0)
  *
  * The server's half is the PHP package anotoki/lib (Anotoki\Lib\ErrorLog, Audit,
- * Feedback, Backups, Files).
+ * Feedback, Backups, Files, SiteSettings).
  */
 
 export type { AdminFailure, AdminTool, AnotokiAdminConfig } from './src/config';

@@ -7,9 +7,10 @@ import { SiteStatus } from './site-status.service';
 
 /**
  * Hears the server say the site is not ready: a 503 whose JSON body's code is
- * update_pending or not_set_up is reported to SiteStatus, and the gate shows
- * the status page. The request still fails as it did. The status path's own
- * requests pass untouched (SiteStatus reads those itself).
+ * update_pending, not_set_up or maintenance (0.11.0: closed by its
+ * administrators, with their message) is reported to SiteStatus, and the gate
+ * shows the status page. The request still fails as it did. The status path's
+ * own requests pass untouched (SiteStatus reads those itself).
  */
 export const siteStatusInterceptor: HttpInterceptorFn = (request, next) => {
   const config = inject(ANOTOKI_MIGRATIONS_CONFIG);
@@ -26,9 +27,9 @@ export const siteStatusInterceptor: HttpInterceptorFn = (request, next) => {
         }
         const body = jsonObject(error.error);
         const code = body?.['code'];
-        if (code === 'update_pending' || code === 'not_set_up') {
+        if (code === 'update_pending' || code === 'not_set_up' || code === 'maintenance') {
           const installed = body?.['installed'];
-          status.report(code, typeof installed === 'boolean' ? installed : undefined);
+          status.report(code, typeof installed === 'boolean' ? installed : undefined, body?.['maintenance_message']);
         }
       },
     }),

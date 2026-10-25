@@ -50,6 +50,11 @@
                                     <anotoki-badge [tone]="badgeTones[file.badge]" [attr.data-kind]="file.badge">{{ file.badge }}</anotoki-badge>
                                     @if (file.badge === "draft") {
                                         <span class="anotoki-migrations-page__why">a draft - it does not run until it is finished</span>
+                                    } @else if (file.badge === "number taken") {
+                                        <span class="anotoki-migrations-page__why" data-taken>
+                                            its number is taken - {{ file.takenBy.join(" and ") }} {{ file.takenBy.length === 1 ? "has" : "have" }} it too: it does not run until it is given the next
+                                            free one
+                                        </span>
                                     }
                                 </li>
                             }

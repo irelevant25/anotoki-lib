@@ -4,7 +4,8 @@ import { BUILT_IN_LEGAL_WORDS, LEGAL_TEXTS_UPDATED, legalKey, legalWordNames, le
 describe("legalWords(): the legal pages' words in the page's language", () => {
   it("are the library's own words, every name of them, in English and Slovak", () => {
     expect(legalWordNames().map(legalKey)).toEqual(Object.keys(LEGAL_LIBRARY_WORDS.en));
-    expect(legalWordNames()).toHaveLength(118);
+    // 118 of 0.6.0, and 0.11.0's storage line for the announcement bar's mark.
+    expect(legalWordNames()).toHaveLength(119);
     expect(BUILT_IN_LEGAL_WORDS.en.privacyTitle).toBe('Privacy policy');
     expect(BUILT_IN_LEGAL_WORDS.sk.privacyTitle).toBe('Ochrana osobných údajov');
     expect(BUILT_IN_LEGAL_WORDS.sk.backupsKept).toContain('{beforeRestore}');

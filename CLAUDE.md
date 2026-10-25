@@ -13,9 +13,10 @@ the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker
 0.11.0's `ui/html-editor`, `ui/rich-html`, `ui/dates`, `ui/search`, `ui/multiselect`, `ui/audio-player`,
 `ui/number-field`, `ui/fieldset`, `ui/file-size`, `ui/picture-preview`),
 `shell`, `migrations`,
-`migrations/page`, `translations`, `translations/admin`, `translations/testing`,
+`migrations/page`, `migrations/maintenance` (0.11.0: the closed sign), `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `admin/frame` (0.10.0:
-`<anotoki-admin-frame>`, the admin panel's frame), `feedback`,
+`<anotoki-admin-frame>`, the admin panel's frame), `site-settings` and `admin/site-settings` (0.11.0: the site
+settings on a site's pages and the administrators' page), `feedback`,
 `feedback/form` (with 0.8.0's `<anotoki-feedback-dialog>`), `error-report`, `error-report/marker`, `legal`,
 `legal/pages`, `legal/about` and `legal/support` (0.8.0), `footer` (0.6.3), and the generated `words`,
 `words/<namespace>`; the Sass module `styles/`). `README.md` says how a site
@@ -110,7 +111,8 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   `anotoki.progress.*`, `anotoki.stepper.*`, `anotoki.tabs.*`, `anotoki.dateField.*`, `anotoki.colorField.*`,
   `anotoki.filePicker.*`, `anotoki.combobox.*`, `anotoki.richText.*` - a piece has no provide*(), and provideAnotokiUi is in
   every first load) and of the family's footer (0.6.3: `anotoki.footer.*`, which has
-  none either - they come in the footer's own first load, and no other), each read
+  none either - they come in the footer's own first load, and no other), and 0.11.0's site settings' pieces' and
+  closed sign's (`anotoki.siteSettings.*`, `anotoki.maintenance.*`), each read
   through `ui/piece-words`' `pieceWords()`, the
   site's string first. Names (a site's sections, brand area) are never kit words.
 - **Every change has tests** (PHPUnit against real PostgreSQL; Vitest for Angular)
@@ -154,7 +156,10 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   core's pieces, `legal` and their own words; `footer`
   the core's pieces, `legal`, its words and - by import() alone - `feedback/form`
   (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); `admin/frame` the core's pieces and
-  `ui/side-nav` - never the shell: the theme's switch comes in its slot (0.10.0); `ui/code-editor` the core's
+  `ui/side-nav` - never the shell: the theme's switch comes in its slot (0.10.0); `migrations` the closed sign
+  (`migrations/maintenance`) by import() alone, which imports the core's pieces, `ui/piece-words` and its words, never
+  the module that loads it; `site-settings` the core's pieces, `ui/piece-words` and its words; `admin/site-settings`
+  an admin page's, `migrations` and `site-settings` (0.11.0); `ui/code-editor` the core's
   pieces, `ui/field` and the highlighters, `ui/code-json` and `ui/code-sql`, which import nothing (`migrations/page`
   takes `ui/code-sql` alone, never the editor); 0.11.0's `ui/rich-html` and `ui/search` nothing, `ui/file-size` and
   `ui/dates` the kit's configuration (and the dates their words), `ui/html-editor` the core's pieces, `ui/field`,
@@ -163,7 +168,7 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the
-  words, a button, the sign-in and the footer to their limits and to the namespaces of words
+  words, a button, the sign-in, the footer and the site settings to their limits and to the namespaces of words
   their pages say. No bundle names innerHTML, outerHTML, insertAdjacentHTML or
   bypassSecurityTrust, comments included (the IAM's deploy check refuses such a
   release): the kit draws text.

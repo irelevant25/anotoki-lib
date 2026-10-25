@@ -1684,6 +1684,106 @@
       "description": "The anotoki library's HTML editor: the button of the link's dialog that makes a link plain words again. No placeholders.",
       "en": "Remove the link",
       "sk": "Odstrániť odkaz"
+    },
+    "anotoki.maintenance.title": {
+      "description": "The anotoki library's closed sign - the page shown in place of the site while its administrators have closed it for maintenance (the site settings' \"Getting in\"), to everybody but the site's ADMIN: its heading. The Slovak addresses nobody - no ty, no Vy - so that it fits every site. No placeholders.",
+      "en": "Back shortly",
+      "sk": "Hneď sme späť"
+    },
+    "anotoki.maintenance.text": {
+      "description": "The anotoki library's closed sign: the sentence under its heading when the administrators wrote no message of their own (theirs is said instead, in the reader's language or else in English). The page asks again by itself and reloads once the site is open. No placeholders.",
+      "en": "The site is closed for a moment while something is being fixed. This page reloads by itself once it is back.",
+      "sk": "Stránka je na chvíľu zatvorená, kým niečo opravujeme. Táto stránka sa obnoví sama, keď bude späť."
+    },
+    "anotoki.maintenance.staffLead": {
+      "description": "The anotoki library's closed sign, at the address its administrators sign in at (/staff): the line above its Sign in button (anotoki.maintenance.signIn). The sign-in is the anotoki account's, as everywhere; the site lets its administrators in and nobody else. No placeholders.",
+      "en": "An administrator can sign in here and use the site while it is closed.",
+      "sk": "Administrátor sa tu môže prihlásiť a používať stránku, aj keď je zatvorená."
+    },
+    "anotoki.maintenance.signIn": {
+      "description": "The anotoki library's closed sign, at the address its administrators sign in at: the button that starts the anotoki account's sign-in. Short. No placeholders.",
+      "en": "Sign in",
+      "sk": "Prihlásiť sa"
+    },
+    "anotoki.siteSettings.announcement": {
+      "description": "The anotoki library's announcement bar - the line across the top of every page that the site's administrators write in the site settings: its name to a screen reader (a region of the page). The Slovak addresses nobody - no ty, no Vy - so that it fits every site. No placeholders.",
+      "en": "Announcement",
+      "sk": "Oznámenie"
+    },
+    "anotoki.siteSettings.levelInfo": {
+      "description": "The anotoki library's announcement bar: what a screen reader says before an announcement of the kind \"information\" (drawn in the information colour) - one word, followed by the announcement itself. No placeholders.",
+      "en": "Information",
+      "sk": "Informácia"
+    },
+    "anotoki.siteSettings.levelWarning": {
+      "description": "The anotoki library's announcement bar: what a screen reader says before an announcement of the kind \"warning\" - one word, followed by the announcement itself. No placeholders.",
+      "en": "Warning",
+      "sk": "Upozornenie"
+    },
+    "anotoki.siteSettings.levelDanger": {
+      "description": "The anotoki library's announcement bar: what a screen reader says before an announcement of the kind \"something is wrong\" (drawn in the danger colour) - one word, followed by the announcement itself. No placeholders.",
+      "en": "Important",
+      "sk": "Dôležité"
+    },
+    "anotoki.siteSettings.hide": {
+      "description": "The anotoki library's announcement bar: the button that hides the announcement - it stays hidden in this browser until its words change. Short: it stands at the bar's end. No placeholders.",
+      "en": "Hide",
+      "sk": "Skryť"
+    },
+    "anotoki.siteSettings.hideName": {
+      "description": "The anotoki library's announcement bar: what a screen reader says for the Hide button (anotoki.siteSettings.hide) - starting with that button's own words, so a person who speaks to the computer names the button by what it shows (WCAG 2.5.3, Label in Name). No placeholders.",
+      "en": "Hide the announcement",
+      "sk": "Skryť oznámenie"
+    },
+    "anotoki.siteSettings.maintenanceOnTitle": {
+      "description": "The anotoki library's notice for the site's administrators above a page, while they have closed the site for maintenance: its heading. Only an administrator sees the site then - everybody else, the maintenance page. The Slovak addresses nobody. No placeholders.",
+      "en": "The site is closed for maintenance",
+      "sk": "Stránka je zatvorená pre údržbu"
+    },
+    "anotoki.siteSettings.maintenanceOnText": {
+      "description": "The anotoki library's notice for the site's administrators while the site is closed for maintenance: the sentence under its heading, saying why the site shows for this reader. No placeholders.",
+      "en": "Everybody else sees the maintenance page. It shows here because this account is an administrator's.",
+      "sk": "Všetci ostatní vidia stránku o údržbe. Tu sa zobrazuje, lebo tento účet patrí administrátorovi."
+    },
+    "anotoki.siteSettings.pageOffTitle": {
+      "description": "The anotoki library's notice for the site's administrators above a page that the site settings' Page access switched off: its heading. Only an administrator sees such a page; nobody else ever sees this notice. No placeholders.",
+      "en": "This page is switched off",
+      "sk": "Táto stránka je vypnutá"
+    },
+    "anotoki.siteSettings.pageOffText": {
+      "description": "The anotoki library's notice for the site's administrators above a page that is switched off: the sentence under its heading. No placeholders.",
+      "en": "Only administrators see it: everybody else gets a page that is not there.",
+      "sk": "Vidia ju len administrátori: všetci ostatní dostanú stránku, ktorá neexistuje."
+    },
+    "anotoki.siteSettings.pageLimitedTitle": {
+      "description": "The anotoki library's notice for the site's administrators above a page that the site settings' Page access shows to some readers alone (people signed in, editors, administrators): its heading. No placeholders.",
+      "en": "This page is not for everybody",
+      "sk": "Táto stránka nie je pre každého"
+    },
+    "anotoki.siteSettings.pageLimitedText": {
+      "description": "The anotoki library's notice for the site's administrators above a page shown to some readers alone: the sentence under its heading. {audience}: who the page is shown to, in the words of anotoki.siteSettings.audienceUser, audienceEditor or audienceAdmin - in Slovak in the dative, as the sentence takes it. Placeholders: {audience}.",
+      "en": "It is shown to {audience}. It shows here because this account is an administrator's.",
+      "sk": "Zobrazuje sa {audience}. Tu sa zobrazuje, lebo tento účet patrí administrátorovi."
+    },
+    "anotoki.siteSettings.audienceUser": {
+      "description": "The anotoki library's notice for the site's administrators: who a page is shown to, when it is people signed in - the {audience} of anotoki.siteSettings.pageLimitedText (in Slovak the dative). No placeholders.",
+      "en": "people who are signed in",
+      "sk": "prihláseným"
+    },
+    "anotoki.siteSettings.audienceEditor": {
+      "description": "The anotoki library's notice for the site's administrators: who a page is shown to, when it is editors and administrators - the {audience} of anotoki.siteSettings.pageLimitedText. No placeholders.",
+      "en": "editors and administrators",
+      "sk": "editorom a administrátorom"
+    },
+    "anotoki.siteSettings.audienceAdmin": {
+      "description": "The anotoki library's notice for the site's administrators: who a page is shown to, when it is administrators alone - the {audience} of anotoki.siteSettings.pageLimitedText. No placeholders.",
+      "en": "administrators only",
+      "sk": "len administrátorom"
+    },
+    "anotoki.legal.storageAnnouncementPurpose": {
+      "description": "The anotoki library's Privacy page: what the stored announcement is - the browser keeps which announcement its reader hid (a mark of its words, never the words), so that it stays hidden until they change. No placeholders.",
+      "en": "Which announcement you hid, so that it stays hidden until its words change.",
+      "sk": "Ktoré oznámenie bolo skryté, aby zostalo skryté, kým sa jeho text nezmení."
     }
   }
 }

@@ -24,6 +24,7 @@ export class AdminDemoComponent {
     { path: 'feedback', label: 'Feedback' },
     { path: 'backups', label: 'Backups' },
     { path: 'files', label: 'Files' },
+    { path: 'site-settings', label: 'Site settings' },
   ];
 
   constructor() {

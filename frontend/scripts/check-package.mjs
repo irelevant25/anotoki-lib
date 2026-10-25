@@ -120,6 +120,12 @@ const PIECES = ['config', 'dom', 'icon', 'spinner', 'button', 'badge', 'alert', 
  * draws are entry points of their own, and its feedback dialog (the kit's dialog around the feedback form - since 0.8.0
  * @anotoki/lib/feedback/form's, which the Contact page opens too) comes with the press (its first load is "the footer"
  * below).
+ *
+ * site-settings (0.11.0): the site settings on a site's pages - what every page is told, the announcement bar, Page
+ * access's guard and the administrators' notice, with their words read by themselves (4.4 at 0.11.0, the bar's and the
+ * notice's templates and styles twice in the FESM as every component's). The administrators' page is
+ * @anotoki/lib/admin/site-settings, on a lazy admin route; the closed sign @anotoki/lib/migrations/maintenance, loaded by
+ * the status page as the site says it is closed.
  */
 const LIMITS = {
   [CORE]: 15,
@@ -136,6 +142,7 @@ const LIMITS = {
   '@anotoki/lib/error-report': 3,
   '@anotoki/lib/legal': 3,
   '@anotoki/lib/footer': 3,
+  '@anotoki/lib/site-settings': 5,
 };
 const UI_AND_SHELL = 28.5;
 
@@ -293,8 +300,13 @@ const MAY_IMPORT = {
     '@anotoki/lib/words/html-editor',
   ],
   '@anotoki/lib/shell': [...PIECES, '@anotoki/lib/ui/menu'],
-  '@anotoki/lib/migrations': [...PIECES, '@anotoki/lib/words/site-status'],
+  // The gate, the status page, the update banner - and, 0.11.0, the closed sign by import() alone: the status page loads
+  // it as the site says it is closed for maintenance, so the gate's first load carries neither it nor its words.
+  '@anotoki/lib/migrations': [...PIECES, '@anotoki/lib/words/site-status', '@anotoki/lib/migrations/maintenance'],
   '@anotoki/lib/migrations/page': ['@anotoki/lib/migrations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/code-sql'],
+  // The closed sign imports nothing of the module that loads it (ng-packagr allows no cycle): the status page hands it
+  // what it says.
+  '@anotoki/lib/migrations/maintenance': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/maintenance'],
   '@anotoki/lib/translations': PIECES,
   '@anotoki/lib/translations/admin': ['@anotoki/lib/translations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/forms'],
   '@anotoki/lib/translations/testing': ['@anotoki/lib/translations'],
@@ -333,6 +345,11 @@ const MAY_IMPORT = {
   // The admin panel's frame (0.10.0, genshin's for every site): the core's pieces it draws and the kit's side navigation
   // (its drawer on a phone). Never the shell: the theme's switch - the shell's - is the site's, in the frame's slot.
   '@anotoki/lib/admin/frame': [...PIECES, '@anotoki/lib/ui/side-nav'],
+  // The site settings (0.11.0): what the pages show - the announcement bar, Page access's guard, the administrators'
+  // notice (closed for maintenance, as the public settings say) - and read their own words
+  // (READ_BY_THEIR_PAGES); the administrators' page, an admin tool's page that tells the pages what it saved.
+  '@anotoki/lib/site-settings': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/site-settings'],
+  '@anotoki/lib/admin/site-settings': [...ADMIN_PAGE, '@anotoki/lib/migrations', '@anotoki/lib/site-settings'],
   // The visitors' feedback form: its configuration registers its words; the form itself, on the pages that show it -
   // its message anybody's (0.7.2): the auth module's marker, never the auth module - and, 0.8.0, the form in the kit's
   // dialog, as the footer and the Contact page open it.
@@ -391,6 +408,10 @@ const READ_BY_THEIR_PAGES = {
   '@anotoki/lib/words/multiselect': ['@anotoki/lib/ui/multiselect'],
   '@anotoki/lib/words/audio-player': ['@anotoki/lib/ui/audio-player'],
   '@anotoki/lib/words/html-editor': ['@anotoki/lib/ui/html-editor'],
+  // The site settings' pieces' (0.11.0): the announcement bar and the administrators' notice read them themselves.
+  '@anotoki/lib/words/site-settings': ['@anotoki/lib/site-settings'],
+  // The closed sign's (0.11.0): read by the sign, loaded only while the site is closed.
+  '@anotoki/lib/words/maintenance': ['@anotoki/lib/migrations/maintenance'],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */
@@ -475,6 +496,13 @@ const FIRST_LOADS = [
     },
     limit: 9,
     words: [...KIT_WORDS, 'legalLinks', 'footer'],
+  },
+  {
+    // 0.11.0: what a site offering the announcement and page access puts on every page.
+    title: 'the site settings',
+    imports: { '@anotoki/lib/site-settings': ['SiteSettings', 'provideAnotokiSiteSettings', 'pageAccessGuard', 'AnnouncementComponent', 'PageNoticeComponent'] },
+    limit: 11.5,
+    words: [...KIT_WORDS, 'siteSettings'],
   },
 ];
 

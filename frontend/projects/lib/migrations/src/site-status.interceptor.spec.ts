@@ -59,7 +59,8 @@ describe('siteStatusInterceptor: the server saying the site is not ready', () =>
 
   it('leaves every other failure alone', async () => {
     const other503 = firstValueFrom(client.get('/api/a'));
-    http.expectOne('/api/a').flush({ code: 'maintenance' }, UNAVAILABLE);
+    // A table that waits for its update (0.11.0: maintenance is a state of the site now, the closed sign's).
+    http.expectOne('/api/a').flush({ code: 'feature_unavailable' }, UNAVAILABLE);
     await failure(other503);
 
     const plain503 = firstValueFrom(client.get('/api/b'));

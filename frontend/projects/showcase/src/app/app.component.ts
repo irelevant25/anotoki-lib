@@ -5,6 +5,7 @@ import { ANOTOKI_LIB_VERSION } from '@anotoki/lib';
 import { FeedbackUnread } from '@anotoki/lib/admin';
 import { SiteFooterComponent, SiteFooterFan } from '@anotoki/lib/footer';
 import { ShellComponent, TopBarComponent, TopBarLink, TopBarMenuItem } from '@anotoki/lib/shell';
+import { AnnouncementComponent } from '@anotoki/lib/site-settings';
 import { TranslationService } from '@anotoki/lib/translations';
 import { AnotokiWords } from '@anotoki/lib/ui';
 import { ConfirmHostComponent, DialogComponent } from '@anotoki/lib/ui/dialog';
@@ -14,8 +15,8 @@ import { filter } from 'rxjs';
 /** The query, as the legal pages' sample facts read it: ?fan=1 the fan clause, ?feedback=0 a site that takes none. */
 const params = new URLSearchParams(location.search);
 
-/** The admin frame's pages (0.10.0): an admin panel's frame of their own, never the showcase's bar and footer. */
-const FRAMED = /^\/admin-frame(\/|\?|#|$)/;
+/** The admin frame's pages (0.10.0) and the closed sign (0.11.0): pages of their own, never the showcase's bar and footer. */
+const FRAMED = /^\/(admin-frame|maintenance)(\/|\?|#|$)/;
 
 /**
  * The showcase's frame: the family's bar and frame around the gallery, as a
@@ -27,7 +28,7 @@ const FRAMED = /^\/admin-frame(\/|\?|#|$)/;
  */
 @Component({
   selector: 'show-root',
-  imports: [RouterOutlet, ShellComponent, TopBarComponent, ConfirmHostComponent, ToastHostComponent, DialogComponent, SiteFooterComponent],
+  imports: [RouterOutlet, ShellComponent, TopBarComponent, ConfirmHostComponent, ToastHostComponent, DialogComponent, SiteFooterComponent, AnnouncementComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

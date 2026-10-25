@@ -76,7 +76,7 @@ deleted once the site runs well.
 | `url` | - | its address (`https://survey.anotoki.eu`) |
 | `include` | `api`, `src`, `config`, `migrations`, `vendor`, `setup.php` | what goes into `backend/`: folders, files or globs (`*`, `**`) in the site's `backend/`; a missing one is skipped. `*.local.php` and dot-files never go |
 | `exclude` | none | what of those stays out |
-| `routes` | `api` | the backend's addresses (path prefixes), sent to `index.php` |
+| `routes` | `api` | the backend's addresses (path prefixes, or exact names: `robots.txt`, `sitemap.xml`), sent to `index.php` before any file of the app - so the build refuses a file of the app at one (a static `robots.txt` kept from before its PHP answered it): it would never be served |
 | `entry` | `api/index.php` | the backend's front door in `backend/` |
 | `csp` | none | the Content-Security-Policy |
 | `headers` | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin` | more headers, or another value (`null` drops one) |

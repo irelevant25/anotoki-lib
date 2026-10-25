@@ -111,9 +111,10 @@ export type LegalStorageKind = 'cookie' | 'local' | 'session';
 
 /**
  * The family's own browser storage, in the library's words: the IAM's sign-in hint (a cookie for every anotoki
- * site), the sign-in the auth module keeps, the theme, the language, the key of a visitor without an account.
+ * site), the sign-in the auth module keeps, the theme, the language, the key of a visitor without an account, and -
+ * 0.11.0 - the announcement bar's mark of the announcement its reader hid (@anotoki/lib/site-settings).
  */
-export type LegalStoragePreset = 'signInHint' | 'signIn' | 'theme' | 'language' | 'visitorKey';
+export type LegalStoragePreset = 'signInHint' | 'signIn' | 'theme' | 'language' | 'visitorKey' | 'announcement';
 
 /** A cookie or a stored item: one of the family's (`preset`), or the site's own in its own words. */
 export type LegalStorageItem =

@@ -8,7 +8,7 @@
  */
 
 export type { AnotokiMigrationsConfig, SiteState, SiteStatusWords } from './src/config';
-export { ANOTOKI_MIGRATIONS_CONFIG, provideAnotokiMigrations } from './src/config';
+export { ANOTOKI_MIGRATIONS_CONFIG, DEFAULT_OPEN_WHILE_CLOSED, DEFAULT_STAFF_ROUTE, provideAnotokiMigrations } from './src/config';
 export { SiteStatus } from './src/site-status.service';
 export { siteStatusInterceptor } from './src/site-status.interceptor';
 export { SiteGateComponent } from './src/site-gate/site-gate.component';

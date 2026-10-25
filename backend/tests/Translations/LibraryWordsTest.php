@@ -394,6 +394,30 @@ final class LibraryWordsTest extends TestCase
                 'anotoki.htmlEditor.linkInvalid',
                 'anotoki.htmlEditor.linkSubmit',
                 'anotoki.htmlEditor.linkRemove',
+                // The site settings of 0.11.0, from 015: the closed sign while the site is closed for maintenance
+                // (frontend/projects/lib/migrations/maintenance, read by the sign itself) ...
+                'anotoki.maintenance.title',
+                'anotoki.maintenance.text',
+                'anotoki.maintenance.staffLead',
+                'anotoki.maintenance.signIn',
+                // ... the announcement bar and the administrators' notice (frontend/projects/lib/site-settings, read by them) ...
+                'anotoki.siteSettings.announcement',
+                'anotoki.siteSettings.levelInfo',
+                'anotoki.siteSettings.levelWarning',
+                'anotoki.siteSettings.levelDanger',
+                'anotoki.siteSettings.hide',
+                'anotoki.siteSettings.hideName',
+                'anotoki.siteSettings.maintenanceOnTitle',
+                'anotoki.siteSettings.maintenanceOnText',
+                'anotoki.siteSettings.pageOffTitle',
+                'anotoki.siteSettings.pageOffText',
+                'anotoki.siteSettings.pageLimitedTitle',
+                'anotoki.siteSettings.pageLimitedText',
+                'anotoki.siteSettings.audienceUser',
+                'anotoki.siteSettings.audienceEditor',
+                'anotoki.siteSettings.audienceAdmin',
+                // ... and the Privacy page's line for what the bar keeps.
+                'anotoki.legal.storageAnnouncementPurpose',
             ],
             LibraryWords::keys(),
         );
@@ -432,6 +456,10 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['version'], LibraryWords::placeholders('anotoki.footer.version'));
         self::assertSame([], LibraryWords::placeholders('anotoki.footer.fanHoyoverse'));
         self::assertSame('Feedback', LibraryWords::english('anotoki.footer.feedback'));
+        self::assertSame(['audience'], LibraryWords::placeholders('anotoki.siteSettings.pageLimitedText'));
+        self::assertSame([], LibraryWords::placeholders('anotoki.maintenance.text'));
+        self::assertStringStartsWith(LibraryWords::english('anotoki.siteSettings.hide'), (string) LibraryWords::english('anotoki.siteSettings.hideName'), 'its name starts with its words');
+        self::assertStringStartsWith(LibraryWords::all()['anotoki.siteSettings.hide']['sk'], LibraryWords::all()['anotoki.siteSettings.hideName']['sk']);
         self::assertSame(['word', 'reading'], LibraryWords::placeholders('anotoki.about.nameText'));
         self::assertSame(['support'], LibraryWords::placeholders('anotoki.about.closing'));
         self::assertSame([], LibraryWords::placeholders('anotoki.support.text'));

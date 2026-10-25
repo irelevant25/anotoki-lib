@@ -1,0 +1,27 @@
+@if (bar(); as bar) {
+    <section
+        class="anotoki-announcement__bar"
+        data-announcement
+        [class.anotoki-announcement__bar--warning]="bar.level === 'warning'"
+        [class.anotoki-announcement__bar--danger]="bar.level === 'danger'"
+        [attr.data-level]="bar.level"
+        [attr.aria-label]="word('anotoki.siteSettings.announcement').text">
+        <anotoki-icon class="anotoki-announcement__icon" [name]="bar.icon" [size]="20" />
+        <p class="anotoki-announcement__text">
+            <!-- The space in the interpolation: a template's own space at a tag's edge is the formatter's to take away. -->
+            <span class="anotoki-visually-hidden" [attr.lang]="levelWord().lang">{{ levelWord().text + ": " }}</span>
+            <span class="anotoki-announcement__message" [attr.lang]="bar.lang">{{ bar.text }}</span>
+        </p>
+        <button
+            anotokiButton
+            variant="ghost"
+            size="sm"
+            class="anotoki-announcement__hide"
+            data-hide
+            [attr.aria-label]="word('anotoki.siteSettings.hideName').text"
+            [attr.lang]="word('anotoki.siteSettings.hide').lang"
+            (click)="dismiss()">
+            {{ word("anotoki.siteSettings.hide").text }}
+        </button>
+    </section>
+}

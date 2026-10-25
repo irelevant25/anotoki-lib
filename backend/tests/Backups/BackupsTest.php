@@ -57,9 +57,9 @@ final class BackupsTest extends BackupsTestCase
 
         self::assertIsArray($result, $result instanceof Refusal ? $result->message : '');
         self::assertSame(
-            [$backup['id'], 4, null],
+            [$backup['id'], 6, null],
             [$result['restored'], $result['tables'], $result['after_restore_error']],
-            'people, notes, roles and the feedback; never the audit log or the bookkeeping',
+            'people, notes, roles, the feedback and the site settings\' two tables; never the audit log or the bookkeeping',
         );
         self::assertSame(
             array_diff_key($before, array_flip(self::KEPT)),
@@ -88,7 +88,7 @@ final class BackupsTest extends BackupsTestCase
             ['backup.created', 'backup.created', 'backup.restored'],
             $this->pdo->query("SELECT action FROM anotoki_audit_log WHERE action LIKE 'backup.%' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN),
         );
-        self::assertSame(3, (int) $this->value('SELECT count(*) FROM migrations'), 'the bookkeeping kept');
+        self::assertSame(4, (int) $this->value('SELECT count(*) FROM migrations'), 'the bookkeeping kept: the admin set\'s three files and the site\'s one');
         self::assertStringContainsString('-before-restore-', $result['before_restore']);
         self::assertSame(['before-restore', 'manual'], array_column($backups->list(), 'kind'));
 
@@ -829,8 +829,13 @@ final class BackupsTest extends BackupsTestCase
 
     public function testTwoFileNamesThatReadTheSameOnceMadePlainKeepAPartEach(): void
     {
-        $this->siteSet = $this->set('shop', ['002_a b.sql' => 'SELECT 2;', '002_a_b.sql' => 'SELECT 3;']);
+        // Two files of one number, both applied before 0.11.0 gave every file a number of its own: history, which a
+        // backup keeps as it is. The second is recorded as an older site's table holds it - no Apply runs such a file now.
+        $this->siteSet = $this->set('shop', ['002_a b.sql' => 'SELECT 2;']);
         self::assertNull($this->siteMigrator($this->pdo)->apply()['error']);
+        $this->siteSet = $this->set('shop', ['002_a_b.sql' => 'SELECT 3;']);
+        $this->pdo->exec("INSERT INTO migrations (filename) VALUES ('002_a_b.sql')");
+        self::assertSame([], $this->siteMigrator($this->pdo)->status()['pending'], 'both applied: nothing waits');
         $backups = $this->backupsWith();
         $backup = $backups->create();
         self::assertIsArray($backup);

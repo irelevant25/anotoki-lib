@@ -31,6 +31,8 @@ import { NUMBER_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/number-field';
 import { MULTISELECT_LIBRARY_WORDS } from '@anotoki/lib/words/multiselect';
 import { AUDIO_PLAYER_LIBRARY_WORDS } from '@anotoki/lib/words/audio-player';
 import { HTML_EDITOR_LIBRARY_WORDS } from '@anotoki/lib/words/html-editor';
+import { MAINTENANCE_LIBRARY_WORDS } from '@anotoki/lib/words/maintenance';
+import { SITE_SETTINGS_LIBRARY_WORDS } from '@anotoki/lib/words/site-settings';
 
 export type { KitLibraryKey, LibraryKey } from '@anotoki/lib/ui/config';
 export type { SiteStatusLibraryKey } from '@anotoki/lib/words/site-status';
@@ -55,9 +57,11 @@ export type { NumberFieldLibraryKey } from '@anotoki/lib/words/number-field';
 export type { MultiselectLibraryKey } from '@anotoki/lib/words/multiselect';
 export type { AudioPlayerLibraryKey } from '@anotoki/lib/words/audio-player';
 export type { HtmlEditorLibraryKey } from '@anotoki/lib/words/html-editor';
+export type { MaintenanceLibraryKey } from '@anotoki/lib/words/maintenance';
+export type { SiteSettingsLibraryKey } from '@anotoki/lib/words/site-settings';
 
 function gather(language: 'en' | 'sk'): Readonly<Record<LibraryKey, string>> {
-  return { ...KIT_LIBRARY_WORDS[language], ...SITE_STATUS_LIBRARY_WORDS[language], ...SIGN_IN_LIBRARY_WORDS[language], ...FEEDBACK_LIBRARY_WORDS[language], ...LEGAL_LINKS_LIBRARY_WORDS[language], ...LEGAL_LIBRARY_WORDS[language], ...CHIPS_LIBRARY_WORDS[language], ...PROGRESS_LIBRARY_WORDS[language], ...STEPPER_LIBRARY_WORDS[language], ...TABS_LIBRARY_WORDS[language], ...DATE_FIELD_LIBRARY_WORDS[language], ...COLOR_FIELD_LIBRARY_WORDS[language], ...FILE_PICKER_LIBRARY_WORDS[language], ...COMBOBOX_LIBRARY_WORDS[language], ...RICH_TEXT_LIBRARY_WORDS[language], ...FOOTER_LIBRARY_WORDS[language], ...ABOUT_LIBRARY_WORDS[language], ...SUPPORT_LIBRARY_WORDS[language], ...DATES_LIBRARY_WORDS[language], ...NUMBER_FIELD_LIBRARY_WORDS[language], ...MULTISELECT_LIBRARY_WORDS[language], ...AUDIO_PLAYER_LIBRARY_WORDS[language], ...HTML_EDITOR_LIBRARY_WORDS[language] };
+  return { ...KIT_LIBRARY_WORDS[language], ...SITE_STATUS_LIBRARY_WORDS[language], ...SIGN_IN_LIBRARY_WORDS[language], ...FEEDBACK_LIBRARY_WORDS[language], ...LEGAL_LINKS_LIBRARY_WORDS[language], ...LEGAL_LIBRARY_WORDS[language], ...CHIPS_LIBRARY_WORDS[language], ...PROGRESS_LIBRARY_WORDS[language], ...STEPPER_LIBRARY_WORDS[language], ...TABS_LIBRARY_WORDS[language], ...DATE_FIELD_LIBRARY_WORDS[language], ...COLOR_FIELD_LIBRARY_WORDS[language], ...FILE_PICKER_LIBRARY_WORDS[language], ...COMBOBOX_LIBRARY_WORDS[language], ...RICH_TEXT_LIBRARY_WORDS[language], ...FOOTER_LIBRARY_WORDS[language], ...ABOUT_LIBRARY_WORDS[language], ...SUPPORT_LIBRARY_WORDS[language], ...DATES_LIBRARY_WORDS[language], ...NUMBER_FIELD_LIBRARY_WORDS[language], ...MULTISELECT_LIBRARY_WORDS[language], ...AUDIO_PLAYER_LIBRARY_WORDS[language], ...HTML_EDITOR_LIBRARY_WORDS[language], ...MAINTENANCE_LIBRARY_WORDS[language], ...SITE_SETTINGS_LIBRARY_WORDS[language] };
 }
 
 /**

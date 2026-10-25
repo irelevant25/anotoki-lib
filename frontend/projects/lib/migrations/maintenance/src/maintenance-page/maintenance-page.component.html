@@ -1,0 +1,15 @@
+<section class="anotoki-maintenance-page__sign" role="status" data-maintenance [attr.aria-labelledby]="id + '-title'">
+    <h1 class="anotoki-maintenance-page__title" [id]="id + '-title'" [attr.lang]="word('anotoki.maintenance.title').lang">{{ word("anotoki.maintenance.title").text }}</h1>
+    @if (notice(); as own) {
+        <!-- The administrators' own words, as they wrote them: their line breaks are theirs. -->
+        <p class="anotoki-maintenance-page__text anotoki-maintenance-page__text--own" data-maintenance-message [attr.lang]="own.lang">{{ own.text }}</p>
+    } @else {
+        <p class="anotoki-maintenance-page__text" [attr.lang]="word('anotoki.maintenance.text').lang">{{ word("anotoki.maintenance.text").text }}</p>
+    }
+    @if (door()) {
+        <p class="anotoki-maintenance-page__lead" data-staff-lead [attr.lang]="word('anotoki.maintenance.staffLead').lang">{{ word("anotoki.maintenance.staffLead").text }}</p>
+        <div class="anotoki-maintenance-page__actions">
+            <button anotokiButton variant="primary" data-staff-sign-in [attr.lang]="word('anotoki.maintenance.signIn').lang" (click)="start()">{{ word("anotoki.maintenance.signIn").text }}</button>
+        </div>
+    }
+</section>

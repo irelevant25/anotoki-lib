@@ -1,0 +1,60 @@
+@use "../../../src/theme";
+
+// The status page's own box, as its other views draw it (site-status.component.scss): the sign is one of its pages.
+:host {
+  @include theme.tokens;
+  display: block;
+  color: var(--_text);
+}
+
+.anotoki-maintenance-page__sign {
+  box-sizing: border-box;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--_border);
+  border-radius: var(--_radius-lg);
+  background: var(--_surface);
+  text-align: center;
+}
+
+.anotoki-maintenance-page__title {
+  margin: 0 0 0.75rem;
+  color: var(--_text);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-maintenance-page__text {
+  margin: 0;
+  color: var(--_muted);
+  line-height: 1.5;
+}
+
+// The administrators' message keeps the lines they wrote.
+.anotoki-maintenance-page__text--own {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.anotoki-maintenance-page__lead {
+  margin: 1.25rem 0 0;
+  color: var(--_text);
+  line-height: 1.5;
+}
+
+.anotoki-maintenance-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  .anotoki-maintenance-page__sign {
+    padding: 1.5rem 1rem;
+  }
+}

@@ -26,6 +26,8 @@ interface RecordedFile extends MigrationFile {
 interface PendingFile extends MigrationFile {
   ready: boolean;
   blocked: boolean;
+  /** The other files of its set with its number (0.11.0): such a file is held until it is given a free one. */
+  duplicates?: string[];
 }
 
 /** GET {apiBase}: Migrator::status() on the server. */
@@ -60,9 +62,9 @@ interface Outcome {
   note: string | null;
 }
 
-type Badge = 'pending' | 'draft' | 'waits';
+type Badge = 'pending' | 'draft' | 'waits' | 'number taken';
 
-const BADGE_TONES: Record<Badge, BadgeTone> = { pending: 'warning', draft: 'neutral', waits: 'neutral' };
+const BADGE_TONES: Record<Badge, BadgeTone> = { pending: 'warning', draft: 'neutral', waits: 'neutral', 'number taken': 'danger' };
 
 /** A set the library ships: the names that begin with anotoki_ are theirs alone (the engine refuses a site's). */
 function isLibrarySet(set: string): boolean {
@@ -131,7 +133,14 @@ export class MigrationsPageComponent {
     return count === 1 ? 'Apply 1 pending migration?' : `Apply ${count} pending migrations?`;
   });
   /** The pending files in the order they will run, each with its badge - named as the Applied card names them. */
-  protected readonly pending = computed(() => (this.data()?.pending ?? []).map((file) => ({ ...file, badge: (!file.ready ? 'draft' : file.blocked ? 'waits' : 'pending') as Badge })));
+  protected readonly pending = computed(() =>
+    (this.data()?.pending ?? []).map((file) => ({
+      ...file,
+      badge: (file.duplicates?.length ? 'number taken' : !file.ready ? 'draft' : file.blocked ? 'waits' : 'pending') as Badge,
+      // The files that have its number already, as the cards name them.
+      takenBy: (file.duplicates ?? []).map((name) => this.label({ set: file.set, name })),
+    })),
+  );
 
   protected readonly viewingSql = computed(() => this.viewing()?.sql ?? null);
   /**

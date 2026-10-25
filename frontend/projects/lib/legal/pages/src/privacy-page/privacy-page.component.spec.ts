@@ -125,6 +125,15 @@ describe("<anotoki-privacy-page>: the family's privacy policy around the site's 
     expect(words(section('storage'))).toContain('The site uses no cookies for advertising or tracking.');
   });
 
+  it("the announcement bar's mark (0.11.0): a preset in the library's words", async () => {
+    drawn = await drawPage(PrivacyPageComponent);
+    drawn.facts.update((facts) => ({ ...facts, storage: [{ preset: 'announcement', name: 'piano-academy:announcement' }] }));
+    await settle(drawn.fixture);
+    expect(words(host().querySelector('[data-stored]'))).toBe(
+      "piano-academy:announcement local storage Which announcement you hid, so that it stays hidden until its words change. How long Until you choose again, or clear the site's data in your browser.",
+    );
+  });
+
   it("counts visits with the family's Umami - no cookie, no IP address - or says it counts none", async () => {
     drawn = await drawPage(PrivacyPageComponent);
     const analytics = () => words(host().querySelector('[data-analytics]'));

@@ -142,6 +142,7 @@ const PRESETS: Readonly<Record<LegalStoragePreset, { kind: LegalStorageKind; pur
   theme: { kind: 'local', purpose: 'storageThemePurpose', kept: 'storageUntilCleared' },
   language: { kind: 'local', purpose: 'storageLanguagePurpose', kept: 'storageUntilCleared' },
   visitorKey: { kind: 'local', purpose: 'storageVisitorPurpose', kept: 'storageVisitorKept' },
+  announcement: { kind: 'local', purpose: 'storageAnnouncementPurpose', kept: 'storageUntilCleared' },
 };
 
 const KINDS: Readonly<Record<LegalStorageKind, keyof LegalWords>> = { cookie: 'storageCookie', local: 'storageLocal', session: 'storageSession' };

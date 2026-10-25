@@ -1,0 +1,322 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+@include field.frame;
+@include field.labels;
+@include field.messages;
+
+.anotoki-field__label {
+  cursor: default;
+}
+
+// ── The editor's own items in the kit's toolbar ──────────────────────────────────────────────────────────────────────
+//
+// Drawn as the toolbar's own buttons are: 2.25rem square, 44 px where the pointer is a finger, a format that is on its
+// soft ground and a ring - not a colour alone. The menus' buttons say what is chosen, edged as the kit's fields are.
+
+.anotoki-html-editor__tool,
+.anotoki-html-editor__menu-button {
+  @include kit.button-reset;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  border-radius: kit.token(radius-sm);
+  color: kit.token(muted);
+  transition:
+    background-color kit.token(duration) kit.token(ease),
+    color kit.token(duration) kit.token(ease);
+
+  @include kit.focus-ring(1px);
+
+  @media (pointer: coarse) {
+    height: kit.token(control-height);
+  }
+}
+
+.anotoki-html-editor__tool {
+  width: 2.25rem;
+
+  &:hover {
+    background: kit.token(surface-3);
+    color: kit.token(text);
+  }
+
+  &.anotoki-html-editor__tool--on,
+  &[aria-expanded="true"] {
+    background: kit.token(primary-soft);
+    color: kit.token(primary-soft-text);
+    box-shadow: inset 0 0 0 1.5px kit.token(primary);
+  }
+
+  &[aria-disabled="true"] {
+    background: none;
+    color: kit.token(muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  @media (pointer: coarse) {
+    width: kit.token(control-height);
+  }
+}
+
+// A heading's button: its level in words, as the toolbar's icons are drawn - bold, small.
+.anotoki-html-editor__tool--words {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.anotoki-html-editor__menu-button {
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  border: 1px solid kit.token(border-strong);
+  background: kit.token(surface);
+  color: kit.token(text);
+  font-size: 0.875rem;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: kit.token(surface-3);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+// The colour buttons: a letter - on a ground of its own for the colour behind words - and the colour last given under it.
+.anotoki-html-editor__colour {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.anotoki-html-editor__colour-letter {
+  font-weight: 700;
+  line-height: 1;
+
+  &.anotoki-html-editor__colour-letter--ground {
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: kit.token(surface-3);
+  }
+}
+
+.anotoki-html-editor__colour-mark {
+  box-sizing: border-box;
+  width: 1rem;
+  height: 4px;
+  border: 1px solid kit.token(border-strong);
+  border-radius: 2px;
+  background: kit.token(text);
+}
+
+// ── The colour panel ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+.anotoki-html-editor__colours {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-2);
+}
+
+.anotoki-html-editor__colour-field {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.anotoki-html-editor__colour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// ── The text, its source and its preview ─────────────────────────────────────────────────────────────────────────────
+
+// One column; the preview beside the text where the editor is wide enough for two to be read, under it otherwise. The
+// panes are the container whose width is asked, so the query sizes their children (a container query never styles the
+// container itself).
+.anotoki-html-editor__panes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  min-width: 0;
+  container-type: inline-size;
+
+  > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
+@container (min-width: 52rem) {
+  .anotoki-html-editor__panes--preview > * {
+    flex-basis: calc(50% - 0.375rem);
+  }
+}
+
+// The text's box: a field's edge and ring, its states.
+.anotoki-html-editor__box {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid kit.token(border-strong);
+  border-radius: kit.token(radius);
+  background: kit.token(surface);
+  transition:
+    border-color kit.token(duration) kit.token(ease),
+    box-shadow kit.token(duration) kit.token(ease);
+
+  &:hover {
+    border-color: color-mix(in srgb, #{kit.token(border-strong)} 60%, #{kit.token(text)} 40%);
+  }
+
+  &:focus-within {
+    border-color: kit.token(primary);
+    box-shadow: 0 0 0 3px kit.token(ring);
+  }
+
+  &.anotoki-html-editor__box--invalid {
+    border-color: kit.token(danger);
+  }
+
+  &.anotoki-html-editor__box--disabled {
+    background: kit.token(surface-2);
+    opacity: 0.7;
+  }
+}
+
+.anotoki-html-editor__text,
+.anotoki-html-editor__source {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(var(--_html-editor-rows, 6) * 1.6em + 1.5rem);
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: kit.token(text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  outline: none;
+}
+
+.anotoki-html-editor__text {
+  position: relative;
+  overflow-wrap: break-word;
+  cursor: text;
+
+  &[hidden] {
+    display: none;
+  }
+
+  // The placeholder, where the text has no words.
+  &.anotoki-html-editor__text--blank::before {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.85rem;
+    color: kit.token(subtle);
+    content: attr(data-placeholder);
+    pointer-events: none;
+  }
+
+  &[contenteditable="false"] {
+    cursor: not-allowed;
+  }
+}
+
+// The text's own elements, made by the browser as the person writes: no attribute of Angular's scoping on them, so the
+// rules reach in (::ng-deep) - the same typography as the site's view of it (@anotoki/lib/ui/rich-html).
+.anotoki-html-editor__text ::ng-deep {
+  :where(p, div, ul, ol) {
+    margin: 0 0 0.75em;
+  }
+
+  :where(h2, h3, h4) {
+    margin: 1em 0 0.5em;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  :where(h2) {
+    font-size: 1.375em;
+  }
+
+  :where(h3) {
+    font-size: 1.1875em;
+  }
+
+  :where(h4) {
+    font-size: 1.0625em;
+  }
+
+  > :where(:first-child) {
+    margin-top: 0;
+  }
+
+  > :where(:last-child) {
+    margin-bottom: 0;
+  }
+
+  :where(ul, ol) {
+    padding-left: 1.5em;
+  }
+
+  :where(li > p, li > div) {
+    margin: 0;
+  }
+
+  :where(a) {
+    color: kit.token(link);
+    text-decoration: underline;
+  }
+
+  :where(mark) {
+    padding: 0 0.1em;
+    border-radius: 2px;
+    background: kit.token(warning-soft);
+    color: inherit;
+  }
+}
+
+// The text as its HTML: the family's monospace, as the kit's code boxes; it grows downwards as it is pulled.
+.anotoki-html-editor__source {
+  resize: vertical;
+  font-family: kit.token(font-mono);
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+
+// The preview: marked, so that it is never taken for a second editor.
+.anotoki-html-editor__preview {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: calc(var(--_html-editor-rows, 6) * 1.6em + 1.5rem);
+  padding: 1.75rem 0.85rem 0.75rem;
+  overflow: auto;
+  border: 1px dashed kit.token(border-strong);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-2);
+}
+
+.anotoki-html-editor__preview-name {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.6rem;
+  color: kit.token(muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

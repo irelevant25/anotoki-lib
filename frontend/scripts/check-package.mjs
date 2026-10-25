@@ -160,6 +160,16 @@ const LAZY_LIMITS = {
   '@anotoki/lib/ui/code-editor': 4,
   '@anotoki/lib/ui/code-sql': 3,
   '@anotoki/lib/ui/code-json': 1,
+  // 0.11.0's pieces. The HTML editor, 11.6: its toolbar's own buttons, its menus, its colour panel, its source, its
+  // preview and its link's dialog - their templates and styles each twice in the FESM. The safe view, 6.2: the HTML read
+  // by the library itself (a tokenizer, HTML's own rules for what closes what), the allow-list, the named references, the
+  // view and its typography. The dates, 2.9 - a first page may take them: their functions, their two pipes, AnotokiDates.
+  '@anotoki/lib/ui/html-editor': 12,
+  '@anotoki/lib/ui/rich-html': 6.5,
+  '@anotoki/lib/ui/multiselect': 4.5,
+  '@anotoki/lib/ui/number-field': 4.5,
+  '@anotoki/lib/ui/audio-player': 3.5,
+  '@anotoki/lib/ui/dates': 3.5,
 };
 
 /** What an admin tool's page may import: the tools' configuration and shared parts, and the kit's pieces its page draws. */
@@ -233,9 +243,19 @@ const MAY_IMPORT = {
   '@anotoki/lib/ui/date-field': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/menu', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/date-field'],
   '@anotoki/lib/ui/slider': [...PIECES, '@anotoki/lib/ui/field'],
   '@anotoki/lib/ui/color-field': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/color-field'],
-  '@anotoki/lib/ui/file-picker': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/file-picker'],
-  // The combobox: its list box is a box under the field (AnchoredPanel), several chosen are the kit's removable chips.
-  '@anotoki/lib/ui/combobox': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/menu', '@anotoki/lib/ui/chips', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/combobox'],
+  // The file picker: a size written the page's way is ui/file-size's (0.11.0), an entry point of its own.
+  '@anotoki/lib/ui/file-picker': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/file-size', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/file-picker'],
+  // The combobox: its list box is a box under the field (AnchoredPanel), several chosen are the kit's removable chips;
+  // its filter folds a text as every search of the family (ui/search, 0.11.0).
+  '@anotoki/lib/ui/combobox': [
+    ...PIECES,
+    '@anotoki/lib/ui/field',
+    '@anotoki/lib/ui/menu',
+    '@anotoki/lib/ui/chips',
+    '@anotoki/lib/ui/search',
+    '@anotoki/lib/ui/piece-words',
+    '@anotoki/lib/words/combobox',
+  ],
   // The rich-text toolbar: no field and no box - its buttons and its words.
   '@anotoki/lib/ui/rich-text': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/rich-text'],
   // The code editor (0.9.2): a field of the kit's over the highlighters, each an entry point of its own that imports
@@ -243,6 +263,35 @@ const MAY_IMPORT = {
   '@anotoki/lib/ui/code-json': [],
   '@anotoki/lib/ui/code-sql': [],
   '@anotoki/lib/ui/code-editor': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/code-json', '@anotoki/lib/ui/code-sql'],
+  // 0.11.0's pieces, each an entry point of its own. Functions a page of any site uses, importing nothing - or the kit's
+  // configuration and words alone: accent-free search, a file's size, the dates (their pipes read the kit's locale and the
+  // account's choices from provideAnotokiUi, and their words themselves).
+  '@anotoki/lib/ui/search': [],
+  '@anotoki/lib/ui/file-size': ['@anotoki/lib/ui/config'],
+  '@anotoki/lib/ui/dates': ['@anotoki/lib/ui/config', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/dates'],
+  // Fields of the kit's: the number field, the fieldset round fields, the multiselect (the kit's popover of the kit's
+  // checkboxes), the audio player.
+  '@anotoki/lib/ui/number-field': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/number-field'],
+  '@anotoki/lib/ui/fieldset': PIECES,
+  '@anotoki/lib/ui/multiselect': [...PIECES, '@anotoki/lib/ui/field', '@anotoki/lib/ui/forms', '@anotoki/lib/ui/menu', '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/multiselect'],
+  '@anotoki/lib/ui/audio-player': [...PIECES, '@anotoki/lib/ui/piece-words', '@anotoki/lib/words/audio-player'],
+  // A picture larger on hover and focus, as the tooltip shows words - an entry point of its own, the tooltip unchanged.
+  '@anotoki/lib/ui/picture-preview': PIECES,
+  // A text's HTML: the safe view and the allow-list (no words), and the editor over the kit's toolbar - its menus, its
+  // colour field, its link's dialog with the kit's text field, the view for its preview.
+  '@anotoki/lib/ui/rich-html': [],
+  '@anotoki/lib/ui/html-editor': [
+    ...PIECES,
+    '@anotoki/lib/ui/field',
+    '@anotoki/lib/ui/rich-text',
+    '@anotoki/lib/ui/rich-html',
+    '@anotoki/lib/ui/menu',
+    '@anotoki/lib/ui/color-field',
+    '@anotoki/lib/ui/dialog',
+    '@anotoki/lib/ui/forms',
+    '@anotoki/lib/ui/piece-words',
+    '@anotoki/lib/words/html-editor',
+  ],
   '@anotoki/lib/shell': [...PIECES, '@anotoki/lib/ui/menu'],
   '@anotoki/lib/migrations': [...PIECES, '@anotoki/lib/words/site-status'],
   '@anotoki/lib/migrations/page': ['@anotoki/lib/migrations', ...PIECES, '@anotoki/lib/ui/dialog', '@anotoki/lib/ui/code-sql'],
@@ -336,6 +385,12 @@ const READ_BY_THEIR_PAGES = {
   // The About and Support pages' (0.8.0): pages of text, each read by its page alone.
   '@anotoki/lib/words/about': ['@anotoki/lib/legal/about'],
   '@anotoki/lib/words/support': ['@anotoki/lib/legal/support'],
+  // The kit's pieces of 0.11.0, each reading its own.
+  '@anotoki/lib/words/dates': ['@anotoki/lib/ui/dates'],
+  '@anotoki/lib/words/number-field': ['@anotoki/lib/ui/number-field'],
+  '@anotoki/lib/words/multiselect': ['@anotoki/lib/ui/multiselect'],
+  '@anotoki/lib/words/audio-player': ['@anotoki/lib/ui/audio-player'],
+  '@anotoki/lib/words/html-editor': ['@anotoki/lib/ui/html-editor'],
 };
 
 /** The namespaces of the library keys a piece of code holds: `anotoki.<namespace>.<word>`, whole or a template's start. */

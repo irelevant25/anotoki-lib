@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { SiteFooterComponent } from '@anotoki/lib/footer';
 import { LanguageSwitcherComponent, ThemeToggleComponent, TopBarComponent } from '@anotoki/lib/shell';
 import {
@@ -157,6 +158,7 @@ function portrait(name: string, colour: string): string {
     RadioGroupComponent,
     RichTextEditableDirective,
     RichTextToolbarComponent,
+    RouterLink,
     SegmentedComponent,
     SelectComponent,
     SideNavComponent,
@@ -184,6 +186,19 @@ function portrait(name: string, colour: string): string {
 export class GalleryComponent {
   protected readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
+
+  /** 0.11.0's pieces, a page each. */
+  protected readonly pieces = [
+    { path: '/html-editor', name: 'HTML editor and safe view', about: 'ui/html-editor, ui/rich-html - and the PHP half’s RichHtml' },
+    { path: '/dates', name: 'Dates and how long ago', about: 'ui/dates: anotokiDate, anotokiAgo' },
+    { path: '/search', name: 'Accent-free search', about: 'ui/search: foldText, matchesSearch, filterBySearch' },
+    { path: '/multiselect', name: 'Multiselect', about: 'ui/multiselect' },
+    { path: '/audio-player', name: 'Audio player', about: 'ui/audio-player' },
+    { path: '/file-size', name: 'File sizes', about: 'ui/file-size: anotokiFileSize, writtenSize' },
+    { path: '/folder', name: 'A folder in the file picker', about: 'ui/file-picker’s folder' },
+    { path: '/fields', name: 'Number field and fieldset', about: 'ui/number-field, ui/fieldset, the checkbox’s error, a select of numbers' },
+    { path: '/picture-preview', name: 'Picture preview', about: 'ui/picture-preview: a picture larger on hover and focus' },
+  ];
 
   protected readonly name = signal('Mira');
   protected readonly email = signal('mira@');

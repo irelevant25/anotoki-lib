@@ -1,0 +1,9 @@
+<fieldset class="anotoki-fieldset__box" [attr.aria-describedby]="hint() ? hintId : null">
+    <legend class="anotoki-fieldset__legend" [class.anotoki-visually-hidden]="hideLegend()">{{ legend() }}</legend>
+    @if (hint()) {
+        <p class="anotoki-fieldset__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    <div class="anotoki-fieldset__fields">
+        <ng-content />
+    </div>
+</fieldset>

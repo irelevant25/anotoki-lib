@@ -5,6 +5,107 @@ and the npm package `@anotoki/lib` (`frontend/projects/lib/package.json`). While
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## Unreleased
+
+The pieces the sites drew themselves, in the library (the owner's request of 2026-10-25: "I would like the projects to
+use the library primarily"): genshin's `shared/local-lib` editor, renderer, dates, search, multiselect, audio player,
+file sizes and folder choice, the survey's editor and its server's cleaning, every site's dates and "x ago". Both halves
+change: the Angular half by additions (one generic type, below), the PHP half by `Anotoki\Lib\RichHtml`, and the
+library's words by `anotoki_translations/014`. A site switches to each piece after the release and drops its own.
+
+**`@anotoki/lib/ui/html-editor` (new): `<anotoki-html-editor>`, one editor of a text's HTML** - the union of genshin's
+and the survey's: the kit's rich-text toolbar over a contenteditable (`tools`), and where a page asks for them headings
+(`[headings]="[2, 3]"`), the highlighter (`highlight`, a `<mark>`), seven sizes (`sizes`), fonts (`[fonts]`), the words'
+colour and the colour behind them in the kit's colour field (`colors`, `[swatches]`), the HTML source (`source`) and a
+preview (`preview`); a link asked in its own dialog (a web or mail address alone); plain-text paste; pictures pasted or
+dropped handed to the page (`images`, `(pastedImages)`). Its value is the allow-list's HTML, `''` with no words; a stored
+value is drawn through the allow-list. A field of the kit's. 11.6 kB gzipped (its own limit, 12).
+
+**`@anotoki/lib/ui/rich-html` (new): `<anotoki-rich-html [html] [classes]>`, one safe view, and the allow-list** -
+`cleanRichHtml()`, `richHtmlText()`, `richHtmlIsBlank()`, `richLinkAddress()` and the parts under them. The HTML is read
+by the library's own tokenizer, as a browser reads it, and drawn node by node - never handed to the browser as markup,
+never past Angular's sanitizer (the package check's "text, never markup" holds). 6.2 kB gzipped (its limit, 6.5).
+
+**`Anotoki\Lib\RichHtml\RichHtml` (new, the PHP half)**: `clean()`, `text()`, `isBlank()`, `linkAddress()` - the same
+rules, step for step, on the library's own `Parser` (never PHP's DOM extension, which reads HTML another way): both halves
+are held to the same 47 cases (`backend/tests/RichHtml/cases.json`), so a site's server keeps exactly what its pages show.
+
+The allow-list (README, "0.11.0's pieces"): p, div, br, h2-h4, ul, ol (start), li, b, strong, i, em, u, s, strike, mark,
+span, font (size, face, color), a (a web address with its host or a mail address; always `target="_blank" rel="noopener
+noreferrer"`); inline styles of color, background-color, font-size (bounded), font-family and margin-left (0 to 400 px),
+values checked as those properties take them; the class names a site names. Where the two sites' rules differed, the
+stricter was taken, but for what a site's stored text or its editor needs:
+
+- Against the survey's server (`richTextClean()`), kept now: `div` (genshin's editor writes a line as one), `h4`
+  (genshin's guides), `span` and `font`, `strike`, the five inline styles (genshin's sizes, fonts, colours and indent)
+  and the class names a site names (genshin's `tag`). Stricter now: a link's address may hold no quote, angle bracket,
+  backtick or backslash; its 2000 are characters (bytes before); C1 controls and the characters that turn a text's
+  direction are dropped (C0 and DEL before); `<` and `>` are escaped in attribute values too. Unchanged: the survey's own
+  elements, its links' rule (http(s) with a host, mailto with an @), its links' `target` and `rel`, the dropped elements.
+- Against genshin's renderer (`sanitizeRichHtml()`), no longer kept: pictures (`img`, now dropped - neither site's text
+  holds one: the survey's pictures go beside its texts), tables, `blockquote`, `pre`, `code`, `hr`, `section`, `figure`,
+  `figcaption`, `dl`/`dt`/`dd`, `small`, `sub`, `sup`, `h1`, `h5`, `h6` (unwrapped to their words); `dir`, `lang`, `title`,
+  `ol type`, table and cell attributes; any class but those the site names; a link's own `target` and `rel` (always the
+  family's now); links to the site's own addresses (`/database/…`, `#…`) and `tel:`; the style properties border,
+  border-radius, font-style, font-weight, line-height, the margin and padding shorthands and sides but margin-left,
+  text-align, text-decoration, text-transform, vertical-align, white-space and width; and any value its property does
+  not take (genshin refused only url(), expression(), javascript:, @import and five characters).
+- Stored text: genshin's guides and voice lines (its backup of 2026-10-19) hold h4, p, strong, b, br, ol, ul, li and
+  `span class="tag"`; the survey's, p - all kept as they are.
+
+**`@anotoki/lib/ui/dates` (new)**: the pipes `anotokiDate` (`'date'`, `'day'`, `'numeric'`, `'time'`, `'datetime'`, `{
+seconds }`) and `anotokiAgo` (`{ dateAfter, phrase }`), `AnotokiDates`, and `formatDate()`, `formatTime()`,
+`formatDateTime()`, `formatRelative()`, `formatInOrder()`, `readDate()`, `calendarDays()`: the account's date order and
+clock where it chose them, else the page language's own way in the page's locale; how long ago in the language's own
+plurals (Intl: "pred 2 minútami", "o 5 minút", "predvčerom"). 2.9 kB gzipped (its limit, 3.5).
+
+**`provideAnotokiUi`** gains `locale` (what Intl writes in; the translations module's `forKit()` gives its `locale()` now)
+and `dateChoices` (the account's `date_format` and `time_format`: `() => inject(AccountPreferences).preferences()`) - types
+alone in the kit's first load. Without them the dates write the kit's language (English as en-GB) and no choices.
+
+**`@anotoki/lib/ui/search` (new)**: `foldText()`, `searchWords()`, `matchesSearch()`, `filterBySearch()` - accents, case
+and the letters Unicode writes whole folded away ("cafe" finds "Café", "lodz" "Łódź"). The combobox folds with it now
+(its `foldText` is the same function, named there as before): a compatibility form folds too ("ﬁ", full-width letters).
+
+**`@anotoki/lib/ui/multiselect`, `/audio-player`, `/number-field`, `/fieldset`, `/file-size`, `/picture-preview` (new)**:
+genshin's multiselect (a compact button over the kit's popover of checkboxes, values of the options' own type), its audio
+player (Play and Pause, Stop, a slider that says where it is), a number field (its value a number or null, `min`, `max`,
+`step`, written the page's way), a fieldset (a legend over fields in columns), a file's size (`writtenSize()`, moved out
+of the file picker, which names it as before, and the pipe `anotokiFileSize`), and a picture shown larger beside an
+element on hover and focus (`[anotokiPicturePreview]`, WCAG 1.4.13 as the tooltip: hoverable, Escape, never over the
+element, named by its alt - genshin's picture slots; the tooltip itself is unchanged).
+
+**`<anotoki-file-picker>`**: `folder` - a whole folder from the device's folder chooser, every file with its path, listed
+as one line; a drop is taken by nothing there. 5.5 kB gzipped, at its limit.
+
+**The kit's fields** - what genshin's form wrappers gave a page: `<anotoki-checkbox>`'s `error`, `invalid`, `required`
+and `focus()`; `<anotoki-text-field>`'s `step`; and **`<anotoki-select>`'s values of the options' own type**
+(`SelectOption<T = string>`, `SelectComponent<T>`) with `none`, the placeholder's value (`''` by default, `[none]="null"`
+for a number's). A select of texts is as it was - the same value, the same option values in the page.
+
+**Words**: `anotoki_translations/014_editor_and_piece_words.sql` adds 49 keys in English and impersonal Slovak, by 002's
+rule - `anotoki.dates.*` (3), `anotoki.numberField.*` (5), `anotoki.multiselect.*` (4), `anotoki.audioPlayer.*` (7),
+`anotoki.htmlEditor.*` (28) and the file picker's `chooseFolder` and `folder`: 337 library keys. Each piece reads its own
+(`@anotoki/lib/words/dates`, `/number-field`, `/multiselect`, `/audio-player`, `/html-editor`), never registered.
+
+**What a site does**, after the release: the editor and the view in place of its own (genshin: `app-html-editor`,
+`app-rich-text`, `rich-html.ts`; the survey: `app-rich-text-editor` and TipTap, its `[innerHTML]` texts, `plainText()`);
+its server's cleaning through `RichHtml::clean()` (the survey's `richTextClean()`; genshin cleans its guides and voice
+lines as it saves them, which it never did); the dates' pipes in place of its own (`appDate`, `localDate`, `timeSince`,
+`timeAgo()`, `formatAppDate()`, Japanese Academy's `fmt*`), with `locale` and `dateChoices` in its `provideAnotokiUi`;
+`foldText()` in place of its folding; genshin's multiselect, audio player, file-size pipe, folder picker, number and
+field container, and its picture slots' tooltip, by the kit's. Apply 014.
+
+- The package check: every first load as at 0.10.0 but two, by 0.1 kB gzipped, both the select's typed values - "a
+  select" 6.1 alone and 7.1 with lazy pages (6.0 and 7.0 before), "the words + feedback" 8.4 with its lazy form, which
+  holds a select (8.3). Limits of their own for the new big pieces (LAZY_LIMITS); none raised.
+- Tests: Vitest 118 files, 1114 tests (106 and 961 before) - the shared allow-list cases, the attacks it stops (a
+  script, a handler, javascript: in every disguise, data:, a style that would leave the box or load anything), the view,
+  the editor, the dates in both languages' plurals, the search, the number field, the multiselect, the audio player, the
+  fieldset, the picture preview, the folder, the fields' gaps; PHPUnit - `RichHtmlTest` (the same cases and attacks),
+  014 in `SchemaTest` and `LibraryWordsTest`. The showcase: a page each (`/html-editor`, `/dates`, `/search`,
+  `/multiselect`, `/audio-player`, `/file-size`, `/folder`, `/fields`, `/picture-preview`).
+
 ## 0.10.0 - 2026-10-24
 
 The admin panel's frame (the owner's request of 2026-10-24): every admin panel looks like genshin's, so that the panel

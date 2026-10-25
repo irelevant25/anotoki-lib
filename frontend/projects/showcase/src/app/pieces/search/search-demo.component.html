@@ -1,0 +1,16 @@
+<div class="page">
+    <anotoki-page-header heading="Accent-free search" lead="Every word of the query anywhere in a name, accents and case aside: “cafe” finds “Café”, “zilina” finds “Žilina”, “lodz” finds “Łódź”." />
+
+    <anotoki-text-field label="Search" type="search" [(value)]="query" [hint]="'Read as: ' + (folded() || '—')" data-search />
+
+    <ul class="show-search__found" aria-live="polite" data-found>
+        @for (entry of found(); track entry.name) {
+            <li>
+                <strong>{{ entry.name }}</strong>
+                <span class="muted small">{{ entry.kind }}</span>
+            </li>
+        } @empty {
+            <li class="muted">Nothing found.</li>
+        }
+    </ul>
+</div>

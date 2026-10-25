@@ -1,0 +1,26 @@
+<!--
+    The link's address: Enter adds it, as the button does. The dialog gives it the focus as it opens (its first control
+    but the close button) - no autofocus here, which the dialog would find on this element and not on its input.
+-->
+<anotoki-text-field
+    class="anotoki-html-editor-link__address"
+    [label]="word('anotoki.htmlEditor.linkAddress').text"
+    type="url"
+    inputmode="url"
+    autocomplete="off"
+    spellcheck="false"
+    [hint]="word('anotoki.htmlEditor.linkHint').text"
+    [error]="error()"
+    [value]="address()"
+    (valueChange)="address.set($event)"
+    (keydown.enter)="add($event)" />
+
+<ng-template anotokiDialogFooter>
+    @if (data.inLink) {
+        <button anotokiButton variant="danger-ghost" data-link-remove (click)="remove()">{{ word("anotoki.htmlEditor.linkRemove").text }}</button>
+    }
+    <button anotokiButton data-link-cancel (click)="cancel()">{{ kit.t("ui.cancel") }}</button>
+    <button anotokiButton variant="primary" data-link-add (click)="add()">
+        {{ word(data.inLink ? "anotoki.htmlEditor.linkChange" : "anotoki.htmlEditor.linkSubmit").text }}
+    </button>
+</ng-template>

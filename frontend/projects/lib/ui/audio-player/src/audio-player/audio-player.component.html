@@ -1,0 +1,54 @@
+<audio
+    #audio
+    class="anotoki-audio-player__audio"
+    preload="metadata"
+    [src]="src()"
+    [autoplay]="autoplay()"
+    (loadedmetadata)="onMetadata()"
+    (durationchange)="onMetadata()"
+    (timeupdate)="onTime()"
+    (play)="playing.set(true)"
+    (pause)="playing.set(false)"
+    (ended)="playing.set(false)"
+    (error)="failed.set(true)"></audio>
+@if (label()) {
+    <span class="anotoki-audio-player__label" [attr.title]="label()" aria-hidden="true">{{ label() }}</span>
+}
+@if (failed()) {
+    @let failedWords = word("anotoki.audioPlayer.failed");
+    <p class="anotoki-audio-player__failed" role="alert" [attr.lang]="failedWords.lang">{{ failedWords.text }}</p>
+} @else {
+    <div class="anotoki-audio-player__controls">
+        @let playWords = word(playing() ? "anotoki.audioPlayer.pause" : "anotoki.audioPlayer.play");
+        <button anotokiButton size="sm" iconOnly class="anotoki-audio-player__play" [attr.aria-label]="playWords.text" [attr.title]="playWords.text" [attr.lang]="playWords.lang" (click)="toggle()">
+            <anotoki-icon [name]="playing() ? 'pause' : 'play'" [size]="16" [filled]="true" />
+        </button>
+        @let stopWords = word("anotoki.audioPlayer.stop");
+        <button
+            anotokiButton
+            variant="ghost"
+            size="sm"
+            iconOnly
+            class="anotoki-audio-player__stop"
+            [attr.aria-label]="stopWords.text"
+            [attr.title]="stopWords.text"
+            [attr.lang]="stopWords.lang"
+            (click)="stop()">
+            <anotoki-icon name="stopCircle" [size]="18" />
+        </button>
+        <span class="anotoki-audio-player__time" aria-hidden="true">{{ elapsed() }}</span>
+        @let positionWords = word("anotoki.audioPlayer.position");
+        <input
+            class="anotoki-audio-player__seek"
+            type="range"
+            min="0"
+            step="1"
+            [max]="duration()"
+            [value]="currentTime()"
+            [disabled]="duration() <= 0"
+            [attr.aria-label]="positionWords.text"
+            [attr.aria-valuetext]="positionText()"
+            (input)="onSeek($event)" />
+        <span class="anotoki-audio-player__time" aria-hidden="true">{{ total() }}</span>
+    </div>
+}

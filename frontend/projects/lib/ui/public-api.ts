@@ -18,7 +18,20 @@
  * /tooltip, /copy, /qr, /icons.
  */
 
-export type { AnotokiUiConfig, AnotokiWordKey, AnotokiWordTable, IconPaths, IconSet, KitLibraryKey, LibraryKey, ModuleLibraryWords, WordParams } from '@anotoki/lib/ui/config';
+export type {
+  AnotokiClock,
+  AnotokiDateChoices,
+  AnotokiDateOrder,
+  AnotokiUiConfig,
+  AnotokiWordKey,
+  AnotokiWordTable,
+  IconPaths,
+  IconSet,
+  KitLibraryKey,
+  LibraryKey,
+  ModuleLibraryWords,
+  WordParams,
+} from '@anotoki/lib/ui/config';
 export {
   ANOTOKI_ICONS,
   ANOTOKI_LIBRARY_WORDS,

@@ -24,7 +24,10 @@ Version 0.10.0 holds:
   links, stat tiles, progress bars, disclosures, steppers, labelled groups,
   link tabs, side navigation, and the date, slider, colour, file, combobox and
   rich-text pieces, each its own entry point; since 0.9.2 the code editor and
-  its JSON and SQL highlighters) and its top bar and frame
+  its JSON and SQL highlighters; since 0.11.0 the HTML editor and its safe view
+  - with the PHP half's allow-list -, dates and how long ago, accent-free
+  search, file sizes, the multiselect, the audio player, the number field, the
+  fieldset and the picture preview) and its top bar and frame
   (`@anotoki/lib/shell`);
 - **translations** (both halves) - a site's words, its languages and their admin
   pages, one implementation for every site (the section "Translations" below);
@@ -210,6 +213,27 @@ MigrationsRoutes::admin($app, '/api/admin/migrations', $migrator, function ($req
   `applied`, `failed`, `error`, `note` - a failed file is still a 200 - or 409
   `busy`). The site's admin check must not need tables a pending migration makes.
 
+### A text's HTML, on the server: `Anotoki\Lib\RichHtml` (0.11.0)
+
+```php
+use Anotoki\Lib\RichHtml\RichHtml;
+
+$html = RichHtml::clean($body['intro'] ?? '');               // genshin's guides: RichHtml::clean($text, ['classes' => ['tag']])
+if (RichHtml::isBlank($html)) {                              // an emptied editor's <p></p> is no text
+    $html = '';
+}
+```
+
+- `RichHtml::clean($html, ['classes' => [...]])` - a text's HTML through the family's allow-list, as HTML again: the
+  same rules as the Angular half's `cleanRichHtml()` (`@anotoki/lib/ui/rich-html`, "0.11.0's pieces" below), step for
+  step - the HTML read by the library's own `Parser` as the browser reads it, never by PHP's DOM extension (libxml reads
+  HTML another way, and the server would keep another text than the page shows) - so the server keeps exactly what the
+  page draws. A test holds both halves to the same cases (`backend/tests/RichHtml/cases.json`). Bytes that are no UTF-8
+  are read as "?"; a site's limits (length, what to refuse) stay its own, before it.
+- `RichHtml::text($html)` - the words alone, one space between them (a summary, a CSV); `RichHtml::isBlank($html)`;
+  `RichHtml::linkAddress($address)` - a link's address as a text may have it, or null; `ELEMENTS`, `DROPPED`, `STYLES`.
+- Needs nothing but PCRE and mbstring.
+
 ## The Angular half
 
 One secondary entry point per family of pieces: a site's build places whole
@@ -240,6 +264,9 @@ uses is in the first load again.
 | `@anotoki/lib/ui/chips`, `/link-card`, `/stat-tiles`, `/progress`, `/disclosure`, `/stepper`, `/labelled-group`, `/side-nav` (0.6.0) | chips (a chip, choice chips, removable chips), the link card, figures in tiles, the progress bar, the disclosure and the accordion, the stepper and the progress dots, the labelled group, the side navigation and its phone drawer - one family each ("0.6.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
 | `@anotoki/lib/ui/date-field`, `/slider`, `/color-field`, `/file-picker`, `/combobox`, `/rich-text` (0.6.0) | the input pieces: a date typed in the reader's format or chosen in a calendar, a slider with marks, a colour with its code and suggested colours, files chosen or dropped, one or several things chosen by typing (with pictures), the rich-text toolbar - one each ("0.6.0's input pieces" below) | where a page draws one (not re-exported by `ui`) |
 | `@anotoki/lib/ui/piece-words`, `/current-link` (0.6.0) | `pieceWords()`: how a piece of its own entry point reads its own words, the site's string first; `currentLink()`: which of a navigation's links is the page's | with those pieces |
+| `@anotoki/lib/ui/html-editor`, `/rich-html` (0.11.0) | the family's editor of a text's HTML; the safe view of it and the allow-list (the PHP half's `RichHtml` the same) ("0.11.0's pieces" below) | where a page draws one (not re-exported by `ui`) |
+| `@anotoki/lib/ui/dates`, `/search`, `/file-size` (0.11.0) | dates and how long ago (the pipes `anotokiDate`, `anotokiAgo`); accent-free search; a file's size (the pipe `anotokiFileSize`) - functions a first page may use, each small | where a page uses one |
+| `@anotoki/lib/ui/multiselect`, `/audio-player`, `/number-field`, `/fieldset`, `/picture-preview` (0.11.0) | several chosen out of a list; a sound to listen to; a number as a number; fields under one name; a picture larger on hover and focus | where a page draws one (not re-exported by `ui`) |
 | `@anotoki/lib/shell` | theme service and switch, language switcher, brand, top bar, frame, `latestChoiceSaver`; `assets/theme-boot.js` | yes (every page) |
 | `@anotoki/lib/migrations` | site status, interceptor, gate, status page, update banner | yes (the gate) |
 | `@anotoki/lib/migrations/page` | the admin Migrations page | a lazy admin route |
@@ -266,7 +293,7 @@ uses is in the first load again.
 | `@anotoki/lib/legal/pages` (0.6.0) | the Terms, Privacy and Contact pages, with their words | lazy routes |
 | `@anotoki/lib/legal/about`, `/support` (0.8.0) | the About page and the Support page, the same on every site, each with its words ("About and Support" below) | lazy routes |
 | `@anotoki/lib/footer` (0.6.3) | `<anotoki-site-footer>`, the family's footer: the version, What's new, Feedback, About · Support · Terms · Privacy · Contact, the fan clause ("Footer" below) | yes (every page) |
-| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper`, `/tabs`, `/date-field`, `/color-field`, `/file-picker`, `/combobox` and `/rich-text` (the kit's pieces', 0.6.0 - read by those pieces alone), `/footer` (the footer's, 0.6.3 - read by the footer itself), `/about` and `/support` (the About and Support pages', 0.8.0 - read by each page alone) | with its module, which alone imports it and registers it with the translations module (the legal pages, the About and Support pages, the kit's pieces and the footer read theirs themselves) |
+| `@anotoki/lib/words/<namespace>` (0.4.0, generated) | one module's library words: `/site-status` (the status page's), `/sign-in` (the sign-in page's), `/feedback` (the feedback form's), `/legal-links` (the footer's links, 0.6.0), `/legal` (the legal pages', 0.6.0 - read by those pages alone), `/chips`, `/progress`, `/stepper`, `/tabs`, `/date-field`, `/color-field`, `/file-picker`, `/combobox` and `/rich-text` (the kit's pieces', 0.6.0 - read by those pieces alone), `/footer` (the footer's, 0.6.3 - read by the footer itself), `/about` and `/support` (the About and Support pages', 0.8.0 - read by each page alone), `/dates`, `/number-field`, `/multiselect`, `/audio-player` and `/html-editor` (the kit's pieces' of 0.11.0 - read by those pieces alone) | with its module, which alone imports it and registers it with the translations module (the legal pages, the About and Support pages, the kit's pieces and the footer read theirs themselves) |
 | `@anotoki/lib/words` (0.4.0, generated) | `LIBRARY_WORDS`, every module's words (the kit's and each namespace's) | never - a site's specs, the showcase |
 
 Every component is standalone, OnPush and zoneless-safe; colours only through
@@ -814,6 +841,133 @@ readonly syntaxError = computed(() => {
   [(value)]="text" />
 ```
 
+**0.11.0's pieces** - what the sites drew themselves (genshin's `shared/local-lib`, the survey's editor, each site's dates
+and searches), for every site's use - each an entry point of its own like those of 0.6.0, lazy unless a first page draws
+it, never re-exported by `ui`. A site switches to them after the release, and drops its own copy.
+
+- `ui/html-editor` - `<anotoki-html-editor label [(value)] [tools] [headings] highlight sizes [fonts] colors [swatches] source preview images [classes] [rows] placeholder (pastedImages) (blurred)>`,
+  and the field's `hint`, `error`, `invalid`, `required`, `optional`, `disabled`, `hideLabel`, `autofocus`, `focus()`: the
+  family's one editor of a text's HTML. The kit's rich-text toolbar (its buttons in `tools`: `HTML_EDITOR_TOOLS` by
+  default - the formats, the lists and their indent, the link, clearing, undo, redo) over a contenteditable carrying the
+  kit's `[anotokiRichTextEditable]`; the editor's own buttons in the same row and Tab stop where the page asks for them:
+  `headings` (levels 2 to 4, each a button "Heading 2"), `highlight` (the highlighter's `<mark>`), `sizes` (seven, in the
+  library's words), `fonts` (by name), `colors` (the words' colour and the colour behind them, in the kit's colour field
+  under the toolbar with the page's `swatches`, Apply, No colour, Close), `source` (the text as its HTML, to write it so)
+  and `preview` (the text as the site shows it, beside the editor where there is room for two - `<anotoki-rich-html>`).
+  The indent of plain lines is a step of margin (24 px), a list's its own levels. A link's address is asked in the
+  editor's own dialog (the kit's dialog and text field): a web or mail address, a site's name made https - never
+  javascript:, nor an address of the site's own. A paste or a drop brings plain text (the kit's editable); pictures pasted
+  or dropped are handed to the page with `images` - `(pastedImages)`, never into the text. **The value is the
+  allow-list's HTML**: what the person writes is read back from the page node by node through `ui/rich-html`'s
+  allow-list, `''` while it has no words; a value from the page is drawn through it the same way (a stored text's
+  handler or javascript: link never reaches the page) - the page's value stays as it gave it until the person writes.
+  Tab moves the focus on (no keyboard trap). Words: `anotoki.htmlEditor.*`.
+  It replaces genshin's `app-html-editor` (`components/html-editor` and its link dialog): `[preview]="true"` → `preview`,
+  `[minHeight]` → `[rows]`, its size, font and colour menus → `sizes`, `[fonts]="['Arial', 'Times New Roman', 'Courier
+  New']"`, `colors` with its 21 `swatches`, the HTML source → `source`, its guides' class → `[classes]="['tag']"` (its own
+  `.anotoki-rich-html .tag` style stays the site's), a hidden label → `label` + `hideLabel`; and the survey's
+  `app-rich-text-editor` (TipTap): `[headings]="true"` → `[headings]="[2, 3]"`, `highlight`, `acceptImages` → `images`,
+  `(pastedImages)` as before, `compact` → `[rows]="3"`, its `label` → `label` + `hideLabel`. The survey drops TipTap.
+- `ui/rich-html` - `<anotoki-rich-html [html] [classes]>`, the family's one safe view of HTML a person wrote, and the
+  allow-list under it: `cleanRichHtml(html, { classes })`, `richHtmlText(html)` (the words alone, one space between them),
+  `richHtmlIsBlank(html)`, `richLinkAddress(address)`, the constants `RICH_HTML_ELEMENTS`, `RICH_HTML_DROPPED`,
+  `RICH_HTML_STYLES`, and the parts the editor builds on (`parseRichHtml`, `cleanRichNodes`, `writeRichHtml`,
+  `drawRichNodes`, `readRichDom`). **The HTML is read by the library itself** - a tokenizer that follows HTML's own rules
+  for what closes what - **and drawn node by node**: never handed to the browser as markup, never past Angular's sanitizer.
+  The allow-list: `p`, `div`, `br`, `h2`-`h4`, `ul`, `ol` (`start`, 2 to 100000), `li`, `b`, `strong`, `i`, `em`, `u`,
+  `s`, `strike`, `mark`, `span`, `font` (`size` 1-7, `face`, `color`) and `a` (`href` a web address with its host or a
+  mail address with an @, at most 2000 characters, nothing written to hide another scheme; `target="_blank"
+  rel="noopener noreferrer"` always - a link inside a link is its words); inline styles of `color`, `background-color`,
+  `font-size` (at most 72 px or as much), `font-family` and `margin-left` (0 to 400 px) alone, values as those properties
+  take them (no `url()`, no expression, no negative margin); the class names a site names (`classes`, none by default).
+  Scripts, styles, frames, forms, pictures, media, svg and math go with all they hold; every other element is unwrapped to
+  what it holds; controls (but tab and line feed) and the marks that turn a text's direction are dropped. Nothing can run,
+  load anything or leave the text's box. Its typography is the family's under `.anotoki-rich-html`, each rule as weak as
+  one class (`:where()`), so a site's own rules for its texts win. No words of its own.
+  It replaces genshin's `app-rich-text` and `rich-html.ts` (`sanitizeRichHtml()` → `cleanRichHtml()`,
+  `richHtmlIsEmpty()` → `richHtmlIsBlank()`, the `<app-rich-text [html]>` of the guide modal and the voice lines →
+  `<anotoki-rich-html [html] [classes]="['tag']">`), and the survey's `[innerHTML]` texts (`plainText()` →
+  `richHtmlText()`, `isBlankHtml()` → `richHtmlIsBlank()`). **The server**: `Anotoki\Lib\RichHtml\RichHtml` ("The PHP
+  half" above) holds the same rules, step for step: the survey's `richTextClean()` becomes `RichHtml::clean()` (its
+  length and UTF-8 refusals stay its own), and genshin, whose server keeps guides and voice lines as they were written,
+  cleans them with it as it saves them.
+- `ui/dates` - dates and times as every site writes them: the pipes `anotokiDate` (`{{ when | anotokiDate }}` "25 Oct
+  2026"; `'day'` "25 October 2026", `'numeric'` "25/10/2026", `'time'` "14:05", `'datetime'` "25 Oct 2026, 14:05", `{
+  seconds: true }`) and `anotokiAgo` (`{{ when | anotokiAgo }}` "just now", "5 minutes ago", "yesterday", "in 3 days" -
+  "práve teraz", "pred 5 minútami", "včera", "o 3 dni" - and from a week away the date: `{ dateAfter: 14 }`, `{ dateAfter:
+  null }` never - "last month", "2 years ago" -, `{ phrase: true }` "on 16 Oct 2026"), `AnotokiDates` for a page's own
+  code, and the functions under them (`formatDate`, `formatTime`, `formatDateTime`, `formatRelative`, `formatInOrder`,
+  `readDate`, `calendarDays`) for code with no injector. In the account's date order and on its clock where it chose them
+  (`provideAnotokiUi`'s `dateChoices`: `() => inject(AccountPreferences).preferences()`, the IAM its session's), else the
+  page language's own way, in the page's locale (`provideAnotokiUi`'s `locale`, which the translations module's `forKit()`
+  gives: en-GB, sk-SK; without it the kit's language, English as en-GB). A calendar day (`'2026-10-25'`) is that day
+  wherever the reader is; a moment without a zone (`'2026-10-25 08:15:00'`) is UTC, the family's servers' clock. How long
+  ago: under a minute the library's words, then minutes and hours rounded down, from a whole day away calendar days by the
+  reader's clock, each in the language's own plural (Intl.RelativeTimeFormat). Words: `anotoki.dates.*`.
+  It replaces genshin's `appDate` pipe and `DateFormatService` (`'datetimeWithSeconds'` → `'datetime' : { seconds: true
+  }`; a reader with no account choice gets the page language's way, no longer the device's) and its `timeSince` pipe
+  (Slovak alone before); the IAM's `appDate` (`'relative'` → `anotokiAgo`) and `formatAppDate()`; the survey's
+  `localDate` (`'day'` → `'day'`, `'date'` → `'date'`, `'ago'` → `anotokiAgo: { dateAfter: 14, phrase: true }`) and
+  `timeAgo()`; the build analyzer's `localDate` (`'ago'` → `anotokiAgo: { dateAfter: null }`, `'day'`) and `timeAgo()`;
+  Japanese Academy's `fmtDate`, `fmtDateTime`, `fmtClock`, `fmtAdminMoment` (its "in 5 min" forms stay its own words);
+  Piano Academy's `localDate` (`'moment'` → `'datetime'`); and the admin parts' own dates.
+- `ui/search` - `foldText(text)` (accents, marks and case away, the letters Unicode writes whole in their plain
+  spelling: "Fúrina" → "furina", "Łódź" → "lodz", "Straße" → "strasse"), `searchWords(query)`, `matchesSearch(text,
+  query)` (every word anywhere, several texts read as one) and `filterBySearch(items, query, textOf)`. Functions alone,
+  importing nothing. The combobox's filter folds with it (`foldText` is named by `ui/combobox` as before). It replaces
+  genshin's `diacritics.ts` (`removeDiacritics()`, 1 kB of tables), the survey's folding in its slugs and settings and the
+  build analyzer's `folded()`.
+- `ui/multiselect` - `<anotoki-multiselect label [options] [(values)] placeholder [maxShown] inline (blurred)>` and the
+  field's own: several chosen out of a list - a compact button drawn as the kit's select (lining up with selects in a
+  filter bar; `inline` the bar's height) that says what is chosen ("Furina, Neuvillette and 3 more", a count beside it),
+  the page's `placeholder` ("Any") or the library's "None chosen" for none, opening the kit's popover of the kit's
+  checkboxes and Clear. **The values are the options' `value`s** (`{ value, label, disabled?, lang? }`, a text or a number)
+  in the options' order. Words: `anotoki.multiselect.*`. It replaces genshin's `app-multiselect`.
+- `ui/audio-player` - `<anotoki-audio-player [src] label autoplay>`: a sound on a real `<audio>` (only its metadata
+  loaded first) - Play, which is Pause while it plays, Stop, the time it is at and how long it is, and a slider that says
+  and moves where it is ("Position", heard "0:32 of 3:05"); a group named by its label (the file's name) or the library's
+  "Audio player"; a sound that cannot be played says so in the controls' place. `writtenDuration(seconds)`. Words:
+  `anotoki.audioPlayer.*`. It replaces genshin's `app-audio-player`.
+- `ui/file-size` - `writtenSize(bytes, language)` (the file picker's, an entry point of its own: "300 bytes", "1.5 kB",
+  "20 MB", "1,5 kB" in Slovak - binary units, one decimal) and the pipe `anotokiFileSize` in the page's language. It
+  replaces genshin's `fileSize` pipe ("12.35 KB", decimal units and two places, before) and the admin parts' sizes.
+- `ui/file-picker`, what 0.11.0 adds - `folder`: a whole folder from the device's folder chooser ("Choose a folder"):
+  every file in it and in its folders, each with its path (`webkitRelativePath`), the kinds and sizes checked as ever,
+  listed as one line ("voice (files: 124)", their size, one remove button); a folder is chosen with the button alone - a
+  drop there is kept from the page and taken by nothing. It replaces genshin's `app-file` with `[directory]="true"` (its
+  voice-over import).
+- `ui/number-field` - `<anotoki-number-field label [(value)] [min] [max] [step] placeholder readonly (blurred)>`, a
+  `[fieldSuffix]` unit, and the field's own: **the value is a number, or null** while the field holds none (nothing, or no
+  number it takes). `step` 1 (whole numbers) by default, 0.01 two decimals, 5 its multiples from `min` (or 0), `'any'`.
+  Typing is lenient (a dot or a comma, spaces between the digits); once left (or on Enter) it writes the number the
+  page's way ("1,5") or says why it is not taken ("Write a whole number.", "The largest number is 10."). A text input
+  with a number keyboard (numeric, decimal - the whole keyboard where a minus may be typed), never `type="number"`.
+  Words: `anotoki.numberField.*`. It replaces genshin's `app-number` (`allowDecimal` + `decimalPlaces` → `step`,
+  `allowNegative` false → `[min]="0"`; its value was a text, NaN for none - a number now, null for none).
+- `ui/picture-preview` - `[anotokiPicturePreview]="src"` (with `anotokiPicturePreviewAlt`, `anotokiPicturePreviewDelay`):
+  a picture shown larger beside an element - a picture slot of an admin form, a thumbnail - on hover (after 400 ms) and
+  at once on focus, as the kit's tooltip shows words (WCAG 1.4.13): it stays while the pointer is over the element or
+  the picture and while the focus is there, Escape puts it away (and goes no further), and an element that takes no
+  focus by itself (a picture) is given a place in the tab order. The picture is 18rem wide, as tall as its shape makes it
+  (18rem at most) - whatever size it has of its own, an SVG with none too - and shows once it has come (never an empty
+  frame). It is placed beside the element - right, left, below or above, the first side it fits on whole, else the side
+  with the most room with the picture made smaller to fit there - so it never covers the element; in the top layer,
+  above a dialog too. Its picture is named by its alt (the page's,
+  else the element's own alt or aria-label) and describes the element unless that is the element's name already; a
+  picture that cannot be loaded shows nothing. The tooltip itself is unchanged (words alone). No words of its own. It
+  replaces genshin's own `app-tooltip` round its picture slots (`sites/admin/shared/entity-image`), which showed the
+  picture on hover alone and could not be hovered.
+- `ui/fieldset` - `<anotoki-fieldset legend [columns] [minWidth] hint plain hideLegend>`: fields under one name, a real
+  `<fieldset>` and `<legend>`, in at most `columns` columns (3) of at least `minWidth` (15rem), one under another on a
+  phone; a quiet box, or none (`plain`). A grid with no name is the styles' `.form-grid`. It replaces genshin's
+  `app-field-container`.
+- The kit's fields, what genshin's form wrappers gave a page (0.11.0): the checkbox's `error` (said under it and tied to
+  it, the box marked wrong), `invalid`, `required` and `focus()` (`ui/forms`); the text field's `step`; and the select's
+  values of the options' own type (`SelectOption<T>`: a number, a boolean, a text) with `none`, the value of its
+  placeholder (`''` by default; `[none]="null"` for a number's) - genshin's `app-dropdown` keys. The text field, the
+  textarea, the chips and the date field cover genshin's `app-text`, `app-textarea`, `app-chips` and `app-calendar` as
+  they are (its stored dates' mapping stays the site's).
+
 ### `@anotoki/lib/shell`
 
 `provideAnotokiShell(factory)`: `theme` (`storageKey` - the same as the boot
@@ -1264,6 +1418,12 @@ $migrator = new Migrator($pdo, [new MigrationSet('survey', __DIR__ . '/../migrat
   two new links (`anotoki.legalLinks.about` and `.support`) and the feedback form's Clear
   (`anotoki.feedback.clear`, `.clearName`), by 002's rule - 288 library keys; and the links' group's
   description, which names its five links now.
+- `014_editor_and_piece_words.sql` (0.11.0) adds the words of the kit's pieces of 0.11.0: the dates'
+  (`anotoki.dates.*`, 3: "just now", "in a moment", "on {date}"), the number field's (`anotoki.numberField.*`, 5: why a
+  number is not taken), the multiselect's (`anotoki.multiselect.*`, 4), the audio player's (`anotoki.audioPlayer.*`, 7),
+  the HTML editor's (`anotoki.htmlEditor.*`, 28: its own buttons, its seven sizes, its colours, its source and preview,
+  its link's dialog) and the file picker's folder (`anotoki.filePicker.chooseFolder`, `.folder`), 49 keys in English and
+  impersonal Slovak, by 002's rule - 337 library keys.
 - The house rules: every library file ends with `-- end of NNN` (Japanese
   Academy's draft rule accepts it), has LF line endings, one string a line with
   `''` for an apostrophe and nothing else escaped, names no site table, runs
@@ -1424,6 +1584,8 @@ import it:
 - the footer's (0.6.3), `@anotoki/lib/words/footer`, read by `@anotoki/lib/footer`
   alone the same way - it has no provide*() either - and so in the footer's first
   load, and in no other; impersonal Slovak;
+- the kit's pieces of 0.11.0 the same way, each read by its piece alone: `@anotoki/lib/words/dates` (by `ui/dates`),
+  `/number-field`, `/multiselect`, `/audio-player` and `/html-editor` (each by the piece of its name); impersonal Slovak;
 - `@anotoki/lib/words` (`frontend/projects/lib/words/`): `LIBRARY_WORDS`, every
   namespace's, for a site's specs and the showcase - no module imports it.
 

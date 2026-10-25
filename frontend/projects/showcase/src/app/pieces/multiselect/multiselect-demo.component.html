@@ -1,0 +1,22 @@
+<div class="page">
+    <anotoki-page-header heading="Multiselect" lead="Several chosen out of a list: a compact button that says what is chosen, over the kit's checkboxes." />
+
+    <section class="section" aria-labelledby="filters-title">
+        <h2 class="section-title" id="filters-title">A filter bar</h2>
+        <div class="show-multiselect__bar" data-filter-bar>
+            <anotoki-multiselect label="Elements" [options]="elements" [(values)]="chosenElements" placeholder="Any" inline />
+            <anotoki-multiselect label="Weapons" [options]="weapons" [(values)]="chosenWeapons" placeholder="Any" inline />
+            <anotoki-select label="Region" [options]="regions" [(value)]="region" placeholder="Any" inline />
+        </div>
+        <p class="muted small" data-values>Elements: {{ chosenElements().join(", ") || "any" }} · Weapons: {{ chosenWeapons().join(", ") || "any" }}</p>
+    </section>
+
+    <section class="section" aria-labelledby="form-title">
+        <h2 class="section-title" id="form-title">A form, numbers for values</h2>
+        <div class="form-grid">
+            <anotoki-multiselect label="Rarity" [options]="rarities" [(values)]="chosenRarities" hint="One or both" />
+            <anotoki-multiselect label="Roles" [options]="[]" [values]="[]" optional />
+        </div>
+        <p class="muted small">Rarity: {{ chosenRarities().join(", ") || "none" }}</p>
+    </section>
+</div>

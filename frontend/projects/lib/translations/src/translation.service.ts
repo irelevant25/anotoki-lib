@@ -937,12 +937,14 @@ export class TranslationService {
    * The kit's words from here - spread into provideAnotokiUi(): its language is
    * the page's (English in the English areas), and its `lookup` reads the
    * database's string of `anotoki.<key>` (an owner's rewording) or the site's
-   * `libraryWords`, so they win over the kit's built-in words.
+   * `libraryWords`, so they win over the kit's built-in words; and its `locale`
+   * (0.11.0) is this one's, which the kit's dates write in (en-GB, sk-SK).
    */
-  forKit(): Required<Pick<AnotokiUiConfig, 'language' | 'lookup'>> {
+  forKit(): Required<Pick<AnotokiUiConfig, 'language' | 'lookup' | 'locale'>> {
     return {
       language: () => this.effectiveLanguage(),
       lookup: (key) => this.libraryWord(LIBRARY_PREFIX + key),
+      locale: () => this.locale(),
     };
   }
 

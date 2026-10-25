@@ -4,8 +4,10 @@ import { AnotokiIcons } from '@anotoki/lib/ui/icon';
 import * as family from '@anotoki/lib/ui/icons';
 import { registerPageIcons as registerPeopleIcons } from '../../people/page/src/icons';
 import { registerPageIcons as registerTranslationsIcons } from '../../translations/admin/src/icons';
+import { registerAudioPlayerIcons } from '../audio-player/src/icons';
 import { registerDateFieldIcons } from '../date-field/src/icons';
 import { registerFilePickerIcons } from '../file-picker/src/icons';
+import { registerHtmlEditorIcons } from '../html-editor/src/icons';
 import { registerRichTextIcons } from '../rich-text/src/icons';
 
 /**
@@ -31,6 +33,9 @@ describe("the lazy pages' own icons: the family's, path for path", () => {
     ['the file picker', registerFilePickerIcons, 2],
     // Every one of the toolbar's twelve, indent and outdent among them (the family's since 0.6.0).
     ['the rich-text toolbar', registerRichTextIcons, 12],
+    // 0.11.0: the audio player's play, pause and stop; the HTML editor's highlighter (its source's brackets are its own).
+    ['the audio player', registerAudioPlayerIcons, 3],
+    ['the HTML editor', registerHtmlEditorIcons, 1],
   ] as const) {
     it(`${pages}: each icon of the family's set drawn as the set draws it`, () => {
       const set = registered(register);

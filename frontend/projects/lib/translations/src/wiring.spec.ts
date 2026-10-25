@@ -6,7 +6,7 @@ import { provideRouter } from '@angular/router';
 import { provideAnotokiAuth } from '@anotoki/lib/auth';
 import { SiteStatus, SiteStatusComponent, provideAnotokiMigrations } from '@anotoki/lib/migrations';
 import { LanguageSwitcherComponent, provideAnotokiShell } from '@anotoki/lib/shell';
-import { AnotokiWords, provideAnotokiUi } from '@anotoki/lib/ui';
+import { ANOTOKI_UI_CONFIG, AnotokiWords, provideAnotokiUi } from '@anotoki/lib/ui';
 import { AnotokiTranslationsConfig } from './config';
 import { siteStatusWords } from './site-status-words';
 import { ENGLISH, OFFLINE, SK_BUNDLE, SLOVAK, TranslationsSite, later, settled, translationsProviders, translationsSite } from './testing';
@@ -79,6 +79,15 @@ describe('the wiring: the kit’s words, the shell’s switcher and the status p
       site.respond = () => Promise.resolve({ ...SK_BUNDLE, values: { ...SLOVAK, 'anotoki.topbar.account': 'Účet' } });
       await i18n.reload();
       expect(words.t('topbar.account')).toBe('Účet');
+    });
+
+    it("gives the kit its locale (0.11.0), which the kit's dates write in: the page's, en-GB in the English areas", async () => {
+      const i18n = setUp();
+      await i18n.init();
+      const config = TestBed.inject(ANOTOKI_UI_CONFIG);
+      expect(config.locale?.()).toBe('sk-SK');
+      i18n.noteAddress('/admin/translations');
+      expect(config.locale?.()).toBe('en-GB');
     });
 
     it("with no database at all, the kit says its own words - in the reader's language where it has them, else English", async () => {

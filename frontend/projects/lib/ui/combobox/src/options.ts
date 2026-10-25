@@ -1,3 +1,8 @@
+import { foldText } from '@anotoki/lib/ui/search';
+
+// The filter folds a text as every search of the family does (ui/search, 0.11.0) - named here as before.
+export { foldText };
+
 /** One choice of a combobox. */
 export interface ComboboxOption {
   value: string;
@@ -20,11 +25,6 @@ export interface FoldedOption {
   readonly index: number;
   readonly label: string;
   readonly words: string;
-}
-
-/** A text without its accents and its case, as the filter compares them: "Fúrina" -> "furina", "Ľubica" -> "lubica". */
-export function foldText(text: string): string {
-  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
 /** The options as the filter reads them. */

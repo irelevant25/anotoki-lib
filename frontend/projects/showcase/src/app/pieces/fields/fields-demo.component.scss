@@ -1,0 +1,12 @@
+.show-fields__terms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+// The values as JSON, one long word: broken anywhere on a phone.
+.show-fields__values {
+  overflow-wrap: anywhere;
+}

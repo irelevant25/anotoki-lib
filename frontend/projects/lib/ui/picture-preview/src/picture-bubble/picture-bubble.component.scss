@@ -1,0 +1,50 @@
+@use "../../../../sass/kit";
+
+// Placed by the directive (position: fixed, in the top layer); the popover's own defaults (centred, a border, Canvas
+// colours) are set aside here. A frame of the raised surface round the picture, so that it reads apart from the page in
+// both themes.
+:host {
+  position: fixed;
+  inset: auto;
+  z-index: 1100;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.375rem;
+  overflow: hidden;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius);
+  background: kit.token(surface-raised);
+  color: kit.token(text);
+  box-shadow: kit.token(shadow-lg);
+  line-height: 0;
+}
+
+// Unseen until its picture has come; then in, gently.
+:host(.anotoki-picture-preview--loading) {
+  visibility: hidden;
+}
+
+:host(:not(.anotoki-picture-preview--loading)) {
+  animation: picture-preview-in 120ms kit.token(ease);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// As wide as its room (18rem, less where the window has less), as tall as its shape makes it and never taller than its
+// room: larger than its slot, whatever size the picture has of its own - an SVG that has none, too.
+.anotoki-picture-preview__picture {
+  display: block;
+  width: var(--_picture-preview-width, 18rem);
+  height: auto;
+  max-height: var(--_picture-preview-height, 18rem);
+  border-radius: kit.token(radius-sm);
+  object-fit: contain;
+}
+
+@keyframes picture-preview-in {
+  from {
+    opacity: 0;
+  }
+}

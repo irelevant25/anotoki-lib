@@ -1,0 +1,15 @@
+<div class="page">
+    <anotoki-page-header heading="A folder in the file picker" lead="A whole folder from the device's folder chooser - every file in it, each with its path - beside the picker of files." />
+
+    <div class="form-grid">
+        <anotoki-file-picker label="Voice lines" folder accept=".ogg,.mp3,.wav,audio/*" [(files)]="folder" hint="A folder of sounds: every one in it and in its folders" data-folder-picker />
+        <anotoki-file-picker label="Uploads" multiple [(files)]="uploads" hint="Files, each added" optional />
+    </div>
+    @if (folder().length) {
+        <ul class="show-folder__paths" data-paths>
+            @for (file of folder(); track $index) {
+                <li>{{ pathOf(file) }} · {{ file.size | anotokiFileSize }}</li>
+            }
+        </ul>
+    }
+</div>

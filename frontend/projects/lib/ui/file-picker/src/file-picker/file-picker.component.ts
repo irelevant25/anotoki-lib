@@ -29,6 +29,12 @@ type Refusal = { readonly kind: 'tooLarge'; readonly file: File } | { readonly k
  * the focus then goes to the next file's button, the one before, or back to the choose button) - and a screen reader is
  * told what was chosen ("Chosen: report.json"). A field of the kit's: its label names the area (a group), its hint and
  * error are tied to the button, `required` is the page's to check, `disabled` shuts both ways in.
+ *
+ * `folder` (0.11.0): a whole folder, chosen in the device's folder chooser ("Choose a folder") - every file in it and in
+ * its folders, each carrying its path in it (`webkitRelativePath`: "voice/greetings/hello.ogg"), the kinds and sizes
+ * checked as ever. One folder at a time, listed as one line ("voice (files: 124)", its size, a remove button that takes
+ * it all away). A folder is chosen with the button alone: a drop is never taken there (the browser hands no folder's
+ * files to a drop), nor left to open the file in the page's place.
  */
 @Component({
   selector: 'anotoki-file-picker',
@@ -49,6 +55,14 @@ export class FilePickerComponent extends FieldBase {
   readonly accept = input('');
   /** The largest file taken, in bytes; null for any size. */
   readonly maxSize = input<number | null>(null);
+  /** A whole folder, from the device's folder chooser (0.11.0): its files, each with its path in it. */
+  readonly folder = input(false, { transform: booleanAttribute });
+
+  /** The folder chosen, as its line says it: its name and how many files - null without `folder`, or with none. */
+  protected readonly chosenFolder = computed(() => {
+    const files = this.files();
+    return this.folder() && files.length ? { name: folderName(files[0]), count: files.length, size: files.reduce((sum, file) => sum + file.size, 0) } : null;
+  });
 
   /** The choose button (the kit's button: its element, not the component). */
   protected readonly control = viewChild('control', { read: ElementRef });
@@ -129,7 +143,7 @@ export class FilePickerComponent extends FieldBase {
   }
 
   protected onDragEnter(event: DragEvent): void {
-    if (!this.carriesFiles(event) || this.disabled()) {
+    if (!this.carriesFiles(event) || this.disabled() || this.folder()) {
       return;
     }
     event.preventDefault();
@@ -141,10 +155,10 @@ export class FilePickerComponent extends FieldBase {
     if (!this.carriesFiles(event) || this.disabled()) {
       return;
     }
-    // Saying "yes, here" is what lets the drop happen.
+    // Saying "yes, here" is what lets the drop happen - a folder's picker says "nothing here", and keeps the drop.
     event.preventDefault();
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'copy';
+      event.dataTransfer.dropEffect = this.folder() ? 'none' : 'copy';
     }
   }
 
@@ -166,7 +180,7 @@ export class FilePickerComponent extends FieldBase {
     event.preventDefault();
     this.depth = 0;
     this.over.set(false);
-    if (!this.disabled()) {
+    if (!this.disabled() && !this.folder()) {
       this.take(Array.from(event.dataTransfer?.files ?? []));
     }
   }
@@ -176,18 +190,22 @@ export class FilePickerComponent extends FieldBase {
       return;
     }
     const files = this.files();
-    this.asked = { index, count: files.length };
+    // A folder goes whole.
+    this.asked = this.folder() ? null : { index, count: files.length };
     this.refusals.set([]);
     this.taken.set([]);
-    this.files.set(files.filter((_, at) => at !== index));
+    this.files.set(this.folder() ? [] : files.filter((_, at) => at !== index));
+    if (this.folder()) {
+      this.control()?.nativeElement.focus();
+    }
   }
 
-  /** The browser's checks, then the files taken: added, or in the place of the one there. */
+  /** The browser's checks, then the files taken: added, or in the place of the one there - a folder's always in its place. */
   private take(chosen: readonly File[]): void {
     if (chosen.length === 0) {
       return;
     }
-    if (!this.multiple() && chosen.length > 1) {
+    if (!this.multiple() && !this.folder() && chosen.length > 1) {
       this.refusals.set([{ kind: 'oneOnly' }]);
       this.taken.set([]);
       return;
@@ -209,8 +227,8 @@ export class FilePickerComponent extends FieldBase {
       this.taken.set([]);
       return;
     }
-    const files = this.multiple() ? [...this.files(), ...taken.filter((file) => !this.files().some((there) => sameFile(there, file)))] : taken;
-    this.taken.set(taken.map((file) => file.name));
+    const files = this.multiple() && !this.folder() ? [...this.files(), ...taken.filter((file) => !this.files().some((there) => sameFile(there, file)))] : taken;
+    this.taken.set(this.folder() ? [this.word('anotoki.filePicker.folder', { name: folderName(taken[0]), count: taken.length }).text] : taken.map((file) => file.name));
     this.files.set(files);
   }
 
@@ -218,4 +236,9 @@ export class FilePickerComponent extends FieldBase {
   private carriesFiles(event: DragEvent): boolean {
     return Array.from(event.dataTransfer?.types ?? []).includes('Files');
   }
+}
+
+/** The folder a file of a folder's choice is in: the first part of its path in it ("voice/greetings/hello.ogg"). */
+function folderName(file: File): string {
+  return (file as File & { webkitRelativePath?: string }).webkitRelativePath?.split('/')[0] || file.name;
 }

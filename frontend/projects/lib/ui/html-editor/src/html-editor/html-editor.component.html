@@ -1,0 +1,252 @@
+<div class="anotoki-field">
+    <!-- Names the text (aria-labelledby): a contenteditable is no control a <label for> can name. A press puts the focus in the text. -->
+    <span class="anotoki-field__label" [id]="labelId" [class.anotoki-visually-hidden]="hideLabel()" (click)="focus()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            &ngsp;
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </span>
+
+    <!-- The kit's toolbar: its buttons carried out on the text by the kit's editable; the editor's own join its row and
+         its one Tab stop (anotokiToolbarItem). A press with a pointer leaves the focus and the selection in the text. -->
+    <anotoki-rich-text-toolbar
+        class="anotoki-html-editor__toolbar"
+        [label]="toolbarName()"
+        [controls]="inputId"
+        [tools]="tools()"
+        [active]="editable()?.active() ?? []"
+        [disabled]="shut()"
+        (command)="onCommand($event)">
+        @for (level of headings(); track level) {
+            @let headingWords = word("anotoki.htmlEditor.heading", { level: level });
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__tool anotoki-html-editor__tool--words"
+                data-heading
+                [class.anotoki-html-editor__tool--on]="headingHere() === level"
+                [attr.aria-pressed]="headingHere() === level"
+                [attr.aria-label]="headingWords.text"
+                [attr.title]="headingWords.text"
+                [attr.lang]="headingWords.lang"
+                [attr.aria-disabled]="shut() ? 'true' : null"
+                (mousedown)="$event.preventDefault()"
+                (click)="shut() || toggleHeading(level)">
+                <span aria-hidden="true">H{{ level }}</span>
+            </button>
+        }
+        @if (highlight()) {
+            @let markWords = word("anotoki.htmlEditor.highlight");
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__tool"
+                data-highlight
+                [class.anotoki-html-editor__tool--on]="markHere()"
+                [attr.aria-pressed]="markHere()"
+                [attr.aria-label]="markWords.text"
+                [attr.title]="markWords.text"
+                [attr.lang]="markWords.lang"
+                [attr.aria-disabled]="shut() ? 'true' : null"
+                (mousedown)="$event.preventDefault()"
+                (click)="shut() || toggleMark()">
+                <anotoki-icon name="highlighter" [size]="18" [strokeWidth]="2.25" />
+            </button>
+        }
+        @if (sizes()) {
+            @let sizeWord = sizeName(sizeHere());
+            @let sizeChosen = word("anotoki.htmlEditor.sizeChosen", { size: sizeWord.text });
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__menu-button"
+                data-sizes
+                [attr.aria-label]="sizeChosen.text"
+                [attr.lang]="sizeChosen.lang"
+                [disabled]="shut()"
+                [anotokiMenuTrigger]="sizeMenu"
+                (mousedown)="keepSelection()">
+                <span aria-hidden="true">{{ sizeWord.text }}</span>
+                <anotoki-icon name="chevronDown" [size]="14" />
+            </button>
+        }
+        @if (fonts().length) {
+            @let fontChosen = word("anotoki.htmlEditor.fontChosen", { font: fontHere() ?? fonts()[0] });
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__menu-button"
+                data-fonts
+                [attr.aria-label]="fontChosen.text"
+                [attr.lang]="fontChosen.lang"
+                [disabled]="shut()"
+                [anotokiMenuTrigger]="fontMenu"
+                (mousedown)="keepSelection()">
+                <span aria-hidden="true">{{ fontHere() ?? fonts()[0] }}</span>
+                <anotoki-icon name="chevronDown" [size]="14" />
+            </button>
+        }
+        @if (colors()) {
+            @let foreWords = word("anotoki.htmlEditor.textColor");
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__tool anotoki-html-editor__colour"
+                data-colour="fore"
+                [attr.aria-label]="foreWords.text"
+                [attr.title]="foreWords.text"
+                [attr.lang]="foreWords.lang"
+                [attr.aria-expanded]="colourPanel() === 'fore'"
+                [attr.aria-controls]="colourPanel() === 'fore' ? coloursId : null"
+                [attr.aria-disabled]="shut() ? 'true' : null"
+                (mousedown)="keepSelection(); $event.preventDefault()"
+                (click)="shut() || toggleColours('fore')">
+                <span class="anotoki-html-editor__colour-letter" aria-hidden="true">A</span>
+                <span class="anotoki-html-editor__colour-mark" aria-hidden="true" [style.background-color]="foreColour() || null"></span>
+            </button>
+            @let backWords = word("anotoki.htmlEditor.highlightColor");
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__tool anotoki-html-editor__colour"
+                data-colour="back"
+                [attr.aria-label]="backWords.text"
+                [attr.title]="backWords.text"
+                [attr.lang]="backWords.lang"
+                [attr.aria-expanded]="colourPanel() === 'back'"
+                [attr.aria-controls]="colourPanel() === 'back' ? coloursId : null"
+                [attr.aria-disabled]="shut() ? 'true' : null"
+                (mousedown)="keepSelection(); $event.preventDefault()"
+                (click)="shut() || toggleColours('back')">
+                <span class="anotoki-html-editor__colour-letter anotoki-html-editor__colour-letter--ground" aria-hidden="true">A</span>
+                <span class="anotoki-html-editor__colour-mark" aria-hidden="true" [style.background-color]="backColour() || null"></span>
+            </button>
+        }
+        @if (source()) {
+            @let sourceWords = word("anotoki.htmlEditor.source");
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__tool"
+                data-source
+                [class.anotoki-html-editor__tool--on]="showingSource()"
+                [attr.aria-pressed]="showingSource()"
+                [attr.aria-label]="sourceWords.text"
+                [attr.title]="sourceWords.text"
+                [attr.lang]="sourceWords.lang"
+                [attr.aria-disabled]="disabled() ? 'true' : null"
+                (mousedown)="$event.preventDefault()"
+                (click)="disabled() || toggleSource()">
+                <anotoki-icon name="sourceCode" [size]="18" [strokeWidth]="2.25" />
+            </button>
+        }
+        @if (preview()) {
+            @let previewWords = word("anotoki.htmlEditor.preview");
+            <button
+                type="button"
+                anotokiToolbarItem
+                class="anotoki-html-editor__tool"
+                data-preview
+                [class.anotoki-html-editor__tool--on]="previewOpen()"
+                [attr.aria-pressed]="previewOpen()"
+                [attr.aria-label]="previewWords.text"
+                [attr.title]="previewWords.text"
+                [attr.lang]="previewWords.lang"
+                (mousedown)="$event.preventDefault()"
+                (click)="togglePreview()">
+                <anotoki-icon name="eye" [size]="18" [strokeWidth]="2.25" />
+            </button>
+        }
+    </anotoki-rich-text-toolbar>
+
+    <!-- The menus outside the toolbar's row, so their own keys (Up, Down) stay theirs: drawn only while open. -->
+    <anotoki-menu #sizeMenu [label]="says('anotoki.htmlEditor.size')">
+        @for (size of sizeOptions; track size) {
+            @let named = sizeName(size);
+            <button anotokiMenuItem [radio]="sizeHere() === size" [attr.lang]="named.lang" (click)="chooseSize(size)">{{ named.text }}</button>
+        }
+    </anotoki-menu>
+    <anotoki-menu #fontMenu [label]="says('anotoki.htmlEditor.font')">
+        @for (font of fonts(); track font) {
+            <button anotokiMenuItem [radio]="(fontHere() ?? fonts()[0]) === font" (click)="chooseFont(font)">{{ font }}</button>
+        }
+    </anotoki-menu>
+
+    <!-- A colour for the selected words: the kit's colour field, given by Apply - a choice in the field moves nothing,
+         so the arrow keys can go through the suggestions. Escape closes it, back to its button. -->
+    @if (colourPanel(); as mode) {
+        @let panelWords = word(mode === "fore" ? "anotoki.htmlEditor.textColor" : "anotoki.htmlEditor.highlightColor");
+        <div class="anotoki-html-editor__colours" role="group" [id]="coloursId" [attr.aria-label]="panelWords.text" (keydown.escape)="closeColours(true)">
+            <anotoki-color-field class="anotoki-html-editor__colour-field" [label]="panelWords.text" [swatches]="swatches()" [value]="pendingColour()" (valueChange)="pendingColour.set($event)" />
+            <div class="anotoki-html-editor__colour-actions">
+                <button anotokiButton size="sm" variant="primary" data-apply [disabled]="!pendingColour()" (click)="applyColour(mode)">{{ says("anotoki.htmlEditor.apply") }}</button>
+                <button anotokiButton size="sm" data-no-colour (click)="clearColour(mode)">{{ says("anotoki.htmlEditor.noColor") }}</button>
+                <button anotokiButton size="sm" variant="ghost" data-close [attr.lang]="words.foreignLang()" (click)="closeColours(true)">{{ words.t("ui.close") }}</button>
+            </div>
+        </div>
+    }
+
+    <div class="anotoki-html-editor__panes" [class.anotoki-html-editor__panes--preview]="preview() && previewOpen()">
+        <div
+            class="anotoki-html-editor__box"
+            [class.anotoki-html-editor__box--focused]="focused()"
+            [class.anotoki-html-editor__box--invalid]="isInvalid()"
+            [class.anotoki-html-editor__box--disabled]="disabled()">
+            <div
+                #editor
+                anotokiRichTextEditable
+                class="anotoki-html-editor__text"
+                role="textbox"
+                aria-multiline="true"
+                [id]="inputId"
+                [class.anotoki-html-editor__text--blank]="blank()"
+                [attr.contenteditable]="disabled() ? 'false' : 'true'"
+                [attr.aria-labelledby]="labelId"
+                [attr.aria-describedby]="describedBy()"
+                [attr.aria-invalid]="isInvalid() ? 'true' : null"
+                [attr.aria-required]="required() ? 'true' : null"
+                [attr.aria-disabled]="disabled() ? 'true' : null"
+                [attr.aria-placeholder]="placeholder() || null"
+                [attr.data-placeholder]="placeholder()"
+                [hidden]="showingSource()"
+                spellcheck="true"
+                (input)="onInput()"
+                (focus)="onFocus()"
+                (blur)="onBlur()"
+                (paste)="onPictures($event)"
+                (drop)="onPictures($event)"></div>
+            @if (showingSource()) {
+                <textarea
+                    #sourceArea
+                    class="anotoki-html-editor__source"
+                    spellcheck="false"
+                    autocapitalize="off"
+                    autocomplete="off"
+                    [attr.aria-label]="says('anotoki.htmlEditor.sourceField', { field: label() })"
+                    [attr.aria-describedby]="describedBy()"
+                    [value]="draft()"
+                    (input)="onSourceInput($event)"
+                    (blur)="onBlur()"></textarea>
+            }
+        </div>
+        <!-- The text as the site shows it: the same view, through the same allow-list - what it drops is missing here too. -->
+        @if (preview() && previewOpen()) {
+            @let previewWords = word("anotoki.htmlEditor.preview");
+            <section class="anotoki-html-editor__preview" [attr.aria-label]="previewWords.text">
+                <span class="anotoki-html-editor__preview-name" aria-hidden="true" [attr.lang]="previewWords.lang">{{ previewWords.text }}</span>
+                <anotoki-rich-html [html]="value()" [classes]="classes()" />
+            </section>
+        }
+    </div>
+
+    @if (hint() && !error()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

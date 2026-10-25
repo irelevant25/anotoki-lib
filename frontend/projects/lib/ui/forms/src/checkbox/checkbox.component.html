@@ -1,5 +1,14 @@
-<label class="anotoki-checkbox__checkbox" [class.anotoki-checkbox__checkbox--disabled]="disabled()">
-    <input type="checkbox" [attr.name]="name() || null" [checked]="checked()" [disabled]="disabled()" [attr.aria-describedby]="hint() ? hintId : null" (change)="onChange($event)" />
+<label class="anotoki-checkbox__checkbox" [class.anotoki-checkbox__checkbox--disabled]="disabled()" [class.anotoki-checkbox__checkbox--invalid]="isInvalid()">
+    <input
+        #control
+        type="checkbox"
+        [attr.name]="name() || null"
+        [checked]="checked()"
+        [disabled]="disabled()"
+        [required]="required()"
+        [attr.aria-invalid]="isInvalid() ? 'true' : null"
+        [attr.aria-describedby]="describedBy()"
+        (change)="onChange($event)" />
     <span class="anotoki-checkbox__box" aria-hidden="true">
         <svg viewBox="0 0 16 16" width="12" height="12"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </span>
@@ -10,3 +19,9 @@
         }
     </span>
 </label>
+@if (error()) {
+    <p class="anotoki-checkbox__error" [id]="errorId" role="alert">
+        <anotoki-icon name="alert" [size]="15" />
+        <span>{{ error() }}</span>
+    </p>
+}

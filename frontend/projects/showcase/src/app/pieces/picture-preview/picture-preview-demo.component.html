@@ -1,0 +1,24 @@
+<div class="page">
+    <anotoki-page-header
+        heading="Picture preview"
+        lead="A picture larger beside its slot, on hover and on focus: it stays while the pointer is over either, Escape puts it away, and it never covers the slot." />
+
+    <div class="show-picture-preview__slots" data-slots>
+        @for (slot of slots; track slot.file) {
+            <figure class="show-picture-preview__slot">
+                <figcaption class="show-picture-preview__label">{{ slot.label }}</figcaption>
+                <div class="show-picture-preview__frame">
+                    <img [src]="slot.src" [alt]="slot.alt" [anotokiPicturePreview]="slot.src" />
+                </div>
+                <span class="show-picture-preview__name">{{ slot.file }}</span>
+            </figure>
+        }
+    </div>
+
+    <p class="muted">
+        A control whose picture is named apart from it:
+        <button type="button" class="show-picture-preview__button" data-named [anotokiPicturePreview]="slots[0].src" anotokiPicturePreviewAlt="Hu Tao's icon, larger">HU_TAO.avif</button>
+        - and a picture that cannot be loaded shows nothing:
+        <button type="button" class="show-picture-preview__button" [anotokiPicturePreview]="broken" anotokiPicturePreviewAlt="A picture that is not there">missing-picture.avif</button>
+    </p>
+</div>

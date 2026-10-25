@@ -304,6 +304,19 @@
         <anotoki-code-editor label="A migration" language="sql" [rows]="12" readonly [(value)]="migration" />
     </section>
 
+    <!-- 0.11.0's pieces: a page each. -->
+    <section class="section" aria-labelledby="pieces-title" data-pieces>
+        <h2 class="section-title" id="pieces-title">Pieces of 0.11.0</h2>
+        <div class="link-cards">
+            @for (piece of pieces; track piece.path) {
+                <a anotokiLinkCard [routerLink]="piece.path">
+                    <strong class="link-card-name">{{ piece.name }}</strong>
+                    <span class="muted small">{{ piece.about }}</span>
+                </a>
+            }
+        </div>
+    </section>
+
     <section class="section" aria-labelledby="choices-title">
         <h2 class="section-title" id="choices-title">Choices, menus, popovers</h2>
         <div class="cluster">

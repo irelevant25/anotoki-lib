@@ -1,0 +1,39 @@
+<div class="anotoki-field">
+    <label class="anotoki-field__label" [for]="inputId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </label>
+    <div class="anotoki-field__control" [class.anotoki-field__control--invalid]="isInvalid()" [class.anotoki-field__control--disabled]="disabled()">
+        <input
+            #control
+            class="anotoki-field__input anotoki-number-field__input"
+            type="text"
+            autocomplete="off"
+            [id]="inputId"
+            [attr.name]="name() || null"
+            [value]="text()"
+            [attr.inputmode]="inputmode()"
+            [attr.placeholder]="placeholder() || null"
+            [attr.aria-invalid]="isInvalid() ? 'true' : null"
+            [attr.aria-describedby]="describedBy()"
+            [required]="required()"
+            [readOnly]="readonly()"
+            [disabled]="disabled()"
+            spellcheck="false"
+            (input)="onInput($event)"
+            (keydown)="onKeydown($event)"
+            (blur)="onBlur()" />
+        <ng-content select="[fieldSuffix]" />
+    </div>
+    @if (hint() && !shownError()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (shownError(); as shown) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span [attr.lang]="shown.lang">{{ shown.text }}</span>
+        </p>
+    }
+</div>

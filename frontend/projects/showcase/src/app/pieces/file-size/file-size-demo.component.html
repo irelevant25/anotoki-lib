@@ -1,0 +1,26 @@
+<div class="page">
+    <anotoki-page-header heading="File sizes" lead="A file's size written the page's way, in the binary units a disk is measured in." />
+
+    <div class="table-scroll">
+        <table class="table" data-sizes>
+            <thead>
+                <tr>
+                    <th scope="col" class="cell-num">Bytes</th>
+                    <th scope="col">anotokiFileSize</th>
+                    <th scope="col">writtenSize, en</th>
+                    <th scope="col">writtenSize, sk</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (size of sizes; track size) {
+                    <tr>
+                        <td class="cell-num">{{ size }}</td>
+                        <td>{{ size | anotokiFileSize }}</td>
+                        <td lang="en">{{ written(size, "en") }}</td>
+                        <td lang="sk">{{ written(size, "sk") }}</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

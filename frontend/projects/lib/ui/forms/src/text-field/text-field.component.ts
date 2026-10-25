@@ -32,6 +32,8 @@ export class TextFieldComponent extends FieldBase {
   readonly minlength = input<number | null>(null);
   readonly min = input<number | string | null>(null);
   readonly max = input<number | string | null>(null);
+  /** The steps of a `type="number"` or date field (0.11.0); a number the page reads as a number is @anotoki/lib/ui/number-field's. */
+  readonly step = input<number | string | null>(null);
   readonly pattern = input('');
   /** Off by default: addresses, usernames and codes are not prose. */
   readonly spellcheck = input<'true' | 'false'>('false');

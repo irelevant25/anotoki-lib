@@ -1,0 +1,15 @@
+<div class="page">
+    <anotoki-page-header heading="Audio player" lead="A sound on a real audio element: Play and Pause, Stop, where it is and how long it is." />
+
+    <div class="grid-2 show-audio__cards">
+        <anotoki-card heading="A voice line" data-named-player>
+            <anotoki-audio-player [src]="sound" label="Furina - Hello.wav" />
+        </anotoki-card>
+        <anotoki-card heading="Demo music">
+            <anotoki-audio-player [src]="sound" />
+        </anotoki-card>
+        <anotoki-card heading="A file that cannot be played" data-broken-player>
+            <anotoki-audio-player src="missing-sound.ogg" label="missing-sound.ogg" />
+        </anotoki-card>
+    </div>
+</div>

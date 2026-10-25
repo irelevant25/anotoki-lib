@@ -1,0 +1,48 @@
+<div class="page">
+    <anotoki-page-header
+        heading="Dates and how long ago"
+        lead="Written by the account's date order and clock where it chose them, else the page language's way; how long ago in the page's language and its plurals." />
+
+    <div class="show-dates__choices">
+        <anotoki-segmented label="The account's date order" [options]="orders" [value]="order()" (valueChange)="setOrder($event)" size="sm" />
+        <anotoki-segmented label="The account's clock" [options]="clocks" [value]="clock()" (valueChange)="setClock($event)" size="sm" />
+    </div>
+
+    <div class="table-scroll" data-dates-table>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">The moment</th>
+                    <th scope="col">anotokiAgo</th>
+                    <th scope="col">date</th>
+                    <th scope="col">day</th>
+                    <th scope="col">datetime</th>
+                    <th scope="col">time</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (moment of moments; track moment.name) {
+                    <tr>
+                        <th scope="row">{{ moment.name }}</th>
+                        <td data-ago>{{ moment.value | anotokiAgo }}</td>
+                        <td>{{ moment.value | anotokiDate }}</td>
+                        <td>{{ moment.value | anotokiDate: "day" }}</td>
+                        <td>{{ moment.value | anotokiDate: "datetime" }}</td>
+                        <td>{{ moment.value | anotokiDate: "time" }}</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <dl class="facts">
+        <dt>A year ago, no date (dateAfter null)</dt>
+        <dd data-years>{{ longAgo | anotokiAgo: { dateAfter: null } }}</dd>
+        <dt>Ten days ago, as a phrase</dt>
+        <dd>{{ moments[7].value | anotokiAgo: { phrase: true } }}</dd>
+        <dt>With its seconds</dt>
+        <dd>{{ moments[3].value | anotokiDate: "datetime" : { seconds: true } }}</dd>
+        <dt>In numbers</dt>
+        <dd>{{ moments[3].value | anotokiDate: "numeric" }}</dd>
+    </dl>
+</div>

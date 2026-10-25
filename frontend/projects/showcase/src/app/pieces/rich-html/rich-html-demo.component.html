@@ -1,0 +1,54 @@
+<div class="page">
+    <anotoki-page-header heading="HTML editor and safe view" lead="One editor of a text's HTML and one safe view of it (0.11.0): the allow-list's HTML in, the allow-list's HTML out." />
+
+    <section class="section" aria-labelledby="guide-title" data-guide-editor>
+        <h2 class="section-title" id="guide-title">Genshin's guide</h2>
+        <anotoki-html-editor
+            label="The guide"
+            hint="What a question mark opens"
+            [(value)]="guide"
+            sizes
+            [fonts]="fonts"
+            colors
+            [swatches]="swatches"
+            source
+            preview
+            [classes]="['tag']"
+            [rows]="8"
+            placeholder="Nothing here yet - this language reads the English" />
+        <details class="show-rich-html__value">
+            <summary>The value</summary>
+            <pre data-guide-value>{{ guide() }}</pre>
+        </details>
+    </section>
+
+    <section class="section" aria-labelledby="question-title" data-question-editor>
+        <h2 class="section-title" id="question-title">The survey's question</h2>
+        <anotoki-html-editor
+            label="Question 1"
+            [(value)]="question"
+            [headings]="[2, 3]"
+            highlight
+            images
+            [tools]="['bold', 'italic', 'underline', 'strike', '|', 'bulletList', 'orderedList', '|', 'link', 'clear', '|', 'undo', 'redo']"
+            [rows]="3"
+            placeholder="Write the question…"
+            (pastedImages)="onPictures($event)" />
+        @if (pictures().length) {
+            <p class="muted small" data-pictures>Pictures handed to the page: {{ pictures().join(", ") }}</p>
+        }
+    </section>
+
+    <section class="section" aria-labelledby="view-title" data-safe-view>
+        <h2 class="section-title" id="view-title">The safe view</h2>
+        <p class="muted">A stored text no editor wrote - a handler, a picture's onerror, a javascript: link, a script, a style that would cover the page - drawn through the allow-list:</p>
+        <anotoki-card heading="As the page shows it">
+            <anotoki-rich-html [html]="attack" />
+        </anotoki-card>
+        <details class="show-rich-html__value">
+            <summary>What was stored, and what the allow-list keeps</summary>
+            <pre>{{ attack }}</pre>
+            <pre data-attack-clean>{{ attackClean }}</pre>
+        </details>
+    </section>
+</div>

@@ -297,6 +297,9 @@ final class LibraryWordsTest extends TestCase
                 'anotoki.filePicker.oneOnly',
                 'anotoki.filePicker.remove',
                 'anotoki.filePicker.chosen',
+                // (a whole folder, from 014)
+                'anotoki.filePicker.chooseFolder',
+                'anotoki.filePicker.folder',
                 'anotoki.combobox.noMatches',
                 'anotoki.combobox.more',
                 'anotoki.combobox.chosen',
@@ -342,6 +345,55 @@ final class LibraryWordsTest extends TestCase
                 'anotoki.support.text',
                 'anotoki.support.button',
                 'anotoki.support.thanks',
+                // The kit's pieces of 0.11.0 (frontend/projects/lib/ui/dates, /number-field, /multiselect, /audio-player,
+                // /html-editor, each reading its own), from 014.
+                'anotoki.dates.justNow',
+                'anotoki.dates.soon',
+                'anotoki.dates.onDate',
+                'anotoki.numberField.invalid',
+                'anotoki.numberField.whole',
+                'anotoki.numberField.step',
+                'anotoki.numberField.tooSmall',
+                'anotoki.numberField.tooLarge',
+                'anotoki.multiselect.more',
+                'anotoki.multiselect.noneChosen',
+                'anotoki.multiselect.clear',
+                'anotoki.multiselect.empty',
+                'anotoki.audioPlayer.player',
+                'anotoki.audioPlayer.play',
+                'anotoki.audioPlayer.pause',
+                'anotoki.audioPlayer.stop',
+                'anotoki.audioPlayer.position',
+                'anotoki.audioPlayer.positionText',
+                'anotoki.audioPlayer.failed',
+                'anotoki.htmlEditor.toolbar',
+                'anotoki.htmlEditor.heading',
+                'anotoki.htmlEditor.highlight',
+                'anotoki.htmlEditor.size',
+                'anotoki.htmlEditor.sizeChosen',
+                'anotoki.htmlEditor.size1',
+                'anotoki.htmlEditor.size2',
+                'anotoki.htmlEditor.size3',
+                'anotoki.htmlEditor.size4',
+                'anotoki.htmlEditor.size5',
+                'anotoki.htmlEditor.size6',
+                'anotoki.htmlEditor.size7',
+                'anotoki.htmlEditor.font',
+                'anotoki.htmlEditor.fontChosen',
+                'anotoki.htmlEditor.textColor',
+                'anotoki.htmlEditor.highlightColor',
+                'anotoki.htmlEditor.apply',
+                'anotoki.htmlEditor.noColor',
+                'anotoki.htmlEditor.source',
+                'anotoki.htmlEditor.sourceField',
+                'anotoki.htmlEditor.preview',
+                'anotoki.htmlEditor.linkAdd',
+                'anotoki.htmlEditor.linkChange',
+                'anotoki.htmlEditor.linkAddress',
+                'anotoki.htmlEditor.linkHint',
+                'anotoki.htmlEditor.linkInvalid',
+                'anotoki.htmlEditor.linkSubmit',
+                'anotoki.htmlEditor.linkRemove',
             ],
             LibraryWords::keys(),
         );
@@ -383,6 +435,14 @@ final class LibraryWordsTest extends TestCase
         self::assertSame(['word', 'reading'], LibraryWords::placeholders('anotoki.about.nameText'));
         self::assertSame(['support'], LibraryWords::placeholders('anotoki.about.closing'));
         self::assertSame([], LibraryWords::placeholders('anotoki.support.text'));
+        self::assertSame(['date'], LibraryWords::placeholders('anotoki.dates.onDate'));
+        self::assertSame('{date}', LibraryWords::all()['anotoki.dates.onDate']['sk'], 'Slovak needs no preposition');
+        self::assertSame(['example'], LibraryWords::placeholders('anotoki.numberField.invalid'));
+        self::assertSame(['count'], LibraryWords::placeholders('anotoki.multiselect.more'));
+        self::assertSame(['elapsed', 'total'], LibraryWords::placeholders('anotoki.audioPlayer.positionText'));
+        self::assertSame(['name', 'count'], LibraryWords::placeholders('anotoki.filePicker.folder'));
+        self::assertSame(['level'], LibraryWords::placeholders('anotoki.htmlEditor.heading'));
+        self::assertSame(['field'], LibraryWords::placeholders('anotoki.htmlEditor.toolbar'));
         self::assertSame('Podporiť', LibraryWords::all()['anotoki.legalLinks.support']['sk'], 'a verb, never the noun');
         self::assertSame('Clear', LibraryWords::english('anotoki.feedback.clear'));
         self::assertStringStartsWith('Clear', (string) LibraryWords::english('anotoki.feedback.clearName'), 'its name starts with its words');

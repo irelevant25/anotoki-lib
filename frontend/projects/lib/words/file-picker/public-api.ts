@@ -19,6 +19,8 @@ const EN = {
   'anotoki.filePicker.oneOnly': 'Only one file can be chosen here.',
   'anotoki.filePicker.remove': 'Remove: {name}',
   'anotoki.filePicker.chosen': 'Chosen: {names}',
+  'anotoki.filePicker.chooseFolder': 'Choose a folder',
+  'anotoki.filePicker.folder': '{name} (files: {count})',
 } as const;
 
 /** A key of these words. */
@@ -34,6 +36,8 @@ const SK: Readonly<Record<FilePickerLibraryKey, string>> = {
   'anotoki.filePicker.oneOnly': 'Tu sa dá vybrať iba jeden súbor.',
   'anotoki.filePicker.remove': 'Odstrániť: {name}',
   'anotoki.filePicker.chosen': 'Vybrané: {names}',
+  'anotoki.filePicker.chooseFolder': 'Vybrať priečinok',
+  'anotoki.filePicker.folder': '{name} (súbory: {count})',
 };
 
 /** These words, per language: English and Slovak, each with every key. */

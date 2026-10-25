@@ -226,6 +226,7 @@ final class SchemaTest extends DatabaseTestCase
                 '011_privacy_words_made_true.sql',
                 '012_footer_words.sql',
                 '013_about_and_support_words.sql',
+                '014_editor_and_piece_words.sql',
             ],
             $this->migrator([$set])->files($set),
         );
@@ -254,6 +255,7 @@ final class SchemaTest extends DatabaseTestCase
                 ['set' => 'anotoki_translations', 'name' => '011_privacy_words_made_true.sql'],
                 ['set' => 'anotoki_translations', 'name' => '012_footer_words.sql'],
                 ['set' => 'anotoki_translations', 'name' => '013_about_and_support_words.sql'],
+                ['set' => 'anotoki_translations', 'name' => '014_editor_and_piece_words.sql'],
             ],
             $result['applied'],
             (string) $result['error'],
@@ -274,6 +276,7 @@ final class SchemaTest extends DatabaseTestCase
                 'anotoki_translations/011_privacy_words_made_true.sql',
                 'anotoki_translations/012_footer_words.sql',
                 'anotoki_translations/013_about_and_support_words.sql',
+                'anotoki_translations/014_editor_and_piece_words.sql',
             ],
             $this->pdo->query('SELECT filename FROM migrations ORDER BY id')->fetchAll(PDO::FETCH_COLUMN),
         );
@@ -346,7 +349,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator(['split' => false])->apply();
 
         self::assertNull($result['error']);
-        self::assertCount(13, $result['applied']);
+        self::assertCount(14, $result['applied']);
         self::assertSame(count(LibraryWords::keys()), (int) $this->value("SELECT count(*) FROM translation_keys WHERE name LIKE 'anotoki.%'"));
     }
 
@@ -368,7 +371,7 @@ final class SchemaTest extends DatabaseTestCase
         $result = $this->siteMigrator()->apply();
 
         self::assertNull($result['error'], (string) $result['error']);
-        self::assertCount(13, $result['applied']);
+        self::assertCount(14, $result['applied']);
         self::assertSame($before, $this->shapes(), 'not a column, not a constraint changed');
         self::assertSame($tables, $this->tables(), 'no table made but the bookkeeping one');
         self::assertSame(['en', 'sk'], $this->pdo->query('SELECT code FROM languages ORDER BY code')->fetchAll(PDO::FETCH_COLUMN));
@@ -413,7 +416,7 @@ final class SchemaTest extends DatabaseTestCase
             $result = $migrator->apply();
 
             self::assertNull($result['error'], "$site: " . $result['error']);
-            self::assertCount(2 + 13 + 1, $result['applied'], $site);
+            self::assertCount(2 + 14 + 1, $result['applied'], $site);
             $status = $migrator->status();
             self::assertSame([[], []], [$status['pending'], $status['missing']], $site);
 
@@ -906,7 +909,14 @@ final class SchemaTest extends DatabaseTestCase
         $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES ('anotoki.dateField.nextMonth', 'en', 'Later', 7)");
         $mine = self::INPUT_WORDS;
         $others = (int) $this->value("SELECT count(*) FROM translations WHERE key_name LIKE 'anotoki.%' AND NOT ($mine)");
-        $keys = count(array_filter(LibraryWords::keys(), static fn(string $key): bool => (bool) preg_match('/^anotoki\.(dateField|colorField|filePicker|combobox|richText)\./', $key)));
+        // 009's own: the file picker's folder words are 014's.
+        $keys = count(
+            array_filter(
+                LibraryWords::keys(),
+                static fn(string $key): bool => preg_match('/^anotoki\.(dateField|colorField|filePicker|combobox|richText)\./', $key) === 1 &&
+                    !in_array($key, ['anotoki.filePicker.chooseFolder', 'anotoki.filePicker.folder'], true),
+            ),
+        );
 
         self::assertSame([['set' => 'anotoki_translations', 'name' => '009_input_words.sql']], $this->siteMigrator()->apply()['applied']);
 
@@ -1130,7 +1140,9 @@ final class SchemaTest extends DatabaseTestCase
         $everythingElse = "SELECT md5(string_agg(key_name || '|' || language_code || '|' || value, '/' ORDER BY key_name, language_code)) FROM translations WHERE NOT $mine";
         $before = $this->value($everythingElse);
 
-        self::assertSame([['set' => 'anotoki_translations', 'name' => '013_about_and_support_words.sql']], $this->siteMigrator()->apply()['applied']);
+        // 013 alone: the file after it (014, the words of 0.11.0's pieces) adds keys of its own.
+        $only013 = $this->siteMigrator(['ready' => static fn($set, string $file): bool => $set->name !== 'anotoki_translations' || strcmp($file, '014') < 0]);
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '013_about_and_support_words.sql']], $only013->apply()['applied']);
 
         $words = LibraryWords::all();
         $strings = fn(string $key): array => $this->pdo->query("SELECT value FROM translations WHERE key_name = '$key' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN);
@@ -1173,6 +1185,59 @@ final class SchemaTest extends DatabaseTestCase
 
         self::assertSame(['set' => 'anotoki_translations', 'name' => '013_about_and_support_words.sql'], $result['failed']);
         self::assertStringContainsString("anotoki_translations 013: the library's keys without an English string: anotoki.about.closing", (string) $result['error']);
+    }
+
+    // ─── 014, the words of 0.11.0: the dates, the number field, the multiselect, the audio player, the HTML editor ─
+
+    public function testTheWordsOfTheKitsNewPiecesComeOnADatabaseThatHas013AndASiteThatTookOneOverKeepsIt(): void
+    {
+        // A site on 0.10.0: every file before 014 ...
+        $before014 = $this->siteMigrator(['ready' => static fn($set, string $file): bool => $set->name !== 'anotoki_translations' || strcmp($file, '014') < 0])->apply();
+        self::assertNull($before014['error'], (string) $before014['error']);
+        $mine =
+            "(key_name LIKE 'anotoki.dates.%' OR key_name LIKE 'anotoki.numberField.%' OR key_name LIKE 'anotoki.multiselect.%' OR key_name LIKE 'anotoki.audioPlayer.%' OR key_name LIKE 'anotoki.htmlEditor.%' OR key_name IN ('anotoki.filePicker.chooseFolder', 'anotoki.filePicker.folder'))";
+        self::assertSame(0, (int) $this->value("SELECT count(*) FROM translations WHERE $mine"), 'no word of them before 014');
+        // ... that words "just now" its own way, in English alone, before the library had the key.
+        $this->pdo->exec("INSERT INTO translation_keys (name, description) VALUES ('anotoki.dates.justNow', 'The site''s own description.')");
+        $this->pdo->exec("INSERT INTO translations (key_name, language_code, value, updated_by) VALUES ('anotoki.dates.justNow', 'en', 'a moment ago', 7)");
+        $everythingElse = "SELECT md5(string_agg(key_name || '|' || language_code || '|' || value, '/' ORDER BY key_name, language_code)) FROM translations WHERE NOT $mine";
+        $before = $this->value($everythingElse);
+
+        self::assertSame([['set' => 'anotoki_translations', 'name' => '014_editor_and_piece_words.sql']], $this->siteMigrator()->apply()['applied']);
+
+        $words = LibraryWords::all();
+        $strings = fn(string $key): array => $this->pdo->query("SELECT value FROM translations WHERE key_name = '$key' ORDER BY language_code")->fetchAll(PDO::FETCH_COLUMN);
+        self::assertSame(
+            [['language_code' => 'en', 'value' => 'a moment ago']],
+            $this->rows("SELECT language_code, value FROM translations WHERE key_name = 'anotoki.dates.justNow'"),
+            'its words and its blank stay',
+        );
+        self::assertSame(
+            $words['anotoki.dates.justNow']['description'],
+            $this->value("SELECT description FROM translation_keys WHERE name = 'anotoki.dates.justNow'"),
+            'the description is the library\'s',
+        );
+        self::assertSame(['on {date}', '{date}'], $strings('anotoki.dates.onDate'));
+        self::assertSame(['Write a whole number.', 'Treba zadať celé číslo.'], $strings('anotoki.numberField.whole'));
+        self::assertSame(['and {count} more', 'a ďalšie ({count})'], $strings('anotoki.multiselect.more'));
+        self::assertSame(['{elapsed} of {total}', '{elapsed} z {total}'], $strings('anotoki.audioPlayer.positionText'));
+        self::assertSame(['Choose a folder', 'Vybrať priečinok'], $strings('anotoki.filePicker.chooseFolder'));
+        self::assertSame(['Heading {level}', 'Nadpis {level}'], $strings('anotoki.htmlEditor.heading'));
+        self::assertSame([$words['anotoki.htmlEditor.linkInvalid']['en'], $words['anotoki.htmlEditor.linkInvalid']['sk']], $strings('anotoki.htmlEditor.linkInvalid'));
+        self::assertSame(97, (int) $this->value("SELECT count(*) FROM translations WHERE $mine"), 'the 49 keys in both languages but the one the site worded in English alone');
+        self::assertSame($before, $this->value($everythingElse), 'nothing of the files before touched');
+    }
+
+    public function testANewPiecesKeyWithoutEnglishIsRefusedBy014sGate(): void
+    {
+        $this->siteMigrator()->apply();
+        $this->pdo->exec("DELETE FROM migrations WHERE filename = 'anotoki_translations/014_editor_and_piece_words.sql'");
+        $this->pdo->exec("DELETE FROM translations WHERE key_name = 'anotoki.htmlEditor.preview' AND language_code = 'en'");
+
+        $result = $this->siteMigrator()->apply();
+
+        self::assertSame(['set' => 'anotoki_translations', 'name' => '014_editor_and_piece_words.sql'], $result['failed']);
+        self::assertStringContainsString("anotoki_translations 014: the library's keys without an English string: anotoki.htmlEditor.preview", (string) $result['error']);
     }
 
     public function testTheTopBarsWordNamesTheSideNavigationToo(): void
@@ -1252,6 +1317,7 @@ final class SchemaTest extends DatabaseTestCase
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/011_privacy_words_made_true.sql")));
         self::assertCount(3, Splitter::split((string) file_get_contents("$directory/012_footer_words.sql")));
         self::assertCount(4, Splitter::split((string) file_get_contents("$directory/013_about_and_support_words.sql")));
+        self::assertCount(3, Splitter::split((string) file_get_contents("$directory/014_editor_and_piece_words.sql")));
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────

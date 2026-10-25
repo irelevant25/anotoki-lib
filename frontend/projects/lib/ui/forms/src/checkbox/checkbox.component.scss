@@ -1,7 +1,10 @@
 @use "../../../../sass/kit";
 
+// The checkbox's line, and its error under it (0.11.0) where it has one.
 :host {
   display: inline-flex;
+  flex-direction: column;
+  gap: 0.375rem;
   color: kit.token(text);
 }
 
@@ -74,4 +77,23 @@ input:focus-visible + .anotoki-checkbox__box {
 .anotoki-checkbox__hint {
   color: kit.token(muted);
   font-size: 0.8125rem;
+}
+
+// Wrong (0.11.0): the box's edge in the danger colour (3:1 on the page, as every field's), and the words under it.
+.anotoki-checkbox__checkbox--invalid input:not(:checked) + .anotoki-checkbox__box {
+  border-color: kit.token(danger);
+}
+
+.anotoki-checkbox__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0;
+  color: kit.token(danger-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+
+  anotoki-icon {
+    margin-top: 0.1rem;
+  }
 }

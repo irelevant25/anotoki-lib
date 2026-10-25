@@ -1,0 +1,56 @@
+<div class="anotoki-field">
+    <span class="anotoki-field__label" [id]="labelId" [class.anotoki-visually-hidden]="hideLabel()">
+        <span>{{ label() }}</span>
+        @if (optional()) {
+            <!-- A space between the two, for the button's name: "Elements optional". -->
+            &ngsp;
+            <span class="anotoki-field__optional" [attr.lang]="words.foreignLang()">{{ words.t("ui.optional") }}</span>
+        }
+    </span>
+    <!-- Named by the label and what it says: "Elements, Hydro, Pyro". -->
+    <button
+        #control
+        type="button"
+        class="anotoki-field__control anotoki-multiselect__trigger"
+        [class.anotoki-field__control--invalid]="isInvalid()"
+        [class.anotoki-field__control--disabled]="disabled()"
+        [id]="inputId"
+        [anotokiPopoverTrigger]="choices"
+        [attr.aria-labelledby]="labelId + ' ' + valueId"
+        [attr.aria-describedby]="describedBy()"
+        [attr.aria-invalid]="isInvalid() ? 'true' : null"
+        [attr.aria-required]="required() ? 'true' : null"
+        [disabled]="disabled()"
+        (blur)="blurred.emit()">
+        <span class="anotoki-multiselect__value" [id]="valueId" [class.anotoki-multiselect__value--none]="!chosen().length">{{ shown() }}</span>
+        @if (chosen().length) {
+            <span class="anotoki-multiselect__count" aria-hidden="true">{{ chosen().length }}</span>
+        }
+        <anotoki-icon class="anotoki-multiselect__chevron" name="chevronDown" [size]="16" />
+    </button>
+    <anotoki-popover #choices [label]="label()" autoFocus>
+        <div class="anotoki-multiselect__options">
+            @for (option of options(); track $index) {
+                <anotoki-checkbox [checked]="isChosen(option)" [disabled]="disabled() || !!option.disabled" (checkedChange)="toggle(option, $event)">
+                    <span [attr.lang]="option.lang ?? null">{{ option.label }}</span>
+                </anotoki-checkbox>
+            } @empty {
+                @let empty = word("anotoki.multiselect.empty");
+                <p class="anotoki-multiselect__empty" [attr.lang]="empty.lang">{{ empty.text }}</p>
+            }
+        </div>
+        @if (chosen().length) {
+            @let clearWords = word("anotoki.multiselect.clear");
+            <button anotokiButton variant="link" size="sm" class="anotoki-multiselect__clear" [attr.lang]="clearWords.lang" (click)="clear()">{{ clearWords.text }}</button>
+        }
+    </anotoki-popover>
+    @if (hint() && !error()) {
+        <p class="anotoki-field__hint" [id]="hintId">{{ hint() }}</p>
+    }
+    @if (error()) {
+        <p class="anotoki-field__error" [id]="errorId" role="alert">
+            <anotoki-icon name="alert" [size]="15" />
+            <span>{{ error() }}</span>
+        </p>
+    }
+</div>

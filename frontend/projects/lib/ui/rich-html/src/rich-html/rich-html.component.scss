@@ -1,0 +1,81 @@
+@use "../../../../sass/kit";
+
+// A text a person wrote, drawn by the component node by node (no scoping attribute on its elements): every rule is
+// under the host's class, and each as weak as that one class (:where()), so a site's own rules for its texts win.
+
+.anotoki-rich-html {
+  display: block;
+  min-width: 0;
+  color: kit.token(text);
+  line-height: 1.6;
+  // A long word, a long address: broken where it would leave the box.
+  overflow-wrap: break-word;
+}
+
+.anotoki-rich-html :where(p, div, ul, ol) {
+  margin: 0 0 0.75em;
+}
+
+.anotoki-rich-html :where(h2, h3, h4) {
+  margin: 1.25em 0 0.5em;
+  color: kit.token(text);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.anotoki-rich-html :where(h2) {
+  font-size: 1.375em;
+}
+
+.anotoki-rich-html :where(h3) {
+  font-size: 1.1875em;
+}
+
+.anotoki-rich-html :where(h4) {
+  font-size: 1.0625em;
+}
+
+// Both ends flush: the page around it gives the room.
+.anotoki-rich-html > :where(:first-child) {
+  margin-top: 0;
+}
+
+.anotoki-rich-html > :where(:last-child) {
+  margin-bottom: 0;
+}
+
+.anotoki-rich-html :where(ul, ol) {
+  padding-left: 1.5em;
+}
+
+.anotoki-rich-html :where(li) {
+  margin: 0 0 0.25em;
+}
+
+.anotoki-rich-html :where(li > p, li > div) {
+  margin: 0;
+}
+
+.anotoki-rich-html :where(b, strong) {
+  font-weight: 700;
+}
+
+.anotoki-rich-html :where(a) {
+  color: kit.token(link);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.anotoki-rich-html :where(a:focus-visible) {
+  outline: 2px solid kit.token(focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+// A highlighter's mark: the warning's soft ground under the text's own ink, in both themes (4.5:1).
+.anotoki-rich-html :where(mark) {
+  padding: 0 0.1em;
+  border-radius: 2px;
+  background: kit.token(warning-soft);
+  color: inherit;
+}

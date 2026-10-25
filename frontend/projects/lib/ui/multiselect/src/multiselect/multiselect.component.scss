@@ -1,0 +1,91 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+@include field.styles;
+
+// The button: a field's edge, ground, ring and height (the field's own classes - so no reset of its edge here), its
+// words on one line, a count and a chevron; what a site's own `button {}` might set, set again.
+.anotoki-multiselect__trigger {
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0.75rem 0 0.8rem;
+  color: kit.token(text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.4;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: inherit;
+  appearance: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.anotoki-multiselect__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.anotoki-multiselect__value--none {
+    color: kit.token(subtle);
+  }
+}
+
+// How many are chosen: the soft primary ground, as a quiet badge.
+.anotoki-multiselect__count {
+  flex: none;
+  box-sizing: border-box;
+  min-width: 1.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: kit.token(primary-soft);
+  color: kit.token(primary-soft-text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.anotoki-multiselect__chevron {
+  flex: none;
+  color: kit.token(muted);
+}
+
+:host(.anotoki-multiselect--inline) .anotoki-multiselect__trigger {
+  min-height: kit.token(control-height-sm);
+  font-size: 0.875rem;
+}
+
+// The choices: a column of checkboxes that scrolls past a dozen.
+.anotoki-multiselect__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  // Room for a checkbox's focus ring inside the scrolling column.
+  padding: 0.2rem;
+  margin: -0.2rem;
+}
+
+.anotoki-multiselect__empty {
+  margin: 0;
+  color: kit.token(muted);
+  font-size: 0.875rem;
+}
+
+.anotoki-multiselect__clear {
+  margin-top: 0.625rem;
+}

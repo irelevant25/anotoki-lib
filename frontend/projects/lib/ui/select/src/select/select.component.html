@@ -17,7 +17,7 @@
             [disabled]="disabled()"
             (change)="onChange($event)">
             @if (placeholder() !== null) {
-                <option value="" [selected]="value() === ''">{{ placeholder() }}</option>
+                <option value="" [selected]="value() === none()">{{ placeholder() }}</option>
             }
             @for (option of options(); track option.value) {
                 <option [value]="option.value" [selected]="option.value === value()" [disabled]="option.disabled ?? false" [attr.lang]="option.lang ?? null">{{ option.label }}</option>

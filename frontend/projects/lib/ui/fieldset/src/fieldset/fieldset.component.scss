@@ -1,0 +1,68 @@
+@use "../../../../sass/kit";
+
+:host {
+  display: block;
+  min-width: 0;
+  color: kit.token(text);
+}
+
+// The box round the fields: the surface's second ground and the decorative edge - a group, quieter than a card.
+.anotoki-fieldset__box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem 1.125rem 1.125rem;
+  border: 1px solid kit.token(border);
+  border-radius: kit.token(radius-lg);
+  background: kit.token(surface-2);
+}
+
+:host(.anotoki-fieldset--plain) .anotoki-fieldset__box {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+// The name, inside the box as any line of it (a legend floated is no longer drawn on the edge), in the fields' label's
+// weight - a size larger, as it names them all.
+.anotoki-fieldset__legend {
+  float: left;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  color: kit.token(text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.4;
+
+  + * {
+    clear: both;
+  }
+}
+
+.anotoki-fieldset__hint {
+  margin: -0.5rem 0 0;
+  color: kit.token(muted);
+  font-size: 0.8125rem;
+}
+
+// At most --_fieldset-columns columns, each at least --_fieldset-min wide: fewer where the page is narrower.
+.anotoki-fieldset__fields {
+  --_fieldset-gap: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(var(--_fieldset-min, 15rem), calc((100% - (var(--_fieldset-columns, 3) - 1) * var(--_fieldset-gap)) / var(--_fieldset-columns, 3)))), 1fr)
+  );
+  gap: 1rem var(--_fieldset-gap);
+  min-width: 0;
+}
+
+.anotoki-visually-hidden {
+  @include kit.visually-hidden;
+}

@@ -9,7 +9,7 @@
  * Re-exported by @anotoki/lib/ui.
  */
 
-export type { AnotokiUiConfig, IconPaths, IconSet } from './src/config';
+export type { AnotokiClock, AnotokiDateChoices, AnotokiDateOrder, AnotokiUiConfig, IconPaths, IconSet } from './src/config';
 export { ANOTOKI_ICONS, ANOTOKI_UI_CONFIG, provideAnotokiUi } from './src/config';
 export type { KitLibraryKey, LibraryKey } from './src/library-words';
 export { KIT_LIBRARY_WORDS } from './src/library-words';

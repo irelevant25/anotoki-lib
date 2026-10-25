@@ -1,0 +1,288 @@
+[
+  {
+    "name": "the survey's editor: formats, a mark, a no-break space and the escaped characters",
+    "html": "<p><strong>Bold</strong>, <em>italic</em>, <u>under</u>, <s>struck</s> and <mark>marked</mark>.</p>",
+    "clean": "<p><strong>Bold</strong>, <em>italic</em>, <u>under</u>, <s>struck</s> and <mark>marked</mark>.</p>",
+    "text": "Bold, italic, under, struck and marked."
+  },
+  {
+    "name": "the survey's editor: headings, a no-break space, an ampersand, angle brackets, quotes",
+    "html": "<h2>Welcome</h2><h3>Smaller</h3><p>Text&nbsp;with a non-breaking space &amp; an ampersand, 1 &lt; 2 &gt; 0, \"quotes\"</p>",
+    "clean": "<h2>Welcome</h2><h3>Smaller</h3><p>Text&nbsp;with a non-breaking space &amp; an ampersand, 1 &lt; 2 &gt; 0, \"quotes\"</p>",
+    "text": "Welcome Smaller Text with a non-breaking space & an ampersand, 1 < 2 > 0, \"quotes\""
+  },
+  {
+    "name": "the survey's editor: lists of paragraphs, a numbered list from 3",
+    "html": "<ul><li><p>One</p></li><li><p>Two</p></li></ul><ol start=\"3\"><li><p>Three</p></li></ol>",
+    "clean": "<ul><li><p>One</p></li><li><p>Two</p></li></ul><ol start=\"3\"><li><p>Three</p></li></ol>",
+    "text": "One Two Three"
+  },
+  {
+    "name": "the survey's editor: a web link and a mail link, as its server writes them",
+    "html": "<p>A <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://anotoki.eu/?a=1&amp;b=2\">link</a> and <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"mailto:hello@anotoki.eu\">mail</a></p>",
+    "clean": "<p>A <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://anotoki.eu/?a=1&amp;b=2\">link</a> and <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"mailto:hello@anotoki.eu\">mail</a></p>",
+    "text": "A link and mail"
+  },
+  {
+    "name": "the survey's editor: a line break, an empty paragraph, letters of every kind",
+    "html": "<p>Line<br>break</p><p></p><p>Ščťžýáíéúô · 日本語 · 🎉</p>",
+    "clean": "<p>Line<br>break</p><p></p><p>Ščťžýáíéúô · 日本語 · 🎉</p>",
+    "text": "Line break Ščťžýáíéúô · 日本語 · 🎉"
+  },
+  {
+    "name": "genshin's guides: a heading, a paragraph, a numbered list, a tag (the site names its class)",
+    "html": "<h4>What is the Daily?</h4>\n<p>Two quizzes are drawn: <strong>banners</strong> or <span class=\"tag\">music</span>.</p>\n<ol>\n<li>Two quizzes a day.</li>\n<li>The day rolls over at 00:00 UTC.</li>\n</ol>",
+    "classes": ["tag"],
+    "clean": "<h4>What is the Daily?</h4>\n<p>Two quizzes are drawn: <strong>banners</strong> or <span class=\"tag\">music</span>.</p>\n<ol>\n<li>Two quizzes a day.</li>\n<li>The day rolls over at 00:00 UTC.</li>\n</ol>",
+    "text": "What is the Daily? Two quizzes are drawn: banners or music. Two quizzes a day. The day rolls over at 00:00 UTC."
+  },
+  {
+    "name": "genshin's voice lines: the speakers in bold, the lines broken",
+    "html": "<b>Paimon:</b> Hey!<br><b>Traveler:</b> Hi.<br>",
+    "clean": "<b>Paimon:</b> Hey!<br><b>Traveler:</b> Hi.<br>",
+    "text": "Paimon: Hey! Traveler: Hi."
+  },
+  {
+    "name": "genshin's editor: sizes, a font and colours on <font>, a highlight colour on a span, lines as divs, an indent",
+    "html": "<div><font size=\"5\">Big</font> <font face=\"Times New Roman\">serif</font> <font color=\"#f44336\">red</font> <span style=\"background-color: rgb(255, 235, 59);\">marked</span></div><div style=\"margin-left: 40px;\">Indented</div><div><br></div>",
+    "clean": "<div><font size=\"5\">Big</font> <font face=\"Times New Roman\">serif</font> <font color=\"#f44336\">red</font> <span style=\"background-color: rgb(255, 235, 59);\">marked</span></div><div style=\"margin-left: 40px;\">Indented</div><div><br></div>",
+    "text": "Big serif red marked Indented"
+  },
+  {
+    "name": "a browser's own spans and styles, written as the browser writes them",
+    "html": "<p><span style=\"font-size: 16px; color: rgb(17, 24, 39); font-family: Manrope, sans-serif;\">kept</span></p>",
+    "clean": "<p><span style=\"font-size: 16px; color: rgb(17, 24, 39); font-family: Manrope, sans-serif;\">kept</span></p>",
+    "text": "kept"
+  },
+  {
+    "name": "a script, with what it holds",
+    "html": "<p>Hi<script>alert(1)</script></p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "a script that never ends takes the rest of the text with it",
+    "html": "<p>Hi</p><script>alert(1)<p>more</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "event handlers, a style that may not be, a class no site named",
+    "html": "<p onmouseover=\"alert(1)\" onclick='x()' style=\"position: fixed; top: 0\" class=\"x\">Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "a picture's onerror: the picture goes, and its handler with it",
+    "html": "<img src=x onerror=alert(1)><p>Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "javascript: in a link: its words alone",
+    "html": "<p><a href=\"javascript:alert(1)\">click</a></p>",
+    "clean": "<p>click</p>",
+    "text": "click"
+  },
+  {
+    "name": "javascript: hidden by case, spaces before it, a tab inside it, an entity",
+    "html": "<p><a href=\" JaVaScRiPt:alert(1)\">a</a><a href=\"java&#9;script:alert(1)\">b</a><a href=\"jav&#x61;script:alert(1)\">c</a><a href=\"&#106;avascript:alert(1)\">d</a><a href=\"java\nscript:alert(1)\">e</a></p>",
+    "clean": "<p>abcde</p>",
+    "text": "abcde"
+  },
+  {
+    "name": "data:, vbscript:, file: and a scheme of one's own",
+    "html": "<p><a href=\"data:text/html,x\">a</a><a href=\"vbscript:x\">b</a><a href=\"file:///etc/passwd\">c</a><a href=\"anotoki:x\">d</a></p>",
+    "clean": "<p>abcd</p>",
+    "text": "abcd"
+  },
+  {
+    "name": "no address of the site's own, nor one with no scheme, nor an empty one",
+    "html": "<p><a href=\"//evil.example/x\">a</a><a href=\"/admin\">b</a><a href=\"#top\">c</a><a href=\"evil.example\">d</a><a href=\"https://\">e</a><a href=\"\">f</a><a>g</a></p>",
+    "clean": "<p>abcdefg</p>",
+    "text": "abcdefg"
+  },
+  {
+    "name": "a link's own target, rel and handlers give way to the family's",
+    "html": "<p><a href=\"https://ok.example\" onclick=\"x()\" target=\"_self\" rel=\"opener\">ok</a></p>",
+    "clean": "<p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://ok.example\">ok</a></p>",
+    "text": "ok"
+  },
+  {
+    "name": "an address with a quote, an angle bracket or a space in it is none",
+    "html": "<p><a href='https://ok.example/\"onmouseover=x'>a</a><a href=\"https://ok.example/<b>\">b</a><a href=\"https://ok example\">c</a></p>",
+    "clean": "<p>abc</p>",
+    "text": "abc"
+  },
+  {
+    "name": "a link inside a link: the inner one its words",
+    "html": "<p><a href=\"https://a.example\">a <a href=\"https://b.example\">b</a></a></p>",
+    "clean": "<p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://a.example\">a b</a></p>",
+    "text": "a b"
+  },
+  {
+    "name": "frames, svg and math with what they hold",
+    "html": "<iframe src=\"https://evil.example\"></iframe><svg><script>alert(1)</script><a href=\"https://x.example\">x</a></svg><math><mi>x</mi></math><p>Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "a style element and a style attribute that would load or leave the box",
+    "html": "<style>p{display:none}</style><p style=\"background-color: url(x); color: expression(alert(1)); margin-left: -999px; font-size: 900px; font-family: x;behavior: url(x)\">Hi</p>",
+    "clean": "<p style=\"font-family: x;\">Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "styles: every property not named, every value its property does not take",
+    "html": "<span style=\"color: red; z-index: 9; transform: scale(9); width: 100%; position: absolute; color: var(--x); background-color: #fff /* x */; font-size: 1.5em; font-family: 'A' , B; margin-left: 2em\">x</span>",
+    "clean": "<span style=\"color: red; font-size: 1.5em; font-family: 'A' , B; margin-left: 2em;\">x</span>",
+    "text": "x"
+  },
+  {
+    "name": "styles: the last of a property is the one in force",
+    "html": "<span style=\"color: red; COLOR: blue; font-size: 10px; font-size: 80px\">x</span>",
+    "clean": "<span style=\"color: blue; font-size: 10px;\">x</span>",
+    "text": "x"
+  },
+  {
+    "name": "a form, its button, its fields, a select and a textarea holding markup",
+    "html": "<form action=\"https://evil.example\"><button>Send</button><input value=x><select><option>a</option></select><textarea><b>no</b></textarea></form><p>Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "meta, base, link and title: nothing of them",
+    "html": "<meta http-equiv=\"refresh\" content=\"0;url=https://evil.example\"><base href=\"https://evil.example\"><link rel=\"stylesheet\" href=\"https://evil.example/x.css\"><title>T</title><p>Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "noscript, template, object and embed with what they hold",
+    "html": "<noscript><img src=x onerror=alert(1)></noscript><template><b>t</b></template><object data=\"x\"><b>o</b></object><embed src=\"x\"><p>Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "elements not named are unwrapped to what they hold",
+    "html": "<section><article><blockquote><table><tr><td>Cell</td></tr></table></blockquote><h1>One</h1><h5>Five</h5><pre>pre</pre><code>c</code><sub>s</sub></article></section>",
+    "clean": "CellOneFiveprecs",
+    "text": "CellOneFiveprecs"
+  },
+  {
+    "name": "escaped markup stays words",
+    "html": "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
+    "clean": "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
+    "text": "<script>alert(1)</script>"
+  },
+  {
+    "name": "comments, declarations and processing instructions: nothing",
+    "html": "<!-- a <b>comment</b> --><!DOCTYPE html><![CDATA[<b>x</b>]]><?php echo 1; ?><p>Hi</p>",
+    "clean": "x]]&gt;<p>Hi</p>",
+    "text": "x]]>Hi"
+  },
+  {
+    "name": "a numbered list's start: a whole number above one alone",
+    "html": "<ol start=\"0\"><li>x</li></ol><ol start=\"abc\"><li>y</li></ol><ol start=\"007\"><li>z</li></ol><ol start=\"100001\"><li>w</li></ol>",
+    "clean": "<ol><li>x</li></ol><ol><li>y</li></ol><ol start=\"7\"><li>z</li></ol><ol><li>w</li></ol>",
+    "text": "x y z w"
+  },
+  {
+    "name": "what is left open is closed",
+    "html": "<p>Unclosed <strong>bold",
+    "clean": "<p>Unclosed <strong>bold</strong></p>",
+    "text": "Unclosed bold"
+  },
+  {
+    "name": "a tag the text ends inside is nothing",
+    "html": "<p>Hi</p><a href=\"https://x.example\" onclick=\"x",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "a paragraph closed by the block that starts in it, a list item by the next",
+    "html": "<p>One<p>Two<ul><li>a<li>b</ul><h2>H<h3>I",
+    "clean": "<p>One</p><p>Two</p><ul><li>a</li><li>b</li></ul><h2>H</h2><h3>I</h3>",
+    "text": "One Two a b H I"
+  },
+  {
+    "name": "an inline end tag never closes a block's ancestor",
+    "html": "<b><p>x</b>y</p>z",
+    "clean": "<b><p>xy</p>z</b>",
+    "text": "xy z"
+  },
+  {
+    "name": "attributes without quotes, in capitals, twice: the first is kept",
+    "html": "<A HREF=https://ok.example HREF=javascript:x Class=tag>ok</A>",
+    "classes": ["tag"],
+    "clean": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://ok.example\" class=\"tag\">ok</a>",
+    "text": "ok"
+  },
+  {
+    "name": "a < that starts no tag is a word",
+    "html": "<p>1 < 2 and 3 <= 4, a <3 heart</p>",
+    "clean": "<p>1 &lt; 2 and 3 &lt;= 4, a &lt;3 heart</p>",
+    "text": "1 < 2 and 3 <= 4, a <3 heart"
+  },
+  {
+    "name": "controls and the marks that turn a text are no part of it; a tab and a line break are",
+    "html": "<p>a\u0000b\u0007c\u001bd\u007fe\u0085f\u202eg\u2066h\ti\nj\r\nk</p>",
+    "clean": "<p>abcdefgh\ti\nj\nk</p>",
+    "text": "abcdefgh i j k"
+  },
+  {
+    "name": "references: numeric ones with or without their semicolon, named ones with it, the C1 ones as windows-1252",
+    "html": "<p>&#169; &#xA9 &#150; &copy; &hellip; &mdash; &alpha; &amp &unknown; &#0; &#xD800; &#x110000;</p>",
+    "clean": "<p>© © – © … — &amp;alpha; &amp;amp &amp;unknown; \ufffd \ufffd \ufffd</p>",
+    "text": "© © – © … — &alpha; &amp &unknown; \ufffd \ufffd \ufffd"
+  },
+  {
+    "name": "<font>: a size of 1 to 7, a face of names, a colour",
+    "html": "<font size=\"9\" face=\"Arial; x: y\" color=\"javascript:x\">a</font><font size=\"+1\" face=\"Courier New, monospace\" color=\"red\">b</font>",
+    "clean": "<font>a</font><font face=\"Courier New, monospace\" color=\"red\">b</font>",
+    "text": "ab"
+  },
+  {
+    "name": "classes: only those the site names, each once",
+    "html": "<span class=\"tag x tag  other\">a</span><b class=\"tag\">b</b>",
+    "classes": ["tag", "other"],
+    "clean": "<span class=\"tag other\">a</span><b class=\"tag\">b</b>",
+    "text": "ab"
+  },
+  {
+    "name": "a line break never holds anything, and has no attributes",
+    "html": "<br class=\"tag\" style=\"color: red\" onclick=\"x\"><p>a</p>",
+    "classes": ["tag"],
+    "clean": "<br><p>a</p>",
+    "text": "a"
+  },
+  {
+    "name": "a script in capitals, and one split to slip past a filter",
+    "html": "<SCRIPT>alert(1)</SCRIPT><scr<script>ipt>alert(1)</script><p>Hi</p>",
+    "clean": "ipt&gt;alert(1)<p>Hi</p>",
+    "text": "ipt>alert(1)Hi"
+  },
+  {
+    "name": "markup inside an attribute is never markup",
+    "html": "<p title=\"</p><script>alert(1)</script>\">Hi</p>",
+    "clean": "<p>Hi</p>",
+    "text": "Hi"
+  },
+  {
+    "name": "the mutation tricks: a noscript whose end hides in an attribute, svg and math holding a style",
+    "html": "<noscript><p title=\"</noscript><img src=x onerror=alert(1)>\"></noscript><svg><p><style><img src=x onerror=alert(1)></style></p></svg><math><mtext><table><mglyph><style><img src=x onerror=alert(1)>",
+    "clean": "\"&gt;",
+    "text": "\">"
+  },
+  {
+    "name": "a size of nothing, an indent past the box, a font that loads",
+    "html": "<span style=\"font-size: 0px\">a</span><div style=\"margin-left: 401px\">b</div><span style=\"font-family: url(x)\">c</span>",
+    "clean": "<span>a</span><div>b</div><span>c</span>",
+    "text": "ab c"
+  },
+  {
+    "name": "web and mail addresses as people write them: kept as written, the spaces round them taken off",
+    "html": "<p><a href=\" HTTPS://Example.COM/a?b=1#c \">a</a> <a href=\"mailto:hello@anotoki.eu?subject=Hi\">b</a> <a href=\"http://příklad.sk/čo\">c</a></p>",
+    "clean": "<p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"HTTPS://Example.COM/a?b=1#c\">a</a> <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"mailto:hello@anotoki.eu?subject=Hi\">b</a> <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"http://příklad.sk/čo\">c</a></p>",
+    "text": "a b c"
+  }
+]

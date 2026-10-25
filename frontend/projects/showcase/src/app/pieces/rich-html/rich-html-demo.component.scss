@@ -1,0 +1,37 @@
+@use "../../../../../lib/styles" as anotoki;
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+// Genshin's own style for its guides' class, as the site keeps it: the safe view keeps the class the site names.
+:host ::ng-deep .anotoki-rich-html .tag,
+:host ::ng-deep .anotoki-html-editor__text .tag {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border: 1px solid anotoki.token(primary);
+  border-radius: 999px;
+  background: anotoki.token(primary-soft);
+  color: anotoki.token(primary-soft-text);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.show-rich-html__value {
+  min-width: 0;
+
+  pre {
+    max-height: 14rem;
+    margin: 0.5rem 0 0;
+    padding: 0.75rem;
+    overflow: auto;
+    border-radius: anotoki.token(radius);
+    background: anotoki.token(surface-2);
+    font-size: 0.8125rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}

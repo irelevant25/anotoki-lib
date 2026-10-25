@@ -9,7 +9,9 @@ pieces: `ui` (re-exporting the core's pieces, an entry point each: `ui/config`,
 `ui/link-card`, `ui/stat-tiles`, `ui/progress`, `ui/disclosure`, `ui/stepper`, `ui/labelled-group`,
 `ui/select`, `ui/field`, `ui/piece-words`, `ui/side-nav`, `ui/current-link`; `ui/tabs` gained the link tabs;
 the input pieces `ui/date-field`, `ui/slider`, `ui/color-field`, `ui/file-picker`, `ui/combobox`, `ui/rich-text`;
-0.9.2's code editor `ui/code-editor` and the highlighters `ui/code-json`, `ui/code-sql`),
+0.9.2's code editor `ui/code-editor` and the highlighters `ui/code-json`, `ui/code-sql`;
+0.11.0's `ui/html-editor`, `ui/rich-html`, `ui/dates`, `ui/search`, `ui/multiselect`, `ui/audio-player`,
+`ui/number-field`, `ui/fieldset`, `ui/file-size`, `ui/picture-preview`),
 `shell`, `migrations`,
 `migrations/page`, `translations`, `translations/admin`, `translations/testing`,
 `auth`, `auth/marker` (0.7.2), `auth/testing`, `people`, `people/page`, `admin` and its pages, `admin/frame` (0.10.0:
@@ -140,7 +142,8 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   page uses). Top-level code a site's build cannot prove harmless - a call or a
   `new` of anything but an InjectionToken - is kept whether used or not: mark it
   `/* @__PURE__ */`. `scripts/check-package.mjs` holds the eager ones to their
-  limits (and the big lazy input pieces of 0.6.0, the code editor and its highlighters to limits of their own, `LAZY_LIMITS`),
+  limits (and the big lazy input pieces of 0.6.0, the code editor and its highlighters, and 0.11.0's HTML editor, safe
+  view, dates, multiselect, number field and audio player to limits of their own, `LAZY_LIMITS`),
   every entry point to its imports (the shell imports only the core's
   pieces and `ui/menu`; nothing imports the shell; auth imports the core's pieces,
   `migrations`, `error-report/marker` (a token, never the reporter) and `auth/marker` (whom a request is
@@ -153,7 +156,10 @@ bun run format:check    # the family's Prettier setup, both halves (bun run form
   (its dialog: the kit's dialog and the form; `footer/feedback` before 0.8.0); `admin/frame` the core's pieces and
   `ui/side-nav` - never the shell: the theme's switch comes in its slot (0.10.0); `ui/code-editor` the core's
   pieces, `ui/field` and the highlighters, `ui/code-json` and `ui/code-sql`, which import nothing (`migrations/page`
-  takes `ui/code-sql` alone, never the editor); a
+  takes `ui/code-sql` alone, never the editor); 0.11.0's `ui/rich-html` and `ui/search` nothing, `ui/file-size` and
+  `ui/dates` the kit's configuration (and the dates their words), `ui/html-editor` the core's pieces, `ui/field`,
+  `ui/rich-text`, `ui/rich-html`, `ui/menu`, `ui/color-field`, `ui/dialog`, `ui/forms` and its words (the file picker
+  takes `ui/file-size`, the combobox `ui/search`); a
   `words/<namespace>` is imported by its module, which
   registers it, and by `words` alone - never by the translations module) and to an
   empty floor, and the first loads of the gate, the bar, the

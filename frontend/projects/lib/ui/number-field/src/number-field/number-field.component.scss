@@ -1,0 +1,18 @@
+@use "../../../../sass/kit";
+@use "../../../forms/src/field";
+
+@include field.styles;
+
+// Numbers line up by their digits: each the same width.
+.anotoki-number-field__input {
+  font-variant-numeric: tabular-nums;
+}
+
+// A unit inside the border, after the number ("ms", "%"): quieter than the number.
+:host ::ng-deep [fieldSuffix] {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding-right: 0.75rem;
+  color: kit.token(muted);
+}

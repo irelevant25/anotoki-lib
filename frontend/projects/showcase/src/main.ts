@@ -17,6 +17,7 @@ import { delay, of } from 'rxjs';
 import { IAM_CASE, adminServer } from './app/admin-server';
 import { AppComponent } from './app/app.component';
 import { showcaseLegalFacts } from './app/legal-facts';
+import { showcaseDateChoices } from './app/pieces/dates/date-choices';
 import { peopleServer } from './app/people-server';
 import { SignInDemoComponent, signInDemoProviders } from './app/sign-in-demo/sign-in-demo.component';
 import { SHOWCASE_GROUPS, wordsServer } from './app/words-server';
@@ -186,6 +187,17 @@ bootstrapApplication(AppComponent, {
         ],
       },
       { path: 'feedback', loadComponent: () => import('./app/feedback-demo/feedback-demo.component').then((m) => m.FeedbackDemoComponent) },
+      // 0.11.0's pieces, a page each: the HTML editor and its safe view, the dates, accent-free search, the multiselect,
+      // the audio player, file sizes, a folder in the file picker, the number field with what else the kit's fields gained.
+      { path: 'html-editor', loadComponent: () => import('./app/pieces/rich-html/rich-html-demo.component').then((m) => m.RichHtmlDemoComponent) },
+      { path: 'dates', loadComponent: () => import('./app/pieces/dates/dates-demo.component').then((m) => m.DatesDemoComponent) },
+      { path: 'search', loadComponent: () => import('./app/pieces/search/search-demo.component').then((m) => m.SearchDemoComponent) },
+      { path: 'multiselect', loadComponent: () => import('./app/pieces/multiselect/multiselect-demo.component').then((m) => m.MultiselectDemoComponent) },
+      { path: 'audio-player', loadComponent: () => import('./app/pieces/audio-player/audio-player-demo.component').then((m) => m.AudioPlayerDemoComponent) },
+      { path: 'file-size', loadComponent: () => import('./app/pieces/file-size/file-size-demo.component').then((m) => m.FileSizeDemoComponent) },
+      { path: 'folder', loadComponent: () => import('./app/pieces/folder/folder-demo.component').then((m) => m.FolderDemoComponent) },
+      { path: 'fields', loadComponent: () => import('./app/pieces/fields/fields-demo.component').then((m) => m.FieldsDemoComponent) },
+      { path: 'picture-preview', loadComponent: () => import('./app/pieces/picture-preview/picture-preview-demo.component').then((m) => m.PicturePreviewDemoComponent) },
       // The legal pages with a sample site's facts (legal-facts.ts: ?iam=1, ?fan=1, ?feedback=0), linked from the footer.
       { path: 'terms', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.TermsPageComponent) },
       { path: 'privacy', loadComponent: () => import('@anotoki/lib/legal/pages').then((m) => m.PrivacyPageComponent) },
@@ -262,6 +274,8 @@ bootstrapApplication(AppComponent, {
     })),
     provideAnotokiUi(() => ({
       ...inject(TranslationService).forKit(),
+      // The account's date order and clock (0.11.0), as the dates page chooses them: the kit's dates follow them.
+      dateChoices: showcaseDateChoices,
       icons: {
         trash: iconTrash,
         users: iconUsers,

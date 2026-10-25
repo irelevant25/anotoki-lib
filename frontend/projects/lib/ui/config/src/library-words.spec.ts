@@ -1,10 +1,15 @@
 import source from '../../../../../../backend/resources/library-words.json';
 import { LIBRARY_WORDS } from '@anotoki/lib/words';
+import { AUDIO_PLAYER_LIBRARY_WORDS } from '@anotoki/lib/words/audio-player';
 import { CHIPS_LIBRARY_WORDS } from '@anotoki/lib/words/chips';
 import { COLOR_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/color-field';
 import { COMBOBOX_LIBRARY_WORDS } from '@anotoki/lib/words/combobox';
 import { DATE_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/date-field';
+import { DATES_LIBRARY_WORDS } from '@anotoki/lib/words/dates';
 import { FILE_PICKER_LIBRARY_WORDS } from '@anotoki/lib/words/file-picker';
+import { HTML_EDITOR_LIBRARY_WORDS } from '@anotoki/lib/words/html-editor';
+import { MULTISELECT_LIBRARY_WORDS } from '@anotoki/lib/words/multiselect';
+import { NUMBER_FIELD_LIBRARY_WORDS } from '@anotoki/lib/words/number-field';
 import { PROGRESS_LIBRARY_WORDS } from '@anotoki/lib/words/progress';
 import { RICH_TEXT_LIBRARY_WORDS } from '@anotoki/lib/words/rich-text';
 import { SIGN_IN_LIBRARY_WORDS } from '@anotoki/lib/words/sign-in';
@@ -50,6 +55,12 @@ describe('the library’s own words (generated a namespace at a time from backen
       expect(FILE_PICKER_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.filePicker.')));
       expect(COMBOBOX_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.combobox.')));
       expect(RICH_TEXT_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.richText.')));
+      // ... and those of 0.11.0.
+      expect(DATES_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.dates.')));
+      expect(NUMBER_FIELD_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.numberField.')));
+      expect(MULTISELECT_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.multiselect.')));
+      expect(AUDIO_PLAYER_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.audioPlayer.')));
+      expect(HTML_EDITOR_LIBRARY_WORDS[language], language).toEqual(json(language, (key) => key.startsWith('anotoki.htmlEditor.')));
     }
     // LibraryKey names every key, every module's - a type only: the kit's file holds no other module's words.
     const signIn: LibraryKey = 'anotoki.signIn.retry';

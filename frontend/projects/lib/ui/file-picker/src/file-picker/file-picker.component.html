@@ -19,16 +19,49 @@
         (dragleave)="onDragLeave()"
         (drop)="onDrop($event)">
         <anotoki-icon class="anotoki-file-picker__icon" name="upload" [size]="26" />
-        @let drop = word(multiple() ? "anotoki.filePicker.dropFiles" : "anotoki.filePicker.dropFile");
-        <span class="anotoki-file-picker__drop" [attr.lang]="drop.lang">{{ drop.text }}</span>
-        @let chooseWords = word(multiple() ? "anotoki.filePicker.chooseFiles" : "anotoki.filePicker.chooseFile");
+        @if (!folder()) {
+            <!-- A folder is chosen with the button alone: no words of a drop there. -->
+            @let drop = word(multiple() ? "anotoki.filePicker.dropFiles" : "anotoki.filePicker.dropFile");
+            <span class="anotoki-file-picker__drop" [attr.lang]="drop.lang">{{ drop.text }}</span>
+        }
+        @let chooseWords = word(folder() ? "anotoki.filePicker.chooseFolder" : multiple() ? "anotoki.filePicker.chooseFiles" : "anotoki.filePicker.chooseFile");
         <button #control anotokiButton class="anotoki-file-picker__choose" [disabled]="disabled()" [attr.lang]="chooseWords.lang" [attr.aria-describedby]="describedBy()" (click)="choose()">
             {{ chooseWords.text }}
         </button>
         <!-- The device's chooser, opened by the button: never drawn, never a second Tab stop. -->
-        <input #native class="anotoki-file-picker__native" type="file" [multiple]="multiple()" [attr.accept]="accept() || null" [disabled]="disabled()" (change)="onChosen($event)" />
+        <input
+            #native
+            class="anotoki-file-picker__native"
+            type="file"
+            [multiple]="multiple() || folder()"
+            [attr.webkitdirectory]="folder() ? '' : null"
+            [attr.accept]="accept() || null"
+            [disabled]="disabled()"
+            (change)="onChosen($event)" />
     </div>
-    @if (files().length) {
+    @if (chosenFolder(); as chosen) {
+        <!-- A folder, as one line: its name, how many files, their size - and one button that takes it all away. -->
+        @let folderWords = word("anotoki.filePicker.folder", { name: chosen.name, count: chosen.count });
+        <ul class="anotoki-file-picker__files" [attr.aria-labelledby]="labelId">
+            <li class="anotoki-file-picker__file">
+                <anotoki-icon class="anotoki-file-picker__file-icon" name="fileText" [size]="18" />
+                <span class="anotoki-file-picker__name" [attr.lang]="folderWords.lang">{{ folderWords.text }}</span>
+                &ngsp;
+                <span class="anotoki-file-picker__size">{{ size(chosen.size) }}</span>
+                @let removeFolder = word("anotoki.filePicker.remove", { name: chosen.name });
+                <button
+                    type="button"
+                    class="anotoki-file-picker__remove"
+                    [attr.aria-label]="removeFolder.text"
+                    [attr.title]="removeFolder.text"
+                    [attr.lang]="removeFolder.lang"
+                    [disabled]="disabled()"
+                    (click)="removeAt(0)">
+                    <anotoki-icon name="x" [size]="16" [strokeWidth]="2.25" />
+                </button>
+            </li>
+        </ul>
+    } @else if (files().length) {
         <ul class="anotoki-file-picker__files" [attr.aria-labelledby]="labelId">
             @for (file of files(); track $index; let index = $index) {
                 <li class="anotoki-file-picker__file">

@@ -5,6 +5,24 @@ and the npm package `@anotoki/lib` (`frontend/projects/lib/package.json`). While
 version is 0.x, a minor version may break what a site uses - each such change is
 said here, with what a site must do.
 
+## 0.11.2 - 2026-10-28
+
+What genshin's administrators met in the file explorer. The PHP half alone: a site takes it with `composer update
+anotoki/lib` (a `^0.11.0` constraint takes it as it stands) and leaves its Angular half where it is - nothing a site
+calls or draws changes.
+
+**A rename says what became of its dots.** A file keeps only the dot before its extension, every other becoming a dash
+(`UploadPolicy`, 0.5.0), so "7.1 - Void Star's Advent 2026-10-13.avif", typed for the file called "7-1 - Void Star's
+Advent 2026-10-13.avif", is that file's own name - and `FileExplorer::move()` answered 409 `exists`, "Something of that
+name is there already.", as if another file stood in the way. A move whose name is the file's own, as typed or once its
+dots are dashes, is 409 `same_name` now: "That is its name already.", or the rule and both names - "A file's name keeps
+only the dot before its extension - every other dot becomes a dash - so "7.1 - Void Star's Advent 2026-10-13.avif" is
+"7-1 - Void Star's Advent 2026-10-13.avif", the name it has already." A move whose dots lead onto another file stays
+`exists` and says the same ("... so "..." would be "...", and something of that name is there already."), and so does
+an upload refused `exists` ("... so it would be "...", and a file of that name is there already."); a refusal whose
+name lost no dot keeps its words. A folder moved onto itself is `same_name` too, no longer `into_itself`. The explorer's
+page says the server's words; a site that words refusals itself (`failureText`) has `same_name` to word.
+
 ## 0.11.1 - 2026-10-25
 
 What the six sites found as they moved onto 0.11.0. Nothing a site uses changes: a site takes it by moving the version

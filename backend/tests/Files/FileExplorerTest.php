@@ -79,6 +79,12 @@ final class FileExplorerTest extends FilesTestCase
         self::assertStringStartsWith('# What is uploaded here is data', (string) file_get_contents($this->assets . '/.htaccess'), 'the guard comes before the first write');
         self::assertSame([['assets', 'upload', 'characters/raiden/5-0 - Epitome.png', null]], $this->written);
         self::assertSame([], glob($this->storage . '/cache/uploads/*.part') ?: [], 'nothing left on its way in');
+        $again = $explorer->upload('assets', 'characters/raiden', [$this->upload('5.0 - Epitome.png', $png)]);
+        self::assertSame(
+            'A file\'s name keeps only the dot before its extension - every other dot becomes a dash - so it would be "5-0 - Epitome.png", and a file of that name is there already.',
+            $again['files'][0]['message'] ?? null,
+            'the name it lands on, which nobody typed',
+        );
 
         $replaced = $explorer->upload('assets', 'characters/raiden', [$this->upload('Raiden Shogun.png', $png)], replace: true);
         self::assertSame('replaced', $replaced['files'][0]['status']);
@@ -101,6 +107,24 @@ final class FileExplorerTest extends FilesTestCase
         self::assertSame('name_runs_on_server', $explorer->move('assets', 'characters/raiden/Raiden-v2.png', 'characters/raiden/x.php.png')->code ?? null);
         $moved = $explorer->move('assets', 'characters/raiden/Raiden-v2.png', 'characters/zhongli/Raiden-v2.png');
         self::assertSame('move', $moved['op'] ?? null);
+
+        // A name its dots make into the file's own, or into another's, says so (genshin, 2026-10-28: "7.1 - ..." typed
+        // for the file called "7-1 - ..." was "Something of that name is there already.").
+        $own = $explorer->move('assets', 'characters/zhongli/Raiden-v2.png', 'characters/zhongli/Raiden.v2.png');
+        self::assertSame(
+            ['same_name', 'A file\'s name keeps only the dot before its extension - every other dot becomes a dash - so "Raiden.v2.png" is "Raiden-v2.png", the name it has already.'],
+            [$own->code ?? null, $own->message ?? null],
+        );
+        $taken = $explorer->move('assets', 'characters/readme.txt', 'characters/zhongli/Raiden.v2.png');
+        self::assertSame(
+            [
+                'exists',
+                'A file\'s name keeps only the dot before its extension - every other dot becomes a dash - so "Raiden.v2.png" would be "Raiden-v2.png", and something of that name is there already.',
+            ],
+            [$taken->code ?? null, $taken->message ?? null],
+        );
+        self::assertSame('That is its name already.', $explorer->move('assets', 'characters/zhongli/Raiden-v2.png', 'characters/zhongli/Raiden-v2.png')->message ?? null);
+        self::assertSame('same_name', $explorer->move('assets', 'characters/zhongli', 'characters/zhongli')->code ?? null, 'a folder named as it is, not one going into itself');
         self::assertSame('into_itself', $explorer->move('assets', 'characters', 'characters/zhongli/characters')->code ?? null);
         self::assertSame('exists', $explorer->move('assets', 'characters/raiden', 'characters/zhongli')->code ?? null);
         self::assertSame('content_mismatch', $explorer->move('assets', 'characters/readme.txt', 'characters/readme.png')->code ?? null, 'a new extension only for bytes that are of it');

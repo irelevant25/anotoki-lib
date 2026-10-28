@@ -50,6 +50,9 @@ final class FileExplorer
 
     private const OPTIONS = ['storage', 'key', 'afterWrite', 'rawPath', 'previewSeconds', 'walkLimit'];
 
+    /** The rule a name's dashes come from (UploadPolicy::storedName()), said before what it made of a name. */
+    private const DOTS = 'A file\'s name keeps only the dot before its extension - every other dot becomes a dash -';
+
     /** @var array<string, FileRoot> */
     private readonly array $roots;
     private readonly string $storage;
@@ -344,7 +347,7 @@ final class FileExplorer
             return self::notFound();
         }
         $isFolder = is_dir($sourcePath);
-        if ($isFolder && ($target === $source || str_starts_with($target . '/', $source . '/'))) {
+        if ($isFolder && $target !== $source && str_starts_with($target . '/', $source . '/')) {
             return new Refusal(409, 'into_itself', 'A folder cannot go into itself.');
         }
         [$targetParent, $targetName] = PathGuard::split($target);
@@ -353,6 +356,15 @@ final class FileExplorer
             return $checked;
         }
         $target = ($targetParent === '' ? '' : $targetParent . '/') . $checked;
+        // Its own name, as typed or once its dots are dashes, is no rename - never "something of that name is there":
+        // "7.1 - X.avif" typed for the file called "7-1 - X.avif" was said so, as if another file stood in the way.
+        if ($target === $source) {
+            return new Refusal(
+                409,
+                'same_name',
+                self::dashed($targetName, $checked) ? sprintf('%s so "%s" is "%s", the name it has already.', self::DOTS, $targetName, $checked) : 'That is its name already.',
+            );
+        }
         $parentPath = PathGuard::resolve((string) $real, $targetParent);
         if ($parentPath === null || !is_dir($parentPath)) {
             return new Refusal(404, 'folder_not_found', 'There is no such folder.');
@@ -362,7 +374,13 @@ final class FileExplorer
             return Refusal::invalid('name_invalid', 'That is no name a file can have here.');
         }
         if (file_exists($targetPath)) {
-            return new Refusal(409, 'exists', 'Something of that name is there already.');
+            return new Refusal(
+                409,
+                'exists',
+                self::dashed($targetName, $checked)
+                    ? sprintf('%s so "%s" would be "%s", and something of that name is there already.', self::DOTS, $targetName, $checked)
+                    : 'Something of that name is there already.',
+            );
         }
         // A file given another extension must be of it, as an upload must: a text renamed .png is no picture.
         $extension = strtolower((string) pathinfo($checked, PATHINFO_EXTENSION));
@@ -691,7 +709,13 @@ final class FileExplorer
         }
         $existed = file_exists($target);
         if ($existed && (!$replace || !is_file($target))) {
-            return $refused(new Refusal(409, 'exists', 'A file of that name is there already.'));
+            return $refused(
+                new Refusal(
+                    409,
+                    'exists',
+                    self::dashed($clientName, $stored) ? sprintf('%s so it would be "%s", and a file of that name is there already.', self::DOTS, $stored) : 'A file of that name is there already.',
+                ),
+            );
         }
 
         $incoming = $this->storage . '/cache/uploads';
@@ -1120,5 +1144,11 @@ final class FileExplorer
     private static function notFound(): Refusal
     {
         return new Refusal(404, 'not_found', 'There is no such file or folder.');
+    }
+
+    /** Whether a name lost dots to dashes as it was stored - what a refusal then says, as nobody typed that name. */
+    private static function dashed(string $typed, string $stored): bool
+    {
+        return substr_count($typed, '.') > substr_count($stored, '.');
     }
 }
